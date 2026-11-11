@@ -221,7 +221,9 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, game: usize, k: usize) {
     f.draw(fb, Face::Strong, 28.0, MARGIN, 240, MUTED, &kicker);
     f.draw(fb, Face::Display, 84.0, MARGIN - 4, 330, INK, page.title);
     let mut y = 390;
-    if page.board == "FASES" {
+    if let Some(sc) = scene(game, k) {
+        y = draw_scene(fb, f, game, &sc, y) + 40;
+    } else if page.board == "FASES" {
         y = draw_fases(fb, f, y) + 50;
     } else if !page.board.is_empty() {
         y = draw_board(fb, f, page, y) + 50;
@@ -253,6 +255,181 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, game: usize, k: usize) {
     };
     pill(fb, prev_rect(), if k == 0 { "Pular" } else { "‹ Voltar" }, false);
     pill(fb, next_rect(), if last { "Jogar" } else { "Próximo ›" }, true);
+}
+
+// ---------- Cenas: o jogo de verdade, preparado por alguns toques ----------
+
+#[derive(Clone, Copy)]
+pub enum Op {
+    /// Primeira opção do menu (fase 1, contra a CPU, primeira história).
+    Start,
+    Tap(u32),
+    Hold(u32),
+    Drag(&'static [u32]),
+}
+
+#[derive(Clone, Copy)]
+pub enum Gesture {
+    None,
+    Tap(u32),
+    Hold(u32),
+    Drag(u32, u32),
+}
+
+pub struct Scene {
+    pub ops: &'static [Op],
+    pub gesture: Gesture,
+}
+
+const fn sc(ops: &'static [Op], gesture: Gesture) -> Scene {
+    Scene { ops, gesture }
+}
+
+/// Cena de cada página (quando faz sentido mostrar o jogo de verdade).
+fn scene(game: usize, page: usize) -> Option<Scene> {
+    use Gesture as G;
+    use Op::*;
+    Some(match (game, page) {
+        (2, 0) => sc(&[Start, Tap(802), Tap(802), Tap(802)], G::None),
+        (2, 1) => sc(&[Start, Drag(&[0, 1, 2, 3])], G::Drag(0, 3)),
+        (2, 2) => sc(&[Start, Hold(12)], G::Hold(12)),
+        (3, 0) => sc(&[Start, Tap(3)], G::None),
+        (3, 1) => sc(&[Start], G::Tap(3)),
+        (4, 0) => sc(&[Start], G::Tap(0)),
+        (5, 0) => sc(&[Start, Tap(0)], G::Tap(20)),
+        (5, 1) => sc(&[Start, Tap(811), Tap(812), Tap(44), Tap(45)], G::Tap(46)),
+        (6, 0) => sc(&[Start, Tap(27)], G::None),
+        (6, 1) => sc(&[Start, Tap(27), Hold(0)], G::Hold(0)),
+        (7, 0) => sc(&[Start], G::None),
+        (7, 1) => sc(&[Start, Drag(&[0, 1, 2])], G::Drag(0, 2)),
+        (8, 0) => sc(&[Start], G::Tap(0)),
+        (10, 0) => sc(&[Start], G::None),
+        (10, 1) => sc(&[Start], G::Tap(813)),
+        (11, 0) | (11, 2) => sc(&[Start], G::None),
+        (12, 0) | (12, 1) => sc(&[Start], G::Tap(813)),
+        (13, 0) | (13, 1) => sc(&[Start], G::None),
+        (14, 0) => sc(&[Tap(900)], G::Tap(0)),
+        (15, 0) => sc(&[Start], G::None),
+        (15, 1) => sc(&[Start, Tap(40)], G::Tap(40)),
+        _ => return None,
+    })
+}
+
+/// Joga os toques preparados num jogo novo, desenha numa tela em memória e mostra só a
+/// área do tabuleiro, reduzida, com o gesto (dedo e seta) por cima.
+fn draw_scene(fb: &mut Framebuffer, f: &Fonts, game: usize, sc: &Scene, top: i32) -> i32 {
+    let Some(mut g) = crate::minigame::make(game) else { return top };
+    for op in sc.ops {
+        match *op {
+            Op::Start => {
+                g.tap(900, 0, 0);
+            }
+            Op::Tap(id) => {
+                g.tap(id, 0, 0);
+            }
+            Op::Hold(id) => {
+                g.hold(id);
+            }
+            Op::Drag(ids) => {
+                for &id in ids {
+                    g.drag(id);
+                }
+                g.drag_end();
+            }
+        }
+    }
+    let mut off = Framebuffer::memory();
+    g.draw(&mut off, f);
+    let targets = g.targets();
+    // Área: as casas do jogo (ids < 800) e os controles do gesto; senão, o meio da tela.
+    let mut want: Vec<Rect> = targets.iter().filter(|(id, _)| *id < 800).map(|(_, r)| *r).collect();
+    if want.is_empty() {
+        // Jogo sem casas tocáveis (setas, cartas): mostra a área do jogo inteira.
+        want.push(Rect::new(40, 200, W - 80, 1200));
+    }
+    let gid = match sc.gesture {
+        Gesture::Tap(i) | Gesture::Hold(i) => Some(i),
+        Gesture::Drag(a, _) => Some(a),
+        Gesture::None => None,
+    };
+    if let Some(r) = gid.and_then(|i| targets.iter().find(|(id, _)| *id == i)).map(|(_, r)| *r) {
+        want.push(r);
+    }
+    let src = if want.is_empty() {
+        Rect::new(0, 250, W, 1020)
+    } else {
+        let x0 = want.iter().map(|r| r.x).min().unwrap() - 24;
+        let y0 = want.iter().map(|r| r.y).min().unwrap() - 24;
+        let x1 = want.iter().map(|r| r.x + r.w).max().unwrap() + 24;
+        let y1 = want.iter().map(|r| r.y + r.h).max().unwrap() + 24;
+        Rect::new(x0.max(0), y0.max(170), (x1 - x0).min(W), (y1 - y0).min(1448 - 170))
+    };
+    let (max_w, max_h) = (W - 2 * MARGIN, 560);
+    let scale = (max_w as f32 / src.w as f32).min(max_h as f32 / src.h as f32).min(1.0);
+    let (dw, dh) = ((src.w as f32 * scale) as i32, (src.h as f32 * scale) as i32);
+    let dst = Rect::new((W - dw) / 2, top, dw, dh);
+    fb.blit_scaled(&off, src, dst);
+    fb.round_outline(Rect::new(dst.x - 4, dst.y - 4, dst.w + 8, dst.h + 8), 12, 3, 0xBB, PAPER);
+    fb.blit_scaled(&off, src, dst);
+    // Gesto por cima, em coordenadas da miniatura.
+    let map = |r: Rect| -> (i32, i32) {
+        let (cx, cy) = (r.x + r.w / 2, r.y + r.h / 2);
+        (dst.x + ((cx - src.x) as f32 * scale) as i32, dst.y + ((cy - src.y) as f32 * scale) as i32)
+    };
+    let rect_of = |id: u32| targets.iter().find(|(i, _)| *i == id).map(|(_, r)| *r);
+    match sc.gesture {
+        Gesture::Tap(id) => {
+            if let Some(p) = rect_of(id).map(map) {
+                finger(fb, p, false);
+            }
+        }
+        Gesture::Hold(id) => {
+            if let Some(p) = rect_of(id).map(map) {
+                finger(fb, p, true);
+            }
+        }
+        Gesture::Drag(a, b) => {
+            if let (Some(pa), Some(pb)) = (rect_of(a).map(map), rect_of(b).map(map)) {
+                ui::stroke(fb, (pa.0 as f32, pa.1 as f32), (pb.0 as f32, pb.1 as f32), 8.0, PAPER);
+                ui::stroke(fb, (pa.0 as f32, pa.1 as f32), (pb.0 as f32, pb.1 as f32), 4.0, INK);
+                finger(fb, pb, false);
+            }
+        }
+        Gesture::None => {}
+    }
+    dst.y + dst.h
+}
+
+/// Dedo tocando: anel com miolo; segurando: anéis duplos (ondas).
+fn finger(fb: &mut Framebuffer, (x, y): (i32, i32), hold: bool) {
+    if hold {
+        for (rad, t) in [(46, 4), (32, 4)] {
+            fb.round_outline(Rect::new(x - rad, y - rad, 2 * rad, 2 * rad), rad, t + 2, PAPER, PAPER);
+        }
+        for (rad, t) in [(46, 4), (32, 4)] {
+            let r = Rect::new(x - rad, y - rad, 2 * rad, 2 * rad);
+            outline_only(fb, r, rad, t);
+        }
+    } else {
+        outline_only(fb, Rect::new(x - 30, y - 30, 60, 60), 30, 5);
+    }
+    fb.round_rect(Rect::new(x - 15, y - 15, 30, 30), 15, PAPER);
+    fb.round_rect(Rect::new(x - 11, y - 11, 22, 22), 11, INK);
+}
+
+/// Anel sem pintar o miolo (o desenho de baixo continua visível).
+fn outline_only(fb: &mut Framebuffer, r: Rect, rad: i32, t: i32) {
+    let (cx, cy) = (r.x as f32 + r.w as f32 / 2.0, r.y as f32 + r.h as f32 / 2.0);
+    let (ro, ri) = (rad as f32, (rad - t) as f32);
+    for yy in r.y..r.y + r.h {
+        for xx in r.x..r.x + r.w {
+            let d = ((xx as f32 - cx).powi(2) + (yy as f32 - cy).powi(2)).sqrt();
+            if d <= ro && d >= ri - 2.0 {
+                let v = if d >= ri { INK } else { PAPER };
+                fb.fill(Rect::new(xx, yy, 1, 1), v);
+            }
+        }
+    }
 }
 
 /// Trilha de fases: 6 a 15, com a 10 (desafio) preta e a 15 (difícil) cinza.

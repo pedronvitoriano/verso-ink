@@ -2011,23 +2011,7 @@ impl App {
                 self.go(Screen::Mini);
             }
             (Screen::Games, Game(i)) => {
-                self.mini = match i {
-                    2 => Some(Box::new(crate::coroas::Coroas::new())),
-                    3 => Some(Box::new(crate::lig4::Lig4::new())),
-                    4 => Some(Box::new(crate::caixas::Caixas::new())),
-                    5 => Some(Box::new(crate::naval::Naval::new())),
-                    6 => Some(Box::new(crate::minas::Minas::new())),
-                    7 => Some(Box::new(crate::nonograma::Nonograma::new())),
-                    8 => Some(Box::new(crate::uno::Uno::new())),
-                    9 => Some(Box::new(crate::palavra::Palavra::new())),
-                    10 => Some(Box::new(crate::sokoban::Sokoban::new())),
-                    11 => Some(Box::new(crate::paciencia::Paciencia::new())),
-                    12 => Some(Box::new(crate::masmorra::Masmorra::new())),
-                    13 => Some(Box::new(crate::cripta::Cripta::new())),
-                    14 => Some(Box::new(crate::historias::Historias::new())),
-                    15 => Some(Box::new(crate::damas::Damas::new())),
-                    _ => None,
-                };
+                self.mini = crate::minigame::make(i);
                 if self.mini.is_some() {
                     self.mini_game = i;
                     self.mini_back = Screen::Games;

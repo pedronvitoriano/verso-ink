@@ -99,8 +99,7 @@ fn u32_at(b: &[u8], off: usize) -> u32 {
 }
 
 impl Framebuffer {
-    /// Tela em memória (testes no PC): desenha no `buf` e salva em PGM.
-    #[cfg(test)]
+    /// Tela em memória: desenha no `buf` sem mandar ao e-ink (cenas dos tutoriais, testes no PC).
     pub fn memory() -> Self {
         Framebuffer {
             file: File::open("/dev/null").expect("/dev/null"),
@@ -113,6 +112,34 @@ impl Framebuffer {
             invert: false,
             rot180: false,
             night_full: 0,
+        }
+    }
+
+    /// Copia `src` (região de outra tela) reduzida para caber em `dst`, com média de área.
+    pub fn blit_scaled(&mut self, other: &Framebuffer, src: Rect, dst: Rect) {
+        if src.w <= 0 || src.h <= 0 || dst.w <= 0 || dst.h <= 0 {
+            return;
+        }
+        for dy in 0..dst.h {
+            let sy0 = src.y + dy * src.h / dst.h;
+            let sy1 = (src.y + (dy + 1) * src.h / dst.h).max(sy0 + 1);
+            for dx in 0..dst.w {
+                let sx0 = src.x + dx * src.w / dst.w;
+                let sx1 = (src.x + (dx + 1) * src.w / dst.w).max(sx0 + 1);
+                let (mut sum, mut n) = (0u32, 0u32);
+                for y in sy0..sy1 {
+                    for x in sx0..sx1 {
+                        if x >= 0 && y >= 0 && x < other.width && y < other.height {
+                            sum += other.buf[(y * other.width + x) as usize] as u32;
+                            n += 1;
+                        }
+                    }
+                }
+                let (px, py) = (dst.x + dx, dst.y + dy);
+                if n > 0 && px >= 0 && py >= 0 && px < self.width && py < self.height {
+                    self.buf[(py * self.width + px) as usize] = (sum / n) as u8;
+                }
+            }
         }
     }
 

@@ -127,3 +127,24 @@ pub fn grid_geom(cols: i32, rows: i32, top: i32, max_h: i32) -> (i32, i32, i32) 
 
 /// Gerador simples para os jogos (xorshift do Sudoku).
 pub use crate::sudoku::Rng;
+
+/// Cria o minijogo pelo índice da tela Jogar (None para Sudoku e Xadrez, que são telas do app).
+pub fn make(i: usize) -> Option<Box<dyn MiniGame>> {
+    Some(match i {
+        2 => Box::new(crate::coroas::Coroas::new()),
+        3 => Box::new(crate::lig4::Lig4::new()),
+        4 => Box::new(crate::caixas::Caixas::new()),
+        5 => Box::new(crate::naval::Naval::new()),
+        6 => Box::new(crate::minas::Minas::new()),
+        7 => Box::new(crate::nonograma::Nonograma::new()),
+        8 => Box::new(crate::uno::Uno::new()),
+        9 => Box::new(crate::palavra::Palavra::new()),
+        10 => Box::new(crate::sokoban::Sokoban::new()),
+        11 => Box::new(crate::paciencia::Paciencia::new()),
+        12 => Box::new(crate::masmorra::Masmorra::new()),
+        13 => Box::new(crate::cripta::Cripta::new()),
+        14 => Box::new(crate::historias::Historias::new()),
+        15 => Box::new(crate::damas::Damas::new()),
+        _ => return None,
+    })
+}
