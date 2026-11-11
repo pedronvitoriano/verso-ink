@@ -1,0 +1,223 @@
+//! Framebuffer do Kindle PW3 (EPDC i.MX6 "Wario"), 8 bits por pixel (Y8).
+//!
+//! Desenhamos num buffer em memória e enviamos à tela só a região que mudou,
+//! escolhendo a forma de onda do e-ink conforme o caso:
+//! - `Wave::Fast` (DU): só preto e branco, ~120 ms, para resposta ao toque;
+//! - `Wave::Quality` (GC16): 16 cinzas, para conteúdo;
+//! - `flash = true`: atualização cheia (pisca), limpa fantasmas ao trocar de tela.
+
+use crate::sys::ioctl;
+use std::fs::{File, OpenOptions};
+use std::os::unix::fs::FileExt;
+use std::os::unix::io::AsRawFd;
+
+const FBIOGET_VSCREENINFO: u32 = 0x4600;
+const FBIOGET_FSCREENINFO: u32 = 0x4602;
+const MXCFB_SEND_UPDATE: u32 = 0x4048_462E;
+const MXCFB_WAIT_FOR_UPDATE_COMPLETE: u32 = 0xC008_462F;
+
+const WAVEFORM_MODE_DU: u32 = 1;
+const WAVEFORM_MODE_GC16: u32 = 2;
+const UPDATE_MODE_PARTIAL: u32 = 0;
+const UPDATE_MODE_FULL: u32 = 1;
+const TEMP_USE_AMBIENT: i32 = 0x1000;
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Wave {
+    Fast,
+    Quality,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Rect {
+    pub x: i32,
+    pub y: i32,
+    pub w: i32,
+    pub h: i32,
+}
+
+impl Rect {
+    pub const fn new(x: i32, y: i32, w: i32, h: i32) -> Self {
+        Rect { x, y, w, h }
+    }
+    pub fn contains(&self, px: i32, py: i32) -> bool {
+        px >= self.x && py >= self.y && px < self.x + self.w && py < self.y + self.h
+    }
+}
+
+#[repr(C)]
+#[derive(Default)]
+struct MxcfbRect {
+    top: u32,
+    left: u32,
+    width: u32,
+    height: u32,
+}
+
+#[repr(C)]
+#[derive(Default)]
+struct MxcfbAltBufferData {
+    phys_addr: u32,
+    width: u32,
+    height: u32,
+    alt_update_region: MxcfbRect,
+}
+
+#[repr(C)]
+#[derive(Default)]
+struct MxcfbUpdateData {
+    update_region: MxcfbRect,
+    waveform_mode: u32,
+    update_mode: u32,
+    update_marker: u32,
+    hist_bw_waveform_mode: u32,
+    hist_gray_waveform_mode: u32,
+    temp: i32,
+    flags: u32,
+    alt_buffer_data: MxcfbAltBufferData,
+}
+
+pub struct Framebuffer {
+    file: File,
+    pub width: i32,
+    pub height: i32,
+    stride: usize,
+    yoffset: u32,
+    /// Buffer de trabalho: um byte por pixel, 0 = preto, 255 = branco.
+    pub buf: Vec<u8>,
+    marker: u32,
+}
+
+fn u32_at(b: &[u8], off: usize) -> u32 {
+    u32::from_le_bytes([b[off], b[off + 1], b[off + 2], b[off + 3]])
+}
+
+impl Framebuffer {
+    pub fn open() -> std::io::Result<Self> {
+        let file = OpenOptions::new().read(true).write(true).open("/dev/fb0")?;
+        let fd = file.as_raw_fd();
+        let mut var = [0u8; 160];
+        let mut fix = [0u8; 68];
+        unsafe {
+            if ioctl(fd, FBIOGET_VSCREENINFO, var.as_mut_ptr()) != 0
+                || ioctl(fd, FBIOGET_FSCREENINFO, fix.as_mut_ptr()) != 0
+            {
+                return Err(std::io::Error::last_os_error());
+            }
+        }
+        let (width, height) = (u32_at(&var, 0) as i32, u32_at(&var, 4) as i32);
+        let bpp = u32_at(&var, 24);
+        if bpp != 8 {
+            return Err(std::io::Error::other(format!("bpp {bpp} não suportado")));
+        }
+        let stride = u32_at(&fix, 44) as usize;
+        Ok(Framebuffer {
+            file,
+            width,
+            height,
+            stride,
+            yoffset: u32_at(&var, 20),
+            buf: vec![0xFF; width as usize * height as usize],
+            marker: 1,
+        })
+    }
+
+    pub fn screen(&self) -> Rect {
+        Rect::new(0, 0, self.width, self.height)
+    }
+
+    /// Mistura `v` sobre o pixel com cobertura `a` (0..=255).
+    #[inline]
+    pub fn blend(&mut self, x: i32, y: i32, v: u8, a: u8) {
+        if x >= 0 && y >= 0 && x < self.width && y < self.height {
+            let i = (y * self.width + x) as usize;
+            let old = self.buf[i] as u32;
+            self.buf[i] = ((old * (255 - a as u32) + v as u32 * a as u32 + 127) / 255) as u8;
+        }
+    }
+
+    pub fn fill(&mut self, r: Rect, v: u8) {
+        let x0 = r.x.max(0);
+        let x1 = (r.x + r.w).min(self.width);
+        for y in r.y.max(0)..(r.y + r.h).min(self.height) {
+            let row = (y * self.width) as usize;
+            self.buf[row + x0 as usize..row + x1 as usize].fill(v);
+        }
+    }
+
+    /// Retângulo arredondado preenchido, com borda suavizada.
+    pub fn round_rect(&mut self, r: Rect, radius: i32, v: u8) {
+        let rad = radius.min(r.w / 2).min(r.h / 2) as f32;
+        for y in r.y..r.y + r.h {
+            for x in r.x..r.x + r.w {
+                let cx = (x as f32 + 0.5).clamp(r.x as f32 + rad, (r.x + r.w) as f32 - rad);
+                let cy = (y as f32 + 0.5).clamp(r.y as f32 + rad, (r.y + r.h) as f32 - rad);
+                let (dx, dy) = (x as f32 + 0.5 - cx, y as f32 + 0.5 - cy);
+                let d = (dx * dx + dy * dy).sqrt() - rad;
+                let a = (0.5 - d).clamp(0.0, 1.0);
+                if a > 0.0 {
+                    self.blend(x, y, v, (a * 255.0) as u8);
+                }
+            }
+        }
+    }
+
+    /// Contorno arredondado com espessura `t`.
+    pub fn round_outline(&mut self, r: Rect, radius: i32, t: i32, v: u8, inner: u8) {
+        self.round_rect(r, radius, v);
+        let inside = Rect::new(r.x + t, r.y + t, r.w - 2 * t, r.h - 2 * t);
+        self.round_rect(inside, (radius - t).max(0), inner);
+    }
+
+    /// Copia a região do buffer para a memória da tela e pede a atualização.
+    pub fn refresh(&mut self, r: Rect, wave: Wave, flash: bool) {
+        let x0 = r.x.clamp(0, self.width);
+        let y0 = r.y.clamp(0, self.height);
+        let x1 = (r.x + r.w).clamp(0, self.width);
+        let y1 = (r.y + r.h).clamp(0, self.height);
+        if x1 <= x0 || y1 <= y0 {
+            return;
+        }
+        for y in y0..y1 {
+            let src = (y * self.width + x0) as usize;
+            let len = (x1 - x0) as usize;
+            let off = (y as u64 + self.yoffset as u64) * self.stride as u64 + x0 as u64;
+            let _ = self.file.write_all_at(&self.buf[src..src + len], off);
+        }
+        self.marker = self.marker.wrapping_add(1).max(1);
+        let mut upd = MxcfbUpdateData {
+            update_region: MxcfbRect {
+                top: y0 as u32,
+                left: x0 as u32,
+                width: (x1 - x0) as u32,
+                height: (y1 - y0) as u32,
+            },
+            waveform_mode: match wave {
+                Wave::Fast => WAVEFORM_MODE_DU,
+                Wave::Quality => WAVEFORM_MODE_GC16,
+            },
+            update_mode: if flash { UPDATE_MODE_FULL } else { UPDATE_MODE_PARTIAL },
+            update_marker: self.marker,
+            hist_bw_waveform_mode: WAVEFORM_MODE_DU,
+            hist_gray_waveform_mode: WAVEFORM_MODE_GC16,
+            temp: TEMP_USE_AMBIENT,
+            ..Default::default()
+        };
+        unsafe {
+            ioctl(self.file.as_raw_fd(), MXCFB_SEND_UPDATE, &mut upd as *mut MxcfbUpdateData);
+        }
+    }
+
+    /// Espera a última atualização terminar (para medir ou sincronizar).
+    pub fn wait(&self) {
+        let mut m: [u32; 2] = [self.marker, 0];
+        unsafe {
+            ioctl(self.file.as_raw_fd(), MXCFB_WAIT_FOR_UPDATE_COMPLETE, m.as_mut_ptr());
+        }
+    }
+
+    pub fn present(&mut self, wave: Wave, flash: bool) {
+        let r = self.screen();
+        self.refresh(r, wave, flash);
+    }
+}

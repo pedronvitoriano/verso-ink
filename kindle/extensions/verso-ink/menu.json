@@ -1,0 +1,34 @@
+{
+	"items": [
+	{
+		"name": "Verso Ink",
+		"priority": -999,
+		"items": [
+		{
+			"name": "Abrir o Verso Ink",
+			"priority": 1,
+			"action": "/mnt/us/verso-ink/bin/ctl.sh",
+			"params": "open",
+			"exitmenu": true,
+			"status": false
+		},
+		{
+			"name": "Ligar direto no Verso Ink",
+			"priority": 2,
+			"action": "/mnt/us/verso-ink/bin/ctl.sh",
+			"params": "boot-on",
+			"exitmenu": false,
+			"status": true
+		},
+		{
+			"name": "Ligar na interface da Amazon",
+			"priority": 3,
+			"action": "/mnt/us/verso-ink/bin/ctl.sh",
+			"params": "boot-off",
+			"exitmenu": false,
+			"status": true
+		}
+		]
+	}
+	]
+}
