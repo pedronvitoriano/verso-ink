@@ -31,6 +31,7 @@ pub enum Screen {
     ChessGames,
     ChessReview,
     ChessInsights,
+    Mini,
     Clips,
     ClipBook,
     Compose,
@@ -73,6 +74,7 @@ pub enum Target {
     Game(usize),
     Clips,
     BookRow(usize),
+    Mini(u32),
 }
 
 /// Código de saída que pede ao `session.sh` para abrir um livro no KOReader e voltar.
@@ -113,6 +115,7 @@ pub struct App {
     games_page: usize,
     review_k: usize,
     rng: crate::sudoku::Rng,
+    mini: Option<Box<dyn crate::minigame::MiniGame>>,
     clips: Vec<crate::clippings::BookClips>,
     clip_page: usize,
     clip_book: usize,
@@ -201,6 +204,7 @@ impl App {
             games_page: 0,
             review_k: 0,
             rng: crate::sudoku::Rng::new(),
+            mini: None,
             clips: Vec::new(),
             clip_page: 0,
             clip_book: 0,
@@ -307,6 +311,11 @@ impl App {
                 }
             }
             Screen::Clips => crate::clippings::draw_books(fb, f, &self.clips, self.clip_page),
+            Screen::Mini => {
+                if let Some(g) = &self.mini {
+                    g.draw(fb, f);
+                }
+            }
             Screen::Claude => crate::chat::draw_hub(fb, f, &self.chats, self.claude.len()),
             Screen::ClaudeLive => crate::claude_ui::draw(fb, f, &self.claude),
             Screen::ClaudeChat => {
@@ -446,7 +455,18 @@ impl App {
                 v
             }
             Screen::Reminder => vec![(Primary, crate::today_ui::reminder_ok_rect())],
-            Screen::Games => vec![(Back, ui::back_rect()), (Game(0), apps::games_row(0)), (Game(1), apps::games_row(1))],
+            Screen::Games => {
+                let mut v = vec![(Back, ui::back_rect())];
+                v.extend((0..apps::GAMES.len()).map(|i| (Game(i), apps::games_row(i))));
+                v
+            }
+            Screen::Mini => {
+                let mut v = vec![(Back, ui::back_rect())];
+                if let Some(g) = &self.mini {
+                    v.extend(g.targets().into_iter().map(|(id, r)| (Mini(id), r)));
+                }
+                v
+            }
             Screen::SudokuMenu => {
                 let mut v = vec![(Back, ui::back_rect())];
                 v.extend((0..3).map(|k| (Level(k), crate::sudoku::resume_level_rect(k))));
@@ -565,7 +585,8 @@ impl App {
     /// Destaque do toque: inverte o alvo (forma arredondada) e mostra rápido (DU).
     /// Inverter de novo restaura exatamente o desenho anterior.
     fn flip(&mut self, t: Target, pressed: bool) {
-        if matches!(t, Target::Header | Target::Bar | Target::Cell(_)) {
+        // Casas de jogo não piscam: a resposta é a própria jogada.
+        if matches!(t, Target::Header | Target::Bar | Target::Cell(_)) || matches!(t, Target::Mini(id) if id < 800) {
             return; // a resposta é a própria mudança
         }
         let Some(r) = self.rect_of(t) else { return };
@@ -799,6 +820,38 @@ impl App {
     /// Jogo local com "Girar" ligado e vez das pretas: tela de cabeça para baixo.
     fn local_rotated(&self) -> bool {
         self.coach_level().is_none() && crate::chess::rotate_enabled() && self.chess.as_ref().is_some_and(|g| !g.pos.white_to_move)
+    }
+
+    /// Toque num minijogo: redesenha o que ele pedir e, se for a vez da CPU, joga por ela.
+    fn mini_tap(&mut self, id: u32, x: i32) {
+        let Some(g) = self.mini.as_mut() else { return };
+        let r = g.tap(id, x, 0);
+        self.apply_mini_redraw(r);
+        let mut guard = 0;
+        while self.mini.as_ref().is_some_and(|g| g.cpu_turn()) && guard < 200 {
+            guard += 1;
+            if let Some(g) = self.mini.as_mut() {
+                g.cpu_move();
+            }
+            self.apply_mini_redraw(crate::minigame::Redraw::Part(Rect::new(0, 170, 1072, 1448 - 170)));
+        }
+        if let Some(g) = &self.mini {
+            g.save();
+        }
+    }
+
+    fn apply_mini_redraw(&mut self, r: crate::minigame::Redraw) {
+        use crate::minigame::Redraw;
+        match r {
+            Redraw::None => {}
+            Redraw::Full => self.render(true),
+            Redraw::Part(rect) => {
+                if let Some(g) = &self.mini {
+                    g.draw(&mut self.fb, &self.fonts);
+                }
+                self.fb.refresh(rect, Wave::Quality, false);
+            }
+        }
     }
 
     fn coach_level(&self) -> Option<usize> {
@@ -1187,6 +1240,12 @@ impl App {
             (Screen::Compose | Screen::WifiPass | Screen::ClaudeCompose, Key(i)) => self.press_key(i as usize),
             (Screen::Wifi, Back) => self.go(Screen::Settings),
             (Screen::WifiPass, Back) => self.go(Screen::Wifi),
+            (Screen::Mini, Back) => {
+                if let Some(g) = &self.mini {
+                    g.save();
+                }
+                self.go(Screen::Games);
+            }
             (_, Back) => self.go(Screen::Home),
             (Screen::Home, Header) => self.go(Screen::Light),
             (Screen::Home, Tile(i)) => match Module::ALL[i] {
@@ -1254,7 +1313,17 @@ impl App {
                     self.start_sudoku(crate::sudoku::last_level());
                 }
             }
-            (Screen::Games, Game(_)) => self.go(Screen::ChessHub),
+            (Screen::Games, Game(1)) => self.go(Screen::ChessHub),
+            (Screen::Games, Game(i)) => {
+                self.mini = match i {
+                    2 => Some(Box::new(crate::coroas::Coroas::new())),
+                    _ => None,
+                };
+                if self.mini.is_some() {
+                    self.go(Screen::Mini);
+                }
+            }
+            (Screen::Mini, Mini(id)) => self.mini_tap(id, x),
             (Screen::SudokuMenu, Level(k)) => self.start_sudoku(crate::sudoku::LEVELS[k.min(2)]),
             (Screen::SudokuMenu, Continue) => {
                 self.sudoku = crate::sudoku::Game::load();

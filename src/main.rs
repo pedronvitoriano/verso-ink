@@ -15,6 +15,8 @@ mod chat;
 mod chess;
 mod chess_ui;
 mod coach;
+mod coroas;
+mod minigame;
 mod engine;
 mod clippings;
 mod claude_ui;

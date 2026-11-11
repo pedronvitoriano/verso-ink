@@ -193,24 +193,42 @@ fn wrap(f: &Fonts, face: Face, size: f32, text: &str, max_w: i32, max_lines: usi
 pub fn clips_rect() -> Rect {
     Rect::new(W - MARGIN - 250, 76, 250, 84)
 }
+/// Jogos na tela Jogar (a ordem define o índice usado pelo app).
+pub const GAMES: [(&str, &str); 3] = [
+    ("Sudoku", "Três níveis, anotações e dicas"),
+    ("Xadrez", "Treinadores, revisão e duas pessoas"),
+    ("Coroas", "Uma por linha, coluna e reino"),
+];
+
+/// Grade de blocos 2 colunas.
 pub fn games_row(i: usize) -> Rect {
-    Rect::new(MARGIN, 440 + i as i32 * 230, W - 2 * MARGIN, 200)
+    let w = (W - 2 * MARGIN - 24) / 2;
+    Rect::new(MARGIN + (i % 2) as i32 * (w + 24), 430 + (i / 2) as i32 * 156, w, 140)
 }
 
 pub fn draw_games(fb: &mut Framebuffer, f: &Fonts, sudoku: Option<String>, chess: Option<String>) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
     f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Jogar");
-    f.draw(fb, Face::Strong, 30.0, MARGIN, 400, MUTED, "Tudo funciona sem Wi-Fi");
-    for (i, (title, sub)) in [("Sudoku", sudoku.unwrap_or_else(|| "Três níveis, com conferência".into())), ("Xadrez", chess.unwrap_or_else(|| "Para duas pessoas, no mesmo Kindle".into()))].iter().enumerate() {
+    f.draw(fb, Face::Strong, 30.0, MARGIN, 395, MUTED, "Tudo funciona sem Wi-Fi");
+    for (i, (title, sub)) in GAMES.iter().enumerate() {
         let r = games_row(i);
-        fb.round_outline(r, 40, 5, INK, PAPER);
-        f.draw(fb, Face::Display, 80.0, r.x + 40, r.y + 110, INK, title);
-        f.draw(fb, Face::Body, 32.0, r.x + 44, r.y + 160, MUTED, sub);
+        // Jogo com partida em andamento fica em destaque.
+        let live = match i {
+            0 => sudoku.clone(),
+            1 => chess.clone(),
+            _ => None,
+        };
+        let (fg, sc) = if live.is_some() { (PAPER, 0xCC) } else { (INK, MUTED) };
+        if live.is_some() {
+            fb.round_rect(r, 32, INK);
+        } else {
+            fb.round_outline(r, 32, 4, INK, PAPER);
+        }
+        f.draw(fb, Face::Display, 50.0, r.x + 28, r.y + 66, fg, title);
+        let s = live.unwrap_or_else(|| sub.to_string());
+        f.draw(fb, Face::Body, 24.0, r.x + 30, r.y + 106, sc, &fit(f, Face::Body, 24.0, &s, r.w - 50));
     }
-    let r = games_row(2);
-    f.draw(fb, Face::Strong, 30.0, MARGIN, r.y + 50, MUTED, "EM BREVE");
-    f.draw(fb, Face::Body, 38.0, MARGIN, r.y + 106, INK, "Ficção interativa e o Claude como adversário.");
 }
 
 pub fn lib_prev_rect() -> Rect {
