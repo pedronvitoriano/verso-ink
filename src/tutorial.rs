@@ -47,6 +47,7 @@ pub fn pages(game: usize) -> &'static [Page] {
         12 => &MASMORRA,
         13 => &CRIPTA,
         14 => &HISTORIAS,
+        15 => &DAMAS,
         _ => &[],
     }
 }
@@ -144,6 +145,13 @@ static CRIPTA: [Page; 4] = [
     p("Monstros", "Monstros não andam: bloqueiam a passagem. Toque num para ver quanto de vida a luta custa; toque de novo para lutar.", "g.....\n..2...\n.@.p..", "......\n..M...\n......"),
     p("Ficar forte", "Vencer dá experiência; subir de nível enche a vida e aumenta a força. Espadas aumentam a força, poções curam quando você beber.", "s..p..$", ""),
     p("Descer", "Ache a escada e toque nela para descer. Os andares ficam mais perigosos; seus pontos são os andares e o ouro.", ".....>", ""),
+];
+
+static DAMAS: [Page; 4] = [
+    p("O objetivo", "Capture todas as peças do outro ou deixe-o sem lances. As peças andam só nas casas escuras, na diagonal.", ".o.o.o.o\no.o.o.o.\n........\n.w.w.w.w\nw.w.w.w.", "LDLDLDLD\nDLDLDLDL\nLDLDLDLD\nLDLDLDLD\nDLDLDLDL"),
+    p("Capturar", "Pule por cima de uma peça vizinha para uma casa livre. O peão captura para a frente e para trás, e pode emendar capturas em sequência.", "...\n.o.\n..w", "LDL\nDLD\nLDL"),
+    p("É obrigatório", "Se puder capturar, tem de capturar, e pela maioria: o lance que leva mais peças. As peças que podem jogar ficam marcadas.", ".o.o\no.w.", "LDLD\nDLDL"),
+    p("A dama", "O peão que chega à última linha vira dama (com coroa). Ela anda e captura em diagonais longas, várias casas de uma vez.", "c...\n.o..\n....", "DLDL\nLDLD\nDLDL"),
 ];
 
 static HISTORIAS: [Page; 2] = [

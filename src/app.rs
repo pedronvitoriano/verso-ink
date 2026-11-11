@@ -2005,6 +2005,7 @@ impl App {
                     12 => Some(Box::new(crate::masmorra::Masmorra::new())),
                     13 => Some(Box::new(crate::cripta::Cripta::new())),
                     14 => Some(Box::new(crate::historias::Historias::new())),
+                    15 => Some(Box::new(crate::damas::Damas::new())),
                     _ => None,
                 };
                 if self.mini.is_some() {

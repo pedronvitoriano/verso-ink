@@ -38,6 +38,7 @@ mod clock;
 mod update;
 mod sudoku;
 mod covers;
+mod damas;
 mod data;
 mod fases;
 mod day;
