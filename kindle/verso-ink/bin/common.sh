@@ -36,6 +36,9 @@ amazon_stop() {
     stop lab126_gui >/dev/null 2>&1
     usleep 1250000
     trap - TERM
+    # Sem a interface, o blanket fica com a tela de abertura ("splash") carregada e o powerd
+    # passa a ignorar o botão de ligar ("Splash screen is on"). Descarregar devolve o botão.
+    lipc-set-prop com.lab126.blanket unload splash 2>/dev/null
     log "interface da Amazon parada"
 }
 
