@@ -43,6 +43,7 @@ pub enum Screen {
     Wifi,
     WifiPass,
     LibSearch,
+    Calendar,
     Sleep,
 }
 
@@ -352,6 +353,7 @@ impl App {
                 crate::keyboard::draw(fb, f, &self.keys);
             }
             Screen::Wifi => crate::wifi::draw(fb, f, self.wifi_on, self.wifi_cur.as_deref(), &self.nets, &self.wifi_note),
+            Screen::Calendar => crate::today_ui::draw_calendar(fb, f, st),
             Screen::LibSearch => {
                 ui::draw_field_header(fb, f, "BIBLIOTECA", "Buscar livro");
                 crate::today_ui::draw_field(fb, f, &self.compose_text, &self.compose_hint);
@@ -486,11 +488,12 @@ impl App {
                 v
             }
             Screen::Today => {
-                let mut v = vec![(Back, ui::back_rect()), (Primary, crate::today_ui::pomodoro_rect()), (NewGame, crate::today_ui::add_rect())];
+                let mut v = vec![(Back, ui::back_rect()), (Primary, crate::today_ui::pomodoro_rect()), (NewGame, crate::today_ui::add_rect()), (Secondary, crate::today_ui::calendar_rect())];
                 v.extend(self.today_hits.iter().map(|(i, r)| (Item(*i), *r)));
                 v
             }
             Screen::Reminder => vec![(Primary, crate::today_ui::reminder_ok_rect())],
+            Screen::Calendar => vec![(Back, ui::back_rect())],
             Screen::Games => {
                 let mut v = vec![(Back, ui::back_rect())];
                 v.extend((0..apps::GAMES.len()).map(|i| (Game(i), apps::games_row(i))));
@@ -1324,6 +1327,7 @@ impl App {
                 self.go(Screen::Mini);
             }
             (Screen::LibSearch, Back) => self.go(Screen::Library),
+            (Screen::Calendar, Back) => self.go(Screen::Today),
             (_, Back) => self.go(Screen::Home),
             (Screen::Home, Header) => self.go(Screen::Light),
             (Screen::Home, Continue) => {
@@ -1692,6 +1696,7 @@ impl App {
             }
             (Screen::LowBattery, Primary) => self.go(Screen::Home),
             (Screen::Today, Primary) => self.go(Screen::Focus),
+            (Screen::Today, Secondary) => self.go(Screen::Calendar),
             (Screen::Today, Item(i)) => {
                 if let Some(it) = self.items.get(i) {
                     let on = crate::day::toggle(data::today(self.status.offset_min), &it.key());

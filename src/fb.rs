@@ -97,6 +97,29 @@ fn u32_at(b: &[u8], off: usize) -> u32 {
 }
 
 impl Framebuffer {
+    /// Tela em memória (testes no PC): desenha no `buf` e salva em PGM.
+    #[cfg(test)]
+    pub fn memory() -> Self {
+        Framebuffer {
+            file: File::open("/dev/null").expect("/dev/null"),
+            width: 1072,
+            height: 1448,
+            stride: 1072,
+            yoffset: 0,
+            buf: vec![0xFF; 1072 * 1448],
+            marker: 1,
+            invert: false,
+            rot180: false,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn save_pgm(&self, path: &std::path::Path) {
+        let mut out = format!("P5 {} {} 255\n", self.width, self.height).into_bytes();
+        out.extend_from_slice(&self.buf);
+        std::fs::write(path, out).expect("pgm");
+    }
+
     pub fn open() -> std::io::Result<Self> {
         let file = OpenOptions::new().read(true).write(true).open("/dev/fb0")?;
         let fd = file.as_raw_fd();

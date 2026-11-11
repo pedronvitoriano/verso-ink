@@ -37,6 +37,10 @@ pub fn draw_today(fb: &mut Framebuffer, f: &Fonts, items: &[Item], done: &HashSe
     ui::draw_back(fb, f, false);
     f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Hoje");
     let streak = day::todo_streak(items, st.offset_min);
+    let cal = calendar_rect();
+    fb.round_outline(cal, cal.h / 2, 4, INK, PAPER);
+    let cw = f.measure(Face::Strong, 32.0, "Calendário");
+    f.draw(fb, Face::Strong, 32.0, cal.x + (cal.w - cw) / 2, cal.y + 54, INK, "Calendário");
     let add = add_rect();
     fb.round_outline(add, add.h / 2, 4, INK, PAPER);
     let aw = f.measure(Face::Strong, 32.0, "+ Adicionar");
@@ -107,7 +111,7 @@ pub fn draw_today(fb: &mut Framebuffer, f: &Fonts, items: &[Item], done: &HashSe
         let mut x = MARGIN;
         for (idx, it) in group(Kind::Habit) {
             let on = done.contains(&it.key());
-            let n = day::habit_streak(&it.key(), st.offset_min);
+            let n = day::habit_streak(it, st.offset_min);
             let label = if n > 0 { format!("{} · {n}", it.text) } else { it.text.clone() };
             let tw = f.measure(Face::Strong, 30.0, &label).min(W - 2 * MARGIN - 48);
             let wdt = tw + 48;
@@ -160,6 +164,104 @@ pub fn draw_today(fb: &mut Framebuffer, f: &Fonts, items: &[Item], done: &HashSe
     let tw = f.measure(Face::Strong, 40.0, &label);
     f.draw(fb, Face::Strong, 40.0, r.x + (r.w - tw) / 2, r.y + 70, PAPER, &label);
     hits
+}
+
+pub fn calendar_rect() -> Rect {
+    Rect::new(W - MARGIN - 270 - 20 - 230, 76, 230, 84)
+}
+
+pub const CAL_DAYS: i64 = 30;
+
+/// Uma linha do calendário: nome, detalhe e, para cada dia, Some(feito) se valia ou None.
+struct CalRow {
+    label: String,
+    detail: String,
+    cells: Vec<Option<bool>>,
+}
+
+/// Calendário dos últimos 30 dias: dia completo, leitura e cada hábito.
+pub fn draw_calendar(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
+    fb.fill(fb.screen(), PAPER);
+    ui::draw_back(fb, f, false);
+    f.draw(fb, Face::Display, 120.0, MARGIN - 6, 300, INK, "30 dias");
+    let today = crate::data::today(st.offset_min);
+    let days: Vec<i64> = (0..CAL_DAYS).map(|k| today - (CAL_DAYS - 1) + k).collect();
+    let marks: Vec<HashSet<String>> = days.iter().map(|&d| day::checked(d)).collect();
+    let all = day::load_all();
+    let mut rows = Vec::new();
+    if all.iter().any(|i| matches!(i.kind, Kind::Priority | Kind::Task)) {
+        let cells = days
+            .iter()
+            .zip(&marks)
+            .map(|(&d, m)| all.iter().any(|i| matches!(i.kind, Kind::Priority | Kind::Task) && i.on(d)).then(|| day::day_complete(&all, d, m)))
+            .collect();
+        rows.push(CalRow { label: "Dia completo".into(), detail: "prioridades e tarefas".into(), cells });
+    }
+    let reading = day::reading_by_day(st.offset_min);
+    let goal = day::reading_goal_min() as i64;
+    rows.push(CalRow {
+        label: "Leitura".into(),
+        detail: format!("meta de {goal} min"),
+        cells: days.iter().map(|d| Some(reading.get(d).copied().unwrap_or(0) >= goal * 60)).collect(),
+    });
+    for it in all.iter().filter(|i| i.kind == Kind::Habit).take(7) {
+        let key = it.key();
+        let cells = days.iter().zip(&marks).map(|(&d, m)| it.on(d).then(|| m.contains(&key))).collect();
+        let detail = match it.days_label() {
+            l if l.is_empty() => "todo dia".to_string(),
+            l => l,
+        };
+        rows.push(CalRow { label: it.text.clone(), detail, cells });
+    }
+    let cell = (W - 2 * MARGIN) / CAL_DAYS as i32;
+    let sq = cell - 6;
+    let mut y = 380;
+    for row in &rows {
+        let due = row.cells.iter().filter(|c| c.is_some()).count();
+        let done = row.cells.iter().filter(|c| **c == Some(true)).count();
+        let count = format!("{done} de {due}");
+        let cw = f.measure(Face::Strong, 30.0, &count);
+        f.draw(fb, Face::Strong, 30.0, W - MARGIN - cw, y + 36, INK, &count);
+        let label = fit(f, Face::Strong, 34.0, &row.label, W - 2 * MARGIN - cw - 40);
+        let end = f.draw(fb, Face::Strong, 34.0, MARGIN, y + 36, INK, &label);
+        let room = W - MARGIN - cw - 24 - end - 16;
+        if room > 80 {
+            f.draw(fb, Face::Body, 26.0, end + 16, y + 36, MUTED, &fit(f, Face::Body, 26.0, &row.detail, room));
+        }
+        let top = y + 56;
+        for (k, c) in row.cells.iter().enumerate() {
+            let r = Rect::new(MARGIN + k as i32 * cell, top, sq, sq);
+            match c {
+                Some(true) => fb.round_rect(r, 6, INK),
+                Some(false) => fb.round_outline(r, 6, 3, 0x88, PAPER),
+                None => fb.fill(Rect::new(r.x + sq / 2 - 2, r.y + sq / 2 - 2, 4, 4), 0xAA),
+            }
+        }
+        // Hoje: traço embaixo.
+        let last = MARGIN + (CAL_DAYS as i32 - 1) * cell;
+        fb.fill(Rect::new(last, top + sq + 6, sq, 4), INK);
+        y += 56 + sq + 44;
+        if y > 1180 {
+            break;
+        }
+    }
+    let axis = y - 20;
+    f.draw(fb, Face::Body, 26.0, MARGIN, axis + 10, MUTED, "há 30 dias");
+    let tw = f.measure(Face::Body, 26.0, "hoje");
+    f.draw(fb, Face::Body, 26.0, W - MARGIN - tw, axis + 10, MUTED, "hoje");
+    // Legenda.
+    let ly = 1340;
+    let mut x = MARGIN;
+    for (k, l) in ["feito", "valia e faltou", "não valia"].iter().enumerate() {
+        let r = Rect::new(x, ly - 24, 26, 26);
+        match k {
+            0 => fb.round_rect(r, 6, INK),
+            1 => fb.round_outline(r, 6, 3, 0x88, PAPER),
+            _ => fb.fill(Rect::new(r.x + 11, r.y + 11, 4, 4), 0xAA),
+        }
+        let end = f.draw(fb, Face::Body, 28.0, x + 38, ly, MUTED, l);
+        x = end + 40;
+    }
 }
 
 pub fn add_rect() -> Rect {
@@ -242,4 +344,49 @@ pub fn draw_reminder(fb: &mut Framebuffer, f: &Fonts, it: &Item) {
     fb.round_rect(r, r.h / 2, INK);
     let tw = f.measure(Face::Strong, 44.0, "Feito");
     f.draw(fb, Face::Strong, 44.0, r.x + (r.w - tw) / 2, r.y + 76, PAPER, "Feito");
+}
+
+#[cfg(test)]
+mod render {
+    /// Desenha Hoje e o calendário com dados de exemplo num diretório temporário (só no PC):
+    /// `VERSO_INK_SHOTS=pasta cargo test calendario_de_exemplo -- --ignored`
+    #[test]
+    #[ignore]
+    fn calendario_de_exemplo() {
+        let out = std::path::PathBuf::from(std::env::var("VERSO_INK_SHOTS").expect("VERSO_INK_SHOTS"));
+        let home = std::env::temp_dir().join(format!("verso-ink-teste-{}", std::process::id()));
+        std::fs::create_dir_all(home.join("data/dias")).unwrap();
+        std::fs::create_dir_all(home.join("settings")).unwrap();
+        std::env::set_var("VERSO_INK_HOME", &home);
+        std::fs::write(home.join("data/dia.txt"), "! Revisar o capítulo 3\n- Comprar pão\n- {sab} Faxina\n@ {uteis} 08:00 Remédio\n* Ler 20 min\n* {seg,qua,sex} Academia\n* {fds} Ligar para a mãe\n").unwrap();
+        let st = crate::ui::Status { battery: Some(80), charging: false, wifi: true, offset_min: 0 };
+        let today = crate::data::today(0);
+        for k in 1..30i64 {
+            let d = today - k;
+            let mut v = Vec::new();
+            if k % 3 != 0 {
+                v.push("* Ler 20 min");
+            }
+            match crate::day::weekday(d) {
+                0 | 2 | 4 if k % 4 != 1 => v.push("* Academia"),
+                5 | 6 => v.push("* Ligar para a mãe"),
+                _ => {}
+            }
+            if k % 5 != 2 {
+                v.extend(["! Revisar o capítulo 3", "- Comprar pão", "- Faxina"]);
+            }
+            std::fs::write(home.join(format!("data/dias/{d}.txt")), v.join("\n")).unwrap();
+        }
+        std::fs::write(home.join(format!("data/dias/{today}.txt")), "* Ler 20 min").unwrap();
+        let f = crate::text::Fonts::new();
+        let mut fb = crate::fb::Framebuffer::memory();
+        let items = crate::day::load_items();
+        let done = crate::day::checked(today);
+        super::draw_today(&mut fb, &f, &items, &done, &st, 1);
+        fb.save_pgm(&out.join("hoje.pgm"));
+        let mut fb = crate::fb::Framebuffer::memory();
+        super::draw_calendar(&mut fb, &f, &st);
+        fb.save_pgm(&out.join("calendario.pgm"));
+        let _ = std::fs::remove_dir_all(&home);
+    }
 }
