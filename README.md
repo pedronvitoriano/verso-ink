@@ -4,8 +4,20 @@ Sistema próprio para o Kindle Paperwhite 3 (7ª geração, firmware 5.16.2.1.1)
 O Kindle liga direto no Verso Ink: tela inicial com relógio e módulos (Ler, Jogar, Foco, Claude e Mais),
 desenhada direto no e-ink, sem a interface da Amazon por cima.
 
-> Estado: **fundação**. Tela, texto, toque, repouso e boot direto funcionam; os módulos ainda são
-> telas de apresentação ("em construção").
+> Versão 0.4.0. Tudo abaixo roda e foi testado num PW3 com firmware 5.16.2.1.1
+> (relatório em `docs/testes/2026-11-11.md`).
+
+## O que tem
+
+| Bloco | O que faz |
+|---|---|
+| **Início** | Relógio grande, data, bateria, clima do dia (Open-Meteo) e um resumo: próximo lembrete, sequências, leitura e focos. Tocar na data ou deslizar do topo abre **Luz e tela**. |
+| **Ler** | Seus EPUB, PDF, AZW3, MOBI, CBZ e TXT com capa (extraída do livro, ou tipográfica). Abre no KOReader e volta sozinho. **Destaques**: o "My Clippings" agrupado por livro. |
+| **Foco → Hoje** | Prioridades, tarefas, hábitos e lembretes do dia, marcados por toque, com sequência de dias. **+ Adicionar** pelo teclado na tela. Pomodoro 25/5. Lembretes abrem em tela cheia na hora. |
+| **Jogar** | Sudoku (3 níveis, solução única, conferência) e xadrez para duas pessoas (regras completas, desfazer). Jogos salvos. |
+| **Claude** | As sessões do Claude Code do seu PC, ao vivo: o que estão fazendo e quando é a sua vez. |
+| **Luz e tela** | Luz 0–25 e modo noturno. **Ajustes**: Wi-Fi, endereço, SSH, bateria, versão, reiniciar, desligar e **Procurar atualização**. |
+| **Repouso** | Tela clara com o livro em andamento; Wi-Fi desliga ao dormir. Aviso de bateria fraca. |
 
 ## Como funciona
 
@@ -51,7 +63,28 @@ tools/shot.sh tela.png                # captura a tela pela rede
 O Verso Ink sobe seu próprio SSH na porta **2223** (só chave) antes de qualquer outra coisa, inclusive
 quando o boot é pulado. Pelo KUAL há o menu **Verso Ink** com as mesmas opções.
 
-Fuso horário: minutos em relação ao UTC em `/mnt/us/verso-ink/settings/utc_offset_min` (padrão −240).
+### Pelo PC
+
+```bash
+tools/send.sh livro.epub                       # manda livros (aparecem no topo do Ler)
+echo "texto" | tools/send.sh --texto "Título"  # manda um texto para ler
+tools/dia.sh                                   # edita o dia (prioridades, tarefas, lembretes, hábitos)
+tools/release.sh                               # publica uma versão (o Kindle se atualiza em Ajustes)
+```
+
+Formato do dia (`/mnt/us/verso-ink/data/dia.txt`): `! prioridade`, `- tarefa`, `@ 14:30 lembrete`, `* hábito`.
+
+### Janela do Claude
+
+Registre `tools/claude-hook.sh` como hook do Claude Code (eventos `SessionStart`, `UserPromptSubmit`,
+`PreToolUse`, `Notification`, `Stop`, `SessionEnd`). Ele envia o estado ao Kindle em segundo plano e
+sai em ~30 ms, então não atrasa o Claude Code; com o Kindle desligado, o envio só falha em silêncio.
+
+### Ajustes em arquivo (`/mnt/us/verso-ink/settings/`)
+
+- `utc_offset_min`: fuso em minutos (padrão −240, Manaus).
+- `local`: `latitude longitude Nome` para o clima (padrão Manaus).
+- `meta_leitura_min`: minutos por dia que contam para a sequência de leitura (padrão 20).
 
 ## Licença
 
