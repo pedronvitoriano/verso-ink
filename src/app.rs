@@ -1317,6 +1317,9 @@ impl App {
             (Screen::Games, Game(i)) => {
                 self.mini = match i {
                     2 => Some(Box::new(crate::coroas::Coroas::new())),
+                    3 => Some(Box::new(crate::lig4::Lig4::new())),
+                    4 => Some(Box::new(crate::caixas::Caixas::new())),
+                    5 => Some(Box::new(crate::naval::Naval::new())),
                     _ => None,
                 };
                 if self.mini.is_some() {
