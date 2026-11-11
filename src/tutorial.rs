@@ -61,7 +61,7 @@ const FASES: Page = p(
 
 static SUDOKU: [Page; 4] = [
     p("O objetivo", "Complete a grade 9×9 com números de 1 a 9: cada linha, cada coluna e cada quadrado 3×3 tem todos eles, sem repetir.", "53..7....\n6..195...\n.98....6.", "RRR......\nRRR......\nRRR......"),
-    p("Jogando", "Toque numa casa e depois num número embaixo. Errou? O jogo conta o erro e você pode desfazer. Uma dica preenche uma casa certa.", "534678912\n672195348\n198342567", "........R"),
+    p("Jogando", "Toque numa casa e depois num número. Errou? O erro é contado e dá para desfazer. Uma dica preenche uma casa certa.", "534678912\n672195348\n198342567", "........R"),
     p("Anotações", "Ligue Anotar para escrever candidatos pequenos numa casa. Quando você põe um número, as anotações iguais na linha, coluna e quadrado somem.", "1.3\n.5.\n7.9", ""),
     FASES,
 ];
@@ -93,26 +93,26 @@ static CAIXAS: [Page; 3] = [
 ];
 
 static NAVAL: [Page; 3] = [
-    p("Sua frota", "Posicione os 8 navios: porta-aviões (5), dois navios-tanque (4), dois contratorpedeiros (3) e três submarinos (2). Toque na casa da proa; Girar muda a direção. Sortear faz por você.", "#####.....\n..........\n####..###.\n..........", "~~~~~~~~~~\n~~~~~~~~~~\n~~~~~~~~~~\n~~~~~~~~~~"),
+    p("Sua frota", "Posicione os 8 navios tocando na casa da proa de cada um. Girar muda a direção; Sortear arruma a frota por você.", "#####.....\n..........\n####..###.\n..........", "~~~~~~~~~~\n~~~~~~~~~~\n~~~~~~~~~~\n~~~~~~~~~~"),
     p("Atirando", "Toque numa casa do mar inimigo. Acertou: atire de novo. Água: a vez passa. Afunde toda a frota para vencer.", "..x.......\n..*****...\n.x........", "~~~~~~~~~~\n~~~~~~~~~~\n~~~~~~~~~~"),
     FASES,
 ];
 
 static MINAS: [Page; 3] = [
     p("Os números", "Cada número diz quantas minas encostam naquela casa, contando as diagonais. Abra todas as casas sem mina.", "1f1..\n111..\n.....\n11...\ngg1..", ""),
-    p("Toque e segure", "Toque para abrir uma casa; segure para pôr ou tirar a bandeira. O botão embaixo inverte, se preferir. O primeiro toque nunca é mina.", "gggg\ngfgg\ngggg", ""),
+    p("Toque e segure", "Toque abre; segure põe ou tira a bandeira (o botão embaixo inverte). O primeiro toque nunca é mina.", "gggg\ngfgg\ngggg", ""),
     FASES,
 ];
 
 static NONOGRAMA: [Page; 3] = [
     p("As dicas", "Os números de cada linha e coluna dizem os blocos pintados, em ordem. \"3 1\" é um bloco de 3, um espaço ou mais, e um bloco de 1.", "   1   1\n   12311\n 31###.#\n  3.###.\n111#.#.#", "nnnnnnnn\nnnnnnnnn\nnnn.....\nnnn.....\nnnn....."),
-    p("Pintando", "Toque uma vez para pintar, de novo para marcar X (certeza de vazio), e de novo para limpar. As grades sempre saem pela lógica, sem chute.", "##x..\nx#...", ""),
+    p("Pintando", "Toque: pinta, marca X e limpa. Arraste para fazer o mesmo em várias casas. Toda grade sai pela lógica, sem chute.", "##x..\nx#...", ""),
     FASES,
 ];
 
 static UNO: [Page; 3] = [
-    p("Jogando", "Jogue uma carta da mesma cor ou do mesmo número da que está na mesa. Sem jogada, compre; a carta comprada pode ser jogada na hora.", "7 7 2\n. . .", "K . P"),
-    p("Especiais", "Mais 2 e mais 4 acumulam. Bloqueio pula o próximo, Inverte troca o sentido e Troca a cor deixa você escolher a cor. No e-ink, a cor vira padrão: cheio, listrado, pontilhado ou com moldura.", "2 4", "K P"),
+    p("Jogando", "Jogue uma carta da mesma cor ou do mesmo número. As que servem ficam levantadas. Sem jogada, toque no monte para comprar.", "7 7 2\n. . .", "K . P"),
+    p("Especiais", "+2 e +4 acumulam no próximo. Bloqueio pula a vez, Inverte troca o sentido e Troca a cor deixa você escolher. Cada cor tem padrão e símbolo próprios.", "2 4", "K P"),
     p("UNO!", "Ficou com uma carta? Toque em UNO! antes de jogar a penúltima. Quem esquece compra 2.", "U N O", "KKK"),
 ];
 
@@ -131,17 +131,17 @@ static SOKOBAN: [Page; 3] = [
 static PACIENCIA: [Page; 3] = [
     p("O objetivo", "Monte as quatro fundações de A até K, cada uma de um naipe.", "A 2 3 4", "R R R R"),
     p("As colunas", "Nas colunas, as cartas descem alternando preto e cinza: um 7 preto vai sobre um 8 cinza. Coluna vazia só recebe K.", "8 . .\n7 . .\n6 . .", "P . .\n. . .\nP . ."),
-    p("Jogando", "Toque numa carta e depois no destino. Tocar de novo na mesma carta manda ela para a fundação quando der. Comprar 3 é a versão clássica, mais difícil.", "", ""),
+    p("Jogando", "Toque numa carta e depois no destino. Dois toques na mesma carta mandam ela para a fundação.", "", ""),
 ];
 
 static MASMORRA: [Page; 3] = [
-    p("O mundo", "Você é o @. Ande com as setas; o mundo só se move quando você dá um passo. Desça cinco andares; o dragão guarda o último.", "#######\n#.@..>#\n#..R..#\n#######", ""),
+    p("O mundo", "Você é o aventureiro de capuz. Ande com as setas: o mundo só se move quando você anda. Desça cinco andares; o dragão guarda o último.", "#######\n#.@..>#\n#..R..#\n#######", ""),
     p("Lutando", "Ande para cima de um monstro para atacar. Pegue poções, espadas, escudos e ouro pelo caminho; a escada leva ao próximo andar.", "#####\n#@R.#\n#.p$#\n#####", ""),
     p("Uma vida", "Morreu, recomeça do primeiro andar: é um roguelike. Cada aventura tem um mapa novo.", "", ""),
 ];
 
 static CRIPTA: [Page; 4] = [
-    p("Descobrir", "Cada andar é uma grade coberta. Toque numa casa vizinha às que já estão abertas para descobri-la. Casa vazia descoberta recupera 1 de vida.", "gggggg\ngg..gg\ng.@..g\ngg..gg", ""),
+    p("Descobrir", "Toque numa pedra clara, vizinha das casas abertas, para descobri-la. Casa vazia recupera 1 de vida.", "gggggg\ngg..gg\ng.@..g\ngg..gg", ""),
     p("Monstros", "Monstros não andam: bloqueiam a passagem. Toque num para ver quanto de vida a luta custa; toque de novo para lutar.", "g.....\n..2...\n.@.p..", "......\n..M...\n......"),
     p("Ficar forte", "Vencer dá experiência; subir de nível enche a vida e aumenta a força. Espadas aumentam a força, poções curam quando você beber.", "s..p..$", ""),
     p("Descer", "Ache a escada e toque nela para descer. Os andares ficam mais perigosos; seus pontos são os andares e o ouro.", ".....>", ""),
