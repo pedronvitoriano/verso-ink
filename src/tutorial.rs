@@ -134,10 +134,11 @@ static PACIENCIA: [Page; 3] = [
     p("Jogando", "Toque numa carta e depois no destino. Dois toques na mesma carta mandam ela para a fundação.", "", ""),
 ];
 
-static MASMORRA: [Page; 3] = [
-    p("O mundo", "Você é o aventureiro de capuz. Ande com as setas: o mundo só se move quando você anda. Desça cinco andares; o dragão guarda o último.", "#######\n#.@..>#\n#..R..#\n#######", ""),
-    p("Lutando", "Ande para cima de um monstro para atacar. Pegue poções, espadas, escudos e ouro pelo caminho; a escada leva ao próximo andar.", "#####\n#@R.#\n#.p$#\n#####", ""),
-    p("Uma vida", "Morreu, recomeça do primeiro andar: é um roguelike. Cada aventura tem um mapa novo.", "", ""),
+static MASMORRA: [Page; 4] = [
+    p("O mundo", "Ande com as setas: o mundo só se move quando você anda. Desça cinco andares; o dragão guarda a saída do último.", "H.r\n..>", ""),
+    p("Monstros", "O número é a vida do monstro; o z diz que ele dorme e só acorda se você chegar a duas casas. Dá para escolher a briga ou passar longe.", "rbG\nSO.", ""),
+    p("Lutar", "Ande para cima de um monstro para bater. O dano não tem sorte: sua força, menos a armadura dele. Cada tipo tem um jeito: o morcego é rápido, o ogro é lento.", "H.O\n.b.", ""),
+    p("Crescer", "Ver chão novo cura 1. Guarde as poções para a hora certa. Vencer dá experiência; ao subir de nível a vida enche e você escolhe: mais vida ou mais força.", "H..\n.GZ", ""),
 ];
 
 static CRIPTA: [Page; 5] = [
@@ -307,7 +308,7 @@ fn scene(game: usize, page: usize) -> Option<Scene> {
         (10, 0) => sc(&[Start], G::None),
         (10, 1) => sc(&[Start], G::Tap(813)),
         (11, 0) | (11, 2) => sc(&[Start], G::None),
-        (12, 0) | (12, 1) => sc(&[Start], G::Tap(813)),
+        (12, 0) => sc(&[Start], G::Tap(813)),
         (13, 0) => sc(&[Start], G::None),
         (14, 0) => sc(&[Tap(900)], G::Tap(0)),
         (15, 0) => sc(&[Start], G::None),
