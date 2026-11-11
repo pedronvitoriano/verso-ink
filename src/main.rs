@@ -22,6 +22,7 @@ mod data;
 mod day;
 mod today_ui;
 mod weather;
+mod wifi;
 mod fb;
 mod input;
 mod keyboard;

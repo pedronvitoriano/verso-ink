@@ -29,6 +29,8 @@ pub enum Screen {
     Compose,
     Claude,
     Update,
+    Wifi,
+    WifiPass,
     Sleep,
 }
 
@@ -105,6 +107,11 @@ pub struct App {
     claude_stamp: u64,
     claude_checked: Instant,
     update_msg: (String, Vec<String>, Option<String>),
+    nets: Vec<crate::wifi::Net>,
+    wifi_cur: Option<String>,
+    wifi_on: bool,
+    wifi_note: String,
+    wifi_target: Option<crate::wifi::Net>,
     /// Quando definido, o laço principal sai com este código.
     pub exit_code: Option<i32>,
 }
@@ -173,6 +180,11 @@ impl App {
             claude_stamp: 0,
             claude_checked: Instant::now(),
             update_msg: (String::new(), Vec::new(), None),
+            nets: Vec::new(),
+            wifi_cur: None,
+            wifi_on: true,
+            wifi_note: String::new(),
+            wifi_target: None,
             exit_code: None,
         }
     }
@@ -217,6 +229,14 @@ impl App {
             }
             Screen::Clips => crate::clippings::draw_books(fb, f, &self.clips, self.clip_page),
             Screen::Claude => crate::claude_ui::draw(fb, f, &self.claude),
+            Screen::Wifi => crate::wifi::draw(fb, f, self.wifi_on, self.wifi_cur.as_deref(), &self.nets, &self.wifi_note),
+            Screen::WifiPass => {
+                let essid = self.wifi_target.as_ref().map(|n| n.essid.clone()).unwrap_or_default();
+                crate::wifi::draw_password_header(fb, f, &essid);
+                crate::today_ui::draw_field(fb, f, &self.compose_text, &self.compose_hint);
+                self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
+                crate::keyboard::draw(fb, f, &self.keys);
+            }
             Screen::Update => {
                 let (t, l, b) = &self.update_msg;
                 apps::draw_update(fb, f, t, l, b.as_deref());
@@ -280,6 +300,18 @@ impl App {
                 (Check, apps::set_update_rect()),
             ],
             Screen::Claude => vec![(Back, ui::back_rect())],
+            Screen::Wifi => {
+                let mut v = vec![(Back, ui::back_rect()), (Wifi, crate::wifi::toggle_rect()), (Check, crate::wifi::rescan_rect())];
+                if self.wifi_on {
+                    v.extend((0..self.nets.len().min(crate::wifi::ROWS)).map(|i| (Row(i), crate::wifi::row_rect(i))));
+                }
+                v
+            }
+            Screen::WifiPass => {
+                let mut v = vec![(Back, ui::back_rect())];
+                v.extend(self.keys.iter().enumerate().map(|(i, k)| (Key(i as u8), k.rect)));
+                v
+            }
             Screen::Update => {
                 if self.update_msg.2.is_some() {
                     vec![(Primary, apps::update_ok_rect())]
@@ -432,7 +464,18 @@ impl App {
                 self.kb_mode = m;
                 relayout = true;
             }
-            Action::Done => return self.save_compose(),
+            Action::Done => {
+                if self.screen == Screen::WifiPass {
+                    let (Some(n), psk) = (self.wifi_target.clone(), self.compose_text.clone()) else { return };
+                    if psk.chars().count() < 8 {
+                        self.compose_hint = "Senhas de Wi-Fi têm pelo menos 8 caracteres.".into();
+                    } else {
+                        return self.connect_wifi(n, Some(psk));
+                    }
+                } else {
+                    return self.save_compose();
+                }
+            }
         }
         crate::today_ui::draw_field(&mut self.fb, &self.fonts, &self.compose_text, &self.compose_hint);
         self.fb.refresh(Rect::new(0, crate::today_ui::field_rect().y - 4, 1072, 470), Wave::Quality, false);
@@ -441,6 +484,27 @@ impl App {
             crate::keyboard::draw(&mut self.fb, &self.fonts, &self.keys);
             self.fb.refresh(crate::keyboard::area(), Wave::Quality, false);
         }
+    }
+
+    fn refresh_wifi(&mut self) {
+        self.wifi_on = crate::wifi::enabled();
+        self.wifi_cur = if crate::wifi::connected() { crate::wifi::current() } else { None };
+        self.nets = crate::wifi::networks();
+    }
+
+    /// Conecta mostrando a espera na tela; o resultado aparece na lista.
+    fn connect_wifi(&mut self, n: crate::wifi::Net, psk: Option<String>) {
+        self.wifi_note = format!("Conectando em {}… (até 30 s)", n.essid);
+        self.screen = Screen::Wifi;
+        self.render(true);
+        self.fb.wait();
+        self.wifi_note = match crate::wifi::connect(&n.essid, psk.as_deref(), n.secured, Duration::from_secs(30)) {
+            Ok(e) => format!("Conectado a {e}."),
+            Err(e) => e,
+        };
+        self.compose_text.clear();
+        self.refresh_wifi();
+        self.render(false);
     }
 
     fn save_compose(&mut self) {
@@ -497,6 +561,7 @@ impl App {
                 self.confirm = None;
             }
             Screen::Today => self.items = crate::day::load_items(),
+            Screen::Wifi => self.refresh_wifi(),
             Screen::Claude => {
                 self.claude = crate::claude_ui::load();
                 self.claude_stamp = crate::claude_ui::stamp();
@@ -583,7 +648,9 @@ impl App {
                 }
                 self.render(false);
             }
-            (Screen::Compose, Key(i)) => self.press_key(i as usize),
+            (Screen::Compose | Screen::WifiPass, Key(i)) => self.press_key(i as usize),
+            (Screen::Wifi, Back) => self.go(Screen::Settings),
+            (Screen::WifiPass, Back) => self.go(Screen::Wifi),
             (_, Back) => self.go(Screen::Home),
             (Screen::Home, Header) => self.go(Screen::Light),
             (Screen::Home, Tile(i)) => match Module::ALL[i] {
@@ -741,10 +808,42 @@ impl App {
                 }
             },
             (Screen::Settings, Wifi) => {
-                set_wifi(!self.sys.wifi_on);
-                std::thread::sleep(Duration::from_millis(600));
-                self.sys = SysInfo::read();
+                self.wifi_note = "Toque numa rede para conectar.".into();
+                self.go(Screen::Wifi);
+            }
+            (Screen::Wifi, Wifi) => {
+                set_wifi(!self.wifi_on);
+                self.wifi_note = if self.wifi_on { "Wi-Fi desligado.".into() } else { "Ligando o Wi-Fi…".into() };
+                std::thread::sleep(Duration::from_millis(1500));
+                self.refresh_wifi();
                 self.render(false);
+            }
+            (Screen::Wifi, Check) => {
+                self.wifi_note = "Procurando redes…".into();
+                self.render(false);
+                self.fb.wait();
+                crate::wifi::scan();
+                std::thread::sleep(Duration::from_secs(5));
+                self.refresh_wifi();
+                self.wifi_note = format!("{} redes encontradas.", self.nets.len());
+                self.render(false);
+            }
+            (Screen::Wifi, Row(i)) => {
+                let Some(n) = self.nets.get(i).cloned() else { return };
+                log(&format!("wifi: tocou em {} (conhecida={}, protegida={})", n.essid, n.known, n.secured));
+                if self.wifi_cur.as_deref() == Some(n.essid.as_str()) {
+                    return;
+                }
+                if n.secured && !n.known {
+                    self.wifi_target = Some(n);
+                    self.compose_text.clear();
+                    self.compose_hint = "Digite a senha e toque em OK.".into();
+                    self.kb_mode = crate::keyboard::Mode::Letters;
+                    self.kb_shift = false;
+                    self.go(Screen::WifiPass);
+                } else {
+                    self.connect_wifi(n, None);
+                }
             }
             (Screen::Settings, Reboot) | (Screen::Settings, PowerOff) => {
                 let which = if t == Reboot { 0 } else { 1 };
