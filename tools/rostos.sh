@@ -13,6 +13,10 @@ for p in sorted(src.glob("*.png")):
     im = ImageOps.exif_transpose(Image.open(p)).convert("L")
     side = min(im.size)
     im = im.crop(((im.width - side) // 2, (im.height - side) // 2, (im.width + side) // 2, (im.height + side) // 2))
+    # Mais perto do rosto: no tamanho da lista, o busto inteiro deixa o rosto miúdo.
+    k = int(side * 0.72)
+    x = (side - k) // 2
+    im = im.crop((x, int(side * 0.02), x + k, int(side * 0.02) + k))
     im = ImageOps.autocontrast(im, cutoff=1).resize((216, 216), Image.LANCZOS)
     im.save(out / p.name, optimize=True)
     print(out / p.name)
