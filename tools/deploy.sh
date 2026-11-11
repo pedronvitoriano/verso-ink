@@ -28,6 +28,8 @@ cp kindle/upstart/verso-ink.conf "$STAGE/verso-ink/upstart/"
 cp "target/$TARGET/release/verso-ink" "$STAGE/verso-ink/bin/"
 # Stockfish (GPL) compilado por tools/build-stockfish.sh; fica fora do Git.
 [ -f vendor/stockfish ] && cp vendor/stockfish "$STAGE/verso-ink/bin/"
+# Rostos dos treinadores (gerados e reduzidos por tools/rostos.sh).
+[ -d assets/treinadores ] && cp -r assets/treinadores "$STAGE/verso-ink/"
 
 tar -C "$STAGE" -cf - verso-ink extensions |
     ssh -i "$KEY" -p "$PORT" -o IdentitiesOnly=yes "root@$IP" \

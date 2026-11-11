@@ -15,6 +15,8 @@ cp kindle/verso-ink/bin/*.sh "$OUT/pkg/verso-ink/bin/"
 cp "target/$TARGET/release/verso-ink" "$OUT/pkg/verso-ink/bin/"
 [ -f vendor/stockfish ] || tools/build-stockfish.sh
 cp vendor/stockfish "$OUT/pkg/verso-ink/bin/"
+# Rostos dos treinadores (reduzidos por tools/rostos.sh).
+[ -d assets/treinadores ] && cp -r assets/treinadores "$OUT/pkg/verso-ink/"
 cp kindle/upstart/verso-ink.conf "$OUT/pkg/verso-ink/upstart/"
 cp -r kindle/extensions "$OUT/pkg/"
 # O dropbear (SSH) vem do KOReader já instalado no Kindle; não vai no pacote.

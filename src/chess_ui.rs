@@ -93,6 +93,38 @@ pub fn next_rect() -> Rect {
     Rect::new(W - MARGIN - 260, 1300, 260, 88)
 }
 
+/// Arquivo do rosto: "Mestra Vera" → treinadores/mestra-vera.png.
+fn portrait_path(name: &str) -> std::path::PathBuf {
+    let slug = crate::apps::fold(name).split_whitespace().collect::<Vec<_>>().join("-");
+    crate::home_dir().join("treinadores").join(format!("{slug}.png"))
+}
+
+thread_local! {
+    static PORTRAITS: std::cell::RefCell<std::collections::HashMap<(String, i32), Option<Vec<u8>>>> = Default::default();
+}
+
+/// Desenha o rosto do treinador (quadrado de lado `side`), se o arquivo existir. Guarda em memória.
+pub fn draw_portrait(fb: &mut Framebuffer, name: &str, x: i32, y: i32, side: i32, dim: bool) -> bool {
+    let px = PORTRAITS.with(|c| {
+        c.borrow_mut()
+            .entry((name.to_string(), side))
+            .or_insert_with(|| {
+                let img = image::open(portrait_path(name)).ok()?.to_luma8();
+                Some(image::imageops::resize(&img, side as u32, side as u32, image::imageops::FilterType::Triangle).into_raw())
+            })
+            .clone()
+    });
+    let Some(mut px) = px else { return false };
+    if dim {
+        // Bloqueado: rosto clareado.
+        px.iter_mut().for_each(|v| *v = 0xAA + (*v as u16 * 0x55 / 255) as u8);
+    }
+    fb.blit(x, y, side, side, &px);
+    fb.round_outline(Rect::new(x - 3, y - 3, side + 6, side + 6), 16, 3, if dim { 0xAA } else { INK }, PAPER);
+    fb.blit(x, y, side, side, &px);
+    true
+}
+
 pub fn draw_coaches(fb: &mut Framebuffer, f: &Fonts, page: usize) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
@@ -109,12 +141,13 @@ pub fn draw_coaches(fb: &mut Framebuffer, f: &Fonts, page: usize) {
         let locked = i > open;
         fb.fill(Rect::new(MARGIN, r.y, W - 2 * MARGIN, 3), INK);
         let ink = if locked { 0xAA } else { INK };
-        f.draw(fb, Face::Display, 50.0, MARGIN, r.y + 66, ink, c.name);
+        let tx = if draw_portrait(fb, c.name, MARGIN, r.y + 14, 108, locked) { MARGIN + 132 } else { MARGIN };
+        f.draw(fb, Face::Display, 50.0, tx, r.y + 66, ink, c.name);
         let rt = c.rating.to_string();
         let rw = f.measure(Face::Display, 56.0, &rt);
         f.draw(fb, Face::Display, 56.0, W - MARGIN - rw, r.y + 70, ink, &rt);
         let sub = if locked { format!("Vença {} para liberar", coach::coach(i - 1).name) } else { c.style.to_string() };
-        f.draw(fb, Face::Body, 28.0, MARGIN + 2, r.y + 112, if locked { 0xAA } else { MUTED }, &sub);
+        f.draw(fb, Face::Body, 28.0, tx + 2, r.y + 112, if locked { 0xAA } else { MUTED }, &sub);
     }
     let pages = coach::LADDER.div_ceil(PER_PAGE);
     if page > 0 {
@@ -138,12 +171,15 @@ pub fn coach_line_rect() -> Rect {
 pub fn draw_coach_line(fb: &mut Framebuffer, f: &Fonts, who: &str, text: &str) {
     let r = coach_line_rect();
     fb.fill(r, PAPER);
+    // Rosto pequeno à esquerda, se houver (o nome vem como "Nome (rating)").
+    let name = who.split(" (").next().unwrap_or(who);
+    let x0 = if draw_portrait(fb, name, MARGIN, r.y + 6, 68, false) { MARGIN + 86 } else { MARGIN };
     let head = format!("{who}: ");
     let hw = f.measure(Face::Strong, 27.0, &head);
-    f.draw(fb, Face::Strong, 27.0, MARGIN, r.y + 32, INK, &head);
-    let lines = wrap(f, Face::Body, 27.0, text, W - 2 * MARGIN - hw);
+    f.draw(fb, Face::Strong, 27.0, x0, r.y + 32, INK, &head);
+    let lines = wrap(f, Face::Body, 27.0, text, W - MARGIN - x0 - hw);
     for (k, l) in lines.iter().take(2).enumerate() {
-        f.draw(fb, Face::Body, 27.0, MARGIN + hw, r.y + 32 + k as i32 * 36, INK, l);
+        f.draw(fb, Face::Body, 27.0, x0 + hw, r.y + 32 + k as i32 * 36, INK, l);
     }
 }
 
