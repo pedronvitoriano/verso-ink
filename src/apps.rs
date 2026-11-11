@@ -139,7 +139,7 @@ fn scan_dir(dir: &Path, depth: u32, lib: &mut Library) {
                 kind: ext.to_ascii_uppercase(),
                 size: meta.len(),
                 touched: read.map_or(added, |r| r.max(added)),
-                progress: crate::data::koreader_progress(&path),
+                progress: crate::data::book_progress(&path),
                 path,
             });
         }

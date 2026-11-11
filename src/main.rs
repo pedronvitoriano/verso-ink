@@ -23,6 +23,7 @@ mod minas;
 mod nonograma;
 mod paciencia;
 mod palavra;
+mod reader;
 mod receitas;
 mod sokoban;
 mod naval;

@@ -59,6 +59,11 @@ pub fn set_last_book(path: &Path, title: &str) {
     let _ = std::fs::write(dir().join("last_book"), format!("{}\n{}\n", path.display(), title));
 }
 
+/// Progresso do livro: o do leitor próprio, se ele já foi aberto lá; senão o do KOReader.
+pub fn book_progress(path: &Path) -> Option<f32> {
+    crate::reader::progress_of(path).or_else(|| koreader_progress(path))
+}
+
 /// Progresso que o KOReader guarda ao lado do livro: `<livro>.sdr/metadata.<ext>.lua`.
 pub fn koreader_progress(path: &Path) -> Option<f32> {
     let ext = path.extension()?.to_str()?;
@@ -78,7 +83,7 @@ pub fn last_book() -> Option<LastBook> {
         return None;
     }
     let title = l.get(1).cloned().unwrap_or_default();
-    Some(LastBook { progress: koreader_progress(&path), title, path })
+    Some(LastBook { progress: book_progress(&path), title, path })
 }
 
 /// Minutos lidos no KOReader hoje (o `session.sh` registra início e duração de cada leitura).

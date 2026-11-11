@@ -40,6 +40,8 @@ pub enum Screen {
     ClaudeChat,
     ClaudeCompose,
     ClaudeFiles,
+    Reader,
+    ReaderToc,
     ClaudeDoc,
     Update,
     Wifi,
@@ -170,6 +172,10 @@ pub struct App {
     chat_pages: Vec<Vec<crate::chat::Line>>,
     /// Pergunta ao Claude a partir de uma tela: contexto que vai junto e para onde voltar.
     claude_ctx: Option<String>,
+    /// Leitor próprio: livro aberto, fontes (carregadas na primeira vez) e página do sumário.
+    reader: Option<crate::reader::Reader>,
+    rfonts: Option<crate::reader::RFonts>,
+    toc_page: usize,
     claude_return: Option<Screen>,
     /// Cartão "vai junto" (título, detalhe) e perguntas prontas da tela de pergunta.
     claude_about: Option<(String, String)>,
@@ -276,6 +282,9 @@ impl App {
             cur_chat: None,
             chat_pages: Vec::new(),
             claude_ctx: None,
+            reader: None,
+            rfonts: None,
+            toc_page: 0,
             claude_return: None,
             claude_about: None,
             claude_sugg: Vec::new(),
@@ -403,6 +412,16 @@ impl App {
             }
             Screen::Wifi => crate::wifi::draw(fb, f, self.wifi_on, self.wifi_cur.as_deref(), &self.nets, &self.wifi_note),
             Screen::Calendar => crate::today_ui::draw_calendar(fb, f, st),
+            Screen::Reader => {
+                if let (Some(r), Some(rf)) = (&self.reader, &self.rfonts) {
+                    crate::reader::draw(fb, f, rf, r);
+                }
+            }
+            Screen::ReaderToc => {
+                if let Some(r) = &self.reader {
+                    crate::reader::draw_toc(fb, f, r, self.toc_page);
+                }
+            }
             Screen::ClaudeFiles => {
                 if let Some(c) = &self.cur_chat {
                     crate::chat::draw_files(fb, f, c, &self.files_note);
@@ -551,6 +570,34 @@ impl App {
                 if self.chat_page + 1 < self.chat_pages.len() {
                     v.push((Next, crate::chat::next_rect()));
                 }
+                v
+            }
+            Screen::Reader => {
+                let Some(r) = &self.reader else { return vec![] };
+                if r.menu {
+                    let mut v: Vec<(Target, Rect)> = (0..5).map(|k| (Level(k), crate::reader::menu_btn(k))).collect();
+                    if r.chapter > 0 {
+                        v.push((Level(5), crate::reader::menu_btn(5)));
+                    }
+                    if r.chapter + 1 < r.book.chapters() {
+                        v.push((Level(6), crate::reader::menu_btn(6)));
+                    }
+                    v.push((Primary, Rect::new(0, 300, 1072, 880)));
+                    return v;
+                }
+                // Alto: menu. Terço esquerdo: volta. O resto: avança.
+                vec![(Header, Rect::new(0, 0, 1072, 170)), (Prev, Rect::new(0, 170, 357, 1278)), (Next, Rect::new(357, 170, 715, 1278))]
+            }
+            Screen::ReaderToc => {
+                let Some(r) = &self.reader else { return vec![] };
+                let mut v = vec![(Back, ui::back_rect())];
+                for i in 0..crate::reader::TOC_ROWS {
+                    if self.toc_page * crate::reader::TOC_ROWS + i < r.book.chapters() {
+                        v.push((Row(i), crate::reader::toc_row(i)));
+                    }
+                }
+                v.push((Prev, Rect::new(0, 1300, 360, 148)));
+                v.push((Next, Rect::new(712, 1300, 360, 148)));
                 v
             }
             Screen::ClaudeFiles => {
@@ -740,6 +787,37 @@ impl App {
         }
     }
 
+    /// Abre EPUB/TXT no leitor próprio (na hora, sem trocar de programa).
+    fn open_reader(&mut self, path: std::path::PathBuf, title: String) {
+        data::set_last_book(&path, &title);
+        if self.rfonts.is_none() {
+            self.rfonts = Some(crate::reader::RFonts::load());
+        }
+        let t0 = Instant::now();
+        let rf = self.rfonts.as_ref().unwrap();
+        match crate::reader::Reader::open(&path, rf) {
+            Ok(r) => {
+                log(&format!("leitor: {} aberto em {} ms", title, t0.elapsed().as_millis()));
+                self.reader = Some(r);
+                self.go(Screen::Reader);
+            }
+            Err(e) => {
+                log(&format!("leitor: {e}; abrindo no KOReader"));
+                self.open_book(path, title);
+            }
+        }
+    }
+
+    /// Vira a página no leitor; atualização completa só de vez em quando (limpa rastros).
+    fn turn_page(&mut self, forward: bool) {
+        let (Some(r), Some(rf)) = (self.reader.as_mut(), self.rfonts.as_ref()) else { return };
+        let moved = if forward { r.next(rf) } else { r.prev(rf) };
+        if moved {
+            let flash = r.turns % 8 == 0;
+            self.render(flash);
+        }
+    }
+
     /// Abre um livro no KOReader (a sessão troca de app pelo código de saída).
     fn open_book(&mut self, path: std::path::PathBuf, title: String) {
         data::set_last_book(&path, &title);
@@ -916,6 +994,7 @@ impl App {
             Screen::Mini => self.mini.as_ref().map(|g| g.summary()).unwrap_or_default(),
             Screen::Sudoku | Screen::SudokuWon => self.sudoku.as_ref().map(|g| format!("{} · {} de 81", g.label(), g.filled())).unwrap_or_default(),
             Screen::Chess | Screen::ChessEnd | Screen::ChessReview => self.chess.as_ref().map(|g| format!("lance {} · {}", g.moves.len() / 2 + 1, if g.pos.white_to_move { "brancas jogam" } else { "pretas jogam" })).unwrap_or_default(),
+            Screen::Reader | Screen::ReaderToc => self.reader.as_ref().map(|r| format!("{} · {}%", r.chapter_title, (r.progress() * 100.0).round() as i32)).unwrap_or_default(),
             _ => data::last_book().map(|b| format!("lendo {}", b.title)).unwrap_or_default(),
         };
         let what = match self.screen {
@@ -926,10 +1005,15 @@ impl App {
             Screen::Chess | Screen::ChessEnd | Screen::ChessReview => "Xadrez".into(),
             Screen::Today | Screen::Calendar => "Seu dia".into(),
             Screen::Library => "Biblioteca".into(),
+            Screen::Reader | Screen::ReaderToc => self.reader.as_ref().map(|r| r.book.title.clone()).unwrap_or_else(|| "Livro".into()),
             _ => first.chars().take(40).collect(),
         };
         self.claude_about = Some((what.clone(), detail));
-        self.claude_sugg = Self::suggestions_for(Some(&what), false);
+        self.claude_sugg = if matches!(self.screen, Screen::Reader | Screen::ReaderToc) {
+            ["Explique esta página", "Resuma o capítulo até aqui", "Quem é quem nesta parte?"].iter().map(|s| s.to_string()).collect()
+        } else {
+            Self::suggestions_for(Some(&what), false)
+        };
         self.claude_ctx = Some(ctx);
         self.claude_return = Some(self.screen);
         self.cur_chat = None;
@@ -996,6 +1080,21 @@ impl App {
                 parts.push(format!("Pedro está olhando o plano do dia no Kindle:\n{}", plan.trim()));
             }
             Screen::Library => parts.push("Pedro está na biblioteca de livros do Kindle.".into()),
+            Screen::Reader | Screen::ReaderToc => {
+                if let Some(r) = &self.reader {
+                    parts.push(format!(
+                        "Pedro está lendo \"{}\" no Kindle (arquivo {}), capítulo {} de {} (\"{}\"), {}% do livro. Página atual:\n{}",
+                        r.book.title,
+                        r.book.path.display(),
+                        r.chapter + 1,
+                        r.book.chapters(),
+                        r.chapter_title,
+                        (r.progress() * 100.0).round() as i32,
+                        r.page_text()
+                    ));
+                    return parts.join("\n");
+                }
+            }
             _ => {}
         }
         if let Some(b) = data::last_book() {
@@ -1694,6 +1793,68 @@ impl App {
                 self.go(Screen::Mini);
             }
             (Screen::LibSearch, Back) => self.go(Screen::Library),
+            (Screen::Reader, Header) => {
+                if let Some(r) = self.reader.as_mut() {
+                    r.menu = true;
+                }
+                self.render(false);
+            }
+            (Screen::Reader, Primary) => {
+                if let Some(r) = self.reader.as_mut() {
+                    r.menu = false;
+                }
+                self.render(false);
+            }
+            (Screen::Reader, Prev) => self.turn_page(false),
+            (Screen::Reader, Next) => self.turn_page(true),
+            (Screen::Reader, Level(k)) => {
+                let rf = self.rfonts.as_ref();
+                match (k, self.reader.as_mut(), rf) {
+                    (0, Some(r), _) => {
+                        r.save();
+                        self.lib.query.clear();
+                        return self.go(Screen::Library);
+                    }
+                    (1, Some(r), Some(rf)) => r.set_size(r.size_k.saturating_sub(1), rf),
+                    (2, Some(r), Some(rf)) => r.set_size(r.size_k + 1, rf),
+                    (3, Some(r), _) => {
+                        self.toc_page = r.chapter / crate::reader::TOC_ROWS;
+                        return self.go(Screen::ReaderToc);
+                    }
+                    (4, Some(r), _) => {
+                        r.menu = false;
+                        return self.ask_claude_here();
+                    }
+                    (5, Some(r), Some(rf)) => {
+                        let c = r.chapter.saturating_sub(1);
+                        r.go_chapter(c, rf);
+                    }
+                    (6, Some(r), Some(rf)) => {
+                        let c = r.chapter + 1;
+                        r.go_chapter(c, rf);
+                    }
+                    _ => {}
+                }
+                self.render(true);
+            }
+            (Screen::ReaderToc, Back) => self.go(Screen::Reader),
+            (Screen::ReaderToc, Row(i)) => {
+                let k = self.toc_page * crate::reader::TOC_ROWS + i;
+                if let (Some(r), Some(rf)) = (self.reader.as_mut(), self.rfonts.as_ref()) {
+                    r.go_chapter(k, rf);
+                    r.menu = false;
+                }
+                self.go(Screen::Reader);
+            }
+            (Screen::ReaderToc, Prev) => {
+                self.toc_page = self.toc_page.saturating_sub(1);
+                self.render(false);
+            }
+            (Screen::ReaderToc, Next) => {
+                let n = self.reader.as_ref().map_or(1, |r| r.book.chapters().div_ceil(crate::reader::TOC_ROWS));
+                self.toc_page = (self.toc_page + 1).min(n.saturating_sub(1));
+                self.render(false);
+            }
             (Screen::Tutorial, Back) => {
                 let back = self.tut.2;
                 self.go(back);
@@ -1722,7 +1883,11 @@ impl App {
                     self.go(Screen::Library);
                     return;
                 }
-                self.open_book(b.path, b.title);
+                if crate::reader::supported(&b.path) {
+                    self.open_reader(b.path, b.title);
+                } else {
+                    self.open_book(b.path, b.title);
+                }
             }
             (Screen::Home, Tile(i)) => match Module::ALL[i] {
                 Module::Ler => {
@@ -1751,7 +1916,11 @@ impl App {
             (Screen::Library, Row(i)) => {
                 let Some(b) = self.lib.visible().get(i) else { return };
                 let (path, title) = (b.path.clone(), b.title.clone());
-                self.open_book(path, title);
+                if crate::reader::supported(&path) {
+                    self.open_reader(path, title);
+                } else {
+                    self.open_book(path, title);
+                }
             }
             (Screen::Library, Clips) => self.go(Screen::Clips),
             (Screen::Clips, BookRow(i)) => {
