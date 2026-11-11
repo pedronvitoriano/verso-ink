@@ -35,8 +35,33 @@ pub enum Event {
     Touch(Touch),
     /// powerd vai apagar a tela (botão ou inatividade).
     Sleep,
-    /// powerd acordou.
+    /// powerd acordou (ou o kernel voltou da suspensão).
     Wake,
+    /// Botão de ligar apertado (lido direto do max77696-onkey).
+    PowerKey,
+}
+
+const KEY_POWER: u16 = 116;
+pub const POWER_DEV: &str = "/dev/input/event0";
+
+/// Lê o botão de ligar. Sem a interface da Amazon o powerd ignora o botão
+/// ("Splash screen is on", porque o serviço com.lab126.kaf não existe), então o Verso Ink cuida dele.
+pub fn spawn_power_key(tx: Sender<Event>) {
+    let Ok(mut f) = OpenOptions::new().read(true).open(POWER_DEV) else {
+        log("botão de ligar: dispositivo indisponível");
+        return;
+    };
+    std::thread::spawn(move || {
+        let mut ev = [0u8; 16];
+        while f.read_exact(&mut ev).is_ok() {
+            let typ = u16::from_le_bytes([ev[8], ev[9]]);
+            let code = u16::from_le_bytes([ev[10], ev[11]]);
+            let val = i32::from_le_bytes([ev[12], ev[13], ev[14], ev[15]]);
+            if typ == EV_KEY && code == KEY_POWER && val == 1 && tx.send(Event::PowerKey).is_err() {
+                break;
+            }
+        }
+    });
 }
 
 fn abs_range(f: &File, code: u16) -> (i32, i32) {
@@ -171,6 +196,11 @@ pub fn inject_tap(x: i32, y: i32, hold_ms: u64, width: i32, height: i32) -> std:
 
 /// Injeta um arraste vertical de `y0` até `y1` (com passos intermediários).
 pub fn inject_drag(x: i32, y0: i32, y1: i32, hold_ms: u64, width: i32, height: i32) -> std::io::Result<()> {
+    inject_path(x, y0, x, y1, hold_ms, width, height)
+}
+
+/// Injeta um arraste em linha reta de (x0, y0) até (x1, y1), com passos intermediários.
+pub fn inject_path(x: i32, y0: i32, x1: i32, y1: i32, hold_ms: u64, width: i32, height: i32) -> std::io::Result<()> {
     let y = y0;
     let mut f = OpenOptions::new().read(true).write(true).open(TOUCH_DEV)?;
     let rx = abs_range(&f, ABS_MT_POSITION_X);
@@ -195,10 +225,12 @@ pub fn inject_drag(x: i32, y0: i32, y1: i32, hold_ms: u64, width: i32, height: i
     put(EV_ABS, ABS_MT_POSITION_Y, sy)?;
     put(EV_KEY, BTN_TOUCH, 1)?;
     put(EV_SYN, SYN_REPORT, 0)?;
-    let steps = if y1 == y0 { 0 } else { 8 };
+    let steps = if y1 == y0 && x1 == x { 0 } else { 8 };
     for k in 1..=steps {
         std::thread::sleep(std::time::Duration::from_millis(hold_ms / steps as u64));
         let yk = y0 + (y1 - y0) * k / steps;
+        let xk = x + (x1 - x) * k / steps;
+        put(EV_ABS, ABS_MT_POSITION_X, unscale(xk, rx, width))?;
         put(EV_ABS, ABS_MT_POSITION_Y, unscale(yk, ry, height))?;
         put(EV_SYN, SYN_REPORT, 0)?;
     }

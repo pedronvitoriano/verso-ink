@@ -113,7 +113,8 @@ fn run() -> i32 {
         log(&format!("toque: {e}"));
         return 1;
     }
-    input::spawn_power(tx);
+    input::spawn_power(tx.clone());
+    input::spawn_power_key(tx.clone());
     set_wifi(true);
     sync_clock_async();
     weather::spawn();
@@ -132,6 +133,12 @@ fn run() -> i32 {
     // A Amazon ainda limpa a tela alguns instantes depois de parar; redesenhamos uma vez.
     let mut redraw_at = Some(t0 + Duration::from_millis(2500));
     let mut healthy_marked = false;
+    let mut last_touch = Instant::now();
+    let mut slept_at: Option<Instant> = None;
+    let mut woke_at = Instant::now() - Duration::from_secs(60);
+    let idle_limit = Duration::from_secs(
+        read_trim(home_dir().join("settings/repouso_min").to_str().unwrap_or("")).and_then(|s| s.parse::<u64>().ok()).unwrap_or(10) * 60,
+    );
     let mut clock_was_plausible = clock::now(app.status.offset_min).plausible();
 
     loop {
@@ -160,8 +167,31 @@ fn run() -> i32 {
         };
         match next {
             Ok(Event::Touch(t)) => {
+                last_touch = Instant::now();
                 if app.screen != Screen::Sleep {
                     app.on_touch(t);
+                }
+            }
+            Ok(Event::PowerKey) => {
+                // O aperto que acorda o Kindle também chega como evento: ignorado logo após acordar.
+                if woke_at.elapsed() < Duration::from_secs(2) {
+                    continue;
+                }
+                if app.screen == Screen::Sleep {
+                    // Botão de novo com a tela de repouso: acorda (se o kernel não chegou a suspender).
+                    if slept_at.is_some_and(|t| t.elapsed() > Duration::from_secs(2)) {
+                        log("acordando pelo botão");
+                        slept_at = None;
+                        woke_at = Instant::now();
+                        set_wifi(true);
+                        sync_clock_async();
+                        app.go(Screen::Home);
+                        last_touch = Instant::now();
+                    }
+                } else {
+                    log("botão de ligar: dormindo");
+                    go_to_sleep(&mut app, &tx);
+                    slept_at = Some(Instant::now());
                 }
             }
             Ok(Event::Sleep) => {
@@ -171,6 +201,12 @@ fn run() -> i32 {
                 set_wifi(false);
             }
             Ok(Event::Wake) => {
+                if app.screen != Screen::Sleep {
+                    continue;
+                }
+                slept_at = None;
+                woke_at = Instant::now();
+                last_touch = Instant::now();
                 log("acordando");
                 set_wifi(true);
                 sync_clock_async();
@@ -202,10 +238,35 @@ fn run() -> i32 {
             clock_was_plausible = plausible;
             app.last_minute = 99;
         }
+        // Repouso por inatividade (o powerd também não faz isso sem a interface da Amazon).
+        let busy = matches!(app.pomo, apps::Pomodoro::Running { .. }) || home_dir().join("settings/dev_keep_awake").exists();
+        if app.screen != Screen::Sleep && !busy && last_touch.elapsed() >= idle_limit {
+            log("inatividade: dormindo");
+            go_to_sleep(&mut app, &tx);
+            slept_at = Some(Instant::now());
+        }
         if app.screen != Screen::Sleep {
             app.tick();
         }
     }
+}
+
+/// Desenha o repouso, desliga o Wi-Fi e suspende o kernel. A escrita em /sys/power/state
+/// só retorna quando o aparelho acorda (botão de ligar); aí avisamos o laço com Wake.
+fn go_to_sleep(app: &mut App, tx: &mpsc::Sender<Event>) {
+    app.go(Screen::Sleep);
+    app.fb.wait();
+    set_wifi(false);
+    if home_dir().join("settings/dev_keep_wifi").exists() {
+        return; // modo de teste: não suspende, para o SSH continuar
+    }
+    let tx = tx.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(1500));
+        let r = std::fs::write("/sys/power/state", "mem");
+        log(&format!("voltou da suspensão ({})", if r.is_ok() { "ok" } else { "falhou" }));
+        let _ = tx.send(Event::Wake);
+    });
 }
 
 /// Portão do boot. Pula o Verso Ink (sai com 3) se existir o arquivo DISABLE,
@@ -291,6 +352,14 @@ fn main() {
             }
             Err(_) => 1,
         },
+        // drag X0 Y0 X1 Y1 [ms]: arraste em linha reta (testes)
+        Some("drag") => {
+            let n = |i: usize| args.get(i).and_then(|s| s.parse::<i32>().ok());
+            match (n(2), n(3), n(4), n(5)) {
+                (Some(a), Some(b), Some(c), Some(d)) => input::inject_path(a, b, c, d, n(6).unwrap_or(1200) as u64, 1072, 1448).map(|_| 0).unwrap_or(1),
+                _ => 2,
+            }
+        }
         Some("swipe") => {
             let n = |i: usize| args.get(i).and_then(|s| s.parse::<i32>().ok());
             match (n(2), n(3), n(4)) {

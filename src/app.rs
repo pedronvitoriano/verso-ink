@@ -526,6 +526,16 @@ impl App {
     }
 
     fn set_light(&mut self, level: i32) {
+        self.set_light_with(level, Wave::Quality);
+    }
+
+    /// Nível pela posição do dedo na barra (vale também fora dela na vertical, como um controle deslizante).
+    fn bar_level(&self, x: i32) -> i32 {
+        let r = ui::bar_rect();
+        ((x - r.x).clamp(0, r.w) * self.light.max + r.w - 1) / r.w
+    }
+
+    fn set_light_with(&mut self, level: i32, wave: Wave) {
         let level = level.clamp(0, self.light.max);
         if level != self.light.level {
             let _ = sh("lipc-set-prop", &["com.lab126.powerd", "flIntensity", &level.to_string()]);
@@ -533,7 +543,7 @@ impl App {
             log(&format!("luz {level}"));
         }
         ui::draw_light_level(&mut self.fb, &self.fonts, &self.light);
-        self.fb.refresh(Rect::new(0, 440, 1072, 380), Wave::Quality, false);
+        self.fb.refresh(Rect::new(0, 440, 1072, 380), wave, false);
     }
 
     fn start_pomodoro(&mut self, kind: Kind) {
@@ -585,10 +595,7 @@ impl App {
             },
             (Screen::Light, Minus) => self.set_light(self.light.level - 1),
             (Screen::Light, Plus) => self.set_light(self.light.level + 1),
-            (Screen::Light, Bar) => {
-                let r = ui::bar_rect();
-                self.set_light(((x - r.x) * self.light.max + r.w - 1) / r.w);
-            }
+            (Screen::Light, Bar) => self.set_light(self.bar_level(x)),
             (Screen::Light, Night) => {
                 self.light.night = !self.light.night;
                 if self.light.night {
@@ -783,7 +790,25 @@ impl App {
                 if let Some(h) = self.hit(x, y) {
                     self.pressed = Some(h);
                     self.flip(h, true);
+                    // Barra de luz: já ajusta no toque, com a atualização rápida do e-ink.
+                    if h == Target::Bar {
+                        let lv = self.bar_level(x);
+                        self.set_light_with(lv, Wave::Fast);
+                    }
                 }
+            }
+            Touch::Move(x, _) if self.pressed == Some(Target::Bar) => {
+                // Arrastando na barra: a luz acompanha o dedo.
+                let lv = self.bar_level(x);
+                if lv != self.light.level {
+                    self.set_light_with(lv, Wave::Fast);
+                }
+            }
+            Touch::Up(x, _) if self.pressed == Some(Target::Bar) => {
+                self.pressed = None;
+                self.swipe_from = None;
+                let lv = self.bar_level(x);
+                self.set_light_with(lv, Wave::Quality);
             }
             Touch::Move(x, y) => {
                 // Arrastar para fora cancela o toque, como num botão nativo.
