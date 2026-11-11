@@ -181,7 +181,8 @@ fn run() -> i32 {
                 }
                 continue;
             }
-            _ => rx.recv_timeout(Duration::from_millis(250)),
+            // Dedo parado numa casa de jogo: checa "segurar" mais vezes.
+            _ => rx.recv_timeout(Duration::from_millis(if app.touch_active() { 60 } else { 250 })),
         };
         match next {
             Ok(Event::Touch(t)) => {

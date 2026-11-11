@@ -1,9 +1,9 @@
 //! Campo minado: primeiro toque sempre seguro, áreas vazias abrem sozinhas, modo bandeira.
 
 use crate::fb::{Framebuffer, Rect};
-use crate::minigame::{self, MiniGame, Redraw, Rng, MARGIN, W};
+use crate::minigame::{self, MiniGame, Redraw, Rng, W};
 use crate::text::{Face, Fonts};
-use crate::ui::{self, INK, MUTED, PAPER};
+use crate::ui::{self, INK, PAPER};
 
 const LEVELS: [(usize, usize, &str); 3] = [(9, 10, "Fácil · 9×9, 10 minas"), (12, 24, "Médio · 12×12, 24 minas"), (14, 40, "Difícil · 14×14, 40 minas")];
 
@@ -27,7 +27,7 @@ impl Minas {
     }
 
     fn start(&mut self, n: usize, mines: usize) {
-        *self = Minas { menu: false, n, mines, mine: vec![false; n * n], open: vec![false; n * n], flag: vec![false; n * n], placed: false, flag_mode: false, lost: None, won: false, started: std::time::Instant::now() };
+        *self = Minas { menu: false, n, mines, mine: vec![false; n * n], open: vec![false; n * n], flag: vec![false; n * n], placed: false, flag_mode: flag_pref(), lost: None, won: false, started: std::time::Instant::now() };
     }
 
     fn neighbors(&self, i: usize) -> Vec<usize> {
@@ -79,12 +79,43 @@ impl Minas {
     }
 
     fn geom(&self) -> (i32, i32, i32) {
-        minigame::grid_geom(self.n as i32, self.n as i32, 290, 990)
+        minigame::grid_geom(self.n as i32, self.n as i32, 290, 940)
     }
 
     fn cell(&self, i: usize) -> Rect {
         let (x0, y0, s) = self.geom();
         Rect::new(x0 + (i % self.n) as i32 * s, y0 + (i / self.n) as i32 * s, s, s)
+    }
+}
+
+/// Preferência do toque (guardada): `true` = tocar põe bandeira.
+fn flag_pref() -> bool {
+    std::fs::read_to_string(crate::home_dir().join("settings/minas_toque")).is_ok_and(|s| s.trim() == "bandeira")
+}
+
+impl Minas {
+    fn toggle_flag(&mut self, i: usize) -> Redraw {
+        if self.open[i] {
+            return Redraw::None;
+        }
+        self.flag[i] = !self.flag[i];
+        Redraw::Part(Rect::new(0, 170, W, 1448 - 170))
+    }
+
+    fn open_cell(&mut self, i: usize) -> Redraw {
+        if self.flag[i] || self.open[i] {
+            return Redraw::None;
+        }
+        if !self.placed {
+            self.place(i);
+        }
+        if self.mine[i] {
+            self.lost = Some(i);
+            return Redraw::Full;
+        }
+        self.reveal(i);
+        self.won = (0..self.n * self.n).all(|j| self.mine[j] || self.open[j]);
+        if self.won { Redraw::Full } else { Redraw::Part(Rect::new(0, 170, W, 1448 - 170)) }
     }
 }
 
@@ -103,7 +134,7 @@ impl MiniGame for Minas {
         } else if self.lost.is_some() {
             "Boom. Era uma mina.".to_string()
         } else {
-            format!("{} minas · {} bandeiras", self.mines, flags)
+            format!("{} minas · {} bandeira{}", self.mines, flags, if flags == 1 { "" } else { "s" })
         };
         minigame::header(fb, f, "Campo minado", &status);
         let (_, _, s) = self.geom();
@@ -138,10 +169,10 @@ impl MiniGame for Minas {
                 }
             }
         }
-        let mode = if self.flag_mode { "Modo: bandeira" } else { "Modo: abrir" };
+        let mode = if self.flag_mode { "Toque: bandeira" } else { "Toque: abrir" };
         minigame::pill(fb, f, minigame::bottom_button(0, 2), mode, self.flag_mode);
         minigame::pill(fb, f, minigame::bottom_button(1, 2), "Novo jogo", false);
-        f.draw(fb, Face::Body, 26.0, MARGIN, 1300, MUTED, "Troque o modo para pôr ou tirar bandeiras.");
+        minigame::hint(fb, f, if self.flag_mode { "Segure uma casa para abrir." } else { "Segure uma casa para pôr ou tirar bandeira." });
     }
 
     fn targets(&self) -> Vec<(u32, Rect)> {
@@ -155,6 +186,15 @@ impl MiniGame for Minas {
         v
     }
 
+    /// Segurar faz o contrário do toque: abre no modo bandeira, marca no modo abrir.
+    fn hold(&mut self, id: u32) -> Option<Redraw> {
+        let i = id as usize;
+        if self.menu || self.lost.is_some() || self.won || i >= self.n * self.n {
+            return None;
+        }
+        Some(if self.flag_mode { self.open_cell(i) } else { self.toggle_flag(i) })
+    }
+
     fn tap(&mut self, id: u32, _x: i32, _y: i32) -> Redraw {
         let all = Rect::new(0, 170, W, 1448 - 170);
         match id {
@@ -165,6 +205,7 @@ impl MiniGame for Minas {
             }
             800 => {
                 self.flag_mode = !self.flag_mode;
+                let _ = std::fs::write(crate::home_dir().join("settings/minas_toque"), if self.flag_mode { "bandeira" } else { "abrir" });
                 Redraw::Part(all)
             }
             801 => {
@@ -173,23 +214,7 @@ impl MiniGame for Minas {
             }
             i if (i as usize) < self.n * self.n => {
                 let i = i as usize;
-                if self.flag_mode {
-                    self.flag[i] = !self.flag[i];
-                    return Redraw::Part(all);
-                }
-                if self.flag[i] {
-                    return Redraw::None;
-                }
-                if !self.placed {
-                    self.place(i);
-                }
-                if self.mine[i] {
-                    self.lost = Some(i);
-                    return Redraw::Full;
-                }
-                self.reveal(i);
-                self.won = (0..self.n * self.n).all(|j| self.mine[j] || self.open[j]);
-                if self.won { Redraw::Full } else { Redraw::Part(all) }
+                if self.flag_mode { self.toggle_flag(i) } else { self.open_cell(i) }
             }
             _ => Redraw::None,
         }

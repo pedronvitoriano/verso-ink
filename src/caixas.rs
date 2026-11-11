@@ -4,7 +4,7 @@
 use crate::fb::{Framebuffer, Rect};
 use crate::minigame::{self, MiniGame, Redraw, Rng, MARGIN, W};
 use crate::text::{Face, Fonts};
-use crate::ui::{self, INK, MUTED, PAPER};
+use crate::ui::{self, INK, PAPER};
 
 const N: usize = 5; // caixas por lado
 const H: usize = (N + 1) * N; // linhas horizontais
@@ -59,8 +59,8 @@ impl Caixas {
     }
 
     fn geom() -> (i32, i32, i32) {
-        let s = (W - 2 * MARGIN - 40) / N as i32;
-        ((W - s * N as i32) / 2, 380, s)
+        let s = ((W - 2 * MARGIN - 40) / N as i32).min(160);
+        ((W - s * N as i32) / 2, 360, s)
     }
 
     fn dot(r: usize, c: usize) -> (i32, i32) {
@@ -184,7 +184,7 @@ impl MiniGame for Caixas {
                 fb.round_rect(Rect::new(x - 11, y - 11, 22, 22), 11, INK);
             }
         }
-        f.draw(fb, Face::Body, 26.0, MARGIN, 1300, MUTED, "Toque entre dois pontos para traçar a linha.");
+        minigame::hint(fb, f, "Toque entre dois pontos para traçar a linha.");
         minigame::pill(fb, f, minigame::bottom_button(0, 1), "Novo jogo", false);
     }
 

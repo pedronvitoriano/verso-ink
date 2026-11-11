@@ -2,8 +2,8 @@
 //! nem na diagonal. Grades geradas com solução única. Toque: vazio → X → coroa → vazio.
 
 use crate::fb::{Framebuffer, Rect};
-use crate::minigame::{self, MiniGame, Redraw, Rng, MARGIN, W};
-use crate::text::{Face, Fonts};
+use crate::minigame::{self, MiniGame, Redraw, Rng, W};
+use crate::text::Fonts;
 use crate::ui::{self, INK, MUTED, PAPER};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -24,7 +24,7 @@ pub struct Coroas {
     pub won: bool,
 }
 
-const SIZES: [(usize, &str); 3] = [(6, "Fácil · 6×6"), (8, "Médio · 8×8"), (9, "Difícil · 9×9")];
+const SIZES: [(usize, &str); 6] = [(5, "Mini · 5×5"), (6, "Fácil · 6×6"), (7, "Médio · 7×7"), (8, "Médio+ · 8×8"), (9, "Difícil · 9×9"), (10, "Mestre · 10×10")];
 
 /// Uma coroa por linha, colunas sem repetir e sem encostar na linha vizinha.
 fn place(n: usize, rng: &mut Rng) -> Vec<usize> {
@@ -80,7 +80,8 @@ fn grow(n: usize, sol: &[usize], rng: &mut Rng) -> Vec<u8> {
     reg
 }
 
-/// Conta soluções (até `limit`).
+/// Conta soluções (até `limit`). Usada nos testes para conferir a unicidade.
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn count(n: usize, reg: &[u8], limit: u32) -> u32 {
     fn go(r: usize, n: usize, reg: &[u8], cols: &mut [bool], regs: &mut [bool], prev: Option<usize>, limit: u32) -> u32 {
         if r == n {
@@ -106,14 +107,83 @@ pub fn count(n: usize, reg: &[u8], limit: u32) -> u32 {
     go(0, n, reg, &mut vec![false; n], &mut vec![false; n], None, limit)
 }
 
+/// Uma solução diferente de `sol`, se houver.
+fn other_solution(n: usize, reg: &[u8], sol: &[usize]) -> Option<Vec<usize>> {
+    fn go(r: usize, n: usize, reg: &[u8], sol: &[usize], cols: &mut [bool], regs: &mut [bool], cur: &mut Vec<usize>) -> bool {
+        if r == n {
+            return cur.as_slice() != sol;
+        }
+        for c in 0..n {
+            let g = reg[r * n + c] as usize;
+            if cols[c] || regs[g] || cur.last().is_some_and(|&p| p.abs_diff(c) <= 1) {
+                continue;
+            }
+            cols[c] = true;
+            regs[g] = true;
+            cur.push(c);
+            if go(r + 1, n, reg, sol, cols, regs, cur) {
+                return true;
+            }
+            cur.pop();
+            cols[c] = false;
+            regs[g] = false;
+        }
+        false
+    }
+    let mut cur = Vec::new();
+    go(0, n, reg, sol, &mut vec![false; n], &mut vec![false; n], &mut cur).then_some(cur)
+}
+
+fn neighbors(n: usize, i: usize) -> impl Iterator<Item = usize> {
+    let (r, c) = (i / n, i % n);
+    [(r > 0).then(|| i - n), (r + 1 < n).then(|| i + n), (c > 0).then(|| i - 1), (c + 1 < n).then(|| i + 1)].into_iter().flatten()
+}
+
+/// O reino `g` continua inteiro (ligado) sem a casa `skip`?
+fn connected_without(n: usize, reg: &[u8], g: u8, skip: usize) -> bool {
+    let cells: Vec<usize> = (0..n * n).filter(|&i| reg[i] == g && i != skip).collect();
+    let Some(&first) = cells.first() else { return false };
+    let mut seen = vec![false; n * n];
+    let mut stack = vec![first];
+    let mut k = 0;
+    while let Some(i) = stack.pop() {
+        if seen[i] {
+            continue;
+        }
+        seen[i] = true;
+        k += 1;
+        stack.extend(neighbors(n, i).filter(|&j| reg[j] == g && j != skip && !seen[j]));
+    }
+    k == cells.len()
+}
+
+/// Gera reinos com solução única: cresce os reinos a partir das coroas e, enquanto houver
+/// outra solução, passa uma casa dela para um reino vizinho (o que mata aquela solução).
 pub fn generate(n: usize) -> (Vec<u8>, Vec<usize>) {
     let mut rng = Rng::new();
     loop {
         let sol = place(n, &mut rng);
-        for _ in 0..40 {
-            let reg = grow(n, &sol, &mut rng);
-            if count(n, &reg, 2) == 1 {
-                return (reg, sol);
+        let mut reg = grow(n, &sol, &mut rng);
+        for _ in 0..n * n * 2 {
+            let Some(alt) = other_solution(n, &reg, &sol) else { return (reg, sol) };
+            let rows: Vec<usize> = (0..n).filter(|&r| alt[r] != sol[r]).collect();
+            let mut moved = false;
+            let mut order = rows.clone();
+            rng.shuffle(&mut order);
+            for r in order {
+                let a = r * n + alt[r];
+                let g = reg[a];
+                let mut opts: Vec<u8> = neighbors(n, a).map(|j| reg[j]).filter(|&h| h != g).collect();
+                opts.dedup();
+                if opts.is_empty() || !connected_without(n, &reg, g, a) {
+                    continue;
+                }
+                reg[a] = opts[(rng.next() % opts.len() as u64) as usize];
+                moved = true;
+                break;
+            }
+            if !moved {
+                break;
             }
         }
     }
@@ -127,6 +197,18 @@ impl Coroas {
     fn start(&mut self, n: usize) {
         let (region, solution) = generate(n);
         *self = Coroas { n, region, solution, marks: vec![Mark::Empty; n * n], undo: Vec::new(), menu: false, started: std::time::Instant::now(), won: false };
+    }
+
+    /// Muda uma casa (com desfazer) e confere a vitória.
+    fn set(&mut self, i: usize, m: Mark) -> Redraw {
+        self.undo.push((i, self.marks[i]));
+        self.marks[i] = m;
+        self.won = self.crowns().len() == self.n && self.conflicts().is_empty();
+        if self.won {
+            Redraw::Full
+        } else {
+            Redraw::Part(Rect::new(0, 170, W, self.board_rect().y + self.board_rect().h - 170))
+        }
     }
 
     fn crowns(&self) -> Vec<usize> {
@@ -148,7 +230,7 @@ impl Coroas {
     }
 
     fn geom(&self) -> (i32, i32, i32) {
-        minigame::grid_geom(self.n as i32, self.n as i32, 290, 960)
+        minigame::grid_geom(self.n as i32, self.n as i32, 290, 940)
     }
 
     fn cell_rect(&self, i: usize) -> Rect {
@@ -189,7 +271,9 @@ impl Coroas {
     }
 
     fn draw_crown(fb: &mut Framebuffer, r: Rect, v: u8) {
-        let (x, y, s) = (r.x as f32, r.y as f32, r.w as f32);
+        // Desenho em 0..1 ampliado a partir do centro, para a coroa encher a casa.
+        let k = 1.4;
+        let (s, x, y) = (r.w as f32 * k, r.x as f32 - r.w as f32 * (k - 1.0) / 2.0, r.y as f32 - r.w as f32 * (k - 1.0) / 2.0);
         let pts = [(0.2, 0.72), (0.2, 0.38), (0.36, 0.55), (0.5, 0.28), (0.64, 0.55), (0.8, 0.38), (0.8, 0.72)];
         for w in pts.windows(2) {
             ui::stroke(fb, (x + w[0].0 * s, y + w[0].1 * s), (x + w[1].0 * s, y + w[1].1 * s), s * 0.08, v);
@@ -260,7 +344,29 @@ impl MiniGame for Coroas {
         for (k, l) in ["Desfazer", "Limpar", "Dica", "Novo"].iter().enumerate() {
             minigame::pill(fb, f, minigame::bottom_button(k, 4), l, false);
         }
-        f.draw(fb, Face::Body, 26.0, MARGIN, 1300, MUTED, "Toque: X para marcar, de novo para coroa, de novo para limpar.");
+        minigame::hint(fb, f, "Toque ou arraste: marca X. Segure: coroa.");
+    }
+
+    fn hold(&mut self, id: u32) -> Option<Redraw> {
+        let i = id as usize;
+        if self.menu || self.won || i >= self.n * self.n {
+            return None;
+        }
+        let next = if self.marks[i] == Mark::Crown { Mark::Empty } else { Mark::Crown };
+        Some(self.set(i, next))
+    }
+
+    fn drag(&mut self, id: u32) -> Option<Redraw> {
+        let i = id as usize;
+        if self.menu || self.won || i >= self.n * self.n {
+            return None;
+        }
+        // Passar o dedo só marca X em casas vazias; coroas ficam.
+        if self.marks[i] == Mark::Empty {
+            self.undo.push((i, Mark::Empty));
+            self.marks[i] = Mark::X;
+        }
+        Some(Redraw::Part(self.cell_rect(i)))
     }
 
     fn targets(&self) -> Vec<(u32, Rect)> {
@@ -276,7 +382,7 @@ impl MiniGame for Coroas {
 
     fn tap(&mut self, id: u32, _x: i32, _y: i32) -> Redraw {
         match id {
-            900..=902 => {
+            900..=905 => {
                 self.start(SIZES[(id - 900) as usize].0);
                 Redraw::Full
             }
@@ -311,20 +417,10 @@ impl MiniGame for Coroas {
                 Redraw::Full
             }
             i if (i as usize) < self.n * self.n => {
+                // Toque: marca X (ou limpa o que houver).
                 let i = i as usize;
-                self.undo.push((i, self.marks[i]));
-                self.marks[i] = match self.marks[i] {
-                    Mark::Empty => Mark::X,
-                    Mark::X => Mark::Crown,
-                    Mark::Crown => Mark::Empty,
-                };
-                let cr = self.crowns();
-                self.won = cr.len() == self.n && self.conflicts().is_empty();
-                if self.won {
-                    Redraw::Full
-                } else {
-                    Redraw::Part(Rect::new(0, 170, W, self.board_rect().y + self.board_rect().h - 170))
-                }
+                let next = if self.marks[i] == Mark::Empty { Mark::X } else { Mark::Empty };
+                self.set(i, next)
             }
             _ => Redraw::None,
         }
@@ -336,9 +432,15 @@ mod tests {
     use super::*;
     #[test]
     fn grade_com_solucao_unica_e_regras() {
-        for n in [6, 8] {
+        for n in (5..=10).chain(5..=10).chain(9..=10) {
             let (reg, sol) = generate(n);
             assert_eq!(count(n, &reg, 2), 1);
+            // n reinos, cada um ligado, cada um com uma coroa da solução.
+            for g in 0..n as u8 {
+                assert!(reg.contains(&g));
+                assert!(connected_without(n, &reg, g, usize::MAX));
+            }
+            assert!(reg.iter().all(|&g| (g as usize) < n));
             let mut g = Coroas::new();
             g.n = n;
             g.region = reg;
@@ -348,6 +450,21 @@ mod tests {
                 g.marks[r * n + c] = Mark::Crown;
             }
             assert!(g.conflicts().is_empty());
+        }
+    }
+}
+
+#[cfg(test)]
+mod tempo {
+    #[test]
+    #[ignore]
+    fn tempo_por_tamanho() {
+        for n in 5..=10 {
+            let t = std::time::Instant::now();
+            for _ in 0..5 {
+                super::generate(n);
+            }
+            eprintln!("{n}x{n}: {:?} por grade", t.elapsed() / 5);
         }
     }
 }

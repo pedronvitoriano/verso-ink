@@ -84,11 +84,25 @@ pub enum Target {
 pub const EXIT_OPEN_BOOK: i32 = 42;
 pub const OPEN_FILE: &str = "/tmp/verso-ink.open-file";
 
+/// Toque em andamento numa casa de minijogo.
+struct Gesture {
+    start: u32,
+    last: u32,
+    at: Instant,
+    dragging: bool,
+    held: bool,
+}
+
+/// Tempo segurando para contar como "segurar".
+const HOLD: Duration = Duration::from_millis(450);
+
 pub struct App {
     pub fb: Framebuffer,
     pub fonts: Fonts,
     pub screen: Screen,
     pressed: Option<Target>,
+    /// Dedo numa casa de minijogo: para segurar e arrastar.
+    gesture: Option<Gesture>,
     swipe_from: Option<(i32, i32)>,
     pub status: Status,
     light: ui::Light,
@@ -181,6 +195,7 @@ impl App {
             fonts: Fonts::new(),
             screen: Screen::Home,
             pressed: None,
+            gesture: None,
             swipe_from: None,
             status: read_status(),
             light: read_light(),
@@ -1709,7 +1724,13 @@ impl App {
         match t {
             Touch::Down(x, y) => {
                 self.swipe_from = Some((x, y));
+                self.gesture = None;
                 if let Some(h) = self.hit(x, y) {
+                    if let (Screen::Mini, Target::Mini(id)) = (self.screen, h) {
+                        if id < 800 {
+                            self.gesture = Some(Gesture { start: id, last: id, at: Instant::now(), dragging: false, held: false });
+                        }
+                    }
                     self.pressed = Some(h);
                     self.flip(h, true);
                     // Barra de luz: já ajusta no toque, com a atualização rápida do e-ink.
@@ -1732,6 +1753,7 @@ impl App {
                 let lv = self.bar_level(x);
                 self.set_light_with(lv, Wave::Quality);
             }
+            Touch::Move(x, y) if self.gesture.is_some() => self.gesture_move(x, y),
             Touch::Move(x, y) => {
                 // Arrastar para fora cancela o toque, como num botão nativo.
                 if let Some(h) = self.pressed {
@@ -1741,7 +1763,20 @@ impl App {
                     }
                 }
             }
+            Touch::Up(_, _) if self.gesture.as_ref().is_some_and(|g| g.dragging || g.held) => {
+                let g = self.gesture.take().unwrap();
+                self.pressed = None;
+                self.swipe_from = None;
+                if g.dragging {
+                    // Fim do arrasto: uma passada de qualidade limpa os rastros do modo rápido.
+                    self.apply_mini_redraw(crate::minigame::Redraw::Part(Rect::new(0, 170, 1072, 1448 - 170)));
+                }
+                if let Some(m) = &self.mini {
+                    m.save();
+                }
+            }
             Touch::Up(x, y) => {
+                self.gesture = None;
                 let from = self.swipe_from.take();
                 // Deslizar do topo para baixo na tela inicial abre Luz e tela.
                 if self.screen == Screen::Home && from.is_some_and(|(_, fy)| fy < 180 && y - fy > 250) {
@@ -1759,8 +1794,67 @@ impl App {
         }
     }
 
+    /// Dedo arrastado sobre casas de minijogo: cada casa nova recebe `drag`.
+    fn gesture_move(&mut self, x: i32, y: i32) {
+        self.check_hold();
+        let Some(Target::Mini(id)) = self.hit(x, y) else { return };
+        let Some(g) = self.gesture.as_mut() else { return };
+        if id >= 800 || id == g.last || g.held {
+            return;
+        }
+        let first = (!g.dragging).then_some(g.start);
+        g.last = id;
+        let Some(m) = self.mini.as_mut() else { return };
+        let mut rects = Vec::new();
+        for c in first.into_iter().chain(std::iter::once(id)) {
+            match m.drag(c) {
+                Some(r) => rects.push(r),
+                None => {
+                    // Jogo sem arrasto: comportamento de botão (sair cancela).
+                    self.gesture = None;
+                    self.pressed = None;
+                    return;
+                }
+            }
+        }
+        if let Some(g) = self.gesture.as_mut() {
+            g.dragging = true;
+        }
+        self.pressed = None;
+        m.draw(&mut self.fb, &self.fonts);
+        for r in rects {
+            if let crate::minigame::Redraw::Part(r) = r {
+                self.fb.refresh(r, Wave::Fast, false);
+            }
+        }
+    }
+
+    pub fn touch_active(&self) -> bool {
+        self.gesture.as_ref().is_some_and(|g| !g.held && !g.dragging)
+    }
+
+    /// Segurou o dedo parado numa casa: `hold` do jogo.
+    fn check_hold(&mut self) {
+        let Some(g) = self.gesture.as_mut() else { return };
+        if g.dragging || g.held || g.at.elapsed() < HOLD {
+            return;
+        }
+        let id = g.start;
+        let Some(m) = self.mini.as_mut() else { return };
+        if let Some(r) = m.hold(id) {
+            g.held = true;
+            self.pressed = None;
+            self.apply_mini_redraw(r);
+        } else {
+            self.gesture = None;
+        }
+    }
+
     /// Chamado várias vezes por segundo: relógio, Pomodoro, confirmação e bateria.
     pub fn tick(&mut self) {
+        if self.gesture.is_some() {
+            self.check_hold();
+        }
         let now = clock::now(self.status.offset_min);
         let minute_changed = now.minute != self.last_minute;
 

@@ -33,6 +33,16 @@ pub trait MiniGame {
     fn keep_awake(&self) -> bool {
         false
     }
+    /// Segurar o dedo numa casa (id < 800) por meio segundo. `None` = o jogo não usa segurar
+    /// (aí o toque comum vale ao soltar).
+    fn hold(&mut self, _id: u32) -> Option<Redraw> {
+        None
+    }
+    /// Arrastar o dedo por casas: chamado para cada casa por onde ele passa, a primeira inclusive.
+    /// `None` = o jogo não usa arrastar.
+    fn drag(&mut self, _id: u32) -> Option<Redraw> {
+        None
+    }
     /// Voltar dentro do próprio módulo; `false` = sair para a tela anterior.
     fn back(&mut self) -> bool {
         false
@@ -84,6 +94,12 @@ pub fn draw_menu(fb: &mut Framebuffer, f: &Fonts, title: &str, subtitle: &str, o
     for (k, o) in options.iter().enumerate() {
         pill(fb, f, menu_row(k), o, k == 0);
     }
+}
+
+/// Dica curta acima dos botões do rodapé, com folga para não grudar neles.
+pub fn hint(fb: &mut Framebuffer, f: &Fonts, text: &str) {
+    let w = f.measure(Face::Body, 26.0, text);
+    f.draw(fb, Face::Body, 26.0, (W - w) / 2, 1278, crate::ui::MUTED, text);
 }
 
 /// Grade quadrada centrada: (x0, y0, lado da casa).
