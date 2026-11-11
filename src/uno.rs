@@ -45,6 +45,26 @@ fn color_name(c: Color) -> &'static str {
     }
 }
 
+/// Ordem da mão: por cor, depois números, ações e coringas.
+fn sort_key(c: Card) -> (u8, u8) {
+    let color = match c.color {
+        Color::Red => 0,
+        Color::Blue => 1,
+        Color::Green => 2,
+        Color::Yellow => 3,
+        Color::Black => 4,
+    };
+    let kind = match c.kind {
+        Kind::Num(n) => n,
+        Kind::Skip => 10,
+        Kind::Reverse => 11,
+        Kind::Draw2 => 12,
+        Kind::Wild => 13,
+        Kind::Draw4 => 14,
+    };
+    (color, kind)
+}
+
 fn label(k: Kind) -> String {
     match k {
         Kind::Num(n) => n.to_string(),
@@ -325,36 +345,58 @@ impl Uno {
 
     // ---------- Desenho ----------
 
-    /// Cartas da mão em leque: (índice na mão, retângulo, serve agora).
+    /// Cartas da mão em leque: (índice na mão, retângulo, serve agora). Ordenadas por cor e
+    /// valor; até 12 numa fileira (as que servem sobem), depois duas ou três fileiras sobrepostas.
     fn hand_layout(&self) -> Vec<(usize, Rect, bool)> {
         let me = self.me();
         let Some(hand) = self.hands.get(me) else { return vec![] };
         let my_turn = self.turn == me && self.phase == Phase::Turn && !self.is_cpu(self.turn);
-        let shown: Vec<(usize, Card)> = hand.iter().copied().enumerate().skip(self.page * 14).take(14).collect();
-        let n = shown.len() as i32;
-        let (w, h) = (156, 230);
+        let mut order: Vec<usize> = (0..hand.len()).collect();
+        order.sort_by_key(|&i| (sort_key(hand[i]), i));
+        let n = order.len();
+        let rows = match n {
+            0..=12 => 1,
+            13..=30 => 2,
+            _ => 3,
+        };
+        let (w, h) = match rows {
+            1 => (156, 230),
+            2 => (134, 197),
+            _ => (116, 171),
+        };
+        let per_row = n.div_ceil(rows);
         let span = W - 2 * MARGIN + 40;
-        let step = if n <= 1 { 0 } else { ((span - w) / (n - 1)).min(w + 12) };
-        let total = if n == 0 { 0 } else { w + step * (n - 1) };
-        let x0 = (W - total) / 2;
-        shown
-            .into_iter()
-            .enumerate()
-            .map(|(k, (i, c))| {
-                let ok = my_turn && self.playable(c) && self.drew.is_none_or(|d| d == i);
-                let y = if ok { 990 } else { 1030 };
-                (i, Rect::new(x0 + k as i32 * step, y, w, h), ok)
-            })
-            .collect()
+        // Fileiras de cima mostram a parte de cima das cartas; a última aparece inteira.
+        let row_gap = match rows {
+            1 => 0,
+            2 => 120,
+            _ => 76,
+        };
+        let top0 = 1290 - h - row_gap * (rows as i32 - 1);
+        let mut out = Vec::with_capacity(n);
+        for (k, &i) in order.iter().enumerate() {
+            let (row, col) = (k / per_row, k % per_row);
+            let in_row = (n - row * per_row).min(per_row) as i32;
+            let step = if in_row <= 1 { 0 } else { ((span - w) / (in_row - 1)).min(w + 12) };
+            let total = w + step * (in_row - 1).max(0);
+            let x = (W - total) / 2 + col as i32 * step;
+            let ok = my_turn && self.playable(hand[i]) && self.drew.is_none_or(|d| d == i);
+            let lift = if rows == 1 && ok { 40 } else { 0 };
+            out.push((i, Rect::new(x, top0 + row as i32 * row_gap - lift, w, h), ok));
+        }
+        out
     }
 
-    /// Área de toque de cada carta: a faixa visível (a última inteira).
+    /// Área de toque de cada carta: a parte visível (a de cima de cada fileira e a da direita).
     fn hand_hits(&self) -> Vec<(usize, Rect, bool)> {
         let lay = self.hand_layout();
         let mut v = Vec::new();
         for (k, (i, r, ok)) in lay.iter().enumerate() {
-            let w = lay.get(k + 1).map(|n| n.1.x - r.x).unwrap_or(r.w);
-            v.push((*i, Rect::new(r.x, r.y, w, r.h), *ok));
+            let next_same_row = lay.get(k + 1).filter(|n| (n.1.y - r.y).abs() <= 40);
+            let w = next_same_row.map(|n| n.1.x - r.x).unwrap_or(r.w);
+            let below = lay.iter().map(|n| n.1.y).filter(|&y| y > r.y + 40).min();
+            let h = below.map(|y| y - r.y).unwrap_or(r.h);
+            v.push((*i, Rect::new(r.x, r.y, w, h), *ok));
         }
         v
     }
@@ -629,9 +671,6 @@ impl Uno {
         if self.hands[self.me()].len() == 2 {
             v.push((802, if self.said_uno { "UNO dito" } else { "UNO!" }));
         }
-        if self.hands[self.me()].len() > 14 {
-            v.push((804, "Mais cartas"));
-        }
         v
     }
 }
@@ -786,7 +825,6 @@ impl MiniGame for Uno {
             }
             802 => self.said_uno = true,
             803 => self.mode = Mode::Menu,
-            804 => self.page = (self.page + 1) % self.hands[self.me()].len().div_ceil(14),
             805 => self.phase = Phase::Turn,
             806 => {
                 if let Some(w) = self.uno_open {
@@ -873,6 +911,17 @@ mod render {
             g.draw(&mut fb, &f);
             fb.save_pgm(&out.join(format!("{name}.pgm")));
         }
+        for n in [18usize, 34] {
+            let mut g = Uno::new();
+            g.start(Mode::Cpu(1));
+            let d = deck();
+            g.hands[0] = d.iter().copied().step_by(3).take(n).collect();
+            g.hands[1] = d.iter().copied().take(25).collect();
+            g.turn = 0;
+            let mut fb = crate::fb::Framebuffer::memory();
+            g.draw(&mut fb, &f);
+            fb.save_pgm(&out.join(format!("uno-mao-{n}.pgm")));
+        }
         let mut g = Uno::new();
         g.start(Mode::Local(2));
         g.msg = "Jogador 1 jogou 7 azul.".into();
@@ -891,6 +940,22 @@ mod render {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn toda_carta_da_mao_tem_area_de_toque() {
+        for n in [1usize, 7, 12, 13, 22, 30, 31, 45] {
+            let mut g = Uno::new();
+            g.start(Mode::Cpu(1));
+            g.hands[0] = deck().into_iter().take(n).collect();
+            g.turn = 0;
+            let hits = g.hand_hits();
+            assert_eq!(hits.len(), n);
+            for (_, r, _) in &hits {
+                assert!(r.w >= 40 && r.h >= 60, "{n} cartas: área {}x{}", r.w, r.h);
+                assert!(r.y >= 960 && r.x >= 0 && r.x + r.w <= W, "{n} cartas: fora da área da mão");
+            }
+        }
+    }
+
     #[test]
     fn monte_vazio_reembaralha_o_descarte() {
         let mut g = Uno::new();
