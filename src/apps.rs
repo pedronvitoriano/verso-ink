@@ -649,8 +649,12 @@ pub fn draw_settings(fb: &mut Framebuffer, f: &Fonts, s: &SysInfo, st: &Status, 
         None => "?".into(),
     };
     info_row(fb, f, 770, "BATERIA", &bat);
-    info_row(fb, f, 860, "VERSÃO", &format!("Verso Ink {}", env!("CARGO_PKG_VERSION")));
-    info_row(fb, f, 950, "FIRMWARE", &format!("Kindle {}", s.firmware));
+    let version = match crate::backup::update_available() {
+        Some(v) => format!("{} · nova: {v}", env!("CARGO_PKG_VERSION")),
+        None => format!("Verso Ink {} · Kindle {}", env!("CARGO_PKG_VERSION"), s.firmware),
+    };
+    info_row(fb, f, 860, "VERSÃO", &version);
+    info_row(fb, f, 950, "CÓPIA", &crate::backup::summary());
     fb.fill(Rect::new(MARGIN, 1040, W - 2 * MARGIN, 3), INK);
     let (rl, ol) = match confirm {
         Some(0) => ("Toque de novo", "Desligar"),
@@ -662,7 +666,8 @@ pub fn draw_settings(fb: &mut Framebuffer, f: &Fonts, s: &SysInfo, st: &Status, 
     }
     pill(fb, f, set_reboot_rect(), rl, confirm == Some(0), 40.0);
     pill(fb, f, set_off_rect(), ol, confirm == Some(1), 40.0);
-    pill(fb, f, set_update_rect(), "Procurar atualização", false, 40.0);
+    let up = crate::backup::update_available().map(|v| format!("Instalar a versão {v}"));
+    pill(fb, f, set_update_rect(), up.as_deref().unwrap_or("Procurar atualização"), up.is_some(), 40.0);
 }
 
 /// Fica na tela com o aparelho desligado (o e-ink mantém a imagem sem energia).

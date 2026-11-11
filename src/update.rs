@@ -23,7 +23,7 @@ fn str_after(json: &str, from: usize, key: &str) -> Option<String> {
     Some(after[q1..q2].to_string())
 }
 
-fn newer(remote: &str, local: &str) -> bool {
+pub fn newer(remote: &str, local: &str) -> bool {
     let parse = |v: &str| v.trim_start_matches('v').split('.').map(|p| p.parse::<u32>().unwrap_or(0)).collect::<Vec<_>>();
     parse(remote) > parse(local)
 }

@@ -361,7 +361,11 @@ pub fn draw_tile(fb: &mut Framebuffer, f: &Fonts, i: usize, pressed: bool, extra
 pub fn draw_footer(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     let y = 1290 + 40;
     fb.fill(Rect::new(0, y, 1072, 1448 - y), PAPER);
-    f.draw(fb, Face::Display, 34.0, MARGIN, 1384, INK, "Verso Ink");
+    let end = f.draw(fb, Face::Display, 34.0, MARGIN, 1384, INK, "Verso Ink");
+    if let Some(v) = crate::backup::update_available() {
+        // Versão nova encontrada: avisa aqui; instalar fica no Ajustes.
+        f.draw(fb, Face::Strong, 28.0, end + 20, 1384, INK, &format!("· versão {v} no Ajustes"));
+    }
     let wifi = if st.wifi { "Wi-Fi conectado" } else { "Sem Wi-Fi" };
     let w = f.measure(Face::Body, 28.0, wifi);
     f.draw(fb, Face::Body, 28.0, 1072 - MARGIN - w, 1384, MUTED, wifi);

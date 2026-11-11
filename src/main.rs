@@ -14,6 +14,7 @@ mod apps;
 mod chat;
 mod chess;
 mod chess_ui;
+mod backup;
 mod caixas;
 mod coach;
 mod lig4;

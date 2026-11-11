@@ -1905,6 +1905,14 @@ impl App {
         }
         self.last_minute = now.minute;
         self.status = read_status();
+        if now.plausible() {
+            if let Some(name) = crate::backup::maybe_backup(self.status.offset_min) {
+                log(&format!("cópia de segurança: {name}"));
+            }
+            if self.status.wifi {
+                crate::backup::maybe_check_update(data::today(self.status.offset_min));
+            }
+        }
         // Lembretes: na hora (ou ao acordar, se passou), em tela cheia.
         if !matches!(self.screen, Screen::Reminder | Screen::Sleep) && now.plausible() {
             let items = crate::day::load_items();
