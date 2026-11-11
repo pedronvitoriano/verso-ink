@@ -19,6 +19,7 @@ mod coach;
 mod lig4;
 mod minas;
 mod nonograma;
+mod paciencia;
 mod palavra;
 mod sokoban;
 mod naval;
