@@ -121,3 +121,14 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, keys: &[Key]) {
         }
     }
 }
+
+#[cfg(test)]
+mod coords {
+    #[test]
+    #[ignore]
+    fn imprime_centros() {
+        for k in super::layout(super::Mode::Letters, false) {
+            eprintln!("{} {} {}", k.label, k.rect.x + k.rect.w / 2, k.rect.y + k.rect.h / 2);
+        }
+    }
+}
