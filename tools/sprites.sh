@@ -11,11 +11,15 @@ import sys, pathlib
 from PIL import Image, ImageOps, ImageFilter
 src, out = map(pathlib.Path, sys.argv[1:3])
 PALETTE = [0x14, 0x5C, 0xB4, 0xFF]
+# Texturas e a escada não ficaram boas; o jogo usa o desenho próprio para elas.
+SKIP = {"pedra", "piso", "escada"}
 lut = [min(PALETTE, key=lambda p: abs(p - v)) for v in range(256)]
 for p in sorted(src.glob("*.png")):
-    if p.name.startswith("ref-"):
+    if p.name.startswith("ref-") or p.stem in SKIP:
         continue
     im = ImageOps.autocontrast(Image.open(p).convert("L"), cutoff=1)
+    # Margem branca: o recorte pode passar da borda (sem ela, o PIL preenche com preto).
+    im = ImageOps.expand(im, border=im.width // 4, fill=255)
     box = im.point(lambda v: 255 if v < 235 else 0).getbbox() or (0, 0, im.width, im.height)
     x0, y0, x1, y1 = box
     side = int(max(x1 - x0, y1 - y0) * 1.08)
