@@ -11,12 +11,13 @@ desenhada direto no e-ink, sem a interface da Amazon por cima.
 
 | Bloco | O que faz |
 |---|---|
-| **Início** | Relógio grande, data, bateria, clima do dia (Open-Meteo) e um resumo: próximo lembrete, sequências, leitura e focos. Tocar na data ou deslizar do topo abre **Luz e tela**. |
-| **Ler** | Seus EPUB, PDF, AZW3, MOBI, CBZ e TXT com capa (extraída do livro, ou tipográfica). Abre no KOReader e volta sozinho. **Destaques**: o "My Clippings" agrupado por livro. |
-| **Foco → Hoje** | Prioridades, tarefas, hábitos e lembretes do dia, marcados por toque, com sequência de dias. **+ Adicionar** pelo teclado na tela. Pomodoro 25/5. Lembretes abrem em tela cheia na hora. |
-| **Jogar** | Sudoku (3 níveis, solução única, conferência) e xadrez para duas pessoas (regras completas, desfazer). Jogos salvos. |
+| **Início** | Relógio grande, data, bateria, clima do dia (Open-Meteo) e um resumo: próximo lembrete, sequências, leitura e focos. **Continuar**: o livro em leitura com a % e o jogo em andamento. Tocar na data ou deslizar do topo abre **Luz e tela**. |
+| **Ler** | Seus EPUB, PDF, AZW3, MOBI, CBZ e TXT com capa (extraída do livro, ou tipográfica) e o progresso do KOReader. Ordem por lidos por último ou A–Z, e busca no título. Abre no KOReader e volta sozinho. **Destaques**: o "My Clippings" agrupado por livro. |
+| **Foco → Hoje** | Prioridades, tarefas, hábitos e lembretes do dia, marcados por toque, com sequência de dias. Itens podem valer só em alguns dias (`{seg,qua}`, `uteis`, `fds`). **Calendário** dos últimos 30 dias. **+ Adicionar** pelo teclado na tela. Pomodoro 25/5. Lembretes abrem em tela cheia na hora. |
+| **Jogar** | 15 jogos sem Wi-Fi: Sudoku, xadrez (treinadores com Stockfish, revisão de partidas, duas pessoas), Coroas (fases surpresa até 12×12, sequência de dias), Lig 4, Pontos e caixas, Batalha naval, Campo minado, Nonograma, UNO, Palavra do dia, Sokoban, Paciência, Masmorra, Cripta e **Histórias** (ficção interativa por escolhas, em texto simples em `data/historias`). |
+| **Mais** | Receitas com ingredientes para marcar e preparo passo a passo. |
 | **Claude** | As sessões do Claude Code do seu PC, ao vivo: o que estão fazendo e quando é a sua vez. |
-| **Luz e tela** | Luz 0–25 e modo noturno. **Ajustes**: Wi-Fi, endereço, SSH, bateria, versão, reiniciar, desligar e **Procurar atualização**. |
+| **Luz e tela** | Luz 0–25 e modo noturno. **Ajustes**: Wi-Fi, endereço, SSH, bateria, versão, cópia de segurança, reiniciar, desligar e **Procurar atualização**. Uma cópia diária dos dados fica em `backups/` (as 7 mais novas) e uma versão nova aparece avisada no rodapé. |
 | **Repouso** | Tela clara com o livro em andamento; Wi-Fi desliga ao dormir. Aviso de bateria fraca. |
 
 ## Como funciona
