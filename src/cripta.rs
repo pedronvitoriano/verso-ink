@@ -1,389 +1,633 @@
-//! Cripta: roguelike parado, de decisões. Cada andar é uma grade coberta; você descobre casas
-//! vizinhas às abertas gastando tochas. Casas vazias mostram quantos monstros há em volta.
-//! Monstros não se mexem: bloqueiam a passagem até você decidir lutar, e o custo da luta aparece
-//! antes. A escada está trancada; a chave fica com o monstro mais forte do andar.
+//! Cripta: quebra-cabeça de masmorra, parado e de informação completa. Os monstros estão à
+//! vista desde o começo, com vida e força; a rocha esconde tesouros e o fôlego da exploração.
+//! Abrir uma casa cura você (e os monstros feridos também se recuperam um pouco); cada toque
+//! num monstro é uma troca de golpes; subir de nível cura tudo. Cinco andares, o dragão no fim.
+//!
+//! As regras ficam em `Run` (sem tela), para o robô de testes jogar o mesmo jogo.
 
 use crate::fb::{Framebuffer, Rect};
 use crate::minigame::{self, MiniGame, Redraw, Rng, W};
 use crate::text::{Face, Fonts};
 use crate::ui::{self, INK, MUTED, PAPER};
 
-const N: usize = 6;
+pub const N: usize = 6;
 const CELL: i32 = 136;
 const GX: i32 = (W - N as i32 * CELL) / 2;
 const GY: i32 = 316;
-const NAMES: [&str; 5] = ["Rato", "Morcego", "Esqueleto", "Ogro", "Dragão"];
-const TORCHES: i32 = 14;
+pub const FLOORS: u32 = 5;
 
-fn name(k: u8) -> &'static str {
-    NAMES[(k.clamp(1, 5) - 1) as usize]
+// ---------- Regras ----------
+
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Kind {
+    Rato,
+    Morcego,
+    Goblin,
+    Esqueleto,
+    Orc,
+    Ogro,
+    Dragao,
 }
 
-/// Traço de cada monstro, para o Pedro decidir com quem lutar.
-fn trait_of(k: u8) -> &'static str {
-    match k {
-        1 => "fraco",
-        2 => "ataca primeiro",
-        3 => "armadura 1",
-        4 => "bate forte",
-        _ => "chefe: ataca primeiro e aguenta muito",
+impl Kind {
+    pub fn name(self) -> &'static str {
+        match self {
+            Kind::Rato => "Rato",
+            Kind::Morcego => "Morcego",
+            Kind::Goblin => "Goblin",
+            Kind::Esqueleto => "Esqueleto",
+            Kind::Orc => "Orc",
+            Kind::Ogro => "Ogro",
+            Kind::Dragao => "Dragão",
+        }
+    }
+    fn sprite(self) -> &'static str {
+        match self {
+            Kind::Rato => "rato",
+            Kind::Morcego => "morcego",
+            Kind::Goblin => "goblin",
+            Kind::Esqueleto => "esqueleto",
+            Kind::Orc => "orc",
+            Kind::Ogro => "ogro",
+            Kind::Dragao => "dragao",
+        }
+    }
+    /// Ataca antes de você.
+    pub fn fast(self) -> bool {
+        matches!(self, Kind::Morcego | Kind::Dragao)
+    }
+    /// Reduz o seu dano.
+    pub fn armor(self) -> i32 {
+        match self {
+            Kind::Esqueleto => 1,
+            Kind::Dragao => 1,
+            _ => 0,
+        }
+    }
+    /// Recupera vida quando você explora.
+    pub fn regen(self) -> i32 {
+        match self {
+            Kind::Ogro => 2,
+            _ => 1,
+        }
+    }
+    pub fn trait_text(self) -> &'static str {
+        match self {
+            Kind::Rato => "comum",
+            Kind::Morcego => "ataca primeiro",
+            Kind::Goblin => "rouba ouro ao acertar",
+            Kind::Esqueleto => "armadura: −1 no seu golpe",
+            Kind::Orc => "golpe pesado",
+            Kind::Ogro => "se recupera rápido",
+            Kind::Dragao => "chefe final: ataca primeiro e tem armadura",
+        }
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum Thing {
-    Empty,
-    Monster(u8),
+pub struct Mon {
+    pub kind: Kind,
+    pub level: i32,
+    pub hp: i32,
+    pub max_hp: i32,
+    pub atk: i32,
+    pub key: bool,
+}
+
+impl Mon {
+    fn new(kind: Kind, level: i32, floor: u32) -> Mon {
+        let f = floor as i32 - 1;
+        let mut hp = 3 + 5 * (level - 1) + f;
+        let mut atk = 1 + level * 185 / 100 + f / 2;
+        if kind == Kind::Orc {
+            atk += 2;
+        }
+        if kind == Kind::Dragao {
+            hp += 14;
+            atk += 3;
+        }
+        Mon { kind, level, hp, max_hp: hp, atk, key: false }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Loot {
+    Nothing,
     Potion,
-    Sword,
-    Shield,
-    Gold,
-    Chest,
-    Scroll,
+    Gold(i32),
+    Power,
+    Glyph(Spell),
     Stairs,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum State {
-    Menu,
+pub enum Spell {
+    /// Dano de 2× o seu nível, sem troco.
+    Raio,
+    /// O próximo golpe que você levaria não acontece.
+    Pedra,
+    /// Dano igual ao nível e cura o mesmo tanto.
+    Drenar,
+}
+
+impl Spell {
+    pub fn name(self) -> &'static str {
+        match self {
+            Spell::Raio => "Raio",
+            Spell::Pedra => "Pele de pedra",
+            Spell::Drenar => "Drenar",
+        }
+    }
+    pub fn cost(self) -> i32 {
+        match self {
+            Spell::Raio => 3,
+            Spell::Pedra => 2,
+            Spell::Drenar => 4,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Cell {
+    /// Rocha com algo (ou nada) por baixo.
+    Rock(Loot),
+    Floor(Loot),
+    Mon(Mon),
+}
+
+/// Prêmio escolhido entre andares.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Reward {
+    Life,
+    Force,
+    Mana,
+    Potions,
+    Learn(Spell),
+}
+
+impl Reward {
+    pub fn text(self) -> String {
+        match self {
+            Reward::Life => "+5 de vida máxima".into(),
+            Reward::Force => "+1 de força".into(),
+            Reward::Mana => "+2 de mana máxima".into(),
+            Reward::Potions => "2 poções".into(),
+            Reward::Learn(s) => format!("Aprender {}", s.name()),
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Phase {
     Play,
-    LevelUp,
+    /// Escolhendo o prêmio do fim do andar.
+    Reward,
+    Won,
     Dead,
 }
 
-pub struct Cripta {
-    state: State,
-    daily: bool,
-    rng: Rng,
-    floor: u32,
-    thing: Vec<Thing>,
-    open: Vec<bool>,
-    hp: i32,
-    max_hp: i32,
-    atk: i32,
-    level: i32,
-    xp: i32,
-    gold: i32,
-    potions: i32,
-    /// Escudo: absorve esse tanto de dano nas lutas.
-    shield: i32,
-    torches: i32,
-    /// Casa do monstro com a chave; true quando a chave já é sua.
-    key_at: usize,
-    key: bool,
-    /// O pergaminho mostrou onde estão a escada e a chave.
-    mapped: bool,
-    selected: Option<usize>,
-    note: String,
-    best: u32,
-    hero: usize,
-    steps: u32,
+#[derive(Clone, Debug)]
+pub struct Run {
+    pub rng: Rng,
+    pub floor: u32,
+    pub cells: Vec<Cell>,
+    pub hero: usize,
+    pub level: i32,
+    pub xp: i32,
+    pub hp: i32,
+    pub max_hp: i32,
+    pub atk: i32,
+    pub mp: i32,
+    pub max_mp: i32,
+    pub potions: i32,
+    pub gold: i32,
+    pub spells: Vec<Spell>,
+    pub stone: bool,
+    pub key: bool,
+    pub phase: Phase,
+    pub offers: Vec<Reward>,
+    pub turns: u32,
+    pub log: String,
 }
 
-fn neighbors(i: usize) -> impl Iterator<Item = usize> {
+pub fn neighbors(i: usize) -> impl Iterator<Item = usize> {
     let (r, c) = (i / N, i % N);
     [(r > 0).then(|| i - N), (r + 1 < N).then(|| i + N), (c > 0).then(|| i - 1), (c + 1 < N).then(|| i + 1)].into_iter().flatten()
 }
 
-fn around(i: usize) -> impl Iterator<Item = usize> {
-    let (r, c) = ((i / N) as i32, (i % N) as i32);
-    (-1..=1)
-        .flat_map(move |dr| (-1..=1).map(move |dc| (r + dr, c + dc)))
-        .filter(move |&(rr, cc)| (rr, cc) != (r, c) && (0..N as i32).contains(&rr) && (0..N as i32).contains(&cc))
-        .map(|(rr, cc)| rr as usize * N + cc as usize)
+/// Resultado previsto de uma troca de golpes e da luta inteira (sem cura no meio).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Forecast {
+    /// Dano que você leva nesta troca.
+    pub take_now: i32,
+    /// Vida do monstro depois desta troca.
+    pub mon_after: i32,
+    /// Golpes e dano total para matar daqui até o fim.
+    pub hits_to_kill: i32,
+    pub take_total: i32,
 }
 
-fn best_file() -> std::path::PathBuf {
-    crate::home_dir().join("data/cripta_recorde.txt")
-}
-
-/// Vida, força, armadura e se ataca primeiro, do monstro de nível `k` no andar `floor`.
-fn monster(k: u8, floor: u32) -> (i32, i32, i32, bool) {
-    let (k, f) = (k as i32, floor as i32 - 1);
-    let (mut hp, mut atk, mut armor, mut fast) = (2 + 3 * k + f, k + f / 2, 0, false);
-    match k {
-        2 => fast = true,
-        3 => armor = 1,
-        4 => atk += 2,
-        5 => {
-            hp += 4;
-            fast = true;
-        }
-        _ => {}
-    }
-    (hp, atk.max(1), armor, fast)
-}
-
-impl Cripta {
-    pub fn new() -> Self {
-        let best = std::fs::read_to_string(best_file()).ok().and_then(|s| s.trim().parse().ok()).unwrap_or(0);
-        Cripta {
-            state: State::Menu,
-            daily: false,
-            rng: Rng::new(),
+impl Run {
+    pub fn new(rng: Rng) -> Run {
+        let mut r = Run {
+            rng,
             floor: 1,
-            thing: vec![Thing::Empty; N * N],
-            open: vec![false; N * N],
-            hp: 12,
-            max_hp: 12,
-            atk: 2,
+            cells: vec![],
+            hero: 0,
             level: 1,
             xp: 0,
-            gold: 0,
+            hp: 12,
+            max_hp: 12,
+            atk: 3,
+            mp: 3,
+            max_mp: 6,
             potions: 1,
-            shield: 0,
-            torches: TORCHES,
-            key_at: 0,
+            gold: 0,
+            spells: vec![Spell::Raio],
+            stone: false,
             key: false,
-            mapped: false,
-            selected: None,
-            note: String::new(),
-            best,
-            hero: 0,
-            steps: 0,
-        }
-    }
-
-    fn start(&mut self, daily: bool) {
-        let best = self.best;
-        *self = Cripta::new();
-        self.best = best;
-        self.daily = daily;
-        if daily {
-            self.rng = Rng::seeded(crate::fases::today() as u64 * 7919 + 1);
-        }
-        self.state = State::Play;
-        self.build_floor();
+            phase: Phase::Play,
+            offers: vec![],
+            turns: 0,
+            log: String::new(),
+        };
+        r.build_floor();
+        r
     }
 
     fn pick(&mut self, n: usize) -> usize {
         (self.rng.next() % n as u64) as usize
     }
 
-    /// Monta o andar: entrada aberta, escada longe, chefe com a chave, monstros e itens.
+    /// Vida que cada casa aberta devolve (equilibrado pelo robô: 40% do nível, para cima).
+    pub fn heal(&self) -> i32 {
+        (2 * self.level + 4) / 5
+    }
+
+    pub fn xp_next(&self) -> i32 {
+        self.level * 5
+    }
+
+    /// Monta o andar: monstros à vista (o mais forte com a chave), rocha com tesouros e a escada.
     fn build_floor(&mut self) {
         let f = self.floor;
-        loop {
-            let mut thing = vec![Thing::Empty; N * N];
-            let entry = self.pick(N * N);
-            let dist = |i: usize| (i / N).abs_diff(entry / N) + (i % N).abs_diff(entry % N);
-            let far: Vec<usize> = (0..N * N).filter(|&i| dist(i) >= 5).collect();
-            if far.len() < 2 {
-                continue;
+        let entry = self.pick(N * N);
+        let dist = |i: usize| (i / N).abs_diff(entry / N) + (i % N).abs_diff(entry % N);
+        let mut spots: Vec<usize> = (0..N * N).filter(|&i| dist(i) >= 2).collect();
+        self.rng.shuffle(&mut spots);
+        let mut cells = vec![Cell::Rock(Loot::Nothing); N * N];
+        cells[entry] = Cell::Floor(Loot::Nothing);
+        let mut it = spots.into_iter();
+        // Chefe: o dragão no último andar; antes, um monstro acima do nível esperado.
+        let boss_at = it.next().unwrap();
+        cells[boss_at] = Cell::Mon(if f == FLOORS {
+            let mut d = Mon::new(Kind::Dragao, 7, f);
+            d.key = true;
+            d
+        } else {
+            let kinds = [Kind::Goblin, Kind::Esqueleto, Kind::Ogro, Kind::Orc];
+            let mut m = Mon::new(kinds[(f as usize - 1).min(3)], f as i32 + 2, f);
+            m.key = true;
+            m
+        });
+        // Monstros comuns: uma escada de níveis (alvos fáceis e alguns ousados).
+        let levels: Vec<i32> = match f {
+            1 => vec![1, 1, 1, 2, 2, 3],
+            2 => vec![1, 2, 2, 2, 3, 3, 4],
+            3 => vec![2, 2, 3, 3, 3, 4, 5],
+            4 => vec![2, 3, 3, 4, 4, 5, 5],
+            _ => vec![3, 3, 4, 4, 5, 5, 6],
+        };
+        for lv in levels {
+            let kind = match lv {
+                1 => Kind::Rato,
+                2 => [Kind::Rato, Kind::Morcego][self.pick(2)],
+                3 => [Kind::Morcego, Kind::Goblin][self.pick(2)],
+                4 => [Kind::Goblin, Kind::Esqueleto][self.pick(2)],
+                5 => [Kind::Esqueleto, Kind::Orc][self.pick(2)],
+                _ => [Kind::Orc, Kind::Ogro][self.pick(2)],
+            };
+            if let Some(i) = it.next() {
+                cells[i] = Cell::Mon(Mon::new(kind, lv, f));
             }
-            let stairs = far[self.pick(far.len())];
-            thing[stairs] = Thing::Stairs;
-            let mut free: Vec<usize> = (0..N * N).filter(|&i| i != entry && i != stairs && dist(i) > 1).collect();
-            self.rng.shuffle(&mut free);
-            let mut it = free.into_iter();
-            // Chefe do andar, com a chave: o mais forte (dragão a partir do 4º andar).
-            let boss = if f >= 4 { 5 } else { (f as u8 + 2).min(4) };
-            let key_at = it.next().unwrap();
-            thing[key_at] = Thing::Monster(boss);
-            for _ in 0..6 + f as usize {
-                let top = (f as u8 + 1).min(4);
-                let a = 1 + (self.rng.next() % top as u64) as u8;
-                let b = 1 + (self.rng.next() % top as u64) as u8;
-                thing[it.next().unwrap()] = Thing::Monster(a.min(b));
+        }
+        let glyph = [Spell::Pedra, Spell::Drenar, Spell::Raio][self.pick(3)];
+        let mut loot = vec![Loot::Potion, Loot::Gold(10 + 5 * f as i32), Loot::Gold(10 + 5 * f as i32), Loot::Power, Loot::Glyph(glyph)];
+        if f != FLOORS {
+            loot.push(Loot::Stairs);
+        }
+        for l in loot {
+            if let Some(i) = it.next() {
+                cells[i] = Cell::Rock(l);
             }
-            for t in [Thing::Potion, Thing::Potion, Thing::Sword, Thing::Shield, Thing::Gold, Thing::Gold, Thing::Chest, Thing::Scroll] {
-                if let Some(i) = it.next() {
-                    thing[i] = t;
-                }
-            }
-            self.thing = thing;
-            self.open = vec![false; N * N];
-            self.open[entry] = true;
-            self.hero = entry;
-            self.key_at = key_at;
-            self.key = false;
-            self.mapped = false;
-            self.torches = TORCHES;
-            self.selected = None;
-            self.note = format!("Andar {f}. A escada está trancada: a chave é do monstro mais forte.");
+        }
+        self.cells = cells;
+        self.hero = entry;
+        self.key = false;
+        self.stone = false;
+        self.phase = Phase::Play;
+        self.log = if f == FLOORS { "Último andar: vença o dragão.".into() } else { format!("Andar {f}. A chave da escada está com o monstro marcado.") };
+    }
+
+    pub fn open(&self, i: usize) -> bool {
+        matches!(self.cells[i], Cell::Floor(_))
+    }
+
+    /// Dá para abrir esta rocha (vizinha de uma casa aberta)?
+    pub fn reachable(&self, i: usize) -> bool {
+        matches!(self.cells[i], Cell::Rock(_)) && neighbors(i).any(|j| self.open(j))
+    }
+
+    /// Dá para atacar este monstro (vizinho de uma casa aberta)?
+    pub fn attackable(&self, i: usize) -> bool {
+        matches!(self.cells[i], Cell::Mon(_)) && neighbors(i).any(|j| self.open(j))
+    }
+
+    fn dmg_to(&self, m: &Mon) -> i32 {
+        (self.atk - m.kind.armor()).max(1)
+    }
+
+    pub fn forecast(&self, m: &Mon) -> Forecast {
+        let d = self.dmg_to(m);
+        let mon_after = (m.hp - d).max(0);
+        let take_now = if m.kind.fast() || mon_after > 0 { if self.stone { 0 } else { m.atk } } else { 0 };
+        let hits = (m.hp + d - 1) / d;
+        let retaliations = hits - 1 + m.kind.fast() as i32;
+        let take_total = (retaliations * m.atk - if self.stone && retaliations > 0 { m.atk } else { 0 }).max(0);
+        Forecast { take_now, mon_after, hits_to_kill: hits, take_total }
+    }
+
+    fn gain_xp(&mut self, m: &Mon) {
+        // Matar acima do seu nível vale o dobro (ousadia).
+        let bonus = if m.level > self.level { m.level } else { 0 };
+        self.xp += m.level + bonus;
+        while self.xp >= self.xp_next() {
+            self.xp -= self.xp_next();
+            self.level += 1;
+            self.max_hp += 3;
+            self.atk += 1;
+            self.hp = self.max_hp;
+            self.mp = self.max_mp;
+            self.log.push_str(&format!(" Nível {}! Vida e mana cheias.", self.level));
+        }
+    }
+
+    fn die(&mut self, by: &str) {
+        self.hp = 0;
+        self.phase = Phase::Dead;
+        self.log = format!("{by} venceu você no andar {}.", self.floor);
+    }
+
+    fn kill(&mut self, i: usize, m: Mon) {
+        self.cells[i] = Cell::Floor(Loot::Nothing);
+        if m.key {
+            self.key = true;
+        }
+        self.log = format!("Venceu {}.", m.kind.name());
+        if m.key && self.floor < FLOORS {
+            self.log.push_str(" Pegou a chave da escada!");
+        }
+        self.gain_xp(&m);
+        if m.kind == Kind::Dragao {
+            self.phase = Phase::Won;
+            self.log = format!("Venceu o dragão! A cripta é sua em {} turnos.", self.turns);
+        }
+    }
+
+    /// Uma troca de golpes com o monstro em `i`.
+    pub fn attack(&mut self, i: usize) {
+        let Cell::Mon(mut m) = self.cells[i] else { return };
+        if !self.attackable(i) || self.phase != Phase::Play {
             return;
         }
-    }
-
-    fn passable(&self, i: usize) -> bool {
-        self.open[i] && !matches!(self.thing[i], Thing::Monster(_))
-    }
-
-    fn reachable(&self, i: usize) -> bool {
-        !self.open[i] && neighbors(i).any(|j| self.passable(j))
-    }
-
-    /// Monstros vivos nas 8 casas em volta (o número das casas vazias).
-    fn danger(&self, i: usize) -> usize {
-        around(i).filter(|&j| matches!(self.thing[j], Thing::Monster(_))).count()
-    }
-
-    /// Quanto de vida a luta custa e quanto o escudo segura.
-    fn fight_cost(&self, k: u8) -> (i32, i32) {
-        let (mhp, matk, armor, fast) = monster(k, self.floor);
-        let dmg = (self.atk - armor).max(1);
-        let rounds = (mhp + dmg - 1) / dmg;
-        let raw = (rounds - 1 + fast as i32) * matk;
-        let absorbed = raw.min(self.shield);
-        (raw - absorbed, absorbed)
-    }
-
-    fn gain_xp(&mut self, k: u8) {
-        self.xp += k as i32 * 2;
-        if self.xp >= self.level * 5 {
-            self.xp -= self.level * 5;
-            self.level += 1;
-            self.state = State::LevelUp;
-            self.note = format!("Nível {}! Escolha: mais vida ou mais força.", self.level);
-        }
-    }
-
-    fn die(&mut self, why: String) {
-        self.hp = 0;
-        self.state = State::Dead;
-        let score = self.score();
-        if score > self.best && !self.daily {
-            self.best = score;
-            let _ = std::fs::write(best_file(), score.to_string());
-        }
-        self.note = why;
-    }
-
-    fn reveal(&mut self, i: usize) {
-        // Tocha: sem ela, abrir no escuro custa vida.
-        if self.torches > 0 {
-            self.torches -= 1;
-        } else {
-            self.hp -= 1;
+        self.turns += 1;
+        let d = self.dmg_to(&m);
+        let mut hit_me = |run: &mut Run, m: &Mon| {
+            if run.stone {
+                run.stone = false;
+                return;
+            }
+            run.hp -= m.atk;
+            if m.kind == Kind::Goblin && run.gold > 0 {
+                run.gold = (run.gold - 5).max(0);
+            }
+        };
+        if m.kind.fast() {
+            hit_me(self, &m);
             if self.hp <= 0 {
-                return self.die("As tochas acabaram e o escuro venceu.".into());
+                return self.die(m.kind.name());
             }
         }
-        self.open[i] = true;
-        self.steps += 1;
-        if !matches!(self.thing[i], Thing::Monster(_)) {
-            self.hero = i;
+        m.hp -= d;
+        if m.hp <= 0 {
+            return self.kill(i, m);
         }
-        let dark = if self.torches == 0 { " Sem tochas: cada casa custa 1 de vida." } else { "" };
-        self.note = match self.thing[i] {
-            Thing::Empty => {
-                let before = self.hp;
-                self.hp = (self.hp + 1).min(self.max_hp);
-                let around = match self.danger(i) {
-                    0 => "Nenhum monstro em volta.".to_string(),
-                    1 => "1 monstro em volta.".to_string(),
-                    n => format!("{n} monstros em volta."),
-                };
-                format!("{around}{}{dark}", if self.hp > before { " +1 de vida." } else { "" })
-            }
-            Thing::Monster(k) => {
-                let (mhp, matk, _, _) = monster(k, self.floor);
-                let key = if i == self.key_at { " Está com a chave." } else { "" };
-                format!("{} (vida {mhp}, força {matk}, {}).{key}", name(k), trait_of(k))
-            }
-            Thing::Potion => {
-                self.potions += 1;
-                self.thing[i] = Thing::Empty;
-                "Poção guardada.".into()
-            }
-            Thing::Sword => {
-                self.atk += 1;
-                self.thing[i] = Thing::Empty;
-                format!("Espada melhor: força {}.", self.atk)
-            }
-            Thing::Shield => {
-                self.shield += 4;
-                self.thing[i] = Thing::Empty;
-                format!("Escudo: segura {} de dano.", self.shield)
-            }
-            Thing::Gold => {
-                let g = 5 + 5 * self.floor as i32;
-                self.gold += g;
-                self.thing[i] = Thing::Empty;
-                format!("{g} de ouro.")
-            }
-            Thing::Chest => {
-                self.thing[i] = Thing::Empty;
-                match self.pick(4) {
-                    0 => {
-                        self.potions += 1;
-                        "Baú: uma poção.".into()
-                    }
-                    1 => {
-                        self.shield += 3;
-                        format!("Baú: escudo (segura {}).", self.shield)
-                    }
-                    2 => {
-                        self.torches += 4;
-                        "Baú: 4 tochas.".into()
-                    }
-                    _ => {
-                        let g = 15 + 5 * self.floor as i32;
-                        self.gold += g;
-                        format!("Baú: {g} de ouro.")
-                    }
-                }
-            }
-            Thing::Scroll => {
-                self.thing[i] = Thing::Empty;
-                self.mapped = true;
-                "Pergaminho: agora você sabe onde estão a escada e a chave.".into()
-            }
-            Thing::Stairs => {
-                if self.key { "A escada! Toque nela para descer.".into() } else { "A escada, trancada. Falta a chave.".into() }
-            }
-        };
-    }
-
-    fn fight(&mut self, i: usize, k: u8) {
-        let (cost, absorbed) = self.fight_cost(k);
-        self.shield -= absorbed;
-        self.hp -= cost;
+        if !m.kind.fast() {
+            hit_me(self, &m);
+        }
+        self.cells[i] = Cell::Mon(m);
         if self.hp <= 0 {
-            return self.die(format!("{} venceu no andar {}.", name(k), self.floor));
+            return self.die(m.kind.name());
         }
-        self.thing[i] = Thing::Empty;
-        self.hero = i;
-        self.steps += 1;
-        let key = if i == self.key_at {
-            self.key = true;
-            " Pegou a chave da escada!"
-        } else {
-            ""
-        };
-        let shield = if absorbed > 0 { format!(" O escudo segurou {absorbed}.") } else { String::new() };
-        self.note = format!("Venceu {} perdendo {cost} de vida.{shield}{key}", name(k));
-        self.gain_xp(k);
+        self.log = format!("{}: ficou com {} de vida.", m.kind.name(), m.hp);
     }
 
-    fn score(&self) -> u32 {
-        (self.floor - 1) * 100 + self.gold as u32
+    /// Abre a rocha em `i`: você se cura e ganha mana; monstros feridos se recuperam um pouco.
+    pub fn reveal(&mut self, i: usize) {
+        if !self.reachable(i) || self.phase != Phase::Play {
+            return;
+        }
+        self.turns += 1;
+        let Cell::Rock(loot) = self.cells[i] else { return };
+        self.cells[i] = Cell::Floor(loot);
+        self.hero = i;
+        self.hp = (self.hp + self.heal()).min(self.max_hp);
+        self.mp = (self.mp + 1).min(self.max_mp);
+        for c in self.cells.iter_mut() {
+            if let Cell::Mon(m) = c {
+                m.hp = (m.hp + m.kind.regen()).min(m.max_hp);
+            }
+        }
+        self.log = format!("+{} de vida, +1 de mana.", self.heal());
+        match loot {
+            Loot::Potion => {
+                self.potions += 1;
+                self.log.push_str(" Achou uma poção.");
+                self.cells[i] = Cell::Floor(Loot::Nothing);
+            }
+            Loot::Gold(g) => {
+                self.gold += g;
+                self.log.push_str(&format!(" {g} de ouro."));
+                self.cells[i] = Cell::Floor(Loot::Nothing);
+            }
+            Loot::Power => {
+                self.atk += 1;
+                self.log.push_str(&format!(" Espada melhor: força {}.", self.atk));
+                self.cells[i] = Cell::Floor(Loot::Nothing);
+            }
+            Loot::Glyph(s) => {
+                if !self.spells.contains(&s) {
+                    self.spells.push(s);
+                    self.log.push_str(&format!(" Aprendeu {}.", s.name()));
+                } else {
+                    self.max_mp += 1;
+                    self.log.push_str(" Mana máxima +1.");
+                }
+                self.cells[i] = Cell::Floor(Loot::Nothing);
+            }
+            Loot::Stairs => self.log.push_str(if self.key { " A escada!" } else { " A escada, trancada." }),
+            Loot::Nothing => {}
+        }
+    }
+
+    pub fn drink(&mut self) {
+        if self.potions > 0 && self.hp < self.max_hp && self.phase == Phase::Play {
+            self.potions -= 1;
+            let heal = (self.max_hp + 1) / 2;
+            self.hp = (self.hp + heal).min(self.max_hp);
+            self.turns += 1;
+            self.log = format!("Poção: +{heal} de vida.");
+        }
+    }
+
+    /// Lança a magia `s` no monstro `i` (Raio e Drenar) ou em você (Pele de pedra).
+    pub fn cast(&mut self, s: Spell, target: Option<usize>) -> bool {
+        if self.mp < s.cost() || !self.spells.contains(&s) || self.phase != Phase::Play {
+            return false;
+        }
+        match s {
+            Spell::Pedra => {
+                if self.stone {
+                    return false;
+                }
+                self.stone = true;
+                self.log = "Pele de pedra: o próximo golpe não pega.".into();
+            }
+            Spell::Raio | Spell::Drenar => {
+                let Some(i) = target.filter(|&i| self.attackable(i)) else { return false };
+                let Cell::Mon(mut m) = self.cells[i] else { return false };
+                let d = if s == Spell::Raio { 2 * self.level + 1 } else { self.level + 1 };
+                m.hp -= d;
+                if s == Spell::Drenar {
+                    self.hp = (self.hp + d).min(self.max_hp);
+                }
+                self.mp -= s.cost();
+                self.turns += 1;
+                if m.hp <= 0 {
+                    self.kill(i, m);
+                } else {
+                    self.cells[i] = Cell::Mon(m);
+                    self.log = format!("{}: {d} de dano. {} ficou com {}.", s.name(), m.kind.name(), m.hp);
+                }
+                return true;
+            }
+        }
+        self.mp -= s.cost();
+        self.turns += 1;
+        true
+    }
+
+    /// Descer: só com a chave. Antes do próximo andar, escolha um prêmio.
+    pub fn descend(&mut self, i: usize) {
+        if self.cells[i] != Cell::Floor(Loot::Stairs) || !self.key || self.phase != Phase::Play {
+            return;
+        }
+        let mut pool = vec![Reward::Life, Reward::Force, Reward::Mana, Reward::Potions];
+        for s in [Spell::Pedra, Spell::Drenar] {
+            if !self.spells.contains(&s) {
+                pool.push(Reward::Learn(s));
+            }
+        }
+        self.rng.shuffle(&mut pool);
+        self.offers = pool.into_iter().take(3).collect();
+        self.phase = Phase::Reward;
+        self.log = "Escolha um prêmio para o próximo andar.".into();
+    }
+
+    pub fn choose(&mut self, k: usize) {
+        let Some(&r) = self.offers.get(k) else { return };
+        match r {
+            Reward::Life => {
+                self.max_hp += 5;
+                self.hp += 5;
+            }
+            Reward::Force => self.atk += 1,
+            Reward::Mana => {
+                self.max_mp += 2;
+                self.mp += 2;
+            }
+            Reward::Potions => self.potions += 2,
+            Reward::Learn(s) => self.spells.push(s),
+        }
+        self.floor += 1;
+        self.offers.clear();
+        self.build_floor();
+    }
+
+    pub fn score(&self) -> u32 {
+        (self.floor as u32 - 1) * 100 + self.gold as u32 + if self.phase == Phase::Won { 500 } else { 0 }
+    }
+}
+
+// ---------- Jogo (tela) ----------
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Screen {
+    Menu,
+    Game,
+}
+
+pub struct Cripta {
+    screen: Screen,
+    run: Option<Run>,
+    daily: bool,
+    selected: Option<usize>,
+    /// Magia escolhida esperando o alvo.
+    aiming: Option<Spell>,
+    best: u32,
+    steps: u32,
+}
+
+fn best_file() -> std::path::PathBuf {
+    crate::home_dir().join("data/cripta_recorde.txt")
+}
+
+impl Cripta {
+    pub fn new() -> Self {
+        let best = std::fs::read_to_string(best_file()).ok().and_then(|s| s.trim().parse().ok()).unwrap_or(0);
+        Cripta { screen: Screen::Menu, run: None, daily: false, selected: None, aiming: None, best, steps: 0 }
+    }
+
+    fn start(&mut self, daily: bool) {
+        self.daily = daily;
+        let rng = if daily { Rng::seeded(crate::fases::today() as u64 * 7919 + 1) } else { Rng::new() };
+        self.run = Some(Run::new(rng));
+        self.screen = Screen::Game;
+        self.selected = None;
+        self.aiming = None;
     }
 
     fn cell(i: usize) -> Rect {
         Rect::new(GX + (i % N) as i32 * CELL, GY + (i / N) as i32 * CELL, CELL, CELL)
     }
 
-    // ---------- Desenho ----------
-
-    /// Casa fechada: textura de rocha (sprite) ou pedra lisa com relevo.
-    fn rock(fb: &mut Framebuffer, r: Rect) {
-        if crate::sprites::draw(fb, "pedra", r) {
-            return;
+    fn after_turn(&mut self) {
+        self.steps += 1;
+        if let Some(r) = &self.run {
+            if matches!(r.phase, Phase::Dead | Phase::Won) && !self.daily && r.score() > self.best {
+                self.best = r.score();
+                let _ = std::fs::write(best_file(), self.best.to_string());
+            }
         }
+    }
+
+    fn rock(fb: &mut Framebuffer, r: Rect) {
         fb.fill(r, 0x4C);
         fb.fill(Rect::new(r.x, r.y, r.w, 6), 0x66);
         fb.fill(Rect::new(r.x, r.y, 6, r.h), 0x66);
         fb.fill(Rect::new(r.x, r.y + r.h - 6, r.w, 6), 0x30);
         fb.fill(Rect::new(r.x + r.w - 6, r.y, 6, r.h), 0x30);
-    }
-
-    fn lighten(fb: &mut Framebuffer, r: Rect, a: u8) {
-        for yy in r.y..r.y + r.h {
-            for xx in r.x..r.x + r.w {
-                fb.blend(xx, yy, PAPER, a);
-            }
-        }
     }
 
     fn heart(fb: &mut Framebuffer, x: i32, y: i32, s: i32, v: u8) {
@@ -394,249 +638,211 @@ impl Cripta {
         }
     }
 
-    fn key_icon(fb: &mut Framebuffer, x: i32, y: i32, v: u8) {
-        fb.round_outline(Rect::new(x, y, 22, 22), 11, 5, v, PAPER);
+    fn key_icon(fb: &mut Framebuffer, x: i32, y: i32, v: u8, bg: u8) {
+        fb.round_outline(Rect::new(x, y, 22, 22), 11, 5, v, bg);
         fb.fill(Rect::new(x + 20, y + 9, 22, 5), v);
         fb.fill(Rect::new(x + 34, y + 9, 5, 12), v);
     }
 
-    fn torch_icon(fb: &mut Framebuffer, x: i32, y: i32, v: u8) {
-        fb.fill(Rect::new(x + 8, y + 14, 7, 22), v);
-        fb.round_rect(Rect::new(x + 2, y, 19, 18), 9, v);
-        fb.round_rect(Rect::new(x + 8, y + 5, 7, 9), 3, PAPER);
-    }
-
-    fn sprite_of(t: Thing) -> Option<&'static str> {
-        match t {
-            Thing::Monster(1) => Some("rato"),
-            Thing::Monster(2) => Some("morcego"),
-            Thing::Monster(3) => Some("esqueleto"),
-            Thing::Monster(4) => Some("ogro"),
-            Thing::Monster(_) => Some("dragao"),
-            Thing::Potion => Some("pocao"),
-            Thing::Sword => Some("espada"),
-            Thing::Shield => Some("escudo"),
-            Thing::Gold => Some("ouro"),
-            Thing::Chest => Some("bau"),
-            Thing::Scroll => Some("pergaminho"),
-            Thing::Stairs => Some("escada"),
-            Thing::Empty => None,
+    fn stairs(fb: &mut Framebuffer, cx: i32, cy: i32, v: u8) {
+        for k in 0..4 {
+            fb.fill(Rect::new(cx - 40 + k * 20, cy + 22 - k * 18, 80 - k * 20, 16), v);
         }
     }
 
-    /// Desenho de reserva (sem sprite): formas simples.
-    fn draw_fallback(fb: &mut Framebuffer, f: &Fonts, r: Rect, t: Thing) {
-        let (cx, cy) = (r.x + r.w / 2, r.y + r.h / 2);
-        match t {
-            Thing::Monster(k) => {
-                let b = Rect::new(r.x + 18, r.y + 18, r.w - 36, r.h - 36);
-                fb.round_rect(b, 22, INK);
-                let label = name(k);
-                let w = f.measure(Face::Strong, 22.0, label);
-                f.draw(fb, Face::Strong, 22.0, b.x + (b.w - w) / 2, b.y + b.h / 2 + 8, PAPER, label);
-            }
-            Thing::Potion => {
-                fb.round_rect(Rect::new(cx - 24, cy - 8, 48, 46), 22, INK);
-                fb.fill(Rect::new(cx - 8, cy - 32, 16, 26), INK);
-            }
-            Thing::Sword => {
-                ui::stroke(fb, (cx as f32 - 30.0, cy as f32 + 30.0), (cx as f32 + 32.0, cy as f32 - 32.0), 8.0, INK);
-                ui::stroke(fb, (cx as f32 - 26.0, cy as f32 + 4.0), (cx as f32 - 4.0, cy as f32 + 26.0), 8.0, INK);
-            }
-            Thing::Shield => {
-                fb.round_rect(Rect::new(cx - 28, cy - 34, 56, 50), 12, INK);
-                for k in 0..24 {
-                    fb.fill(Rect::new(cx - 28 + k, cy + 14 + k, 56 - 2 * k, 1), INK);
-                }
-            }
-            Thing::Gold => {
-                for (dx, dy) in [(-16, 10), (16, 10), (0, -14)] {
-                    fb.round_outline(Rect::new(cx + dx - 20, cy + dy - 20, 40, 40), 20, 6, INK, 0xDD);
-                }
-            }
-            Thing::Chest => {
-                fb.round_rect(Rect::new(cx - 36, cy - 24, 72, 50), 8, INK);
-                fb.fill(Rect::new(cx - 36, cy - 6, 72, 4), PAPER);
-                fb.fill(Rect::new(cx - 5, cy - 10, 10, 14), PAPER);
-            }
-            Thing::Scroll => {
-                fb.round_rect(Rect::new(cx - 30, cy - 26, 60, 52), 10, 0x88);
-                fb.round_rect(Rect::new(cx - 36, cy - 30, 72, 14), 7, INK);
-                fb.round_rect(Rect::new(cx - 36, cy + 18, 72, 14), 7, INK);
-            }
-            Thing::Stairs => {
-                for k in 0..4 {
-                    fb.fill(Rect::new(cx - 44 + k * 22, cy + 12 - k * 22, 88 - k * 22, 22), if k % 2 == 0 { INK } else { 0x66 });
-                }
-            }
-            Thing::Empty => {}
-        }
-    }
-
-    fn draw_board(&self, fb: &mut Framebuffer, f: &Fonts) {
+    fn draw_board(&self, fb: &mut Framebuffer, f: &Fonts, run: &Run) {
         let frame = if self.steps % 2 == 0 { "1" } else { "2" };
-        let (bx, by, bw) = (GX - 14, GY - 14, N as i32 * CELL + 28);
-        fb.round_rect(Rect::new(bx, by, bw, bw), 18, 0x22);
+        fb.round_rect(Rect::new(GX - 14, GY - 14, N as i32 * CELL + 28, N as i32 * CELL + 28), 18, 0x22);
         for i in 0..N * N {
             let r = Self::cell(i);
             let inner = Rect::new(r.x + 2, r.y + 2, r.w - 4, r.h - 4);
-            if !self.open[i] {
-                Self::rock(fb, inner);
-                if self.state == State::Play && self.reachable(i) {
-                    Self::lighten(fb, inner, 140);
-                    fb.round_outline(Rect::new(inner.x + 4, inner.y + 4, inner.w - 8, inner.h - 8), 10, 4, INK, 0xFF);
-                    let core = Rect::new(inner.x + 8, inner.y + 8, inner.w - 16, inner.h - 16);
-                    Self::rock(fb, core);
-                    Self::lighten(fb, core, 150);
-                }
-                // Pergaminho: escada e chave aparecem por baixo da rocha.
-                if self.mapped && (i == self.key_at || self.thing[i] == Thing::Stairs) {
-                    let (cx, cy) = (r.x + r.w / 2, r.y + r.h / 2);
-                    fb.round_rect(Rect::new(cx - 28, cy - 28, 56, 56), 28, PAPER);
-                    if i == self.key_at {
-                        Self::key_icon(fb, cx - 20, cy - 11, INK);
-                    } else {
-                        for k in 0..3 {
-                            fb.fill(Rect::new(cx - 18 + k * 12, cy + 10 - k * 10, 36 - k * 12, 8), INK);
+            let art = Rect::new(r.x + 12, r.y + 20, r.w - 24, r.h - 32);
+            match run.cells[i] {
+                Cell::Rock(_) => {
+                    Self::rock(fb, inner);
+                    if run.reachable(i) && run.phase == Phase::Play {
+                        for yy in inner.y + 8..inner.y + inner.h - 8 {
+                            for xx in inner.x + 8..inner.x + inner.w - 8 {
+                                fb.blend(xx, yy, PAPER, 150);
+                            }
                         }
+                        fb.round_outline(Rect::new(inner.x + 6, inner.y + 6, inner.w - 12, inner.h - 12), 10, 4, INK, 0xFF);
+                        fb.fill(Rect::new(inner.x + 10, inner.y + 10, inner.w - 20, inner.h - 20), 0xC0);
                     }
                 }
-                continue;
-            }
-            if !crate::sprites::draw(fb, "piso", inner) {
-                fb.fill(inner, 0xEE);
-                fb.round_outline(Rect::new(inner.x + 6, inner.y + 6, inner.w - 12, inner.h - 12), 8, 2, 0xD4, 0xEE);
-            }
-            let t = self.thing[i];
-            let art = Rect::new(r.x + 10, r.y + 10, r.w - 20, r.h - 20);
-            let sprite = |fb: &mut Framebuffer| {
-                Self::sprite_of(t).is_some_and(|n| {
-                    let name = if matches!(t, Thing::Monster(_)) { format!("{n}-{frame}") } else { n.to_string() };
-                    crate::sprites::draw(fb, &name, art)
-                })
-            };
-            if self.selected == Some(i) {
-                fb.round_outline(Rect::new(r.x - 2, r.y - 2, r.w + 4, r.h + 4), 12, 8, INK, 0xEE);
-            }
-            if !sprite(fb) {
-                Self::draw_fallback(fb, f, r, t);
-            }
-            if let Thing::Monster(k) = t {
-                // Selo do nível; a chave em cima do chefe.
-                let b = Rect::new(r.x + r.w - 44, r.y + 6, 38, 38);
-                fb.round_rect(b, 19, INK);
-                let num = k.to_string();
-                let w = f.measure(Face::Display, 26.0, &num);
-                f.draw(fb, Face::Display, 26.0, b.x + (b.w - w) / 2, b.y + 28, PAPER, &num);
-                if i == self.key_at {
-                    fb.round_rect(Rect::new(r.x + 4, r.y + 6, 50, 32), 16, PAPER);
-                    Self::key_icon(fb, r.x + 8, r.y + 11, INK);
+                Cell::Floor(loot) => {
+                    fb.fill(inner, 0xEE);
+                    fb.round_outline(Rect::new(inner.x + 6, inner.y + 6, inner.w - 12, inner.h - 12), 8, 2, 0xD4, 0xEE);
+                    if loot == Loot::Stairs {
+                        Self::stairs(fb, r.x + r.w / 2, r.y + r.h / 2, if run.key { INK } else { 0x99 });
+                        if !run.key {
+                            // Cadeado.
+                            fb.round_rect(Rect::new(r.x + r.w - 46, r.y + 8, 36, 30), 6, INK);
+                            fb.round_outline(Rect::new(r.x + r.w - 40, r.y - 4, 24, 26), 12, 4, INK, 0xEE);
+                        }
+                    }
+                    if i == run.hero && !crate::sprites::draw(fb, &format!("heroi-{frame}"), art) {
+                        let (cx, cy) = (r.x + r.w / 2, r.y + r.h / 2);
+                        fb.round_rect(Rect::new(cx - 14, cy - 34, 28, 28), 14, INK);
+                        fb.round_rect(Rect::new(cx - 24, cy - 2, 48, 38), 16, INK);
+                    }
                 }
-            } else if t == Thing::Empty && i != self.hero {
-                // Número de perigo (monstros nas 8 casas em volta).
-                let d = self.danger(i);
-                if d > 0 {
-                    let num = d.to_string();
-                    let w = f.measure(Face::Display, 44.0, &num);
-                    f.draw(fb, Face::Display, 44.0, r.x + (r.w - w) / 2, r.y + r.h / 2 + 16, if d >= 3 { INK } else { 0x55 }, &num);
+                Cell::Mon(m) => {
+                    // Monstro à vista: fundo de pedra escura se ainda não dá para atacar.
+                    let reach = run.attackable(i);
+                    fb.fill(inner, if reach { 0xEE } else { 0x9A });
+                    if self.selected == Some(i) {
+                        fb.round_outline(Rect::new(r.x - 2, r.y - 2, r.w + 4, r.h + 4), 12, 8, INK, 0xEE);
+                    }
+                    if !crate::sprites::draw(fb, &format!("{}-{frame}", m.kind.sprite()), art) {
+                        fb.round_rect(Rect::new(r.x + 24, r.y + 30, r.w - 48, r.h - 50), 18, INK);
+                    }
+                    // Vida (barra) e força (número) do monstro, sempre à vista.
+                    let bar = Rect::new(r.x + 10, r.y + r.h - 18, r.w - 20, 10);
+                    fb.fill(bar, PAPER);
+                    fb.round_outline(bar, 5, 2, INK, PAPER);
+                    fb.fill(Rect::new(bar.x + 2, bar.y + 2, (bar.w - 4) * m.hp / m.max_hp.max(1), bar.h - 4), INK);
+                    let s = format!("{}", m.hp);
+                    let b = Rect::new(r.x + 4, r.y + 4, f.measure(Face::Display, 24.0, &s) + 36, 30);
+                    fb.round_rect(b, 15, PAPER);
+                    fb.round_outline(b, 15, 2, INK, PAPER);
+                    Self::heart(fb, b.x + 7, b.y + 8, 16, INK);
+                    f.draw(fb, Face::Display, 24.0, b.x + 25, b.y + 24, INK, &s);
+                    // Nível do monstro (acima do seu vale o dobro de experiência).
+                    let lv = format!("nv {}", m.level);
+                    let above = m.level > run.level;
+                    let lw = f.measure(Face::Strong, 20.0, &lv) + 16;
+                    let lb = Rect::new(r.x + 6, bar.y - 30, lw, 26);
+                    fb.round_rect(lb, 13, if above { INK } else { PAPER });
+                    f.draw(fb, Face::Strong, 20.0, lb.x + 8, lb.y + 19, if above { PAPER } else { INK }, &lv);
+                    let a = format!("{}", m.atk);
+                    let aw = f.measure(Face::Display, 24.0, &a);
+                    let ab = Rect::new(r.x + r.w - aw - 40, r.y + 4, aw + 36, 30);
+                    fb.round_rect(ab, 15, INK);
+                    // Espadinha: a força do golpe dele.
+                    let (sx, sy) = (ab.x + 9, ab.y + 23);
+                    ui::stroke(fb, (sx as f32, sy as f32), (sx as f32 + 12.0, sy as f32 - 15.0), 3.0, PAPER);
+                    ui::stroke(fb, (sx as f32 + 1.0, sy as f32 - 8.0), (sx as f32 + 8.0, sy as f32 - 1.0), 3.0, PAPER);
+                    f.draw(fb, Face::Display, 24.0, ab.x + 26, ab.y + 24, PAPER, &a);
+                    if m.key {
+                        let kb = Rect::new(r.x + r.w - 58, bar.y - 30, 52, 26);
+                        fb.round_rect(kb, 13, INK);
+                        Self::key_icon(fb, kb.x + 6, kb.y + 2, PAPER, INK);
+                    }
                 }
-            }
-            if i == self.hero && !matches!(t, Thing::Monster(_)) && !crate::sprites::draw(fb, &format!("heroi-{frame}"), art) {
-                let (cx, cy) = (r.x + r.w / 2, r.y + r.h / 2);
-                fb.round_rect(Rect::new(cx - 14, cy - 34, 28, 28), 14, INK);
-                fb.round_rect(Rect::new(cx - 24, cy - 2, 48, 38), 16, INK);
             }
         }
     }
 
-    fn draw_panel(&self, fb: &mut Framebuffer, f: &Fonts) {
-        let y = GY + N as i32 * CELL + 26;
-        Self::heart(fb, GX, y + 4, 34, INK);
-        let end = f.draw(fb, Face::Display, 32.0, GX + 44, y + 32, INK, &format!("{}/{}", self.hp.max(0), self.max_hp));
-        let bar = Rect::new(end + 12, y + 14, 150, 14);
-        fb.round_outline(bar, 7, 2, INK, PAPER);
-        fb.round_rect(Rect::new(bar.x, bar.y, (bar.w * self.hp.max(0) / self.max_hp.max(1)).max(14), bar.h), 7, INK);
-        let mut x = bar.x + bar.w + 26;
-        ui::stroke(fb, (x as f32, (y + 34) as f32), ((x + 24) as f32, (y + 6) as f32), 5.0, INK);
-        ui::stroke(fb, (x as f32 + 2.0, (y + 20) as f32), (x as f32 + 14.0, (y + 32) as f32), 5.0, INK);
-        x = f.draw(fb, Face::Display, 32.0, x + 30, y + 32, INK, &self.atk.to_string()) + 22;
-        if self.shield > 0 {
-            fb.round_rect(Rect::new(x, y + 4, 24, 22), 6, INK);
-            for k in 0..10 {
-                fb.fill(Rect::new(x + k, y + 24 + k, 24 - 2 * k, 1), INK);
-            }
-            x = f.draw(fb, Face::Display, 32.0, x + 30, y + 32, INK, &self.shield.to_string()) + 22;
+    fn draw_panel(&self, fb: &mut Framebuffer, f: &Fonts, run: &Run) {
+        let y = GY + N as i32 * CELL + 24;
+        Self::heart(fb, GX, y + 4, 32, INK);
+        let end = f.draw(fb, Face::Display, 30.0, GX + 42, y + 30, INK, &format!("{}/{}", run.hp.max(0), run.max_hp));
+        let mut x = end + 22;
+        ui::stroke(fb, (x as f32, (y + 32) as f32), ((x + 22) as f32, (y + 6) as f32), 5.0, INK);
+        ui::stroke(fb, (x as f32 + 2.0, (y + 18) as f32), (x as f32 + 13.0, (y + 30) as f32), 5.0, INK);
+        x = f.draw(fb, Face::Display, 30.0, x + 28, y + 30, INK, &run.atk.to_string()) + 22;
+        // Mana: losangos.
+        let mp = format!("{}/{}", run.mp, run.max_mp);
+        for k in 0..12 {
+            fb.fill(Rect::new(x + 12 - k.min(12 - k), y + 6 + k * 2, 2 * k.min(12 - k) + 1, 2), INK);
         }
-        Self::torch_icon(fb, x, y, if self.torches > 0 { INK } else { 0xAA });
-        x = f.draw(fb, Face::Display, 32.0, x + 28, y + 32, if self.torches > 0 { INK } else { MUTED }, &self.torches.to_string()) + 22;
-        if self.key {
-            Self::key_icon(fb, x, y + 8, INK);
-        }
-        let gold = self.gold.to_string();
-        let gw = f.measure(Face::Display, 32.0, &gold);
-        fb.round_outline(Rect::new(W - GX - gw - 42, y + 6, 30, 30), 15, 5, INK, 0xDD);
-        f.draw(fb, Face::Display, 32.0, W - GX - gw, y + 32, INK, &gold);
-        // Experiência: barra fina sob o painel.
-        let xb = Rect::new(GX, y + 50, W - 2 * GX, 6);
+        x = f.draw(fb, Face::Display, 30.0, x + 30, y + 30, INK, &mp) + 22;
+        let lv = format!("Nv {}", run.level);
+        x = f.draw(fb, Face::Strong, 28.0, x, y + 30, INK, &lv) + 10;
+        let xb = Rect::new(x, y + 16, 80, 8);
         fb.fill(xb, 0xDD);
-        fb.fill(Rect::new(xb.x, xb.y, xb.w * self.xp / (self.level * 5).max(1), xb.h), 0x5C);
-        let note = crate::apps::fit(f, Face::Body, 28.0, &self.note, W - 2 * GX);
-        f.draw(fb, Face::Body, 28.0, GX, y + 96, INK, &note);
+        fb.fill(Rect::new(xb.x, xb.y, xb.w * run.xp / run.xp_next().max(1), xb.h), 0x5C);
+        if run.key {
+            Self::key_icon(fb, xb.x + xb.w + 16, y + 6, INK, PAPER);
+        }
+        let gold = run.gold.to_string();
+        let gw = f.measure(Face::Display, 30.0, &gold);
+        fb.round_outline(Rect::new(W - GX - gw - 40, y + 4, 30, 30), 15, 5, INK, 0xDD);
+        f.draw(fb, Face::Display, 30.0, W - GX - gw, y + 30, INK, &gold);
+        // Recado: a previsão da luta quando há monstro escolhido.
+        let note = match (self.selected.filter(|_| run.phase == Phase::Play), self.aiming) {
+            (_, Some(s)) => format!("{}: toque no monstro alvo.", s.name()),
+            (Some(i), None) => match run.cells[i] {
+                Cell::Mon(m) => {
+                    let fc = run.forecast(&m);
+                    let now = if fc.mon_after == 0 { "Este golpe mata".to_string() } else { format!("Golpe: ele fica com {}", fc.mon_after) };
+                    let risk = if fc.take_total >= run.hp { " · você morreria" } else { "" };
+                    format!("{} {} ({}). {now}; você leva {}. Até o fim: −{}{risk}. Toque de novo.", m.kind.name(), m.level, m.kind.trait_text(), fc.take_now, fc.take_total)
+                }
+                _ => run.log.clone(),
+            },
+            _ => run.log.clone(),
+        };
+        let lines = wrap(f, &note, W - 2 * GX);
+        for (k, l) in lines.iter().take(2).enumerate() {
+            f.draw(fb, Face::Body, 26.0, GX, y + 70 + k as i32 * 34, INK, l);
+        }
     }
+}
+
+fn wrap(f: &Fonts, text: &str, max_w: i32) -> Vec<String> {
+    let mut lines = vec![String::new()];
+    for w in text.split_whitespace() {
+        let cur = lines.last().unwrap().clone();
+        let cand = if cur.is_empty() { w.to_string() } else { format!("{cur} {w}") };
+        if f.measure(Face::Body, 26.0, &cand) > max_w && !cur.is_empty() {
+            lines.push(w.to_string());
+        } else {
+            *lines.last_mut().unwrap() = cand;
+        }
+    }
+    lines
+}
+
+/// Botões de baixo: poção e magias (até 3), mais Menu.
+fn btn(k: usize, n: usize) -> Rect {
+    let n = n as i32;
+    let gap = 12;
+    let w = (W - 2 * minigame::MARGIN + 40 - (n - 1) * gap) / n;
+    Rect::new(minigame::MARGIN - 20 + k as i32 * (w + gap), 1330, w, 90)
 }
 
 impl MiniGame for Cripta {
     fn at_menu(&self) -> bool {
-        self.state == State::Menu
+        self.screen == Screen::Menu
     }
 
     fn summary(&self) -> String {
-        if self.state == State::Menu {
-            String::new()
-        } else {
-            format!("Andar {} · vida {}/{} · tochas {}", self.floor, self.hp, self.max_hp, self.torches)
-        }
+        self.run.as_ref().filter(|_| self.screen == Screen::Game).map(|r| format!("Andar {} · vida {}/{} · nível {}", r.floor, r.hp, r.max_hp, r.level)).unwrap_or_default()
     }
 
     fn context(&self) -> String {
-        if self.state == State::Menu {
-            return "No menu da Cripta.".into();
-        }
+        let Some(r) = self.run.as_ref().filter(|_| self.screen == Screen::Game) else { return "No menu da Cripta.".into() };
         let grid: Vec<String> = (0..N)
-            .map(|r| {
+            .map(|row| {
                 (0..N)
                     .map(|c| {
-                        let i = r * N + c;
-                        if !self.open[i] {
-                            return if self.reachable(i) { '?' } else { '#' };
-                        }
-                        match self.thing[i] {
-                            Thing::Empty => char::from_digit(self.danger(i) as u32, 10).unwrap_or('.'),
-                            Thing::Monster(k) => (b'a' + k - 1) as char,
-                            Thing::Potion => 'p',
-                            Thing::Sword => 's',
-                            Thing::Shield => 'e',
-                            Thing::Gold => '$',
-                            Thing::Chest => 'b',
-                            Thing::Scroll => 'm',
-                            Thing::Stairs => '>',
+                        let i = row * N + c;
+                        match r.cells[i] {
+                            Cell::Rock(_) => if r.reachable(i) { "?".to_string() } else { "#".into() },
+                            Cell::Floor(Loot::Stairs) => ">".into(),
+                            Cell::Floor(_) => if i == r.hero { "@".into() } else { ".".into() },
+                            Cell::Mon(m) => format!("[{}{} v{} f{}{}]", &m.kind.name()[..2], m.level, m.hp, m.atk, if m.key { " chave" } else { "" }),
                         }
                     })
-                    .collect()
+                    .collect::<Vec<_>>()
+                    .join(" ")
             })
             .collect();
         format!(
-            "Cripta, andar {}: vida {}/{}, força {}, escudo {}, tochas {}, nível {}, ouro {}, poções {}, chave: {}. Monstros: a rato, b morcego (ataca primeiro), c esqueleto (armadura 1), d ogro (bate forte), e dragão (chefe). Casas vazias mostram quantos monstros há nas 8 em volta. Mapa (# coberta, ? dá para abrir, número = perigo, p poção, s espada, e escudo, $ ouro, b baú, m pergaminho, > escada):\n{}",
-            self.floor,
-            self.hp,
-            self.max_hp,
-            self.atk,
-            self.shield,
-            self.torches,
-            self.level,
-            self.gold,
-            self.potions,
-            if self.key { "sim" } else { "não" },
+            "Cripta (quebra-cabeça de masmorra), andar {} de {FLOORS}. Pedro: nível {}, vida {}/{}, força {}, mana {}/{}, poções {}, magias {}, chave {}. Regras: abrir rocha cura {} de vida e +1 mana, mas monstros feridos recuperam 1 (ogro 2); cada toque no monstro é uma troca de golpes (morcego e dragão atacam primeiro; esqueleto e dragão têm armadura 1); matar acima do seu nível dá o dobro de experiência; subir de nível enche vida e mana. Mapa (# rocha, ? rocha que dá para abrir, @ Pedro, > escada, [tipo nível vida força]):\n{}",
+            r.floor,
+            r.level,
+            r.hp,
+            r.max_hp,
+            r.atk,
+            r.mp,
+            r.max_mp,
+            r.potions,
+            r.spells.iter().map(|s| s.name()).collect::<Vec<_>>().join(", "),
+            if r.key { "sim" } else { "não" },
+            r.heal(),
             grid.join("\n")
         )
     }
@@ -644,51 +850,85 @@ impl MiniGame for Cripta {
     fn draw(&self, fb: &mut Framebuffer, f: &Fonts) {
         fb.fill(fb.screen(), PAPER);
         ui::draw_back(fb, f, false);
-        if self.state == State::Menu {
-            let sub = if self.best > 0 { format!("Desça o mais fundo que puder. Recorde: {} pontos.", self.best) } else { "Desça o mais fundo que puder. Nada se mexe sem você.".into() };
-            minigame::draw_menu(fb, f, "Cripta", &sub, &["Descida livre", "Desafio do dia"]);
+        let Some(run) = self.run.as_ref().filter(|_| self.screen == Screen::Game) else {
+            let sub = if self.best > 0 { format!("Cinco andares, o dragão no fim. Recorde: {} pontos.", self.best) } else { "Cinco andares, o dragão no fim. Tudo à vista: planeje.".into() };
+            let cont = self.run.as_ref().is_some_and(|r| r.phase == Phase::Play || r.phase == Phase::Reward);
+            let opts: Vec<&str> = if cont { vec!["Continuar descida", "Nova descida", "Desafio do dia"] } else { vec!["Nova descida", "Desafio do dia"] };
+            minigame::draw_menu(fb, f, "Cripta", &sub, &opts);
             let rules = [
-                "Cada casa aberta gasta uma tocha; sem tochas, custa vida.",
-                "Casas vazias mostram quantos monstros há em volta.",
-                "Toque no monstro para ver o custo; de novo para lutar.",
-                "A escada está trancada: a chave é do monstro mais forte.",
-                "Desafio do dia: a mesma cripta para todo mundo hoje.",
+                "Os monstros estão à vista, com vida e força.",
+                "Abrir rocha cura você, mas os feridos também se recuperam.",
+                "Cada toque no monstro é uma troca de golpes.",
+                "Subir de nível enche tudo: use isso no momento certo.",
+                "Mate o monstro da chave para descer; escolha um prêmio.",
             ];
+            let top = minigame::menu_row(opts.len()).y + 30;
             for (k, l) in rules.iter().enumerate() {
-                f.draw(fb, Face::Body, 30.0, minigame::MARGIN, 830 + k as i32 * 56, MUTED, l);
+                f.draw(fb, Face::Body, 30.0, minigame::MARGIN, top + k as i32 * 54, MUTED, l);
             }
             return;
-        }
+        };
         let mode = if self.daily { " · desafio do dia" } else { "" };
-        minigame::header(fb, f, "Cripta", &format!("Andar {} · {} pontos{mode}", self.floor, self.score()));
-        self.draw_board(fb, f);
-        self.draw_panel(fb, f);
-        match self.state {
-            State::Dead => {
-                minigame::pill(fb, f, minigame::bottom_button(0, 2), "Menu", false);
-                minigame::pill(fb, f, minigame::bottom_button(1, 2), "Nova descida", true);
+        minigame::header(fb, f, "Cripta", &format!("Andar {} de {FLOORS} · {} pontos{mode}", run.floor, run.score()));
+        self.draw_board(fb, f, run);
+        self.draw_panel(fb, f, run);
+        match run.phase {
+            Phase::Reward => {
+                // Cartões de prêmio sobre o tabuleiro.
+                let bx = Rect::new(GX + 30, GY + 120, N as i32 * CELL - 60, 560);
+                fb.round_rect(Rect::new(bx.x - 6, bx.y - 6, bx.w + 12, bx.h + 12), 30, PAPER);
+                fb.round_rect(bx, 26, INK);
+                f.draw(fb, Face::Display, 44.0, bx.x + 40, bx.y + 80, PAPER, "Escolha um prêmio");
+                f.draw(fb, Face::Body, 28.0, bx.x + 40, bx.y + 124, 0xCC, &format!("Andar {} vencido. O próximo é mais forte.", run.floor));
+                for (k, o) in run.offers.iter().enumerate() {
+                    let r = Self::offer_rect(k);
+                    fb.round_rect(r, r.h / 2, PAPER);
+                    let t = o.text();
+                    let w = f.measure(Face::Strong, 34.0, &t);
+                    f.draw(fb, Face::Strong, 34.0, r.x + (r.w - w) / 2, r.y + r.h / 2 + 12, INK, &t);
+                }
             }
-            State::LevelUp => {
-                minigame::pill(fb, f, minigame::bottom_button(0, 2), "+4 de vida", true);
-                minigame::pill(fb, f, minigame::bottom_button(1, 2), "+1 de força", true);
+            Phase::Dead | Phase::Won => {
+                minigame::pill(fb, f, btn(0, 2), "Menu", false);
+                minigame::pill(fb, f, btn(1, 2), "Nova descida", true);
             }
-            _ => {
-                let p = format!("Beber poção ({})", self.potions);
-                minigame::pill(fb, f, minigame::bottom_button(0, 2), &p, self.potions > 0 && self.hp < self.max_hp);
-                minigame::pill(fb, f, minigame::bottom_button(1, 2), "Menu", false);
+            Phase::Play => {
+                let n = 2 + run.spells.len();
+                minigame::pill(fb, f, btn(0, n), &format!("Poção {}", run.potions), run.potions > 0 && run.hp <= run.max_hp / 2);
+                for (k, s) in run.spells.iter().enumerate() {
+                    let label = format!("{} {}", s.name(), s.cost());
+                    let ready = run.mp >= s.cost();
+                    let r = btn(k + 1, n);
+                    minigame::pill(fb, f, r, &label, self.aiming == Some(*s));
+                    if !ready {
+                        for yy in r.y..r.y + r.h {
+                            for xx in r.x..r.x + r.w {
+                                fb.blend(xx, yy, PAPER, 150);
+                            }
+                        }
+                    }
+                }
+                minigame::pill(fb, f, btn(n - 1, n), "Menu", false);
             }
         }
     }
 
     fn targets(&self) -> Vec<(u32, Rect)> {
-        match self.state {
-            State::Menu => vec![(900, minigame::menu_row(0)), (901, minigame::menu_row(1))],
-            State::Dead => vec![(803, minigame::bottom_button(0, 2)), (902, minigame::bottom_button(1, 2))],
-            State::LevelUp => vec![(820, minigame::bottom_button(0, 2)), (821, minigame::bottom_button(1, 2))],
-            State::Play => {
+        let Some(run) = self.run.as_ref().filter(|_| self.screen == Screen::Game) else {
+            let cont = self.run.as_ref().is_some_and(|r| r.phase == Phase::Play || r.phase == Phase::Reward);
+            return if cont { vec![(903, minigame::menu_row(0)), (900, minigame::menu_row(1)), (901, minigame::menu_row(2))] } else { vec![(900, minigame::menu_row(0)), (901, minigame::menu_row(1))] };
+        };
+        match run.phase {
+            Phase::Reward => (0..run.offers.len()).map(|k| (830 + k as u32, Self::offer_rect(k))).collect(),
+            Phase::Dead | Phase::Won => vec![(803, btn(0, 2)), (902, btn(1, 2))],
+            Phase::Play => {
+                let n = 2 + run.spells.len();
                 let mut v: Vec<(u32, Rect)> = (0..N * N).map(|i| (i as u32, Self::cell(i))).collect();
-                v.push((800, minigame::bottom_button(0, 2)));
-                v.push((803, minigame::bottom_button(1, 2)));
+                v.push((800, btn(0, n)));
+                for k in 0..run.spells.len() {
+                    v.push((810 + k as u32, btn(k + 1, n)));
+                }
+                v.push((803, btn(n - 1, n)));
                 v
             }
         }
@@ -699,84 +939,94 @@ impl MiniGame for Cripta {
         match id {
             900 => {
                 self.start(false);
-                Redraw::Full
+                return Redraw::Full;
             }
             901 => {
                 self.start(true);
-                Redraw::Full
+                return Redraw::Full;
             }
             902 => {
                 let d = self.daily;
                 self.start(d);
-                Redraw::Full
+                return Redraw::Full;
+            }
+            903 => {
+                self.screen = Screen::Game;
+                return Redraw::Full;
             }
             803 => {
-                self.state = State::Menu;
+                self.screen = Screen::Menu;
+                return Redraw::Full;
+            }
+            _ => {}
+        }
+        let Some(run) = self.run.as_mut() else { return Redraw::None };
+        match id {
+            830..=832 => {
+                run.choose((id - 830) as usize);
+                self.selected = None;
+                self.aiming = None;
+                self.after_turn();
                 Redraw::Full
             }
-            820 | 821 => {
-                if id == 820 {
-                    self.max_hp += 4;
-                } else {
-                    self.atk += 1;
-                }
-                self.hp = self.max_hp;
-                self.state = State::Play;
-                self.note = if id == 820 { format!("Vida máxima {}.", self.max_hp) } else { format!("Força {}.", self.atk) };
-                Redraw::Part(board)
-            }
             800 => {
-                if self.potions > 0 && self.hp < self.max_hp {
-                    self.potions -= 1;
-                    let heal = 6 + self.floor as i32;
-                    self.hp = (self.hp + heal).min(self.max_hp);
-                    self.note = format!("Poção: +{heal} de vida.");
-                } else if self.potions == 0 {
-                    self.note = "Sem poções.".into();
+                run.drink();
+                self.after_turn();
+                Redraw::Part(board)
+            }
+            810..=812 => {
+                let Some(&s) = run.spells.get((id - 810) as usize) else { return Redraw::None };
+                if run.mp < s.cost() {
+                    run.log = format!("{} custa {} de mana.", s.name(), s.cost());
+                } else if s == Spell::Pedra {
+                    run.cast(s, None);
+                    self.after_turn();
                 } else {
-                    self.note = "Vida já está cheia.".into();
+                    // Raio e Drenar: escolhe o alvo em seguida.
+                    self.aiming = if self.aiming == Some(s) { None } else { Some(s) };
+                    self.selected = None;
                 }
                 Redraw::Part(board)
             }
-            i if (i as usize) < N * N && self.state == State::Play => {
+            i if (i as usize) < N * N && run.phase == Phase::Play => {
                 let i = i as usize;
-                let prev = self.selected.take();
-                if !self.open[i] {
-                    if self.reachable(i) {
-                        self.reveal(i);
+                if let Some(s) = self.aiming.take() {
+                    if run.cast(s, Some(i)) {
+                        self.after_turn();
                     } else {
-                        self.note = "Longe demais: abra uma casa vizinha antes.".into();
+                        run.log = "Alvo inválido: escolha um monstro que dá para alcançar.".into();
                     }
                     return Redraw::Part(board);
                 }
-                match self.thing[i] {
-                    Thing::Monster(k) => {
-                        if !neighbors(i).any(|j| self.passable(j)) {
-                            self.note = "Chegue até ele antes de lutar.".into();
-                        } else if prev == Some(i) {
-                            self.fight(i, k);
+                let prev = self.selected.take();
+                match run.cells[i] {
+                    Cell::Rock(_) if run.reachable(i) => {
+                        run.reveal(i);
+                        self.after_turn();
+                    }
+                    Cell::Rock(_) => run.log = "Longe demais: abra uma casa vizinha antes.".into(),
+                    Cell::Mon(_) if !run.attackable(i) => {
+                        self.selected = Some(i);
+                    }
+                    Cell::Mon(_) => {
+                        if prev == Some(i) {
+                            run.attack(i);
+                            // Continua selecionado para o próximo golpe.
+                            if matches!(run.cells[i], Cell::Mon(_)) {
+                                self.selected = Some(i);
+                            }
+                            self.after_turn();
                         } else {
-                            let (cost, absorbed) = self.fight_cost(k);
                             self.selected = Some(i);
-                            let shield = if absorbed > 0 { format!(" (o escudo segura {absorbed})") } else { String::new() };
-                            self.note = if cost >= self.hp {
-                                format!("{}: custaria {cost} de vida{shield}. Você morreria. Toque de novo se quiser.", name(k))
-                            } else {
-                                format!("{}: custa {cost} de vida{shield}. Toque de novo para lutar.", name(k))
-                            };
                         }
                     }
-                    Thing::Stairs if self.key => {
-                        self.floor += 1;
-                        self.build_floor();
-                        return Redraw::Full;
-                    }
-                    Thing::Stairs => {
-                        let boss = match self.thing[self.key_at] {
-                            Thing::Monster(k) => name(k),
-                            _ => "chefe",
-                        };
-                        self.note = format!("Trancada. A chave está com o {}.", boss.to_lowercase());
+                    Cell::Floor(Loot::Stairs) => {
+                        if run.key {
+                            run.descend(i);
+                            self.after_turn();
+                            return Redraw::Full;
+                        }
+                        run.log = "Trancada: falta a chave (está com o monstro marcado).".into();
                     }
                     _ => {}
                 }
@@ -787,111 +1037,206 @@ impl MiniGame for Cripta {
     }
 }
 
+impl Cripta {
+    fn offer_rect(k: usize) -> Rect {
+        Rect::new(GX + 70, GY + 260 + k as i32 * 130, N as i32 * CELL - 140, 100)
+    }
+}
+
+// ---------- Robô: joga para medir o equilíbrio ----------
+
+/// Estratégia simples e sensata: mata o que dá com folga, explora para se curar, usa magia para
+/// finalizar, bebe poção quando fica fraco. Devolve a corrida terminada.
+#[cfg(test)]
+pub fn bot_play(seed: u64, smart: bool) -> Run {
+    let mut r = Run::new(Rng::seeded(seed));
+    for _ in 0..2000 {
+        match r.phase {
+            Phase::Won | Phase::Dead => break,
+            Phase::Reward => {
+                // Prefere força, depois vida.
+                let k = r.offers.iter().position(|o| *o == Reward::Force).or_else(|| r.offers.iter().position(|o| *o == Reward::Life)).unwrap_or(0);
+                r.choose(k);
+                continue;
+            }
+            Phase::Play => {}
+        }
+        // Desce se puder.
+        if r.key {
+            if let Some(s) = (0..N * N).find(|&i| r.cells[i] == Cell::Floor(Loot::Stairs)) {
+                r.descend(s);
+                continue;
+            }
+        }
+        let targets: Vec<(usize, Mon)> = (0..N * N).filter_map(|i| if let Cell::Mon(m) = r.cells[i] { r.attackable(i).then_some((i, m)) } else { None }).collect();
+        if !smart {
+            // Ingênuo: bate no primeiro que alcança enquanto aguenta o golpe; senão explora.
+            if r.potions > 0 && r.hp * 3 < r.max_hp {
+                r.drink();
+                continue;
+            }
+            if let Some(&(i, _)) = targets.iter().find(|(_, m)| r.forecast(m).take_now < r.hp) {
+                r.attack(i);
+                continue;
+            }
+            if let Some(i) = (0..N * N).find(|&i| r.reachable(i)) {
+                r.reveal(i);
+                continue;
+            }
+            if let Some(&(i, _)) = targets.first() {
+                r.attack(i);
+                continue;
+            }
+            break;
+        }
+        // Magia de finalização.
+        if r.spells.contains(&Spell::Raio) && r.mp >= 3 {
+            if let Some(&(i, _)) = targets.iter().find(|(_, m)| m.hp <= 2 * r.level + 1 && m.level >= r.level) {
+                r.cast(Spell::Raio, Some(i));
+                continue;
+            }
+        }
+        // Luta que dá para vencer com folga: a que mais rende experiência.
+        if let Some(&(i, _)) = targets.iter().filter(|(_, m)| r.forecast(m).take_total < r.hp).max_by_key(|(_, m)| m.level * 10 - r.forecast(m).take_total) {
+            r.attack(i);
+            continue;
+        }
+        // Explorar (cura) enquanto houver rocha.
+        if let Some(i) = (0..N * N).find(|&i| r.reachable(i)) {
+            r.reveal(i);
+            continue;
+        }
+        if r.potions > 0 && r.hp < r.max_hp {
+            r.drink();
+            continue;
+        }
+        // Sem saída: ataca o mais fraco e torce.
+        if let Some(&(i, _)) = targets.iter().min_by_key(|(_, m)| m.hp) {
+            r.attack(i);
+            continue;
+        }
+        break;
+    }
+    r
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn andar_tem_escada_chefe_e_entrada() {
-        let mut g = Cripta::new();
-        g.start(false);
-        assert_eq!(g.thing.iter().filter(|t| **t == Thing::Stairs).count(), 1);
-        assert!(matches!(g.thing[g.key_at], Thing::Monster(_)));
-        assert_eq!(g.open.iter().filter(|o| **o).count(), 1);
-        let entry = g.open.iter().position(|o| *o).unwrap();
-        assert!(neighbors(entry).all(|j| g.reachable(j)));
+    fn andar_tem_chefe_com_chave_e_escada() {
+        let r = Run::new(Rng::seeded(1));
+        assert_eq!(r.cells.iter().filter(|c| matches!(c, Cell::Mon(m) if m.key)).count(), 1);
+        assert_eq!(r.cells.iter().filter(|c| **c == Cell::Rock(Loot::Stairs)).count(), 1);
+        assert!(neighbors(r.hero).any(|j| r.reachable(j) || r.attackable(j)));
     }
 
     #[test]
-    fn tracos_mudam_o_custo() {
-        let mut g = Cripta::new();
-        g.start(false);
-        g.atk = 2;
-        // Rato no andar 1: vida 5 → 3 golpes → 2 de dano.
-        assert_eq!(g.fight_cost(1), (2, 0));
-        // Morcego ataca primeiro: um golpe a mais.
-        let (hp2, atk2, _, _) = monster(2, 1);
-        assert_eq!(g.fight_cost(2).0, ((hp2 + 1) / 2) * atk2);
-        // Esqueleto com armadura: o dano do herói cai de 2 para 1.
-        let (hp3, atk3, _, _) = monster(3, 1);
-        assert_eq!(g.fight_cost(3).0, (hp3 - 1) * atk3);
-        g.shield = 3;
-        assert_eq!(g.fight_cost(1), (0, 2));
+    fn explorar_cura_e_monstros_feridos_se_recuperam() {
+        let mut r = Run::new(Rng::seeded(2));
+        let (mi, mut m) = r.cells.iter().enumerate().find_map(|(i, c)| if let Cell::Mon(m) = c { Some((i, *m)) } else { None }).unwrap();
+        m.hp -= 2;
+        r.cells[mi] = Cell::Mon(m);
+        r.hp = 5;
+        let i = (0..N * N).find(|&i| r.reachable(i)).unwrap();
+        r.reveal(i);
+        assert_eq!(r.hp, 6);
+        let Cell::Mon(after) = r.cells[mi] else { panic!() };
+        assert_eq!(after.hp, m.hp + m.kind.regen());
     }
 
     #[test]
-    fn tochas_acabam_e_cobram_vida() {
-        let mut g = Cripta::new();
-        g.start(false);
-        g.torches = 0;
-        let hp = g.hp;
-        let i = (0..N * N).find(|&i| g.reachable(i)).unwrap();
-        g.thing[i] = Thing::Gold;
-        g.reveal(i);
-        assert_eq!(g.hp, hp - 1);
-    }
-
-    #[test]
-    fn escada_so_com_a_chave_e_desafio_do_dia_se_repete() {
-        let mut a = Cripta::new();
-        a.start(true);
-        let mut b = Cripta::new();
-        b.start(true);
-        assert_eq!(a.thing, b.thing);
-        let s = a.thing.iter().position(|t| *t == Thing::Stairs).unwrap();
-        a.open[s] = true;
-        for j in neighbors(s) {
-            a.open[j] = true;
-            a.thing[j] = Thing::Empty;
+    fn previsao_bate_com_a_luta() {
+        let mut r = Run::new(Rng::seeded(3));
+        r.atk = 3;
+        r.hp = 50;
+        r.max_hp = 50;
+        let m = Mon::new(Kind::Morcego, 2, 1);
+        r.cells = vec![Cell::Floor(Loot::Nothing); N * N];
+        r.cells[1] = Cell::Mon(m);
+        let fc = r.forecast(&m);
+        let hp0 = r.hp;
+        for _ in 0..fc.hits_to_kill {
+            r.attack(1);
         }
-        a.tap(s as u32, 0, 0);
-        assert_eq!(a.floor, 1, "sem a chave não desce");
-        a.key = true;
-        a.tap(s as u32, 0, 0);
-        assert_eq!(a.floor, 2);
+        assert!(matches!(r.cells[1], Cell::Floor(_)), "morreu no número previsto de golpes");
+        assert_eq!(hp0 - r.hp, fc.take_total);
     }
 
     #[test]
-    fn subir_de_nivel_pede_escolha() {
-        let mut g = Cripta::new();
-        g.start(false);
-        g.hp = 3;
-        g.gain_xp(3);
-        assert_eq!(g.state, State::LevelUp);
-        g.tap(821, 0, 0);
-        assert_eq!((g.atk, g.hp, g.state), (3, g.max_hp, State::Play));
+    fn nivel_acima_vale_o_dobro_e_cura() {
+        let mut r = Run::new(Rng::seeded(4));
+        r.hp = 1;
+        let m = Mon::new(Kind::Goblin, 3, 1);
+        r.gain_xp(&m);
+        assert_eq!(r.level, 2);
+        assert_eq!(r.hp, r.max_hp);
     }
-}
 
-#[cfg(test)]
-mod render {
-    use super::*;
+    #[test]
+    fn desafio_do_dia_se_repete() {
+        let a = Run::new(Rng::seeded(99));
+        let b = Run::new(Rng::seeded(99));
+        assert_eq!(a.cells, b.cells);
+    }
+
+    /// Mede o equilíbrio com o robô: `cargo test equilibrio -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn equilibrio() {
+        let n = 2000;
+        for smart in [true, false] {
+            let mut floors = [0u32; 7];
+            let mut won = 0;
+            let mut turns = 0u64;
+            let mut lv = 0;
+            for s in 0..n {
+                let r = bot_play(s * 7 + 1, smart);
+                if r.phase == Phase::Won {
+                    won += 1;
+                } else {
+                    floors[r.floor as usize] += 1;
+                }
+                turns += r.turns as u64;
+                lv += r.level;
+            }
+            eprintln!("robô {}: venceu {:.1}% · morreu no andar 1..5 = {:?} · turnos {} · nível final {:.1}", if smart { "esperto" } else { "ingênuo" }, 100.0 * won as f32 / n as f32, &floors[1..6], turns / n as u64, lv as f32 / n as f32);
+        }
+    }
+
     #[test]
     #[ignore]
     fn cripta_em_imagem() {
         let out = std::path::PathBuf::from(std::env::var("VERSO_INK_SHOTS").expect("VERSO_INK_SHOTS"));
         let f = Fonts::new();
+        let shot = |g: &Cripta, name: &str| {
+            let mut fb = crate::fb::Framebuffer::memory();
+            g.draw(&mut fb, &f);
+            fb.save_pgm(&out.join(name));
+        };
         let mut g = Cripta::new();
+        g.best = 0;
+        shot(&g, "cripta-menu.pgm");
         g.start(true);
-        for _ in 0..8 {
-            if let Some(i) = (0..N * N).find(|&i| g.reachable(i)) {
-                g.reveal(i);
+        let r = g.run.as_mut().unwrap();
+        for _ in 0..6 {
+            if let Some(i) = (0..N * N).find(|&i| r.reachable(i)) {
+                r.reveal(i);
             }
         }
-        g.mapped = true;
-        g.shield = 4;
-        g.selected = (0..N * N).find(|&i| g.open[i] && matches!(g.thing[i], Thing::Monster(_)));
-        let mut fb = crate::fb::Framebuffer::memory();
-        g.draw(&mut fb, &f);
-        fb.save_pgm(&out.join("cripta.pgm"));
-        let mut m = Cripta::new();
-        let mut fb = crate::fb::Framebuffer::memory();
-        m.draw(&mut fb, &f);
-        fb.save_pgm(&out.join("cripta-menu.pgm"));
-        m.start(false);
-        m.state = State::LevelUp;
-        let mut fb = crate::fb::Framebuffer::memory();
-        m.draw(&mut fb, &f);
-        fb.save_pgm(&out.join("cripta-nivel.pgm"));
+        r.hp = 8;
+        if let Some(i) = (0..N * N).find(|&i| r.attackable(i)) {
+            r.attack(i);
+            g.selected = Some(i);
+        }
+        g.steps = 1;
+        shot(&g, "cripta.pgm");
+        let r = g.run.as_mut().unwrap();
+        r.key = true;
+        r.spells.push(Spell::Pedra);
+        r.offers = vec![Reward::Force, Reward::Learn(Spell::Drenar), Reward::Potions];
+        r.phase = Phase::Reward;
+        shot(&g, "cripta-premio.pgm");
     }
 }

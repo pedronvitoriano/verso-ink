@@ -140,11 +140,12 @@ static MASMORRA: [Page; 3] = [
     p("Uma vida", "Morreu, recomeça do primeiro andar: é um roguelike. Cada aventura tem um mapa novo.", "", ""),
 ];
 
-static CRIPTA: [Page; 4] = [
-    p("Descobrir", "Toque numa pedra clara, vizinha das casas abertas, para descobri-la. Casa vazia recupera 1 de vida.", "gggggg\ngg..gg\ng.@..g\ngg..gg", ""),
-    p("Monstros", "Monstros não andam: bloqueiam a passagem. Toque num para ver quanto de vida a luta custa; toque de novo para lutar.", "g.....\n..2...\n.@.p..", "......\n..M...\n......"),
-    p("Ficar forte", "Vencer dá experiência; subir de nível enche a vida e aumenta a força. Espadas aumentam a força, poções curam quando você beber.", "s..p..$", ""),
-    p("Descer", "Ache a escada e toque nela para descer. Os andares ficam mais perigosos; seus pontos são os andares e o ouro.", ".....>", ""),
+static CRIPTA: [Page; 5] = [
+    p("Tudo à vista", "Os monstros já estão no mapa, com vida (coração), força (espada) e nível. Toque numa rocha clara, vizinha das casas abertas, para abri-la.", "", ""),
+    p("Explorar cura", "Cada rocha aberta devolve vida e 1 de mana. Mas os monstros feridos também se recuperam: luta começada é melhor terminar.", "gggg\ng.Hr\ngggg", ""),
+    p("Golpe a golpe", "Toque num monstro para ver a previsão da luta; toque de novo para trocar um golpe. O morcego bate primeiro; o esqueleto tem armadura.", "rHb\n.S.", ""),
+    p("Subir de nível", "Vencer um monstro acima do seu nível vale o dobro. Subir de nível enche vida e mana: no meio de uma luta difícil, isso decide.", "H.G\n.rO", ""),
+    p("Magias e o dragão", "Raio fere sem troco; Pele de pedra anula o próximo golpe; Drenar fere e cura. Mate o monstro da chave, desça e escolha um prêmio. O dragão espera no quinto andar.", "H.>\n..Z", ""),
 ];
 
 static DAMAS: [Page; 4] = [
@@ -307,7 +308,7 @@ fn scene(game: usize, page: usize) -> Option<Scene> {
         (10, 1) => sc(&[Start], G::Tap(813)),
         (11, 0) | (11, 2) => sc(&[Start], G::None),
         (12, 0) | (12, 1) => sc(&[Start], G::Tap(813)),
-        (13, 0) | (13, 1) => sc(&[Start], G::None),
+        (13, 0) => sc(&[Start], G::None),
         (14, 0) => sc(&[Tap(900)], G::Tap(0)),
         (15, 0) => sc(&[Start], G::None),
         (15, 1) => sc(&[Start, Tap(40)], G::Tap(40)),
@@ -466,7 +467,8 @@ fn draw_fases(fb: &mut Framebuffer, f: &Fonts, top: i32) -> i32 {
 
 /// Desenha a ilustração centrada a partir de `top`; devolve onde ela termina.
 fn draw_board(fb: &mut Framebuffer, f: &Fonts, page: &Page, top: i32) -> i32 {
-    draw_board_in(fb, f, page, Rect::new(MARGIN, top, W - 2 * MARGIN, 440), 110)
+    let max_cell = if page.board.chars().any(|c| "HrbGSOZ".contains(c)) { 170 } else { 110 };
+    draw_board_in(fb, f, page, Rect::new(MARGIN, top, W - 2 * MARGIN, 440), max_cell)
 }
 
 /// Miniatura do jogo (a ilustração da 1ª página do tutorial) dentro de `area`, alinhada à direita.
@@ -548,6 +550,25 @@ fn cell(fb: &mut Framebuffer, f: &Fonts, r: Rect, ch: char, sh: char, lines_mode
         let w = f.measure(Face::Strong, size, &t);
         f.draw(fb, Face::Strong, size, r.x + (s - w) / 2, r.y + s / 2 + (size * 0.36) as i32, INK, &t);
         return;
+    }
+    // Personagens desenhados (Cripta e Masmorra): o mesmo sprite do jogo.
+    let sprite = match ch {
+        'H' => Some("heroi-1"),
+        'r' => Some("rato-1"),
+        'b' => Some("morcego-1"),
+        'G' => Some("goblin-1"),
+        'S' => Some("esqueleto-1"),
+        'O' => Some("orc-1"),
+        'Z' => Some("dragao-1"),
+        _ => None,
+    };
+    if let Some(name) = sprite {
+        fb.fill(Rect::new(r.x + 2, r.y + 2, s - 4, s - 4), 0xEE);
+        fb.round_outline(Rect::new(r.x + 2, r.y + 2, s - 4, s - 4), 6, 2, 0xBB, 0xEE);
+        let m = s / 10;
+        if crate::sprites::draw(fb, name, Rect::new(r.x + m, r.y + m, s - 2 * m, s - 2 * m)) {
+            return;
+        }
     }
     // Fundo.
     let (bg, ink) = match sh {

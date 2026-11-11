@@ -11,6 +11,7 @@ pub const GRID_X: i32 = (W - 9 * CELL) / 2;
 pub const GRID_Y: i32 = 300;
 
 /// Gerador pseudoaleatório simples (xorshift), semeado pelo relógio.
+#[derive(Clone, Debug)]
 pub struct Rng(u64);
 impl Rng {
     pub fn new() -> Self {
