@@ -49,6 +49,7 @@ pub fn focus_today(offset_min: i64) -> u32 {
 // ---------- Leitura ----------
 
 pub struct LastBook {
+    pub path: PathBuf,
     pub title: String,
     /// Fração lida (0..1), do arquivo de progresso do KOReader, quando existir.
     pub progress: Option<f32>,
@@ -59,7 +60,7 @@ pub fn set_last_book(path: &Path, title: &str) {
 }
 
 /// Progresso que o KOReader guarda ao lado do livro: `<livro>.sdr/metadata.<ext>.lua`.
-fn koreader_progress(path: &Path) -> Option<f32> {
+pub fn koreader_progress(path: &Path) -> Option<f32> {
     let ext = path.extension()?.to_str()?;
     let stem = path.with_extension("");
     let sdr = PathBuf::from(format!("{}.sdr", stem.display()));
@@ -73,8 +74,11 @@ fn koreader_progress(path: &Path) -> Option<f32> {
 pub fn last_book() -> Option<LastBook> {
     let l = lines("last_book");
     let path = PathBuf::from(l.first()?);
+    if !path.exists() {
+        return None;
+    }
     let title = l.get(1).cloned().unwrap_or_default();
-    Some(LastBook { progress: koreader_progress(&path), title })
+    Some(LastBook { progress: koreader_progress(&path), title, path })
 }
 
 /// Minutos lidos no KOReader hoje (o `session.sh` registra início e duração de cada leitura).
@@ -90,6 +94,17 @@ pub fn reading_minutes_today(offset_min: i64) -> u32 {
         .map(|(_, dur)| dur.max(0))
         .sum();
     (secs / 60) as u32
+}
+
+/// Partida salva e não terminada, para o "Continuar" da tela inicial.
+pub fn game_in_progress() -> Option<&'static str> {
+    if crate::sudoku::Game::load().is_some_and(|g| !g.solved()) {
+        return Some("Sudoku em andamento");
+    }
+    if crate::chess::Game::load().is_some_and(|g| !g.moves.is_empty() && g.result().is_none()) {
+        return Some("Xadrez em andamento");
+    }
+    None
 }
 
 // ---------- Resumo da tela inicial ----------

@@ -12,19 +12,48 @@ const W: i32 = 1072;
 
 // ======================= Ler =======================
 
+#[derive(Clone)]
 pub struct Book {
     pub path: PathBuf,
     pub title: String,
     pub kind: String,
     pub size: u64,
-    modified: SystemTime,
+    /// Última leitura no KOReader (o arquivo de progresso muda ao ler); senão, quando o arquivo chegou.
+    touched: SystemTime,
+    /// Fração lida (0..1) segundo o KOReader.
+    pub progress: Option<f32>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Sort {
+    Recent,
+    Title,
 }
 
 pub struct Library {
+    /// Livros mostrados (já filtrados pela busca e ordenados).
     pub books: Vec<Book>,
+    all: Vec<Book>,
     /// Livros da loja da Amazon (KFX/AZW com DRM): só abrem no leitor da Amazon.
     pub store_only: usize,
     pub page: usize,
+    pub sort: Sort,
+    pub query: String,
+}
+
+/// Minúsculas e sem acento, para a busca achar "joao" em "João".
+pub fn fold(s: &str) -> String {
+    unicode_normalization::UnicodeNormalization::nfd(s).filter(|c| c.is_ascii() || !unicode_normalization::char::is_combining_mark(*c)).collect::<String>().to_lowercase()
+}
+
+/// Arquivo de progresso do KOReader ao lado do livro.
+fn sidecar(path: &Path) -> PathBuf {
+    let ext = path.extension().and_then(|x| x.to_str()).unwrap_or("");
+    PathBuf::from(format!("{}.sdr", path.with_extension("").display())).join(format!("metadata.{ext}.lua"))
+}
+
+fn sort_file() -> PathBuf {
+    crate::home_dir().join("settings/lib_sort")
 }
 
 pub const PER_PAGE: usize = 5;
@@ -103,11 +132,14 @@ fn scan_dir(dir: &Path, depth: u32, lib: &mut Library) {
         if STORE.contains(&ext.as_str()) {
             lib.store_only += 1;
         } else if OPENABLE.contains(&ext.as_str()) && !is_system_junk(&name) && !name.starts_with('.') {
-            lib.books.push(Book {
+            let added = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+            let read = std::fs::metadata(sidecar(&path)).and_then(|m| m.modified()).ok();
+            lib.all.push(Book {
                 title: crate::covers::cached_title(&path).and_then(|t| usable_title(&t)).unwrap_or_else(|| clean_title(&name)),
                 kind: ext.to_ascii_uppercase(),
                 size: meta.len(),
-                modified: meta.modified().unwrap_or(SystemTime::UNIX_EPOCH),
+                touched: read.map_or(added, |r| r.max(added)),
+                progress: crate::data::koreader_progress(&path),
                 path,
             });
         }
@@ -115,12 +147,37 @@ fn scan_dir(dir: &Path, depth: u32, lib: &mut Library) {
 }
 
 impl Library {
-    pub fn scan() -> Self {
-        let mut lib = Library { books: Vec::new(), store_only: 0, page: 0 };
+    pub fn empty() -> Self {
+        Library { books: Vec::new(), all: Vec::new(), store_only: 0, page: 0, sort: Sort::Recent, query: String::new() }
+    }
+    pub fn scan(query: &str) -> Self {
+        let mut lib = Library::empty();
+        lib.sort = if std::fs::read_to_string(sort_file()).is_ok_and(|s| s.trim() == "titulo") { Sort::Title } else { Sort::Recent };
         scan_dir(Path::new("/mnt/us/documents"), 2, &mut lib);
-        // Mais recentes primeiro: o que acabou de chegar aparece em cima.
-        lib.books.sort_by_key(|b| std::cmp::Reverse(b.modified));
+        lib.query = query.to_string();
+        lib.apply();
         lib
+    }
+    /// Refaz a lista mostrada a partir da ordem e da busca atuais.
+    pub fn apply(&mut self) {
+        match self.sort {
+            // Lidos ou chegados por último primeiro.
+            Sort::Recent => self.all.sort_by_key(|b| std::cmp::Reverse(b.touched)),
+            Sort::Title => self.all.sort_by_cached_key(|b| fold(&b.title)),
+        }
+        let q = fold(self.query.trim());
+        self.books = self.all.iter().filter(|b| q.is_empty() || fold(&b.title).contains(&q)).cloned().collect();
+        self.page = 0;
+    }
+    pub fn toggle_sort(&mut self) {
+        self.sort = if self.sort == Sort::Recent { Sort::Title } else { Sort::Recent };
+        let _ = std::fs::write(sort_file(), if self.sort == Sort::Title { "titulo" } else { "recentes" });
+        self.apply();
+    }
+    /// Quantos livros a busca `q` acharia (mostrado enquanto digita).
+    pub fn count_matches(&self, q: &str) -> usize {
+        let q = fold(q.trim());
+        self.all.iter().filter(|b| fold(&b.title).contains(&q)).count()
     }
     pub fn pages(&self) -> usize {
         self.books.len().div_ceil(PER_PAGE).max(1)
@@ -190,6 +247,12 @@ fn wrap(f: &Fonts, face: Face, size: f32, text: &str, max_w: i32, max_lines: usi
     lines.into_iter().map(|l| fit(f, face, size, &l, max_w)).collect()
 }
 /// Botão "Destaques" no topo da tela Ler.
+pub fn lib_search_rect() -> Rect {
+    Rect::new(W - MARGIN - 230, 236, 230, 84)
+}
+pub fn lib_sort_rect() -> Rect {
+    Rect::new(W - MARGIN - 230 - 24 - 230, 236, 230, 84)
+}
 pub fn clips_rect() -> Rect {
     Rect::new(W - MARGIN - 250, 76, 250, 84)
 }
@@ -287,17 +350,30 @@ pub fn draw_library(fb: &mut Framebuffer, f: &Fonts, lib: &Library, st: &Status)
     pill(fb, f, clips_rect(), "Destaques", false, 32.0);
     f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Ler");
     let n = lib.books.len();
-    let mut summary = match n {
-        0 => "Nenhum livro para abrir ainda".to_string(),
-        1 => "1 livro".to_string(),
-        _ => format!("{n} livros, mais recentes primeiro"),
+    let has_any = !lib.all.is_empty();
+    if has_any {
+        pill(fb, f, lib_search_rect(), if lib.query.is_empty() { "Buscar" } else { "Limpar" }, !lib.query.is_empty(), 32.0);
+        pill(fb, f, lib_sort_rect(), if lib.sort == Sort::Recent { "Recentes" } else { "A–Z" }, false, 32.0);
+    }
+    let plural = |k: usize| if k == 1 { "1 livro".to_string() } else { format!("{k} livros") };
+    let mut summary = if !lib.query.is_empty() {
+        format!("“{}” · {}", lib.query.trim(), if n == 0 { "nenhum livro".into() } else { plural(n) })
+    } else {
+        match n {
+            0 => "Nenhum livro para abrir ainda".to_string(),
+            _ if lib.sort == Sort::Title => format!("{}, de A a Z", plural(n)),
+            _ => format!("{}, lidos por último primeiro", plural(n)),
+        }
     };
-    if lib.store_only > 0 {
+    if lib.store_only > 0 && lib.query.is_empty() {
         summary.push_str(&format!(" · {} da loja só no Kindle original", lib.store_only));
     }
     let summary = fit(f, Face::Strong, 30.0, &summary, W - 2 * MARGIN);
     f.draw(fb, Face::Strong, 30.0, MARGIN, 400, MUTED, &summary);
-    if n == 0 {
+    if n == 0 && has_any {
+        f.draw(fb, Face::Body, 40.0, MARGIN, 560, INK, "Nenhum título com esse trecho.");
+        f.draw(fb, Face::Body, 40.0, MARGIN, 620, MUTED, "Toque em Limpar para ver todos.");
+    } else if n == 0 {
         let lines = [
             "Copie arquivos EPUB, PDF ou AZW3 para a",
             "pasta documents, pelo USB ou pelo Wi-Fi,",
@@ -324,7 +400,18 @@ pub fn draw_library(fb: &mut Framebuffer, f: &Fonts, lib: &Library, st: &Status)
             f.draw(fb, Face::Display, 42.0, tx, top + k as i32 * 50, INK, l);
         }
         let meta_y = top + (lines.len() as i32 - 1) * 50 + 46;
-        f.draw(fb, Face::Body, 28.0, tx + 2, meta_y, MUTED, &format!("{} · {}", b.kind, human_size(b.size)));
+        let meta = format!("{} · {}", b.kind, human_size(b.size));
+        f.draw(fb, Face::Body, 28.0, tx + 2, meta_y, MUTED, &meta);
+        if let Some(p) = b.progress {
+            // Progresso do KOReader: barra curta depois do tipo e tamanho.
+            let p = p.clamp(0.0, 1.0);
+            let label = if p >= 0.995 { "Lido".to_string() } else { format!("{}%", (p * 100.0).round() as i32) };
+            let bx = tx + 2 + f.measure(Face::Body, 28.0, &meta) + 28;
+            let bar = Rect::new(bx, meta_y - 12, 160, 8);
+            fb.fill(bar, 0xD0);
+            fb.fill(Rect::new(bar.x, bar.y, (bar.w as f32 * p) as i32, bar.h), INK);
+            f.draw(fb, Face::Strong, 28.0, bar.x + bar.w + 14, meta_y, INK, &label);
+        }
     }
     if lib.pages() > 1 {
         if lib.page > 0 {

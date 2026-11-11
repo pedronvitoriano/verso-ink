@@ -34,7 +34,7 @@ impl Module {
     pub fn subtitle(self) -> &'static str {
         match self {
             Module::Ler => "Biblioteca e Verso One",
-            Module::Jogar => "Xadrez, sudoku e ficção",
+            Module::Jogar => "Xadrez, sudoku e mais 11",
             Module::Foco => "Pomodoro e o seu dia",
             Module::Claude => "Conversa e janela ao vivo",
             Module::Mais => "Novos módulos",
@@ -289,7 +289,26 @@ pub fn draw_clock(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     }
 }
 
-pub fn draw_tile(fb: &mut Framebuffer, f: &Fonts, i: usize, pressed: bool) {
+/// Botão "Continuar" dentro do bloco Ler (abre o último livro direto no KOReader).
+pub fn continue_rect() -> Rect {
+    let r = tile_rect(0);
+    Rect::new(r.x + r.w - 40 - 300, r.y + 40, 300, 100)
+}
+
+/// O que a tela inicial mostra além do fixo: livro em leitura e jogo em andamento.
+#[derive(Default)]
+pub struct HomeExtra {
+    pub book: Option<crate::data::LastBook>,
+    pub game: Option<&'static str>,
+}
+
+impl HomeExtra {
+    pub fn load() -> Self {
+        HomeExtra { book: crate::data::last_book(), game: crate::data::game_in_progress() }
+    }
+}
+
+pub fn draw_tile(fb: &mut Framebuffer, f: &Fonts, i: usize, pressed: bool, extra: &HomeExtra) {
     let m = Module::ALL[i];
     let r = tile_rect(i);
     // "Ler" é o módulo principal: bloco cheio. Os outros, contorno.
@@ -302,13 +321,40 @@ pub fn draw_tile(fb: &mut Framebuffer, f: &Fonts, i: usize, pressed: bool) {
         fb.round_outline(r, 40, 5, INK, PAPER);
     }
     if i == 0 {
-        icon(fb, m, r.x + r.w - 44 - 128, r.y + (r.h - 128) / 2, 128, fg);
         f.draw(fb, Face::Display, 104.0, r.x + 44, r.y + r.h - 100, fg, m.title());
-        f.draw(fb, Face::Body, 31.0, r.x + 48, r.y + r.h - 46, sub, m.subtitle());
+        let Some(book) = extra.book.as_ref() else {
+            icon(fb, m, r.x + r.w - 44 - 128, r.y + (r.h - 128) / 2, 128, fg);
+            f.draw(fb, Face::Body, 31.0, r.x + 48, r.y + r.h - 46, sub, m.subtitle());
+            return;
+        };
+        // Livro em leitura: título à esquerda, botão Continuar e porcentagem à direita, barra no pé.
+        let c = continue_rect();
+        let (bg, ink) = if filled { (PAPER, INK) } else { (INK, PAPER) };
+        fb.round_rect(c, c.h / 2, bg);
+        let label = "Continuar";
+        let tw = f.measure(Face::Strong, 38.0, label);
+        f.draw(fb, Face::Strong, 38.0, c.x + (c.w - tw) / 2, c.y + c.h / 2 + 14, ink, label);
+        let pct = book.progress.map(|p| format!("{}% lido", (p * 100.0).round() as i32)).unwrap_or_else(|| "Começar".into());
+        let pw = f.measure(Face::Body, 31.0, &pct);
+        f.draw(fb, Face::Body, 31.0, c.x + c.w - pw, r.y + r.h - 46, sub, &pct);
+        let title = crate::apps::fit(f, Face::Body, 31.0, &book.title, c.x + c.w - pw - 40 - (r.x + 48));
+        f.draw(fb, Face::Body, 31.0, r.x + 48, r.y + r.h - 46, fg, &title);
+        if let Some(p) = book.progress {
+            let bar = Rect::new(r.x + 48, r.y + r.h - 24, r.w - 96, 6);
+            fb.fill(bar, if filled { 0x55 } else { 0xCC });
+            fb.fill(Rect::new(bar.x, bar.y, (bar.w as f32 * p.clamp(0.0, 1.0)) as i32, bar.h), fg);
+        }
     } else {
         icon(fb, m, r.x + 36, r.y + 34, 66, fg);
         f.draw(fb, Face::Display, 72.0, r.x + 34, r.y + r.h - 72, fg, m.title());
-        f.draw(fb, Face::Body, 26.0, r.x + 37, r.y + r.h - 32, sub, m.subtitle());
+        let text = if m == Module::Jogar { extra.game.unwrap_or(m.subtitle()) } else { m.subtitle() };
+        if m == Module::Jogar && extra.game.is_some() {
+            // Ponto indicando partida salva.
+            fb.round_rect(Rect::new(r.x + 37, r.y + r.h - 50, 14, 14), 7, fg);
+            f.draw(fb, Face::Body, 26.0, r.x + 61, r.y + r.h - 32, fg, text);
+        } else {
+            f.draw(fb, Face::Body, 26.0, r.x + 37, r.y + r.h - 32, sub, text);
+        }
     }
 }
 
@@ -327,8 +373,9 @@ pub fn draw_home(fb: &mut Framebuffer, f: &Fonts, st: &Status, sum: &crate::data
     draw_clock(fb, f, st);
     let _ = sum; // o resumo é desenhado junto com o relógio (draw_clock)
     fb.fill(Rect::new(MARGIN, 432, 1072 - 2 * MARGIN, 4), INK);
+    let extra = HomeExtra::load();
     for i in 0..Module::ALL.len() {
-        draw_tile(fb, f, i, false);
+        draw_tile(fb, f, i, false, &extra);
     }
     draw_footer(fb, f, st);
 }
@@ -616,4 +663,12 @@ fn draw_weather(fb: &mut Framebuffer, f: &Fonts) {
     let line2 = if w.rain_pct >= 30 { format!("chuva {}%", w.rain_pct) } else { desc.to_lowercase() };
     let l2w = f.measure(Face::Body, 26.0, &line2);
     f.draw(fb, Face::Body, 26.0, right - l2w, 370, MUTED, &line2);
+}
+
+/// Cabeçalho das telas de digitar: rótulo pequeno em cima e título grande.
+pub fn draw_field_header(fb: &mut Framebuffer, f: &Fonts, kicker: &str, title: &str) {
+    fb.fill(fb.screen(), PAPER);
+    draw_back(fb, f, false);
+    f.draw(fb, Face::Strong, 32.0, MARGIN, 250, MUTED, kicker);
+    f.draw(fb, Face::Display, 64.0, MARGIN, 340, INK, title);
 }

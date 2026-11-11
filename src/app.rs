@@ -42,6 +42,7 @@ pub enum Screen {
     Update,
     Wifi,
     WifiPass,
+    LibSearch,
     Sleep,
 }
 
@@ -75,6 +76,8 @@ pub enum Target {
     Clips,
     BookRow(usize),
     Mini(u32),
+    Search,
+    Sort,
 }
 
 /// Código de saída que pede ao `session.sh` para abrir um livro no KOReader e voltar.
@@ -181,7 +184,7 @@ impl App {
             swipe_from: None,
             status: read_status(),
             light: read_light(),
-            lib: Library { books: Vec::new(), store_only: 0, page: 0 },
+            lib: Library::empty(),
             pomo: Pomodoro::Idle,
             sys: SysInfo { wifi_on: true, connected: false, essid: None, ip: None, firmware: String::new() },
             confirm: None,
@@ -334,6 +337,12 @@ impl App {
                 crate::keyboard::draw(fb, f, &self.keys);
             }
             Screen::Wifi => crate::wifi::draw(fb, f, self.wifi_on, self.wifi_cur.as_deref(), &self.nets, &self.wifi_note),
+            Screen::LibSearch => {
+                ui::draw_field_header(fb, f, "BIBLIOTECA", "Buscar livro");
+                crate::today_ui::draw_field(fb, f, &self.compose_text, &self.compose_hint);
+                self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
+                crate::keyboard::draw(fb, f, &self.keys);
+            }
             Screen::WifiPass => {
                 let essid = self.wifi_target.as_ref().map(|n| n.essid.clone()).unwrap_or_default();
                 crate::wifi::draw_password_header(fb, f, &essid);
@@ -365,7 +374,11 @@ impl App {
         use Target::*;
         match self.screen {
             Screen::Home => {
-                let mut v: Vec<_> = (0..Module::ALL.len()).map(|i| (Tile(i), ui::tile_rect(i))).collect();
+                let mut v = Vec::new();
+                if data::last_book().is_some() {
+                    v.push((Continue, ui::continue_rect()));
+                }
+                v.extend((0..Module::ALL.len()).map(|i| (Tile(i), ui::tile_rect(i))));
                 v.push((Header, ui::header_rect()));
                 v
             }
@@ -381,6 +394,10 @@ impl App {
             ],
             Screen::Library => {
                 let mut v = vec![(Back, ui::back_rect()), (Clips, apps::clips_rect())];
+                if !self.lib.books.is_empty() || !self.lib.query.is_empty() {
+                    v.push((Search, apps::lib_search_rect()));
+                    v.push((Sort, apps::lib_sort_rect()));
+                }
                 v.extend((0..self.lib.visible().len()).map(|i| (Row(i), apps::lib_row_rect(i))));
                 if self.lib.page > 0 {
                     v.push((Prev, apps::lib_prev_rect()));
@@ -434,7 +451,7 @@ impl App {
                 }
                 v
             }
-            Screen::WifiPass => {
+            Screen::WifiPass | Screen::LibSearch => {
                 let mut v = vec![(Back, ui::back_rect())];
                 v.extend(self.keys.iter().enumerate().map(|(i, k)| (Key(i as u8), k.rect)));
                 v
@@ -578,6 +595,17 @@ impl App {
         }
     }
 
+    /// Abre um livro no KOReader (a sessão troca de app pelo código de saída).
+    fn open_book(&mut self, path: std::path::PathBuf, title: String) {
+        data::set_last_book(&path, &title);
+        let _ = std::fs::write(OPEN_FILE, path.to_string_lossy().as_bytes());
+        apps::draw_opening_book(&mut self.fb, &self.fonts, &title);
+        self.fb.present(Wave::Quality, true);
+        self.fb.wait();
+        log(&format!("abrindo no KOReader: {}", path.display()));
+        self.exit_code = Some(EXIT_OPEN_BOOK);
+    }
+
     fn hit(&self, x: i32, y: i32) -> Option<Target> {
         self.targets().into_iter().find(|(_, r)| r.contains(x, y)).map(|(t, _)| t)
     }
@@ -669,6 +697,10 @@ impl App {
                 if self.screen == Screen::ClaudeCompose {
                     return self.send_claude();
                 }
+                if self.screen == Screen::LibSearch {
+                    self.lib.query = self.compose_text.trim().to_string();
+                    return self.go(Screen::Library);
+                }
                 if self.screen == Screen::WifiPass {
                     let (Some(n), psk) = (self.wifi_target.clone(), self.compose_text.clone()) else { return };
                     if psk.chars().count() < 8 {
@@ -680,6 +712,18 @@ impl App {
                     return self.save_compose();
                 }
             }
+        }
+        if self.screen == Screen::LibSearch {
+            let q = self.compose_text.trim();
+            self.compose_hint = if q.is_empty() {
+                "Digite parte do título.".into()
+            } else {
+                match self.lib.count_matches(q) {
+                    0 => "Nenhum livro com esse trecho.".into(),
+                    1 => "1 livro encontrado. Toque em OK.".into(),
+                    k => format!("{k} livros encontrados. Toque em OK."),
+                }
+            };
         }
         crate::today_ui::draw_field(&mut self.fb, &self.fonts, &self.compose_text, &self.compose_hint);
         self.fb.refresh(Rect::new(0, crate::today_ui::field_rect().y - 4, 1072, 470), Wave::Quality, false);
@@ -1106,7 +1150,7 @@ impl App {
     pub fn go(&mut self, screen: Screen) {
         match screen {
             Screen::Light => self.light = read_light(),
-            Screen::Library => self.lib = Library::scan(),
+            Screen::Library => self.lib = Library::scan(&self.lib.query.clone()),
             Screen::Settings => {
                 self.sys = SysInfo::read();
                 self.confirm = None;
@@ -1245,7 +1289,7 @@ impl App {
                 }
                 self.render(false);
             }
-            (Screen::Compose | Screen::WifiPass | Screen::ClaudeCompose, Key(i)) => self.press_key(i as usize),
+            (Screen::Compose | Screen::WifiPass | Screen::ClaudeCompose | Screen::LibSearch, Key(i)) => self.press_key(i as usize),
             (Screen::Wifi, Back) => self.go(Screen::Settings),
             (Screen::WifiPass, Back) => self.go(Screen::Wifi),
             (Screen::Mini, Back) => {
@@ -1264,10 +1308,22 @@ impl App {
                 self.mini_back = Screen::Module(Module::Mais);
                 self.go(Screen::Mini);
             }
+            (Screen::LibSearch, Back) => self.go(Screen::Library),
             (_, Back) => self.go(Screen::Home),
             (Screen::Home, Header) => self.go(Screen::Light),
+            (Screen::Home, Continue) => {
+                let Some(b) = data::last_book() else { return };
+                if !b.path.exists() {
+                    self.go(Screen::Library);
+                    return;
+                }
+                self.open_book(b.path, b.title);
+            }
             (Screen::Home, Tile(i)) => match Module::ALL[i] {
-                Module::Ler => self.go(Screen::Library),
+                Module::Ler => {
+                    self.lib.query.clear();
+                    self.go(Screen::Library)
+                }
                 Module::Foco => self.go(Screen::Today),
                 Module::Jogar => self.go(Screen::Games),
                 Module::Claude => self.go(Screen::Claude),
@@ -1290,13 +1346,7 @@ impl App {
             (Screen::Library, Row(i)) => {
                 let Some(b) = self.lib.visible().get(i) else { return };
                 let (path, title) = (b.path.clone(), b.title.clone());
-                data::set_last_book(&path, &title);
-                let _ = std::fs::write(OPEN_FILE, path.to_string_lossy().as_bytes());
-                apps::draw_opening_book(&mut self.fb, &self.fonts, &title);
-                self.fb.present(Wave::Quality, true);
-                self.fb.wait();
-                log(&format!("abrindo no KOReader: {}", path.display()));
-                self.exit_code = Some(EXIT_OPEN_BOOK);
+                self.open_book(path, title);
             }
             (Screen::Library, Clips) => self.go(Screen::Clips),
             (Screen::Clips, BookRow(i)) => {
@@ -1523,6 +1573,24 @@ impl App {
                 let n = self.saved_games.first().map(|g| g.records.len()).unwrap_or(0);
                 self.review_k = (self.review_k + 1).min(n.saturating_sub(1));
                 self.render(false);
+            }
+            (Screen::Library, Sort) => {
+                self.lib.toggle_sort();
+                self.render(true);
+                self.fill_covers();
+            }
+            (Screen::Library, Search) => {
+                if self.lib.query.is_empty() {
+                    self.compose_text.clear();
+                    self.compose_hint = "Digite parte do título.".into();
+                    self.kb_shift = false;
+                    self.go(Screen::LibSearch);
+                } else {
+                    self.lib.query.clear();
+                    self.lib.apply();
+                    self.render(true);
+                    self.fill_covers();
+                }
             }
             (Screen::Library, Prev) => {
                 self.lib.page = self.lib.page.saturating_sub(1);
