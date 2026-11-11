@@ -300,8 +300,10 @@ impl App {
             }
             Screen::ChessInsights => {
                 if let Some(g) = self.saved_games.first() {
+                    // Dica de treino: a frase mais acionável dos insights (motivo recorrente).
                     let lines = crate::coach::insights(g, &self.saved_games[1..]);
-                    crate::chess_ui::draw_insights(fb, f, g, &lines);
+                    let tip = lines.iter().find(|l| l.contains("Antes de jogar") || l.contains("Olhe sempre") || l.contains("Procure xeques")).cloned();
+                    crate::chess_ui::draw_insights(fb, f, g, &self.saved_games[1..], tip.as_deref());
                 }
             }
             Screen::Clips => crate::clippings::draw_books(fb, f, &self.clips, self.clip_page),
@@ -519,7 +521,13 @@ impl App {
                 v.extend((0..3).map(|k| (Game(k), crate::chess_ui::review_btn(k))));
                 v
             }
-            Screen::ChessInsights => vec![(Back, ui::back_rect())],
+            Screen::ChessInsights => {
+                let mut v = vec![(Back, ui::back_rect())];
+                if let Some(g) = self.saved_games.first() {
+                    v.extend(crate::chess_ui::key_moments(g).iter().enumerate().map(|(i, _)| (Row(i), crate::chess_ui::moment_rect(i))));
+                }
+                v
+            }
             Screen::Clips => {
                 let mut v = vec![(Back, ui::back_rect())];
                 let n = self.clips.len().saturating_sub(self.clip_page * crate::clippings::BOOKS_PER_PAGE).min(crate::clippings::BOOKS_PER_PAGE);
@@ -1407,6 +1415,12 @@ impl App {
                 self.render(false);
             }
             (Screen::ChessReview, Game(1)) => self.go(Screen::ChessInsights),
+            (Screen::ChessInsights, Row(i)) => {
+                if let Some(k) = self.saved_games.first().and_then(|g| crate::chess_ui::key_moments(g).get(i).copied()) {
+                    self.review_k = k;
+                    self.go(Screen::ChessReview);
+                }
+            }
             (Screen::ChessReview, Game(_)) => {
                 let n = self.saved_games.first().map(|g| g.records.len()).unwrap_or(0);
                 self.review_k = (self.review_k + 1).min(n.saturating_sub(1));

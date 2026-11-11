@@ -272,24 +272,131 @@ pub fn draw_review(fb: &mut Framebuffer, f: &Fonts, sp: &Sprites, g: &Saved, k: 
     pill(fb, f, review_btn(2), "Próximo ›", false);
 }
 
-pub fn draw_insights(fb: &mut Framebuffer, f: &Fonts, g: &Saved, lines: &[String]) {
+/// Momentos-chave tocáveis na tela de insights (índices nos registros da partida).
+pub fn key_moments(g: &Saved) -> Vec<usize> {
+    let mut idx: Vec<usize> = (0..g.records.len()).filter(|&k| g.records[k].class as u8 >= Class::Inaccuracy as u8).collect();
+    idx.sort_by_key(|&k| std::cmp::Reverse(g.records[k].loss));
+    idx.truncate(3);
+    idx.sort();
+    idx
+}
+
+pub fn moment_rect(i: usize) -> Rect {
+    Rect::new(MARGIN - 16, 1010 + i as i32 * 96, W - 2 * MARGIN + 32, 92)
+}
+
+/// Insights em blocos: precisão, lances por tipo, fases, evolução e momentos-chave tocáveis.
+pub fn draw_insights(fb: &mut Framebuffer, f: &Fonts, g: &Saved, previous: &[Saved], tip: Option<&str>) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
-    f.draw(fb, Face::Display, 110.0, MARGIN - 4, 300, INK, "Insights");
     let c = coach::coach(g.level);
-    f.draw(fb, Face::Strong, 30.0, MARGIN, 360, MUTED, &format!("Partida contra {} ({}) · seu rating {} → {}", c.name, c.rating, g.rating_before, g.rating_after));
-    let mut y = 450;
-    for l in lines {
-        for (n, w) in wrap(f, Face::Body, 36.0, l, W - 2 * MARGIN - 30).iter().enumerate() {
-            if n == 0 {
-                fb.round_rect(Rect::new(MARGIN, y - 22, 12, 12), 6, INK);
-            }
-            f.draw(fb, Face::Body, 36.0, MARGIN + 30, y, INK, w);
-            y += 50;
-            if y > 1250 {
-                return;
-            }
+    let res = match g.result.as_str() {
+        "vitória" => "Vitória",
+        "derrota" => "Derrota",
+        _ => "Empate",
+    };
+    let head = format!("{res} contra {} ({})", c.name, c.rating);
+    let hw = f.measure(Face::Strong, 28.0, &head);
+    f.draw(fb, Face::Strong, 28.0, W - MARGIN - hw, 128, MUTED, &head);
+
+    // Precisão grande e rating.
+    let acc = coach::accuracy(&g.records);
+    // Sem lances seus analisados (desistência logo no início): não há precisão para mostrar.
+    let acc_text = if g.records.is_empty() { "—".to_string() } else { format!("{acc}%") };
+    let end = f.draw(fb, Face::Display, 180.0, MARGIN - 8, 360, INK, &acc_text);
+    f.draw(fb, Face::Strong, 30.0, end + 20, 300, MUTED, "PRECISÃO");
+    f.draw(fb, Face::Strong, 30.0, end + 20, 340, MUTED, "ESTIMADA");
+    let d = g.rating_after as i32 - g.rating_before as i32;
+    let rt = format!("Rating {} → {} ({}{d})", g.rating_before, g.rating_after, if d >= 0 { "+" } else { "" });
+    f.draw(fb, Face::Body, 32.0, MARGIN, 410, INK, &rt);
+
+    // Lances por tipo: barras horizontais.
+    let kinds = [Class::Best, Class::Good, Class::Inaccuracy, Class::Mistake, Class::Blunder];
+    let counts: Vec<usize> = kinds.iter().map(|k| g.records.iter().filter(|r| r.class == *k).count()).collect();
+    let max = counts.iter().copied().max().unwrap_or(1).max(1);
+    let (label_w, bar_x0) = (250, MARGIN + 250);
+    let bar_max = W - MARGIN - bar_x0 - 70;
+    for (n, (k, cnt)) in kinds.iter().zip(&counts).enumerate() {
+        let y = 470 + n as i32 * 52;
+        f.draw(fb, Face::Body, 28.0, MARGIN, y + 32, INK, k.name());
+        let w = (bar_max * *cnt as i32 / max as i32).max(if *cnt > 0 { 8 } else { 0 });
+        let tone = match k {
+            Class::Best | Class::Good => 0xB0,
+            Class::Inaccuracy => 0x77,
+            _ => INK,
+        };
+        if w > 0 {
+            fb.round_rect(Rect::new(bar_x0, y + 8, w, 30), 8, tone);
         }
-        y += 24;
+        f.draw(fb, Face::Strong, 28.0, bar_x0 + w + 14, y + 33, INK, &cnt.to_string());
+        let _ = label_w;
+    }
+
+    // Erros por fase e evolução da precisão, lado a lado.
+    let y0 = 760;
+    f.draw(fb, Face::Strong, 26.0, MARGIN, y0, MUTED, "ERROS POR FASE");
+    let mut by = [0usize; 3];
+    for r in g.records.iter().filter(|r| r.class as u8 >= Class::Mistake as u8) {
+        by[if r.ply < 20 { 0 } else if r.ply < 60 { 1 } else { 2 }] += 1;
+    }
+    for (k, name) in ["Abertura", "Meio", "Final"].iter().enumerate() {
+        let r = Rect::new(MARGIN + k as i32 * 148, y0 + 20, 136, 120);
+        if by[k] > 0 {
+            fb.round_rect(r, 18, if by[k] >= 2 { INK } else { 0x77 });
+        } else {
+            fb.round_outline(r, 18, 3, INK, PAPER);
+        }
+        let fg = if by[k] > 0 { PAPER } else { INK };
+        let n = by[k].to_string();
+        let nw = f.measure(Face::Display, 56.0, &n);
+        f.draw(fb, Face::Display, 56.0, r.x + (r.w - nw) / 2, r.y + 66, fg, &n);
+        let lw = f.measure(Face::Body, 22.0, name);
+        f.draw(fb, Face::Body, 22.0, r.x + (r.w - lw) / 2, r.y + 102, fg, name);
+    }
+    let sx = MARGIN + 3 * 148 + 30;
+    f.draw(fb, Face::Strong, 26.0, sx, y0, MUTED, "EVOLUÇÃO");
+    let mut hist: Vec<u32> = previous.iter().filter(|p| p.file != g.file && !p.records.is_empty()).take(9).map(|p| coach::accuracy(&p.records)).collect();
+    hist.reverse();
+    if !g.records.is_empty() {
+        hist.push(acc);
+    }
+    let (gx, gy, gw, gh) = (sx, y0 + 24, W - MARGIN - sx, 116);
+    fb.fill(Rect::new(gx, gy + gh, gw, 3), INK);
+    let step = if hist.len() > 1 { gw / (hist.len() as i32 - 1) } else { 0 };
+    let pt = |k: usize, v: u32| (gx + k as i32 * step, gy + gh - (gh * v as i32 / 100));
+    for k in 1..hist.len() {
+        let (a, b) = (pt(k - 1, hist[k - 1]), pt(k, hist[k]));
+        ui::stroke(fb, (a.0 as f32, a.1 as f32), (b.0 as f32, b.1 as f32), 4.0, INK);
+    }
+    if let Some(&last) = hist.last().filter(|_| hist.len() > 1) {
+        let p = pt(hist.len() - 1, last);
+        fb.round_rect(Rect::new(p.0 - 9, p.1 - 9, 18, 18), 9, INK);
+    }
+    if hist.len() <= 1 {
+        f.draw(fb, Face::Body, 24.0, gx, gy + 60, MUTED, "aparece a partir da 2ª partida");
+    }
+
+    // Momentos-chave: toque para ver na revisão.
+    f.draw(fb, Face::Strong, 26.0, MARGIN, 990, MUTED, "MOMENTOS-CHAVE · TOQUE PARA VER");
+    let moments = key_moments(g);
+    if moments.is_empty() {
+        let msg = if g.records.is_empty() { "Nenhum lance seu foi analisado nesta partida." } else { "Nenhum deslize relevante. Partida limpa!" };
+        f.draw(fb, Face::Body, 32.0, MARGIN, 1060, INK, msg);
+    }
+    for (i, &k) in moments.iter().enumerate() {
+        let r = g.records[k].clone();
+        let row = moment_rect(i);
+        fb.round_outline(row, 24, 3, INK, PAPER);
+        let left = format!("{}. {}{}", r.ply / 2 + 1, r.san, r.class.mark());
+        f.draw(fb, Face::Display, 38.0, row.x + 28, row.y + 58, INK, &left);
+        let right = format!("{} · melhor {}", r.class.name(), r.best_san);
+        let rw = f.measure(Face::Body, 28.0, &right);
+        f.draw(fb, Face::Body, 28.0, row.x + row.w - 28 - rw, row.y + 56, MUTED, &right);
+    }
+    if let Some(t) = tip {
+        let lines = wrap(f, Face::Body, 30.0, t, W - 2 * MARGIN);
+        for (n, l) in lines.iter().take(2).enumerate() {
+            f.draw(fb, Face::Body, 30.0, MARGIN, 1340 + n as i32 * 42, INK, l);
+        }
     }
 }

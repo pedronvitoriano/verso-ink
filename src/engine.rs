@@ -23,12 +23,15 @@ impl Score {
         match self {
             Score::Cp(c) => c,
             Score::Mate(m) if m > 0 => 10_000 - m * 10,
+            // "mate 0": quem está na vez já levou mate.
             Score::Mate(m) => -10_000 - m * 10,
         }
     }
+    /// Do ponto de vista do outro lado. "mate 0" vira vitória já consumada.
     pub fn neg(self) -> Score {
         match self {
             Score::Cp(c) => Score::Cp(-c),
+            Score::Mate(0) => Score::Cp(10_000),
             Score::Mate(m) => Score::Mate(-m),
         }
     }
@@ -144,5 +147,17 @@ impl Drop for Engine {
         self.send("quit");
         let _ = self.child.kill();
         let _ = self.child.wait();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn mate_dado_nao_vira_perda() {
+        // Antes: mate em 1 (9990). Depois do lance, o adversário está em "mate 0".
+        let pre = Score::Mate(1);
+        let after = Score::Mate(0).neg();
+        assert!(pre.cp() - after.cp() <= 0);
     }
 }
