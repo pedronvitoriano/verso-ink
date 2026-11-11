@@ -625,6 +625,10 @@ impl Coroas {
 }
 
 impl MiniGame for Coroas {
+    fn summary(&self) -> String {
+        if self.menu || self.n == 0 { String::new() } else if self.level > 0 { format!("Fase {} · {}×{}", self.level, self.n, self.n) } else { format!("Treino · {}×{}", self.n, self.n) }
+    }
+
     fn context(&self) -> String {
         if self.menu || self.n == 0 {
             return "No menu do Coroas.".into();

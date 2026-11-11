@@ -321,6 +321,10 @@ impl Historias {
 }
 
 impl MiniGame for Historias {
+    fn summary(&self) -> String {
+        self.read.as_ref().map(|r| self.list[r.k].1.title.clone()).unwrap_or_default()
+    }
+
     fn context(&self) -> String {
         let Some(r) = &self.read else { return "Escolhendo uma história.".into() };
         let (_, story) = &self.list[r.k];

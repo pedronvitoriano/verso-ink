@@ -698,23 +698,138 @@ pub fn draw_doc(fb: &mut Framebuffer, f: &Fonts, title: &str, pages: &[Vec<Line>
     }
 }
 
-/// Faixa "vai junto" do contexto (toque nela para tirar).
-pub fn context_rect() -> Rect {
-    Rect::new(MARGIN - 16, 360, W - 2 * MARGIN + 32, 50)
+// ---------- Pergunta ao Claude ----------
+
+/// O que a tela de pergunta mostra.
+pub struct Compose<'a> {
+    /// Conversa em andamento (título), ou None para conversa nova.
+    pub chat_title: Option<&'a str>,
+    /// Última resposta do Claude (quando continua uma conversa sem contexto novo).
+    pub last_reply: Option<&'a str>,
+    /// Sobre o que é: (título, detalhe), quando veio de um jogo, livro ou tela.
+    pub about: Option<(&'a str, &'a str)>,
+    pub suggestions: &'a [String],
+    pub text: &'a str,
+    pub hint: &'a str,
 }
 
-pub fn draw_compose_header(fb: &mut Framebuffer, f: &Fonts, title: &str, context: Option<&str>) {
+const CARD_Y: i32 = 288;
+const CARD_H: i32 = 132;
+
+fn card_rect() -> Rect {
+    Rect::new(MARGIN - 8, CARD_Y, W - 2 * MARGIN + 16, CARD_H)
+}
+
+/// Botão "Tirar" do cartão de contexto.
+pub fn context_rect() -> Rect {
+    let c = card_rect();
+    Rect::new(c.x + c.w - 24 - 140, c.y + (c.h - 60) / 2, 140, 60)
+}
+
+fn chips_top(has_card: bool) -> i32 {
+    if has_card { CARD_Y + CARD_H + 30 } else { CARD_Y + 8 }
+}
+
+/// Sugestões em fileiras (no máximo duas), medidas com a fonte das pílulas.
+pub fn chip_rects(f: &Fonts, suggestions: &[String], has_card: bool) -> Vec<Rect> {
+    let (h, gap) = (78, 14);
+    let mut v = Vec::new();
+    let (mut x, mut y) = (MARGIN - 8, chips_top(has_card));
+    for s in suggestions {
+        let w = (f.measure(Face::Strong, 30.0, s) + 64).min(W - 2 * MARGIN + 16);
+        if x + w > W - MARGIN + 8 {
+            x = MARGIN - 8;
+            y += h + gap;
+            if y > chips_top(has_card) + h + gap {
+                break;
+            }
+        }
+        v.push(Rect::new(x, y, w, h));
+        x += w + gap;
+    }
+    v
+}
+
+pub fn compose_field_rect() -> Rect {
+    Rect::new(MARGIN - 8, 660, W - 2 * MARGIN + 16, 170)
+}
+
+/// Campo de texto (redesenhado sozinho enquanto digita).
+pub fn draw_compose_field(fb: &mut Framebuffer, f: &Fonts, text: &str, hint: &str) {
+    let r = compose_field_rect();
+    fb.fill(Rect::new(0, r.y - 6, W, 892 - (r.y - 6)), PAPER);
+    fb.round_outline(r, 28, 4, INK, PAPER);
+    let max_w = r.w - 64;
+    if text.is_empty() {
+        f.draw(fb, Face::Body, 40.0, r.x + 32, r.y + 70, MUTED, "Ou escreva a sua pergunta…");
+        fb.fill(Rect::new(r.x + 30, r.y + 30, 4, 52), INK);
+    } else {
+        // Até duas linhas; se passar, mostra o final.
+        let mut lines = wrap_words(f, Face::Body, 40.0, text, max_w);
+        if lines.len() > 2 {
+            lines = lines.split_off(lines.len() - 2);
+        }
+        let mut end = r.x + 32;
+        for (k, l) in lines.iter().enumerate() {
+            end = f.draw(fb, Face::Body, 40.0, r.x + 32, r.y + 70 + k as i32 * 56, INK, l);
+        }
+        let ly = r.y + 30 + (lines.len() as i32 - 1) * 56;
+        fb.fill(Rect::new(end + 4, ly, 4, 52), INK);
+    }
+    f.draw(fb, Face::Body, 26.0, MARGIN, r.y + r.h + 40, MUTED, &fit(f, Face::Body, 26.0, hint, W - 2 * MARGIN));
+}
+
+pub fn draw_compose(fb: &mut Framebuffer, f: &Fonts, c: &Compose) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
-    f.draw(fb, Face::Strong, 32.0, MARGIN, 230, MUTED, "MENSAGEM PARA O CLAUDE");
-    f.draw(fb, Face::Display, 56.0, MARGIN, 310, INK, &fit(f, Face::Display, 56.0, title, W - 2 * MARGIN));
-    if let Some(c) = context.filter(|c| !c.is_empty()) {
-        let r = context_rect();
-        fb.round_rect(r, 25, 0xE4);
-        let first = c.lines().next().unwrap_or("");
-        let t = fit(f, Face::Body, 26.0, &format!("Vai junto: {first}  ·  toque para tirar"), r.w - 40);
-        f.draw(fb, Face::Body, 26.0, r.x + 20, r.y + 34, INK, &t);
+    // Cabeçalho: a marca do Claude e a pergunta.
+    ui::icon(fb, ui::Module::Claude, MARGIN - 4, 176, 64, INK);
+    let title = if c.chat_title.is_some() { "Continue a conversa" } else { "Pergunte ao Claude" };
+    f.draw(fb, Face::Display, 58.0, MARGIN + 80, 232, INK, title);
+    if let Some(t) = c.chat_title {
+        let t = fit(f, Face::Body, 26.0, t, W - 2 * MARGIN - 300);
+        let w = f.measure(Face::Body, 26.0, &t);
+        f.draw(fb, Face::Body, 26.0, W - MARGIN - w, 130, MUTED, &t);
     }
+    let has_card = c.about.is_some() || c.last_reply.is_some();
+    if let Some((what, detail)) = c.about {
+        let r = card_rect();
+        fb.round_rect(r, 30, INK);
+        f.draw(fb, Face::Strong, 24.0, r.x + 32, r.y + 42, 0xBB, "VAI JUNTO O QUE ESTÁ NA TELA");
+        let room = context_rect().x - r.x - 56;
+        let end = f.draw(fb, Face::Display, 42.0, r.x + 30, r.y + 96, PAPER, &fit(f, Face::Display, 42.0, what, room));
+        if !detail.is_empty() && end + 30 < r.x + 32 + room {
+            f.draw(fb, Face::Body, 28.0, end + 18, r.y + 94, 0xCC, &fit(f, Face::Body, 28.0, detail, r.x + 32 + room - end - 18));
+        }
+        let b = context_rect();
+        fb.round_outline(b, b.h / 2, 3, PAPER, INK);
+        let w = f.measure(Face::Strong, 28.0, "Tirar");
+        f.draw(fb, Face::Strong, 28.0, b.x + (b.w - w) / 2, b.y + 40, PAPER, "Tirar");
+    } else if let Some(reply) = c.last_reply {
+        let r = card_rect();
+        fb.round_rect(r, 30, 0xEC);
+        f.draw(fb, Face::Strong, 24.0, r.x + 32, r.y + 42, MUTED, "O CLAUDE DISSE");
+        let flat: String = reply.replace("**", "").split_whitespace().collect::<Vec<_>>().join(" ");
+        let lines = wrap_words(f, Face::Body, 28.0, &flat, r.w - 64);
+        let mut first = lines.first().cloned().unwrap_or_default();
+        if lines.len() > 1 {
+            first = fit(f, Face::Body, 28.0, &format!("{first}…"), r.w - 64);
+        }
+        f.draw(fb, Face::Body, 28.0, r.x + 32, r.y + 92, INK, &first);
+    }
+    // Perguntas prontas: um toque envia.
+    let chips = chip_rects(f, c.suggestions, has_card);
+    for (s, r) in c.suggestions.iter().zip(&chips) {
+        fb.round_outline(*r, r.h / 2, 3, INK, PAPER);
+        f.draw(fb, Face::Strong, 30.0, r.x + 32, r.y + 50, INK, s);
+    }
+    // Espaço sobrando: a dica de chamar o Claude de qualquer tela.
+    let bottom = chips.iter().map(|r| r.y + r.h).max().unwrap_or(CARD_Y);
+    if !has_card && compose_field_rect().y - bottom > 110 {
+        f.draw(fb, Face::Body, 28.0, MARGIN, bottom + 72, MUTED, "Em qualquer jogo ou tela, deslize de cima para baixo");
+        f.draw(fb, Face::Body, 28.0, MARGIN, bottom + 112, MUTED, "para perguntar sobre o que está nela.");
+    }
+    draw_compose_field(fb, f, c.text, c.hint);
 }
 
 #[cfg(test)]
@@ -726,5 +841,29 @@ mod tests {
         assert_eq!(j.get("reply").and_then(Json::str), Some("Olá\nmundo é 😀"));
         assert_eq!(j.get("n").unwrap().arr().len(), 2);
         assert_eq!(j.get("ok"), Some(&Json::Bool(true)));
+    }
+}
+
+#[cfg(test)]
+mod render {
+    use super::*;
+    /// `VERSO_INK_SHOTS=pasta cargo test pergunta_em_imagem -- --ignored`
+    #[test]
+    #[ignore]
+    fn pergunta_em_imagem() {
+        let out = std::path::PathBuf::from(std::env::var("VERSO_INK_SHOTS").expect("VERSO_INK_SHOTS"));
+        let f = Fonts::new();
+        let s = |v: &[&str]| v.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+        let cases = [
+            ("pergunta-uno", Compose { chat_title: None, last_reply: None, about: Some(("UNO", "Mesa: 7 azul · sua mão: 8 cartas")), suggestions: &s(&["Qual a melhor jogada agora?", "Que cor eu escolho?", "Explique o acúmulo"]), text: "", hint: "Toque numa pergunta pronta, ou escreva e toque em OK." }),
+            ("pergunta-nova", Compose { chat_title: None, last_reply: None, about: None, suggestions: &s(&["Resuma o livro que estou lendo", "Organize meu dia", "Um desafio de lógica", "Me ensine algo em 2 minutos"]), text: "", hint: "Toque numa pergunta pronta, ou escreva e toque em OK." }),
+            ("pergunta-continua", Compose { chat_title: Some("Ola"), last_reply: Some("Olá, Pedro! Em que posso ajudar hoje? Posso ler seus livros e ajudar nos jogos."), about: None, suggestions: &s(&["Explique melhor", "Dê um exemplo", "Resuma em tópicos"]), text: "quero saber sobre o livro", hint: "Toque numa pergunta pronta, ou escreva e toque em OK." }),
+        ];
+        for (name, c) in cases {
+            let mut fb = Framebuffer::memory();
+            draw_compose(&mut fb, &f, &c);
+            crate::keyboard::draw(&mut fb, &f, &crate::keyboard::layout(crate::keyboard::Mode::Letters, true));
+            fb.save_pgm(&out.join(format!("{name}.pgm")));
+        }
     }
 }

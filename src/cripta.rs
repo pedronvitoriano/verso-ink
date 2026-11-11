@@ -264,6 +264,10 @@ impl Cripta {
 }
 
 impl MiniGame for Cripta {
+    fn summary(&self) -> String {
+        if self.state == State::Menu { String::new() } else { format!("Andar {} · vida {}/{} · força {}", self.floor, self.hp, self.max_hp, self.atk) }
+    }
+
     fn context(&self) -> String {
         if self.state == State::Menu {
             return "No menu da Cripta.".into();

@@ -47,6 +47,10 @@ pub trait MiniGame {
     fn context(&self) -> String {
         String::new()
     }
+    /// Resumo curto para o cartão "vai junto" (ex.: "Mesa: 7 azul · sua mão: 8 cartas").
+    fn summary(&self) -> String {
+        String::new()
+    }
     /// Está no menu do jogo? Lá o app mostra o botão "Como jogar".
     fn at_menu(&self) -> bool {
         false

@@ -190,6 +190,10 @@ impl Lig4 {
 }
 
 impl MiniGame for Lig4 {
+    fn summary(&self) -> String {
+        if self.mode == Mode::Menu { String::new() } else if self.turn == 1 { "Sua vez".into() } else { "Vez do adversário".into() }
+    }
+
     fn context(&self) -> String {
         if self.mode == Mode::Menu {
             return "No menu do Lig 4.".into();

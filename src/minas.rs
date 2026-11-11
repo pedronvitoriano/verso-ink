@@ -180,6 +180,10 @@ impl Minas {
 }
 
 impl MiniGame for Minas {
+    fn summary(&self) -> String {
+        if self.menu { String::new() } else { format!("{}×{} · {} minas", self.n, self.n, self.mines) }
+    }
+
     fn context(&self) -> String {
         if self.menu {
             return "No menu do Campo minado.".into();

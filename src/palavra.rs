@@ -173,6 +173,10 @@ impl Palavra {
 }
 
 impl MiniGame for Palavra {
+    fn summary(&self) -> String {
+        if self.menu { String::new() } else { format!("Tentativa {} de 6", self.guesses.len() + 1) }
+    }
+
     fn context(&self) -> String {
         if self.menu {
             return "No menu da Palavra do dia.".into();

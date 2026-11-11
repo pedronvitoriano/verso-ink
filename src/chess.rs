@@ -391,9 +391,19 @@ impl Game {
         Game { mode: Mode::Coach { level, user_white }, ..Game::new() }
     }
 
-    /// O tabuleiro aparece com as pretas embaixo quando você joga de pretas.
+    /// O tabuleiro aparece com as pretas embaixo quando você joga de pretas. No jogo local com
+    /// "Girar", na vez das pretas a tela vira 180° e o tabuleiro também se inverte: assim quem está
+    /// do outro lado da mesa vê as próprias peças (pretas) perto de si e de pé.
     pub fn flipped(&self) -> bool {
-        matches!(self.mode, Mode::Coach { user_white: false, .. })
+        match self.mode {
+            Mode::Coach { user_white, .. } => !user_white,
+            Mode::Local => rotate_enabled() && !self.pos.white_to_move,
+        }
+    }
+
+    /// Apaga a partida salva (fim de jogo local por desistência ou empate).
+    pub fn clear_saved() {
+        let _ = std::fs::remove_file(Self::path());
     }
 
     /// É a vez do computador?
@@ -518,6 +528,7 @@ impl Game {
         false
     }
 
+    #[allow(dead_code)] // usado nos testes; na partida não há desfazer
     pub fn undo(&mut self) {
         if self.pending_promo.take().is_some() {
             return;
@@ -803,7 +814,15 @@ pub fn draw_square(fb: &mut Framebuffer, g: &Game, sp: &Sprites, i: usize) {
     }
 }
 
-pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites) {
+/// Botões de baixo da partida: rótulo e se está em destaque (confirmação); vazio = não mostra.
+pub struct Buttons<'a> {
+    pub left: (&'a str, bool),
+    pub right: (&'a str, bool),
+    /// Recado no lugar da linha de estado (empate proposto, fim por desistência…).
+    pub note: Option<&'a str>,
+}
+
+pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites, btn: &Buttons) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
     if g.mode == Mode::Local {
@@ -823,11 +842,23 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites) {
     for i in 0..64 {
         draw_square(fb, g, sp, i);
     }
-    let second = if matches!(g.mode, Mode::Coach { .. }) { "Desistir" } else { "Novo jogo" };
-    for (r, label) in [(undo_rect(), "Desfazer"), (new_rect(), second)] {
-        fb.round_outline(r, r.h / 2, 4, INK, PAPER);
-        let w = f.measure(Face::Strong, 38.0, label);
-        f.draw(fb, Face::Strong, 38.0, r.x + (r.w - w) / 2, r.y + 63, INK, label);
+    if let Some(n) = btn.note {
+        let r = status_rect();
+        fb.fill(r, PAPER);
+        f.draw(fb, Face::Display, 40.0, 72, r.y + 62, INK, &crate::apps::fit(f, Face::Display, 40.0, n, 1072 - 144));
+    }
+    for (r, (label, filled)) in [(undo_rect(), btn.left), (new_rect(), btn.right)] {
+        if label.is_empty() {
+            continue;
+        }
+        if filled {
+            fb.round_rect(r, r.h / 2, INK);
+        } else {
+            fb.round_outline(r, r.h / 2, 4, INK, PAPER);
+        }
+        let size = if f.measure(Face::Strong, 38.0, label) > r.w - 40 { 30.0 } else { 38.0 };
+        let w = f.measure(Face::Strong, size, label);
+        f.draw(fb, Face::Strong, size, r.x + (r.w - w) / 2, r.y + 63, if filled { PAPER } else { INK }, label);
     }
 }
 

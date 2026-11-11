@@ -133,6 +133,12 @@ pub struct App {
     engine: Option<crate::engine::Engine>,
     coach_msg: String,
     pre_eval: Option<(crate::engine::Score, String)>,
+    /// Partida: confirmação pendente (0 empate, 1 desistir) e quando foi pedida.
+    chess_confirm: Option<(u8, Instant)>,
+    /// Jogo local: empate proposto, esperando o outro aceitar.
+    chess_offer: bool,
+    /// Jogo local encerrado (desistência ou empate combinado): recado final.
+    chess_over: Option<String>,
     records: Vec<crate::coach::Record>,
     coach_page: usize,
     end_info: (String, String, Option<(u32, u32)>, Option<String>),
@@ -165,6 +171,9 @@ pub struct App {
     /// Pergunta ao Claude a partir de uma tela: contexto que vai junto e para onde voltar.
     claude_ctx: Option<String>,
     claude_return: Option<Screen>,
+    /// Cartão "vai junto" (título, detalhe) e perguntas prontas da tela de pergunta.
+    claude_about: Option<(String, String)>,
+    claude_sugg: Vec<String>,
     /// Leitor de texto (arquivo do Claude, análise): título, páginas, página atual, aviso.
     doc: (String, Vec<Vec<crate::chat::Line>>, usize),
     files_note: String,
@@ -237,6 +246,9 @@ impl App {
             engine: None,
             coach_msg: String::new(),
             pre_eval: None,
+            chess_confirm: None,
+            chess_offer: false,
+            chess_over: None,
             records: Vec::new(),
             coach_page: 0,
             end_info: (String::new(), String::new(), None, None),
@@ -265,6 +277,8 @@ impl App {
             chat_pages: Vec::new(),
             claude_ctx: None,
             claude_return: None,
+            claude_about: None,
+            claude_sugg: Vec::new(),
             doc: (String::new(), Vec::new(), 0),
             files_note: String::new(),
             chat_page: 0,
@@ -285,6 +299,7 @@ impl App {
         // O repouso fica sempre claro, mesmo no modo noturno (escuro parecia aparelho apagado).
         self.fb.invert = self.light.night && self.screen != Screen::Sleep;
         self.fb.rot180 = self.screen == Screen::Chess && self.local_rotated();
+        let chess_btn = if self.screen == Screen::Chess { Some(self.chess_buttons()) } else { None };
         let (fb, f, st) = (&mut self.fb, &self.fonts, &self.status);
         match self.screen {
             Screen::Home => ui::draw_home(fb, f, st, &data::summary(st.offset_min)),
@@ -332,7 +347,9 @@ impl App {
             Screen::Coaches => crate::chess_ui::draw_coaches(fb, f, self.coach_page),
             Screen::Chess => {
                 if let (Some(g), Some(sp)) = (&self.chess, &self.sprites) {
-                    crate::chess::draw(fb, f, g, sp);
+                    let (left, right, note) = chess_btn.clone().unwrap_or_default();
+                    let b = crate::chess::Buttons { left: (left.0.as_str(), left.1), right: (right.0.as_str(), right.1), note: note.as_deref() };
+                    crate::chess::draw(fb, f, g, sp, &b);
                     if let crate::chess::Mode::Coach { level, .. } = g.mode {
                         let c = crate::coach::coach(level);
                         crate::chess_ui::draw_coach_line(fb, f, &format!("{} ({})", c.name, c.rating), &self.coach_msg);
@@ -371,9 +388,16 @@ impl App {
                 }
             }
             Screen::ClaudeCompose => {
-                let title = self.cur_chat.as_ref().map(|c| c.title.clone()).unwrap_or_else(|| "Nova conversa".into());
-                crate::chat::draw_compose_header(fb, f, &title, self.claude_ctx.as_deref());
-                crate::today_ui::draw_field(fb, f, &self.compose_text, &self.compose_hint);
+                let last = if self.claude_about.is_none() { self.cur_chat.as_ref().and_then(|c| c.messages.iter().rev().find(|m| !m.user)).map(|m| m.text.as_str()) } else { None };
+                let c = crate::chat::Compose {
+                    chat_title: self.cur_chat.as_ref().map(|c| c.title.as_str()),
+                    last_reply: last,
+                    about: self.claude_about.as_ref().map(|(a, b)| (a.as_str(), b.as_str())),
+                    suggestions: &self.claude_sugg,
+                    text: &self.compose_text,
+                    hint: &self.compose_hint,
+                };
+                crate::chat::draw_compose(fb, f, &c);
                 self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
                 crate::keyboard::draw(fb, f, &self.keys);
             }
@@ -547,9 +571,11 @@ impl App {
             }
             Screen::ClaudeCompose => {
                 let mut v = vec![(Back, ui::back_rect())];
-                if self.claude_ctx.is_some() {
+                if self.claude_about.is_some() {
                     v.push((Ctx, crate::chat::context_rect()));
                 }
+                let has_card = self.claude_about.is_some() || self.cur_chat.is_some();
+                v.extend(crate::chat::chip_rects(&self.fonts, &self.claude_sugg, has_card).into_iter().enumerate().map(|(k, r)| (Level(k), r)));
                 v.extend(self.keys.iter().enumerate().map(|(i, k)| (Key(i as u8), k.rect)));
                 v
             }
@@ -641,7 +667,13 @@ impl App {
                 v
             }
             Screen::Chess => {
-                let mut v = vec![(Back, ui::back_rect()), (Undo, crate::chess::undo_rect()), (NewGame, crate::chess::new_rect())];
+                let mut v = vec![(Back, ui::back_rect()), (Undo, crate::chess::undo_rect())];
+                if !self.chess_buttons().1 .0.is_empty() {
+                    v.push((NewGame, crate::chess::new_rect()));
+                }
+                if self.chess_over.is_some() {
+                    return v;
+                }
                 if self.coach_level().is_none() {
                     v.push((Check, crate::chess::rotate_rect()));
                 }
@@ -838,8 +870,14 @@ impl App {
                 }
             };
         }
-        crate::today_ui::draw_field(&mut self.fb, &self.fonts, &self.compose_text, &self.compose_hint);
-        self.fb.refresh(Rect::new(0, crate::today_ui::field_rect().y - 4, 1072, 470), Wave::Quality, false);
+        if self.screen == Screen::ClaudeCompose {
+            crate::chat::draw_compose_field(&mut self.fb, &self.fonts, &self.compose_text, &self.compose_hint);
+            let r = crate::chat::compose_field_rect();
+            self.fb.refresh(Rect::new(0, r.y - 6, 1072, 892 - (r.y - 6)), Wave::Fast, false);
+        } else {
+            crate::today_ui::draw_field(&mut self.fb, &self.fonts, &self.compose_text, &self.compose_hint);
+            self.fb.refresh(Rect::new(0, crate::today_ui::field_rect().y - 4, 1072, 470), Wave::Quality, false);
+        }
         if relayout {
             self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
             crate::keyboard::draw(&mut self.fb, &self.fonts, &self.keys);
@@ -870,10 +908,54 @@ impl App {
 
     /// Pergunta ao Claude sobre o que está na tela agora (deslizar de cima para baixo).
     fn ask_claude_here(&mut self) {
-        self.claude_ctx = Some(self.screen_context());
+        let ctx = self.screen_context();
+        let mut lines = ctx.lines();
+        let first = lines.next().unwrap_or("").to_string();
+        let _ = lines.next();
+        let detail = match self.screen {
+            Screen::Mini => self.mini.as_ref().map(|g| g.summary()).unwrap_or_default(),
+            Screen::Sudoku | Screen::SudokuWon => self.sudoku.as_ref().map(|g| format!("{} · {} de 81", g.label(), g.filled())).unwrap_or_default(),
+            Screen::Chess | Screen::ChessEnd | Screen::ChessReview => self.chess.as_ref().map(|g| format!("lance {} · {}", g.moves.len() / 2 + 1, if g.pos.white_to_move { "brancas jogam" } else { "pretas jogam" })).unwrap_or_default(),
+            _ => data::last_book().map(|b| format!("lendo {}", b.title)).unwrap_or_default(),
+        };
+        let what = match self.screen {
+            Screen::Mini => {
+                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else { "Receitas".to_string() }
+            }
+            Screen::Sudoku | Screen::SudokuWon => "Sudoku".into(),
+            Screen::Chess | Screen::ChessEnd | Screen::ChessReview => "Xadrez".into(),
+            Screen::Today | Screen::Calendar => "Seu dia".into(),
+            Screen::Library => "Biblioteca".into(),
+            _ => first.chars().take(40).collect(),
+        };
+        self.claude_about = Some((what.clone(), detail));
+        self.claude_sugg = Self::suggestions_for(Some(&what), false);
+        self.claude_ctx = Some(ctx);
         self.claude_return = Some(self.screen);
         self.cur_chat = None;
-        self.start_claude_compose();
+        self.open_compose();
+    }
+
+    /// Perguntas prontas para o momento (um toque envia).
+    fn suggestions_for(what: Option<&str>, continuing: bool) -> Vec<String> {
+        let v: &[&str] = match what {
+            Some("UNO") => &["Qual a melhor jogada agora?", "Que cor eu escolho?", "Explique o acúmulo"],
+            Some("Xadrez") => &["Analise a posição", "Qual é o plano aqui?", "Estou correndo perigo?"],
+            Some("Sudoku") => &["Uma dica sem entregar", "Qual técnica uso aqui?"],
+            Some("Coroas") => &["Uma dica sem entregar", "Por onde eu começo?"],
+            Some("Minas") => &["Onde é seguro abrir?", "Explique esse padrão"],
+            Some("Palavra") => &["Uma dica sem entregar", "Que letras testar?"],
+            Some("Lig 4") => &["Qual coluna eu jogo?", "Estou correndo perigo?"],
+            Some("Cripta") => &["Vale lutar agora?", "Qual caminho seguir?"],
+            Some("Histórias") => &["O que você escolheria?", "Resuma até aqui"],
+            Some("Receitas") => &["Posso trocar um ingrediente?", "Dá para dobrar a receita?"],
+            Some("Seu dia") => &["Organize meu dia", "O que priorizar?"],
+            Some("Biblioteca") => &["O que ler a seguir?", "Resuma o livro que estou lendo"],
+            Some(_) => &["Explique o que estou vendo", "Uma dica"],
+            None if continuing => &["Explique melhor", "Dê um exemplo", "Resuma em tópicos"],
+            None => &["Resuma o livro que estou lendo", "Organize meu dia", "Um desafio de lógica", "Me ensine algo em 2 minutos"],
+        };
+        v.iter().map(|s| s.to_string()).collect()
     }
 
     /// O que está na tela, em texto, para o Claude entender a pergunta.
@@ -948,9 +1030,17 @@ impl App {
         }
     }
 
+    /// Nova conversa ou resposta, sem contexto de tela.
     fn start_claude_compose(&mut self) {
+        self.claude_ctx = None;
+        self.claude_about = None;
+        self.claude_sugg = Self::suggestions_for(None, self.cur_chat.is_some());
+        self.open_compose();
+    }
+
+    fn open_compose(&mut self) {
         self.compose_text.clear();
-        self.compose_hint = "Escreva e toque em OK para enviar.".into();
+        self.compose_hint = "Toque numa pergunta pronta, ou escreva e toque em OK.".into();
         self.kb_mode = crate::keyboard::Mode::Letters;
         self.kb_shift = true;
         self.go(Screen::ClaudeCompose);
@@ -1150,6 +1240,64 @@ impl App {
     }
 
     /// Fala do treinador com a tela atualizada na hora (antes de cálculos demorados).
+    /// Confirmação pedida há menos de 5 s?
+    fn confirming(&self, kind: u8) -> bool {
+        self.chess_confirm.is_some_and(|(k, t)| k == kind && t.elapsed() < Duration::from_secs(5))
+    }
+
+    /// Botões de baixo da partida conforme o momento (e o recado no lugar do estado).
+    fn chess_buttons(&self) -> ((String, bool), (String, bool), Option<String>) {
+        if let Some(over) = &self.chess_over {
+            return (("Voltar ao menu".into(), true), (String::new(), false), Some(over.clone()));
+        }
+        if self.chess_offer {
+            let who = if self.chess.as_ref().is_some_and(|g| g.pos.white_to_move) { "As brancas propõem empate." } else { "As pretas propõem empate." };
+            return (("Aceitar empate".into(), true), ("Recusar".into(), false), Some(who.into()));
+        }
+        let left = if self.confirming(0) { ("Confirmar empate".to_string(), true) } else { ("Empate".to_string(), false) };
+        let right = if self.confirming(1) { ("Confirmar desistência".to_string(), true) } else { ("Desistir".to_string(), false) };
+        let note = if self.confirming(0) || self.confirming(1) { Some("Toque de novo para confirmar.".to_string()) } else { None };
+        (left, right, note)
+    }
+
+    fn chess_note(&mut self, text: &str) {
+        if self.coach_level().is_some() {
+            self.say(text);
+        } else {
+            self.render(false);
+        }
+    }
+
+    /// Propor empate: o treinador aceita se não estiver na frente (e a partida já andou);
+    /// no jogo local, o outro jogador decide.
+    fn offer_draw(&mut self) {
+        let Some(g) = &self.chess else { return };
+        match g.mode {
+            crate::chess::Mode::Coach { user_white, .. } => {
+                let mat = g.pos.material();
+                let coach_ahead = if user_white { -mat } else { mat };
+                if g.history.len() >= 20 && coach_ahead <= 0 {
+                    self.finish_coach_game(Some(0.5));
+                } else if g.history.len() < 20 {
+                    self.say("Ainda é cedo para empate. Vamos jogar mais um pouco.");
+                } else {
+                    self.say("Prefiro continuar: acho que estou melhor.");
+                }
+            }
+            crate::chess::Mode::Local => {
+                self.chess_offer = true;
+                self.render(false);
+            }
+        }
+    }
+
+    /// Fim do jogo local: apaga a partida salva e mostra o recado com o botão de voltar.
+    fn end_local(&mut self, text: &str) {
+        crate::chess::Game::clear_saved();
+        self.chess_over = Some(text.to_string());
+        self.render(true);
+    }
+
     fn say(&mut self, text: &str) {
         self.coach_msg = text.to_string();
         if let Some(level) = self.coach_level() {
@@ -1272,32 +1420,6 @@ impl App {
         self.say(&self.coach_msg.clone());
     }
 
-    fn undo_chess(&mut self) {
-        let coach = self.coach_level().is_some();
-        if let Some(g) = &mut self.chess {
-            g.undo();
-            // Contra o treinador, desfaz também o lance dele, para voltar à sua vez.
-            if coach && g.engine_turn() {
-                g.undo();
-            }
-        }
-        if coach {
-            let ply = self.chess.as_ref().map(|g| g.moves.len()).unwrap_or(0);
-            self.records.retain(|r| r.ply < ply);
-            crate::coach::save_current(&self.records);
-            self.coach_msg = "Lance desfeito. Sua vez.".into();
-            self.redraw_chess();
-            self.say(&self.coach_msg.clone());
-            self.analyse_pre();
-        } else if crate::chess::rotate_enabled() {
-            self.render(true);
-        } else {
-            self.redraw_chess();
-        }
-    }
-
-    /// Fim da partida contra o treinador: rating, escada, partida salva e tela de resultado.
-    /// `forced`: placar imposto (desistência = 0).
     fn finish_coach_game(&mut self, forced: Option<f32>) {
         let Some(level) = self.coach_level() else { return };
         let Some(g) = self.chess.as_ref() else { return };
@@ -1482,7 +1604,16 @@ impl App {
             (Screen::ClaudeDoc, Back) => self.go(Screen::ClaudeFiles),
             (Screen::ClaudeCompose, Ctx) => {
                 self.claude_ctx = None;
+                self.claude_about = None;
+                self.claude_sugg = Self::suggestions_for(None, self.cur_chat.is_some());
                 self.render(false);
+            }
+            (Screen::ClaudeCompose, Level(k)) => {
+                // Pergunta pronta: envia na hora, sem digitar.
+                if let Some(q) = self.claude_sugg.get(k).cloned() {
+                    self.compose_text = q;
+                    self.send_claude();
+                }
             }
             (Screen::ClaudeChat, Check) => {
                 self.files_note.clear();
@@ -1777,6 +1908,11 @@ impl App {
                 if busy {
                     return;
                 }
+                // Jogar cancela confirmações e propostas pendentes.
+                let pending = self.chess_confirm.take().is_some() | std::mem::take(&mut self.chess_offer);
+                if pending {
+                    self.render(false);
+                }
                 let moved = self.chess.as_mut().is_some_and(|g| g.tap(i));
                 if moved && self.coach_level().is_none() && crate::chess::rotate_enabled() {
                     // Jogo local girando: a tela inteira vira para o próximo jogador.
@@ -1797,20 +1933,47 @@ impl App {
                 self.redraw_chess();
                 self.after_user_move();
             }
-            (Screen::Chess, Undo) => self.undo_chess(),
+            // Botão da esquerda: empate (propor, confirmar ou aceitar) ou, no fim, voltar ao menu.
+            (Screen::Chess, Undo) => {
+                if self.chess_over.is_some() {
+                    self.chess_over = None;
+                    return self.go(Screen::ChessHub);
+                }
+                if self.chess_offer {
+                    // O outro jogador aceitou o empate.
+                    self.chess_offer = false;
+                    self.end_local("Empate combinado.");
+                    return;
+                }
+                if self.confirming(0) {
+                    self.chess_confirm = None;
+                    return self.offer_draw();
+                }
+                self.chess_confirm = Some((0, Instant::now()));
+                self.render(false);
+            }
             (Screen::Chess, Check) => {
                 crate::chess::set_rotate(!crate::chess::rotate_enabled());
                 self.render(true);
             }
+            // Botão da direita: desistir (com confirmação) ou recusar o empate proposto.
             (Screen::Chess, NewGame) => {
+                if self.chess_offer {
+                    self.chess_offer = false;
+                    self.chess_note("Empate recusado. O jogo segue.");
+                    return;
+                }
+                if !self.confirming(1) {
+                    self.chess_confirm = Some((1, Instant::now()));
+                    return self.render(false);
+                }
+                self.chess_confirm = None;
                 let coach = self.chess.as_ref().is_some_and(|g| matches!(g.mode, crate::chess::Mode::Coach { .. }));
                 if coach {
                     self.finish_coach_game(Some(0.0)); // desistir conta como derrota
                 } else {
-                    let g = crate::chess::Game::new();
-                    g.save();
-                    self.chess = Some(g);
-                    self.render(true);
+                    let side = if self.chess.as_ref().is_some_and(|g| g.pos.white_to_move) { "As brancas desistiram." } else { "As pretas desistiram." };
+                    self.end_local(side);
                 }
             }
             (Screen::ChessEnd, Game(0)) => {

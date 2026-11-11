@@ -176,7 +176,7 @@ fn disc(fb: &mut Framebuffer, cx: f32, cy: f32, r: f32, v: u8) {
 }
 
 /// Ícone geométrico de cada módulo, desenhado em um quadrado de lado `s`.
-fn icon(fb: &mut Framebuffer, m: Module, x: i32, y: i32, s: i32, v: u8) {
+pub fn icon(fb: &mut Framebuffer, m: Module, x: i32, y: i32, s: i32, v: u8) {
     let (x, y, s) = (x as f32, y as f32, s as f32);
     let t = s * 0.075;
     match m {

@@ -114,6 +114,14 @@ impl Receitas {
 }
 
 impl MiniGame for Receitas {
+    fn summary(&self) -> String {
+        match self.view {
+            View::List => String::new(),
+            View::Overview(k) => self.list.get(k).map(|(_, r)| r.title.clone()).unwrap_or_default(),
+            View::Step(k, st) => self.list.get(k).map(|(_, r)| format!("{} · passo {}", r.title, st + 1)).unwrap_or_default(),
+        }
+    }
+
     fn context(&self) -> String {
         let show = |k: usize| self.list.get(k).map(|(_, r)| format!("Receita: {} ({})\nIngredientes:\n{}\nPreparo:\n{}", r.title, r.info, r.ingredients.join("\n"), r.steps.iter().enumerate().map(|(i, s)| format!("{}. {s}", i + 1)).collect::<Vec<_>>().join("\n")));
         match self.view {

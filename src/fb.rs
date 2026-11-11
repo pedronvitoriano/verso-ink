@@ -90,6 +90,8 @@ pub struct Framebuffer {
     pub invert: bool,
     /// Tela de cabeça para baixo (xadrez local: vira para quem joga).
     pub rot180: bool,
+    /// Atualizações completas pedidas no modo escuro (só uma a cada algumas pisca de verdade).
+    night_full: u32,
 }
 
 fn u32_at(b: &[u8], off: usize) -> u32 {
@@ -110,6 +112,7 @@ impl Framebuffer {
             marker: 1,
             invert: false,
             rot180: false,
+            night_full: 0,
         }
     }
 
@@ -148,6 +151,7 @@ impl Framebuffer {
             marker: 1,
             invert: false,
             rot180: false,
+            night_full: 0,
         })
     }
 
@@ -235,6 +239,12 @@ impl Framebuffer {
 
     /// Copia a região do buffer para a memória da tela e pede a atualização.
     pub fn refresh(&mut self, r: Rect, wave: Wave, flash: bool) {
+        // No modo escuro o "flash" do e-ink vira um clarão: troca de tela sem piscar e
+        // só uma atualização completa a cada 6, para limpar os rastros.
+        let flash = flash && (!self.invert || {
+            self.night_full = self.night_full.wrapping_add(1);
+            self.night_full % 6 == 0
+        });
         let x0 = r.x.clamp(0, self.width);
         let y0 = r.y.clamp(0, self.height);
         let x1 = (r.x + r.w).clamp(0, self.width);
@@ -316,6 +326,7 @@ mod tests {
             marker: 1,
             invert: false,
             rot180: false,
+            night_full: 0,
         }
     }
 

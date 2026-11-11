@@ -9,7 +9,8 @@ KEY="${KINDLE_KEY:-$HOME/.ssh/kindle_ed25519}"
 PORT="${KINDLE_PORT:-2223}"
 RAW="$(mktemp)"
 trap 'rm -f "$RAW"' EXIT
-ssh -i "$KEY" -p "$PORT" -o IdentitiesOnly=yes "root@$IP" 'dd if=/dev/fb0 bs=1088 count=1448 2>/dev/null' >"$RAW"
+if [ "$IP" = remoto ]; then KSSH=(ssh -o BatchMode=yes kindle-remoto); else KSSH=(ssh -i "$KEY" -p "$PORT" -o IdentitiesOnly=yes "root@$IP"); fi
+"${KSSH[@]}" 'dd if=/dev/fb0 bs=1088 count=1448 2>/dev/null' >"$RAW"
 python3 -I - "$RAW" "$OUT" <<'PY'
 import sys
 from PIL import Image

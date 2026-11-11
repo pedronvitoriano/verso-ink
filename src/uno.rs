@@ -676,6 +676,14 @@ impl Uno {
 }
 
 impl MiniGame for Uno {
+    fn summary(&self) -> String {
+        if self.mode == Mode::Menu {
+            return String::new();
+        }
+        let n = self.hands.get(self.me()).map_or(0, |h| h.len());
+        format!("Mesa: {} {} · sua mão: {n} cartas", label(self.top().kind), color_name(self.color))
+    }
+
     fn context(&self) -> String {
         if self.mode == Mode::Menu {
             return "No menu do UNO.".into();
