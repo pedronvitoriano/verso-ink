@@ -129,16 +129,164 @@ pub struct Book {
     /// Títulos do sumário por capítulo (quando o livro tiver).
     pub titles: Vec<Option<String>>,
     kind: Kind,
+    /// MOBI/AZW3: o livro inteiro em blocos e os capítulos como faixas desses blocos.
+    blocks: Vec<Block>,
+    ranges: Vec<(usize, usize)>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
 enum Kind {
     Epub,
     Txt,
+    Mobi,
 }
 
 pub fn supported(path: &Path) -> bool {
-    matches!(path.extension().and_then(|e| e.to_str()).map(|e| e.to_ascii_lowercase()).as_deref(), Some("epub") | Some("txt"))
+    matches!(path.extension().and_then(|e| e.to_str()).map(|e| e.to_ascii_lowercase()).as_deref(), Some("epub") | Some("txt") | Some("azw3") | Some("mobi"))
+}
+
+// ---------- MOBI / AZW3 (sem DRM) ----------
+
+fn be16(b: &[u8], i: usize) -> Option<usize> {
+    Some(u16::from_be_bytes(b.get(i..i + 2)?.try_into().ok()?) as usize)
+}
+fn be32(b: &[u8], i: usize) -> Option<usize> {
+    Some(u32::from_be_bytes(b.get(i..i + 4)?.try_into().ok()?) as usize)
+}
+
+/// Descompressão PalmDOC (LZ77 simples do formato MOBI).
+pub fn palmdoc(src: &[u8]) -> Vec<u8> {
+    let mut out: Vec<u8> = Vec::with_capacity(src.len() * 2);
+    let mut i = 0;
+    while i < src.len() {
+        let c = src[i];
+        i += 1;
+        match c {
+            0x01..=0x08 => {
+                let n = c as usize;
+                out.extend_from_slice(&src[i..(i + n).min(src.len())]);
+                i += n;
+            }
+            0x00 | 0x09..=0x7F => out.push(c),
+            0x80..=0xBF => {
+                let Some(&c2) = src.get(i) else { break };
+                i += 1;
+                let pair = ((c as usize) << 8 | c2 as usize) & 0x3FFF;
+                let dist = pair >> 3;
+                let len = (pair & 7) + 3;
+                if dist == 0 || dist > out.len() {
+                    continue;
+                }
+                let start = out.len() - dist;
+                for k in 0..len {
+                    let b = out[start + k];
+                    out.push(b);
+                }
+            }
+            _ => {
+                out.push(b' ');
+                out.push(c ^ 0x80);
+            }
+        }
+    }
+    out
+}
+
+/// Tamanho dos dados extras no fim de um registro de texto (marcados nos bits de `flags`).
+fn trailing_size(rec: &[u8], flags: usize) -> usize {
+    let mut end = rec.len();
+    for bit in (1..16).rev() {
+        if flags & (1 << bit) == 0 {
+            continue;
+        }
+        // Tamanho em largura variável, lido de trás para frente.
+        let (mut size, mut shift) = (0usize, 0);
+        let mut k = end;
+        while k > 0 && shift < 28 {
+            k -= 1;
+            let b = rec[k] as usize;
+            size |= (b & 0x7F) << shift;
+            shift += 7;
+            if b & 0x80 != 0 {
+                break;
+            }
+        }
+        end = end.saturating_sub(size);
+    }
+    if flags & 1 != 0 && end > 0 {
+        end = end.saturating_sub((rec[end - 1] & 3) as usize + 1);
+    }
+    rec.len() - end
+}
+
+/// Lê o texto (HTML) de um MOBI/AZW3 sem DRM, com compressão nenhuma ou PalmDOC.
+pub fn mobi_text(data: &[u8]) -> Result<(String, String), String> {
+    let n = be16(data, 76).ok_or("arquivo curto")?;
+    let offs: Vec<usize> = (0..n).filter_map(|i| be32(data, 78 + i * 8)).collect();
+    let rec = |i: usize| -> &[u8] {
+        let a = offs.get(i).copied().unwrap_or(data.len()).min(data.len());
+        let b = offs.get(i + 1).copied().unwrap_or(data.len()).min(data.len());
+        &data[a..b.max(a)]
+    };
+    let r0 = rec(0);
+    let comp = be16(r0, 0).ok_or("cabeçalho")?;
+    let text_recs = be16(r0, 8).ok_or("cabeçalho")?;
+    if be16(r0, 12).unwrap_or(0) != 0 {
+        return Err("livro com DRM".into());
+    }
+    if comp != 1 && comp != 2 {
+        return Err("compressão não suportada (HUFF)".into());
+    }
+    let hlen = be32(r0, 20).unwrap_or(0);
+    let utf8 = be32(r0, 28).unwrap_or(0) == 65001;
+    let flags = if hlen >= 0xE4 { be16(r0, 0xF2).unwrap_or(0) } else { 0 };
+    let title = match (be32(r0, 0x54), be32(r0, 0x58)) {
+        (Some(o), Some(l)) if o + l <= r0.len() => String::from_utf8_lossy(&r0[o..o + l]).to_string(),
+        _ => String::new(),
+    };
+    let mut raw = Vec::new();
+    for i in 1..=text_recs {
+        let r = rec(i);
+        let body = &r[..r.len() - trailing_size(r, flags).min(r.len())];
+        if comp == 2 {
+            raw.extend(palmdoc(body));
+        } else {
+            raw.extend_from_slice(body);
+        }
+    }
+    let html = if utf8 { String::from_utf8_lossy(&raw).to_string() } else { raw.iter().map(|&b| b as char).collect() };
+    Ok((title, html))
+}
+
+/// Divide os blocos em capítulos: a cada título (depois de algum texto).
+fn split_chapters(blocks: &[Block]) -> (Vec<(usize, usize)>, Vec<Option<String>>) {
+    let mut ranges = Vec::new();
+    let mut titles = Vec::new();
+    let mut start = 0;
+    let mut cur_title: Option<String> = None;
+    let mut words = 0usize;
+    for (i, b) in blocks.iter().enumerate() {
+        match b {
+            Block::Head(r) => {
+                if words > 60 && i > start {
+                    ranges.push((start, i));
+                    titles.push(cur_title.take());
+                    start = i;
+                    words = 0;
+                }
+                if cur_title.is_none() {
+                    cur_title = Some(r.iter().map(|x| x.text.as_str()).collect::<String>());
+                }
+            }
+            Block::Para(r) => words += r.iter().map(|x| x.text.split_whitespace().count()).sum::<usize>(),
+            Block::Rule => {}
+        }
+    }
+    if start < blocks.len() || ranges.is_empty() {
+        ranges.push((start, blocks.len()));
+        titles.push(cur_title);
+    }
+    (ranges, titles)
 }
 
 fn zip_text(z: &mut zip::ZipArchive<std::fs::File>, name: &str) -> Option<String> {
@@ -192,7 +340,18 @@ impl Book {
     pub fn open(path: &Path) -> Result<Book, String> {
         let title_from_file = path.file_stem().and_then(|s| s.to_str()).unwrap_or("Livro").to_string();
         if path.extension().is_some_and(|e| e.eq_ignore_ascii_case("txt")) {
-            return Ok(Book { path: path.into(), title: title_from_file, spine: vec![String::new()], titles: vec![None], kind: Kind::Txt });
+            return Ok(Book { path: path.into(), title: title_from_file, spine: vec![String::new()], titles: vec![None], kind: Kind::Txt, blocks: vec![], ranges: vec![] });
+        }
+        let ext = path.extension().and_then(|e| e.to_str()).map(|e| e.to_ascii_lowercase()).unwrap_or_default();
+        if ext == "azw3" || ext == "mobi" {
+            let data = std::fs::read(path).map_err(|e| e.to_string())?;
+            let (title, html) = mobi_text(&data)?;
+            // Quebras de página do MOBI viram títulos de seção para dividir capítulos.
+            let html = html.replace("<mbp:pagebreak/>", "<hr/>").replace("<mbp:pagebreak />", "<hr/>");
+            let blocks = parse_xhtml(&html);
+            let (ranges, titles) = split_chapters(&blocks);
+            let title = if title.trim().is_empty() { title_from_file } else { decode_entities(title.trim()) };
+            return Ok(Book { path: path.into(), title, spine: vec![String::new(); ranges.len()], titles, kind: Kind::Mobi, blocks, ranges });
         }
         let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
         let mut z = zip::ZipArchive::new(file).map_err(|_| "não é um EPUB válido".to_string())?;
@@ -251,7 +410,7 @@ impl Book {
             }
         }
         let titles = spine.iter().map(|s| toc.get(s).cloned().filter(|t| !t.is_empty())).collect();
-        Ok(Book { path: path.into(), title, spine, titles, kind: Kind::Epub })
+        Ok(Book { path: path.into(), title, spine, titles, kind: Kind::Epub, blocks: vec![], ranges: vec![] })
     }
 
     pub fn chapters(&self) -> usize {
@@ -271,6 +430,7 @@ impl Book {
                     .map(|p| Block::Para(vec![Run { text: p, style: Style::Regular }]))
                     .collect()
             }
+            Kind::Mobi => self.ranges.get(k).map(|&(a, b)| self.blocks[a..b].to_vec()).unwrap_or_default(),
             Kind::Epub => {
                 let Some(name) = self.spine.get(k) else { return vec![] };
                 let Ok(file) = std::fs::File::open(&self.path) else { return vec![] };
@@ -896,6 +1056,19 @@ mod tests {
     }
 
     #[test]
+    fn palmdoc_e_dados_extras() {
+        // literal "ab", par (distância 2, tamanho 3) e "espaço + letra".
+        let pair: u16 = 0x8000 | (2 << 3) | (3 - 3);
+        let mut src = vec![b'a', b'b'];
+        src.extend_from_slice(&pair.to_be_bytes());
+        src.push(b'x' ^ 0x80 | 0x80);
+        assert_eq!(palmdoc(&src), b"ababa x");
+        // um campo extra de 3 bytes (bit 1) com o tamanho no fim.
+        let rec = [b'h', b'i', 0, 0, 0x83];
+        assert_eq!(trailing_size(&rec, 2), 3);
+    }
+
+    #[test]
     fn caminho_relativo() {
         assert_eq!(join("OEBPS/text", "../images/a%20b.png#x"), "OEBPS/images/a b.png");
     }
@@ -913,9 +1086,9 @@ mod render {
         let f = crate::text::Fonts::new();
         let rf = RFonts::load();
         let book = Book::open(&path).expect("abre");
-        assert_eq!(book.chapters(), 3);
+        eprintln!("{}: {} capítulos", book.title, book.chapters());
         let mut r = Reader { book, size_k: 2, chapter: 0, blocks: vec![], pages: vec![], page: 0, menu: false, turns: 0, chapter_title: String::new() };
-        r.load_chapter(1, &rf);
+        r.load_chapter(1.min(r.book.chapters() - 1), &rf);
         let mut fb = Framebuffer::memory();
         draw(&mut fb, &f, &rf, &r);
         fb.save_pgm(&out.join("leitor-pagina.pgm"));
