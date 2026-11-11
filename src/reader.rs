@@ -258,6 +258,21 @@ pub fn mobi_text(data: &[u8]) -> Result<(String, String), String> {
     Ok((title, html))
 }
 
+/// Parágrafo curto do tipo "CAPÍTULO IV", "Parte 2", "Livro I" (título não marcado como tal).
+fn looks_like_heading(runs: &[Run]) -> Option<String> {
+    let t: String = runs.iter().map(|r| r.text.as_str()).collect::<String>();
+    let t = t.trim();
+    if t.split_whitespace().count() > 8 {
+        return None;
+    }
+    let low = crate::apps::fold(t);
+    let mut w = low.split_whitespace();
+    let first = w.next()?;
+    let second = w.next()?;
+    let is_num = second.chars().all(|c| c.is_ascii_digit()) || second.chars().all(|c| "ivxlc".contains(c));
+    (["capitulo", "parte", "livro", "chapter", "part"].contains(&first) && is_num).then(|| t.to_string())
+}
+
 /// Divide os blocos em capítulos: a cada título (depois de algum texto).
 fn split_chapters(blocks: &[Block]) -> (Vec<(usize, usize)>, Vec<Option<String>>) {
     let mut ranges = Vec::new();
@@ -278,7 +293,21 @@ fn split_chapters(blocks: &[Block]) -> (Vec<(usize, usize)>, Vec<Option<String>>
                     cur_title = Some(r.iter().map(|x| x.text.as_str()).collect::<String>());
                 }
             }
-            Block::Para(r) => words += r.iter().map(|x| x.text.split_whitespace().count()).sum::<usize>(),
+            Block::Para(r) => {
+                if let Some(h) = looks_like_heading(r) {
+                    if words > 60 && i > start {
+                        ranges.push((start, i));
+                        titles.push(cur_title.take());
+                        start = i;
+                        words = 0;
+                    }
+                    if cur_title.is_none() {
+                        cur_title = Some(h);
+                    }
+                } else {
+                    words += r.iter().map(|x| x.text.split_whitespace().count()).sum::<usize>();
+                }
+            }
             Block::Rule => {}
         }
     }

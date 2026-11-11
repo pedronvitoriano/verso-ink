@@ -755,17 +755,21 @@ impl MiniGame for Coroas {
     }
 
     fn back(&mut self) -> bool {
-        // Do treino ou da fase, Início volta ao menu do jogo primeiro.
-        if self.menu && !self.practice {
-            return false;
+        // Só o submenu de treino volta ao menu; da partida, Início sai (o app guarda a partida).
+        if self.menu && self.practice {
+            self.practice = false;
+            return true;
         }
         if !self.menu {
             self.save();
             self.before = if self.won { self.before } else { self.elapsed() };
         }
-        self.menu = true;
-        self.practice = false;
-        true
+        false
+    }
+
+    fn resume(&mut self) {
+        // O tempo fora do jogo não conta.
+        self.started = std::time::Instant::now();
     }
 
     fn hold(&mut self, id: u32) -> Option<Redraw> {

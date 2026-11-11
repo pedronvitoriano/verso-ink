@@ -149,10 +149,14 @@ pub struct App {
     review_k: usize,
     rng: crate::sudoku::Rng,
     mini: Option<Box<dyn crate::minigame::MiniGame>>,
+    /// Partidas deixadas no meio (por jogo): voltar ao jogo continua de onde parou.
+    mini_cache: std::collections::HashMap<usize, Box<dyn crate::minigame::MiniGame>>,
     /// Para onde o botão Início leva ao sair do minijogo/módulo.
     mini_back: Screen,
     /// Índice (na tela Jogar) do minijogo aberto.
     mini_game: usize,
+    /// Para onde volta o painel Luz e tela (aberto de qualquer tela deslizando de baixo).
+    light_return: Option<Screen>,
     /// Tutorial: jogo, página, para onde voltar e se abre o jogo ao terminar.
     tut: (usize, usize, Screen, bool),
     clips: Vec<crate::clippings::BookClips>,
@@ -263,8 +267,10 @@ impl App {
             review_k: 0,
             rng: crate::sudoku::Rng::new(),
             mini: None,
+            mini_cache: std::collections::HashMap::new(),
             mini_back: Screen::Games,
             mini_game: 0,
+            light_return: None,
             tut: (0, 0, Screen::Games, false),
             clips: Vec::new(),
             clip_page: 0,
@@ -961,6 +967,14 @@ impl App {
             crate::keyboard::draw(&mut self.fb, &self.fonts, &self.keys);
             self.fb.refresh(crate::keyboard::area(), Wave::Quality, false);
         }
+    }
+
+    /// Telas onde deslizar de baixo abre Luz e tela (fora as de teclado, onde o gesto atrapalha).
+    fn light_swipe_ok(&self) -> bool {
+        !matches!(
+            self.screen,
+            Screen::Sleep | Screen::Light | Screen::Settings | Screen::Wifi | Screen::WifiPass | Screen::Compose | Screen::ClaudeCompose | Screen::LibSearch | Screen::Update
+        )
     }
 
     /// Telas onde deslizar de cima para baixo chama o Claude (fora o Início, que abre a luz).
@@ -1775,20 +1789,28 @@ impl App {
             }
             (Screen::Compose | Screen::WifiPass | Screen::ClaudeCompose | Screen::LibSearch, Key(i)) => self.press_key(i as usize),
             (Screen::Wifi, Back) => self.go(Screen::Settings),
+            (Screen::Settings, Back) => self.go(Screen::Light),
+            (Screen::Light, Back) => {
+                let back = self.light_return.take().unwrap_or(Screen::Home);
+                self.go(back);
+            }
             (Screen::WifiPass, Back) => self.go(Screen::Wifi),
             (Screen::Mini, Back) => {
                 // Primeiro volta dentro do módulo (ex.: passo → receita → lista).
                 if self.mini.as_mut().is_some_and(|g| g.back()) {
                     return self.render(true);
                 }
-                if let Some(g) = &self.mini {
+                if let Some(g) = self.mini.take() {
                     g.save();
+                    // Guarda a partida: ao voltar ao jogo, continua daqui.
+                    let key = if self.mini_back == Screen::Games { self.mini_game } else { 100 };
+                    self.mini_cache.insert(key, g);
                 }
                 let back = self.mini_back;
                 self.go(back);
             }
             (Screen::Module(Module::Mais), Row(0)) => {
-                self.mini = Some(Box::new(crate::receitas::Receitas::new()));
+                self.mini = Some(self.mini_cache.remove(&100).unwrap_or_else(|| Box::new(crate::receitas::Receitas::new())));
                 self.mini_back = Screen::Module(Module::Mais);
                 self.go(Screen::Mini);
             }
@@ -1956,6 +1978,14 @@ impl App {
                 self.go(Screen::SudokuMenu);
             }
             (Screen::Games, Game(1)) => self.go(Screen::ChessHub),
+            (Screen::Games, Game(i)) if self.mini_cache.contains_key(&i) => {
+                let mut g = self.mini_cache.remove(&i).unwrap();
+                g.resume();
+                self.mini = Some(g);
+                self.mini_game = i;
+                self.mini_back = Screen::Games;
+                self.go(Screen::Mini);
+            }
             (Screen::Games, Game(i)) => {
                 self.mini = match i {
                     2 => Some(Box::new(crate::coroas::Coroas::new())),
@@ -2372,6 +2402,9 @@ impl App {
                 self.pressed = None;
                 self.swipe_from = None;
                 if g.dragging {
+                    if let Some(m) = self.mini.as_mut() {
+                        m.drag_end();
+                    }
                     // Fim do arrasto: uma passada de qualidade limpa os rastros do modo rápido.
                     self.apply_mini_redraw(crate::minigame::Redraw::Part(Rect::new(0, 170, 1072, 1448 - 170)));
                 }
@@ -2389,6 +2422,15 @@ impl App {
                         self.flip(h, false);
                     }
                     return self.ask_claude_here();
+                }
+                // Deslizar de baixo para cima: Luz e tela (luz, modo escuro, Wi-Fi, ajustes) de qualquer lugar.
+                let swipe_up = from.is_some_and(|(_, fy)| fy > 1290 && fy - y > 250);
+                if swipe_up && self.light_swipe_ok() {
+                    if let Some(h) = self.pressed.take() {
+                        self.flip(h, false);
+                    }
+                    self.light_return = Some(self.screen);
+                    return self.go(Screen::Light);
                 }
                 if self.screen == Screen::Home && swipe_down {
                     if let Some(h) = self.pressed.take() {

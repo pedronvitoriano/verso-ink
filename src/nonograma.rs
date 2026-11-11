@@ -24,6 +24,8 @@ pub struct Nonograma {
     rows: Vec<Vec<usize>>,
     cols: Vec<Vec<usize>>,
     won: bool,
+    /// Arrastando: o estado que a primeira casa recebeu vale para as outras.
+    drag_to: Option<Cell>,
     /// Fase em jogo (0 = treino livre).
     fase: u32,
     practice: bool,
@@ -131,7 +133,7 @@ pub fn line_solvable(n: usize, rows: &[Vec<usize>], cols: &[Vec<usize>]) -> bool
 
 impl Nonograma {
     pub fn new() -> Self {
-        Nonograma { menu: true, n: 0, sol: vec![], grid: vec![], rows: vec![], cols: vec![], won: false, fase: 0, practice: false, prog: fases::Progress::load("nonograma") }
+        Nonograma { menu: true, n: 0, sol: vec![], grid: vec![], rows: vec![], cols: vec![], won: false, drag_to: None, fase: 0, practice: false, prog: fases::Progress::load("nonograma") }
     }
 
     fn start(&mut self, n: usize) {
@@ -167,13 +169,21 @@ impl Nonograma {
     }
 
     /// Espaço das dicas à esquerda e em cima; o resto é a grade.
+    /// Casa grande: a área das dicas é medida pelas dicas reais (dígitos de ~0,3 casa).
     fn geom(&self) -> (i32, i32, i32) {
-        let n = self.n as i32;
-        let max_clues = (self.n as i32 + 1) / 2;
-        let s = ((W - 2 * 40) / (n + max_clues)).min(1000 / (n + max_clues));
-        let x0 = (W - s * (n + max_clues)) / 2 + s * max_clues;
-        let y0 = 270 + s * max_clues;
-        (x0, y0, s)
+        let n = self.n as f32;
+        let width_of = |v: &[usize]| -> f32 { v.iter().map(|x| 0.3 * x.to_string().len() as f32).sum::<f32>() + 0.15 * v.len().saturating_sub(1) as f32 };
+        let rf = self.rows.iter().map(|r| width_of(r)).fold(0.3, f32::max);
+        let cc = self.cols.iter().map(Vec::len).max().unwrap_or(1).max(1) as f32;
+        let s_w = (W as f32 - 80.0 - 16.0) / (n + rf);
+        let s_h = (990.0 - 16.0) / (n + 0.56 * cc);
+        let s = s_w.min(s_h).floor();
+        let cw = (rf * s) as i32 + 16;
+        let ch = (cc * (0.56 * s).min(52.0)) as i32 + 16;
+        let total = cw + (n * s) as i32;
+        let x0 = (W - total) / 2 + cw;
+        let y0 = 262 + ch;
+        (x0, y0, s as i32)
     }
 
     fn cell(&self, i: usize) -> Rect {
@@ -208,10 +218,10 @@ impl MiniGame for Nonograma {
             return;
         }
         let title = if self.fase > 0 { fases::title(self.fase) } else { "Nonograma".to_string() };
-        minigame::header(fb, f, &title, if self.won { "Resolvido!" } else { "Toque: pinta, marca X, limpa." });
+        minigame::header(fb, f, &title, if self.won { "Resolvido!" } else { "Toque: pinta, X, limpa. Arraste: em lote." });
         let (x0, y0, s) = self.geom();
         let n = self.n as i32;
-        let fs = (s as f32 * 0.5).min(34.0);
+        let fs = (s as f32 * 0.5).min(40.0);
         for r in 0..self.n {
             let txt: Vec<String> = self.rows[r].iter().map(usize::to_string).collect();
             let t = if txt.is_empty() { "0".to_string() } else { txt.join(" ") };
@@ -223,7 +233,7 @@ impl MiniGame for Nonograma {
             for (k, v) in col.iter().rev().enumerate() {
                 let t = v.to_string();
                 let w = f.measure(Face::Strong, fs, &t);
-                f.draw(fb, Face::Strong, fs, x0 + c as i32 * s + (s - w) / 2, y0 - 12 - k as i32 * (fs as i32 + 6), INK, &t);
+                f.draw(fb, Face::Strong, fs, x0 + c as i32 * s + (s - w) / 2, y0 - 12 - k as i32 * (s as f32 * 0.56).min(52.0) as i32, INK, &t);
             }
         }
         for i in 0..self.n * self.n {
@@ -270,13 +280,33 @@ impl MiniGame for Nonograma {
         v
     }
 
-    fn back(&mut self) -> bool {
-        if self.menu && !self.practice {
-            return false;
+    fn drag(&mut self, id: u32) -> Option<Redraw> {
+        let i = id as usize;
+        if self.menu || self.won || i >= self.n * self.n {
+            return None;
         }
-        self.menu = true;
-        self.practice = false;
-        true
+        let to = *self.drag_to.get_or_insert(match self.grid[i] {
+            Cell::Empty => Cell::Fill,
+            Cell::Fill => Cell::X,
+            Cell::X => Cell::Empty,
+        });
+        self.grid[i] = to;
+        self.check_win();
+        Some(if self.won { Redraw::Full } else { Redraw::Part(self.cell(i)) })
+    }
+
+    fn drag_end(&mut self) {
+        self.drag_to = None;
+    }
+
+    fn back(&mut self) -> bool {
+        // Só o submenu de treino volta ao menu do jogo; da partida, Início sai e o app guarda
+        // a partida para continuar depois.
+        if self.menu && self.practice {
+            self.practice = false;
+            return true;
+        }
+        false
     }
 
     fn tap(&mut self, id: u32, _x: i32, _y: i32) -> Redraw {
@@ -344,5 +374,26 @@ mod tests {
         let mut g = Nonograma::new();
         g.start(8);
         assert!(line_solvable(8, &g.rows, &g.cols));
+    }
+}
+
+#[cfg(test)]
+mod render {
+    use super::*;
+    #[test]
+    #[ignore]
+    fn nonograma_em_imagem() {
+        let out = std::path::PathBuf::from(std::env::var("VERSO_INK_SHOTS").expect("VERSO_INK_SHOTS"));
+        let f = Fonts::new();
+        for n in [5usize, 10, 12] {
+            let mut g = Nonograma { prog: fases::Progress::load_from(std::env::temp_dir().join("nono-r.txt")), ..Nonograma::new() };
+            g.start_with(n, 50);
+            for i in (0..n * n).step_by(3) {
+                g.grid[i] = if g.sol[i] { Cell::Fill } else { Cell::X };
+            }
+            let mut fb = crate::fb::Framebuffer::memory();
+            g.draw(&mut fb, &f);
+            fb.save_pgm(&out.join(format!("nono-{n}.pgm")));
+        }
     }
 }

@@ -248,9 +248,15 @@ impl Uno {
     fn end_turn(&mut self, skip: bool) {
         self.drew = None;
         self.page = 0;
+        let before = self.turn;
         self.turn = self.next(self.turn, if skip { 2 } else { 1 });
-        if matches!(self.mode, Mode::Local(_)) && !matches!(self.phase, Phase::Over(_)) {
+        // A tela de troca só aparece quando muda de jogador (com dois, bloquear/inverter
+        // devolve a vez a quem jogou: segue jogando sem passar o Kindle).
+        if matches!(self.mode, Mode::Local(_)) && !matches!(self.phase, Phase::Over(_)) && self.turn != before {
             self.phase = Phase::Handoff;
+        }
+        if self.turn == before {
+            self.msg.push_str(" Joga de novo.");
         }
     }
 
@@ -980,6 +986,20 @@ mod tests {
                 assert!(r.y >= 960 && r.x >= 0 && r.x + r.w <= W, "{n} cartas: fora da área da mão");
             }
         }
+    }
+
+    #[test]
+    fn inverter_com_dois_nao_pede_troca() {
+        let mut g = Uno::new();
+        g.start(Mode::Local(2));
+        g.phase = Phase::Turn;
+        g.turn = 0;
+        g.after_play(Card { kind: Kind::Reverse, color: Color::Red });
+        assert_eq!(g.turn, 0);
+        assert!(g.phase == Phase::Turn, "não deve mostrar a tela de troca para o mesmo jogador");
+        g.after_play(Card { kind: Kind::Num(3), color: Color::Red });
+        assert_eq!(g.turn, 1);
+        assert!(g.phase == Phase::Handoff);
     }
 
     #[test]

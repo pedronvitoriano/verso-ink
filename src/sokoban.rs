@@ -295,12 +295,13 @@ impl MiniGame for Sokoban {
     }
 
     fn back(&mut self) -> bool {
-        if self.menu && !self.practice {
-            return false;
+        // Só o submenu de treino volta ao menu do jogo; da partida, Início sai e o app guarda
+        // a partida para continuar depois.
+        if self.menu && self.practice {
+            self.practice = false;
+            return true;
         }
-        self.menu = true;
-        self.practice = false;
-        true
+        false
     }
 
     fn tap(&mut self, id: u32, _x: i32, _y: i32) -> Redraw {

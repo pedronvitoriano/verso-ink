@@ -55,6 +55,10 @@ pub trait MiniGame {
     fn at_menu(&self) -> bool {
         false
     }
+    /// Fim do arrasto (o dedo saiu da tela).
+    fn drag_end(&mut self) {}
+    /// Voltou ao jogo depois de sair (a partida ficou guardada na memória).
+    fn resume(&mut self) {}
     /// Voltar dentro do próprio módulo; `false` = sair para a tela anterior.
     fn back(&mut self) -> bool {
         false
