@@ -49,6 +49,7 @@ mod input;
 mod keyboard;
 mod sys;
 mod text;
+mod tutorial;
 mod uno;
 mod ui;
 

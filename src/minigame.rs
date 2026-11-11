@@ -43,6 +43,10 @@ pub trait MiniGame {
     fn drag(&mut self, _id: u32) -> Option<Redraw> {
         None
     }
+    /// Está no menu do jogo? Lá o app mostra o botão "Como jogar".
+    fn at_menu(&self) -> bool {
+        false
+    }
     /// Voltar dentro do próprio módulo; `false` = sair para a tela anterior.
     fn back(&mut self) -> bool {
         false

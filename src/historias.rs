@@ -321,6 +321,10 @@ impl Historias {
 }
 
 impl MiniGame for Historias {
+    fn at_menu(&self) -> bool {
+        self.read.is_none()
+    }
+
     fn draw(&self, fb: &mut Framebuffer, f: &Fonts) {
         fb.fill(fb.screen(), PAPER);
         ui::draw_back(fb, f, false);

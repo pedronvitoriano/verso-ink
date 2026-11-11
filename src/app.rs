@@ -44,6 +44,7 @@ pub enum Screen {
     WifiPass,
     LibSearch,
     Calendar,
+    Tutorial,
     Sleep,
 }
 
@@ -79,6 +80,7 @@ pub enum Target {
     Mini(u32),
     Search,
     Sort,
+    Help,
 }
 
 /// Código de saída que pede ao `session.sh` para abrir um livro no KOReader e voltar.
@@ -138,6 +140,10 @@ pub struct App {
     mini: Option<Box<dyn crate::minigame::MiniGame>>,
     /// Para onde o botão Início leva ao sair do minijogo/módulo.
     mini_back: Screen,
+    /// Índice (na tela Jogar) do minijogo aberto.
+    mini_game: usize,
+    /// Tutorial: jogo, página, para onde voltar e se abre o jogo ao terminar.
+    tut: (usize, usize, Screen, bool),
     clips: Vec<crate::clippings::BookClips>,
     clip_page: usize,
     clip_book: usize,
@@ -231,6 +237,8 @@ impl App {
             rng: crate::sudoku::Rng::new(),
             mini: None,
             mini_back: Screen::Games,
+            mini_game: 0,
+            tut: (0, 0, Screen::Games, false),
             clips: Vec::new(),
             clip_page: 0,
             clip_book: 0,
@@ -386,12 +394,51 @@ impl App {
                 }
             }
             Screen::Sleep => ui::draw_sleep(fb, f, st, data::last_book().as_ref()),
+            Screen::Tutorial => crate::tutorial::draw(fb, f, self.tut.0, self.tut.1),
+        }
+        if self.help_game().is_some() {
+            crate::tutorial::draw_help_button(&mut self.fb, &self.fonts);
         }
         self.fb.present(Wave::Quality, flash);
         self.last_minute = clock::now(self.status.offset_min).minute;
     }
 
+    /// Jogo cujo "Como jogar" aparece nesta tela (menus dos jogos).
+    fn help_game(&self) -> Option<usize> {
+        match self.screen {
+            Screen::Mini if self.mini.as_ref().is_some_and(|g| g.at_menu()) && !crate::tutorial::pages(self.mini_game).is_empty() => Some(self.mini_game),
+            Screen::SudokuMenu if !self.sudoku_practice => Some(0),
+            Screen::ChessHub => Some(1),
+            _ => None,
+        }
+    }
+
+    fn open_tutorial(&mut self, game: usize, open_after: bool) {
+        self.tut = (game, 0, self.screen, open_after);
+        self.go(Screen::Tutorial);
+    }
+
+    /// Fim do tutorial (Jogar ou Pular): marca como visto e segue para o jogo ou volta.
+    fn finish_tutorial(&mut self) {
+        let (game, _, back, open_after) = self.tut;
+        crate::tutorial::mark_seen(game);
+        if open_after {
+            self.screen = Screen::Games;
+            self.activate(Target::Game(game), 0);
+        } else {
+            self.go(back);
+        }
+    }
+
     fn targets(&self) -> Vec<(Target, Rect)> {
+        let mut v = self.screen_targets();
+        if self.help_game().is_some() {
+            v.insert(0, (Target::Help, crate::tutorial::help_rect()));
+        }
+        v
+    }
+
+    fn screen_targets(&self) -> Vec<(Target, Rect)> {
         use Target::*;
         match self.screen {
             Screen::Home => {
@@ -498,6 +545,7 @@ impl App {
             }
             Screen::Reminder => vec![(Primary, crate::today_ui::reminder_ok_rect())],
             Screen::Calendar => vec![(Back, ui::back_rect())],
+            Screen::Tutorial => vec![(Back, ui::back_rect()), (Prev, crate::tutorial::prev_rect()), (Next, crate::tutorial::next_rect())],
             Screen::Games => {
                 let mut v = vec![(Back, ui::back_rect())];
                 v.extend((0..apps::GAMES.len()).map(|i| (Game(i), apps::games_row(i))));
@@ -1347,6 +1395,25 @@ impl App {
                 self.go(Screen::Mini);
             }
             (Screen::LibSearch, Back) => self.go(Screen::Library),
+            (Screen::Tutorial, Back) => {
+                let back = self.tut.2;
+                self.go(back);
+            }
+            (Screen::Tutorial, Prev) if self.tut.1 == 0 => self.finish_tutorial(),
+            (Screen::Tutorial, Prev) => {
+                self.tut.1 -= 1;
+                self.render(false);
+            }
+            (Screen::Tutorial, Next) if self.tut.1 + 1 >= crate::tutorial::pages(self.tut.0).len() => self.finish_tutorial(),
+            (Screen::Tutorial, Next) => {
+                self.tut.1 += 1;
+                self.render(false);
+            }
+            (_, Help) => {
+                if let Some(g) = self.help_game() {
+                    self.open_tutorial(g, false);
+                }
+            }
             (Screen::Calendar, Back) => self.go(Screen::Today),
             (_, Back) => self.go(Screen::Home),
             (Screen::Home, Header) => self.go(Screen::Light),
@@ -1413,6 +1480,8 @@ impl App {
                 self.render(true);
             }
             // Sudoku: com partida pela metade, pergunta; sem ela, já começa um jogo novo.
+            // Primeira vez num jogo: o tutorial antes.
+            (Screen::Games, Game(i)) if !crate::tutorial::seen(i) => self.open_tutorial(i, true),
             (Screen::Games, Game(0)) => {
                 self.sudoku_practice = false;
                 self.sudoku_prog = crate::fases::Progress::load("sudoku");
@@ -1437,6 +1506,7 @@ impl App {
                     _ => None,
                 };
                 if self.mini.is_some() {
+                    self.mini_game = i;
                     self.mini_back = Screen::Games;
                     self.go(Screen::Mini);
                 }

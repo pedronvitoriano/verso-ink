@@ -190,6 +190,10 @@ impl Lig4 {
 }
 
 impl MiniGame for Lig4 {
+    fn at_menu(&self) -> bool {
+        self.mode == Mode::Menu
+    }
+
     fn draw(&self, fb: &mut Framebuffer, f: &Fonts) {
         fb.fill(fb.screen(), PAPER);
         ui::draw_back(fb, f, false);
