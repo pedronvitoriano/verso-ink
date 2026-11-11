@@ -11,7 +11,10 @@
 
 mod app;
 mod apps;
+mod chess;
+mod clippings;
 mod clock;
+mod sudoku;
 mod covers;
 mod data;
 mod day;

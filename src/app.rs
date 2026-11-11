@@ -20,6 +20,12 @@ pub enum Screen {
     LowBattery,
     Today,
     Reminder,
+    Games,
+    SudokuMenu,
+    Sudoku,
+    Chess,
+    Clips,
+    ClipBook,
     Sleep,
 }
 
@@ -42,6 +48,16 @@ pub enum Target {
     Reboot,
     PowerOff,
     Item(usize),
+    Cell(usize),
+    Key(u8),
+    Level(usize),
+    Continue,
+    Check,
+    NewGame,
+    Undo,
+    Game(usize),
+    Clips,
+    BookRow(usize),
 }
 
 /// Código de saída que pede ao `session.sh` para abrir um livro no KOReader e voltar.
@@ -67,6 +83,15 @@ pub struct App {
     reminder: Option<crate::day::Item>,
     /// Tela para onde voltar depois de um lembrete.
     before_reminder: Screen,
+    sudoku: Option<crate::sudoku::Game>,
+    sudoku_note: String,
+    chess: Option<crate::chess::Game>,
+    sprites: Option<crate::chess::Sprites>,
+    clips: Vec<crate::clippings::BookClips>,
+    clip_page: usize,
+    clip_book: usize,
+    clip_pages: Vec<Vec<(String, bool)>>,
+    clip_bpage: usize,
     /// Quando definido, o laço principal sai com este código.
     pub exit_code: Option<i32>,
 }
@@ -116,6 +141,15 @@ impl App {
             today_hits: Vec::new(),
             reminder: None,
             before_reminder: Screen::Home,
+            sudoku: None,
+            sudoku_note: String::new(),
+            chess: None,
+            sprites: None,
+            clips: Vec::new(),
+            clip_page: 0,
+            clip_book: 0,
+            clip_pages: Vec::new(),
+            clip_bpage: 0,
             exit_code: None,
         }
     }
@@ -142,6 +176,28 @@ impl App {
                     crate::today_ui::draw_reminder(fb, f, it);
                 }
             }
+            Screen::Games => {
+                let s = crate::sudoku::Game::load().filter(|g| !g.solved()).map(|g| format!("Jogo em andamento · {} · {}/81", g.level.name(), g.filled()));
+                let c = crate::chess::Game::load().filter(|g| !g.history.is_empty()).map(|g| format!("Partida em andamento · {} lances", g.history.len()));
+                apps::draw_games(fb, f, s, c);
+            }
+            Screen::SudokuMenu => crate::sudoku::draw_menu(fb, f, crate::sudoku::Game::load().filter(|g| !g.solved()).as_ref()),
+            Screen::Sudoku => {
+                if let Some(g) = &self.sudoku {
+                    crate::sudoku::draw_board(fb, f, g, &self.sudoku_note);
+                }
+            }
+            Screen::Chess => {
+                if let (Some(g), Some(sp)) = (&self.chess, &self.sprites) {
+                    crate::chess::draw(fb, f, g, sp);
+                }
+            }
+            Screen::Clips => crate::clippings::draw_books(fb, f, &self.clips, self.clip_page),
+            Screen::ClipBook => {
+                if let Some(b) = self.clips.get(self.clip_book) {
+                    crate::clippings::draw_book(fb, f, b, &self.clip_pages, self.clip_bpage);
+                }
+            }
             Screen::Sleep => ui::draw_sleep(fb, f, st, data::last_book().as_ref()),
         }
         self.fb.present(Wave::Quality, flash);
@@ -166,7 +222,7 @@ impl App {
                 (OpenSettings, ui::settings_row_rect()),
             ],
             Screen::Library => {
-                let mut v = vec![(Back, ui::back_rect())];
+                let mut v = vec![(Back, ui::back_rect()), (Clips, apps::clips_rect())];
                 v.extend((0..self.lib.visible().len()).map(|i| (Row(i), apps::lib_row_rect(i))));
                 if self.lib.page > 0 {
                     v.push((Prev, apps::lib_prev_rect()));
@@ -196,6 +252,48 @@ impl App {
                 v
             }
             Screen::Reminder => vec![(Primary, crate::today_ui::reminder_ok_rect())],
+            Screen::Games => vec![(Back, ui::back_rect()), (Game(0), apps::games_row(0)), (Game(1), apps::games_row(1))],
+            Screen::SudokuMenu => {
+                let mut v = vec![(Back, ui::back_rect())];
+                v.extend((0..3).map(|k| (Level(k), crate::sudoku::level_rect(k))));
+                if crate::sudoku::Game::load().is_some_and(|g| !g.solved()) {
+                    v.push((Continue, crate::sudoku::continue_rect()));
+                }
+                v
+            }
+            Screen::Sudoku => {
+                let mut v = vec![(Back, ui::back_rect()), (Check, crate::sudoku::check_rect()), (NewGame, crate::sudoku::new_game_rect())];
+                v.extend((0..81).map(|i| (Cell(i), crate::sudoku::cell_rect(i))));
+                v.extend((0..=9u8).map(|n| (Key(n), crate::sudoku::key_rect(n))));
+                v
+            }
+            Screen::Chess => {
+                let mut v = vec![(Back, ui::back_rect()), (Undo, crate::chess::undo_rect()), (NewGame, crate::chess::new_rect())];
+                v.extend((0..64).map(|i| (Cell(i), crate::chess::square_rect(i))));
+                v
+            }
+            Screen::Clips => {
+                let mut v = vec![(Back, ui::back_rect())];
+                let n = self.clips.len().saturating_sub(self.clip_page * crate::clippings::BOOKS_PER_PAGE).min(crate::clippings::BOOKS_PER_PAGE);
+                v.extend((0..n).map(|i| (BookRow(i), crate::clippings::book_row(i))));
+                if self.clip_page > 0 {
+                    v.push((Prev, crate::clippings::prev_rect()));
+                }
+                if (self.clip_page + 1) * crate::clippings::BOOKS_PER_PAGE < self.clips.len() {
+                    v.push((Next, crate::clippings::next_rect()));
+                }
+                v
+            }
+            Screen::ClipBook => {
+                let mut v = vec![(Back, ui::back_rect())];
+                if self.clip_bpage > 0 {
+                    v.push((Prev, crate::clippings::prev_rect()));
+                }
+                if self.clip_bpage + 1 < self.clip_pages.len() {
+                    v.push((Next, crate::clippings::next_rect()));
+                }
+                v
+            }
             Screen::Sleep => vec![],
         }
     }
@@ -211,7 +309,7 @@ impl App {
     /// Destaque do toque: inverte o alvo (forma arredondada) e mostra rápido (DU).
     /// Inverter de novo restaura exatamente o desenho anterior.
     fn flip(&mut self, t: Target, pressed: bool) {
-        if matches!(t, Target::Header | Target::Bar) {
+        if matches!(t, Target::Header | Target::Bar | Target::Cell(_)) {
             return; // a resposta é a própria mudança
         }
         let Some(r) = self.rect_of(t) else { return };
@@ -235,6 +333,29 @@ impl App {
         }
     }
 
+    fn redraw_sudoku_grid(&mut self) {
+        let Some(g) = &self.sudoku else { return };
+        for i in 0..81 {
+            crate::sudoku::draw_cell(&mut self.fb, &self.fonts, g, i);
+        }
+        crate::sudoku::draw_grid_lines(&mut self.fb);
+        let n = crate::sudoku::note_rect();
+        self.fb.fill(n, ui::PAPER);
+        self.fonts.draw(&mut self.fb, crate::text::Face::Body, 32.0, crate::sudoku::GRID_X, crate::sudoku::GRID_Y - 40, ui::MUTED, &self.sudoku_note);
+        self.fb.refresh(Rect::new(0, n.y, 1072, crate::sudoku::grid_rect().y + crate::sudoku::grid_rect().h - n.y), Wave::Quality, false);
+    }
+
+    fn redraw_chess(&mut self) {
+        let (Some(g), Some(sp)) = (&self.chess, &self.sprites) else { return };
+        for i in 0..64 {
+            crate::chess::draw_square(&mut self.fb, g, sp, i);
+        }
+        crate::chess::draw_status(&mut self.fb, &self.fonts, g);
+        let b = crate::chess::board_rect();
+        let s = crate::chess::status_rect();
+        self.fb.refresh(Rect::new(0, b.y, 1072, s.y + s.h - b.y), Wave::Quality, false);
+    }
+
     pub fn go(&mut self, screen: Screen) {
         match screen {
             Screen::Light => self.light = read_light(),
@@ -244,6 +365,20 @@ impl App {
                 self.confirm = None;
             }
             Screen::Today => self.items = crate::day::load_items(),
+            Screen::Clips => {
+                self.clips = crate::clippings::load();
+                self.clip_page = 0;
+            }
+            Screen::Chess => {
+                if self.sprites.is_none() {
+                    let t = Instant::now();
+                    self.sprites = Some(crate::chess::Sprites::new());
+                    log(&format!("peças desenhadas em {} ms", t.elapsed().as_millis()));
+                }
+                if self.chess.is_none() {
+                    self.chess = Some(crate::chess::Game::load().unwrap_or_else(crate::chess::Game::new));
+                }
+            }
             _ => {}
         }
         self.screen = screen;
@@ -280,11 +415,15 @@ impl App {
     fn activate(&mut self, t: Target, x: i32) {
         use Target::*;
         match (self.screen, t) {
+            (Screen::SudokuMenu | Screen::Sudoku | Screen::Chess, Back) => self.go(Screen::Games),
+            (Screen::Clips, Back) => self.go(Screen::Library),
+            (Screen::ClipBook, Back) => self.go(Screen::Clips),
             (_, Back) => self.go(Screen::Home),
             (Screen::Home, Header) => self.go(Screen::Light),
             (Screen::Home, Tile(i)) => match Module::ALL[i] {
                 Module::Ler => self.go(Screen::Library),
                 Module::Foco => self.go(Screen::Today),
+                Module::Jogar => self.go(Screen::Games),
                 m => self.go(Screen::Module(m)),
             },
             (Screen::Light, Minus) => self.set_light(self.light.level - 1),
@@ -314,6 +453,101 @@ impl App {
                 self.fb.wait();
                 log(&format!("abrindo no KOReader: {}", path.display()));
                 self.exit_code = Some(EXIT_OPEN_BOOK);
+            }
+            (Screen::Library, Clips) => self.go(Screen::Clips),
+            (Screen::Clips, BookRow(i)) => {
+                self.clip_book = self.clip_page * crate::clippings::BOOKS_PER_PAGE + i;
+                if let Some(b) = self.clips.get(self.clip_book) {
+                    self.clip_pages = crate::clippings::paginate(&self.fonts, b);
+                    self.clip_bpage = 0;
+                    self.go(Screen::ClipBook);
+                }
+            }
+            (Screen::Clips, Prev) => {
+                self.clip_page = self.clip_page.saturating_sub(1);
+                self.render(true);
+            }
+            (Screen::Clips, Next) => {
+                self.clip_page += 1;
+                self.render(true);
+            }
+            (Screen::ClipBook, Prev) => {
+                self.clip_bpage = self.clip_bpage.saturating_sub(1);
+                self.render(true);
+            }
+            (Screen::ClipBook, Next) => {
+                self.clip_bpage += 1;
+                self.render(true);
+            }
+            (Screen::Games, Game(0)) => self.go(Screen::SudokuMenu),
+            (Screen::Games, Game(_)) => self.go(Screen::Chess),
+            (Screen::SudokuMenu, Level(k)) => {
+                let lv = [crate::sudoku::Level::Easy, crate::sudoku::Level::Medium, crate::sudoku::Level::Hard][k.min(2)];
+                let t = Instant::now();
+                let g = crate::sudoku::Game::new(lv);
+                log(&format!("sudoku {} gerado em {} ms", lv.name(), t.elapsed().as_millis()));
+                g.save();
+                self.sudoku = Some(g);
+                self.sudoku_note = "Toque numa casa e depois num número.".into();
+                self.go(Screen::Sudoku);
+            }
+            (Screen::SudokuMenu, Continue) => {
+                self.sudoku = crate::sudoku::Game::load();
+                self.sudoku_note = "Jogo retomado.".into();
+                self.go(Screen::Sudoku);
+            }
+            (Screen::Sudoku, Cell(i)) => {
+                if let Some(g) = &mut self.sudoku {
+                    g.selected = if g.selected == Some(i) { None } else { Some(i) };
+                }
+                self.redraw_sudoku_grid();
+            }
+            (Screen::Sudoku, Key(n)) => {
+                let solved = if let Some(g) = &mut self.sudoku {
+                    g.set(n);
+                    g.save();
+                    g.solved()
+                } else {
+                    false
+                };
+                if solved {
+                    self.sudoku_note = "Resolvido! Parabéns.".into();
+                    crate::sudoku::Game::clear_saved();
+                    if let Some(g) = &mut self.sudoku {
+                        g.selected = None;
+                    }
+                    self.render(true);
+                } else {
+                    self.redraw_sudoku_grid();
+                }
+            }
+            (Screen::Sudoku, Check) => {
+                let bad = self.sudoku.as_mut().map(|g| g.check()).unwrap_or(0);
+                self.sudoku_note = match bad {
+                    0 => "Nenhum erro até aqui.".into(),
+                    1 => "1 casa errada, marcada com um traço.".into(),
+                    n => format!("{n} casas erradas, marcadas com um traço."),
+                };
+                self.redraw_sudoku_grid();
+            }
+            (Screen::Sudoku, NewGame) => self.go(Screen::SudokuMenu),
+            (Screen::Chess, Cell(i)) => {
+                if let Some(g) = &mut self.chess {
+                    g.tap(i);
+                }
+                self.redraw_chess();
+            }
+            (Screen::Chess, Undo) => {
+                if let Some(g) = &mut self.chess {
+                    g.undo();
+                }
+                self.redraw_chess();
+            }
+            (Screen::Chess, NewGame) => {
+                let g = crate::chess::Game::new();
+                g.save();
+                self.chess = Some(g);
+                self.render(true);
             }
             (Screen::Library, Prev) => {
                 self.lib.page = self.lib.page.saturating_sub(1);

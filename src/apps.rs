@@ -189,6 +189,30 @@ fn wrap(f: &Fonts, face: Face, size: f32, text: &str, max_w: i32, max_lines: usi
     }
     lines.into_iter().map(|l| fit(f, face, size, &l, max_w)).collect()
 }
+/// Botão "Destaques" no topo da tela Ler.
+pub fn clips_rect() -> Rect {
+    Rect::new(W - MARGIN - 250, 76, 250, 84)
+}
+pub fn games_row(i: usize) -> Rect {
+    Rect::new(MARGIN, 440 + i as i32 * 230, W - 2 * MARGIN, 200)
+}
+
+pub fn draw_games(fb: &mut Framebuffer, f: &Fonts, sudoku: Option<String>, chess: Option<String>) {
+    fb.fill(fb.screen(), PAPER);
+    ui::draw_back(fb, f, false);
+    f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Jogar");
+    f.draw(fb, Face::Strong, 30.0, MARGIN, 400, MUTED, "Tudo funciona sem Wi-Fi");
+    for (i, (title, sub)) in [("Sudoku", sudoku.unwrap_or_else(|| "Três níveis, com conferência".into())), ("Xadrez", chess.unwrap_or_else(|| "Para duas pessoas, no mesmo Kindle".into()))].iter().enumerate() {
+        let r = games_row(i);
+        fb.round_outline(r, 40, 5, INK, PAPER);
+        f.draw(fb, Face::Display, 80.0, r.x + 40, r.y + 110, INK, title);
+        f.draw(fb, Face::Body, 32.0, r.x + 44, r.y + 160, MUTED, sub);
+    }
+    let r = games_row(2);
+    f.draw(fb, Face::Strong, 30.0, MARGIN, r.y + 50, MUTED, "EM BREVE");
+    f.draw(fb, Face::Body, 38.0, MARGIN, r.y + 106, INK, "Ficção interativa e o Claude como adversário.");
+}
+
 pub fn lib_prev_rect() -> Rect {
     Rect::new(MARGIN, 1300, 260, 88)
 }
@@ -232,6 +256,7 @@ fn pill(fb: &mut Framebuffer, f: &Fonts, r: Rect, label: &str, filled: bool, siz
 pub fn draw_library(fb: &mut Framebuffer, f: &Fonts, lib: &Library, st: &Status) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
+    pill(fb, f, clips_rect(), "Destaques", false, 32.0);
     f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Ler");
     let n = lib.books.len();
     let mut summary = match n {
