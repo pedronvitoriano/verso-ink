@@ -34,7 +34,7 @@ impl Module {
     pub fn subtitle(self) -> &'static str {
         match self {
             Module::Ler => "Biblioteca e Verso One",
-            Module::Jogar => "Xadrez, sudoku e mais 11",
+            Module::Jogar => "Xadrez, sudoku e mais 14",
             Module::Foco => "Pomodoro e o seu dia",
             Module::Claude => "Conversa e janela ao vivo",
             Module::Mais => "Novos módulos",
@@ -114,7 +114,11 @@ pub fn night_rect() -> Rect {
     Rect::new(MARGIN - 16, 900, 1072 - 2 * MARGIN + 32, 170)
 }
 pub fn settings_row_rect() -> Rect {
-    Rect::new(MARGIN - 16, 1120, 1072 - 2 * MARGIN + 32, 150)
+    Rect::new(MARGIN - 16, 1214, 1072 - 2 * MARGIN + 32, 104)
+}
+/// Wi-Fi direto no painel (trocar de rede sem passar pelos ajustes).
+pub fn wifi_row_rect() -> Rect {
+    Rect::new(MARGIN - 16, 1106, 1072 - 2 * MARGIN + 32, 104)
 }
 pub fn low_battery_ok_rect() -> Rect {
     Rect::new(MARGIN, 1150, 1072 - 2 * MARGIN, 120)
@@ -631,12 +635,20 @@ pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status) {
     fb.fill(Rect::new(MARGIN, 862, 1072 - 2 * MARGIN, 3), INK);
     draw_night(fb, f, l, false);
     fb.fill(Rect::new(MARGIN, 1100, 1072 - 2 * MARGIN, 3), INK);
-    let r = settings_row_rect();
-    f.draw(fb, Face::Display, 56.0, MARGIN, r.y + 74, INK, "Ajustes do sistema");
-    f.draw(fb, Face::Body, 30.0, MARGIN, r.y + 120, MUTED, "Wi-Fi, endereço, bateria, reiniciar e desligar");
-    let (cx, cy) = (r.x + r.w - 40, r.y + r.h / 2);
-    line(fb, ((cx - 14) as f32, (cy - 22) as f32), (cx as f32, cy as f32), 6.0, INK);
-    line(fb, (cx as f32, cy as f32), ((cx - 14) as f32, (cy + 22) as f32), 6.0, INK);
+    let rows = [
+        (wifi_row_rect(), "Wi-Fi", if st.wifi { "Conectado · trocar de rede" } else { "Sem rede · conectar" }),
+        (settings_row_rect(), "Ajustes do sistema", "Endereço, bateria, cópia, reiniciar e desligar"),
+    ];
+    for (r, title, sub) in rows {
+        let end = f.draw(fb, Face::Display, 46.0, MARGIN, r.y + 62, INK, title);
+        let sub_x = (end + 24).max(MARGIN + 400);
+        let _ = sub_x;
+        f.draw(fb, Face::Body, 28.0, end + 24, r.y + 60, MUTED, sub);
+        let (cx, cy) = (r.x + r.w - 40, r.y + r.h / 2);
+        line(fb, ((cx - 14) as f32, (cy - 22) as f32), (cx as f32, cy as f32), 6.0, INK);
+        line(fb, (cx as f32, cy as f32), ((cx - 14) as f32, (cy + 22) as f32), 6.0, INK);
+    }
+    fb.fill(Rect::new(MARGIN, 1210, 1072 - 2 * MARGIN, 2), 0xBB);
     draw_footer(fb, f, st);
 }
 

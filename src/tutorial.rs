@@ -289,6 +289,22 @@ fn draw_fases(fb: &mut Framebuffer, f: &Fonts, top: i32) -> i32 {
 
 /// Desenha a ilustração centrada a partir de `top`; devolve onde ela termina.
 fn draw_board(fb: &mut Framebuffer, f: &Fonts, page: &Page, top: i32) -> i32 {
+    draw_board_in(fb, f, page, Rect::new(MARGIN, top, W - 2 * MARGIN, 440), 110)
+}
+
+/// Miniatura do jogo (a ilustração da 1ª página do tutorial) dentro de `area`, alinhada à direita.
+pub fn draw_preview(fb: &mut Framebuffer, f: &Fonts, game: usize, area: Rect) {
+    if let Some(p) = pages(game).iter().find(|p| !p.board.is_empty() && p.board != "FASES") {
+        let rows = p.board.lines().count() as i32;
+        let cols = p.board.lines().map(|l| l.chars().count()).max().unwrap_or(1) as i32;
+        let s = (area.w / cols.max(1)).min(area.h / rows.max(1)).min(64);
+        let (w, h) = (s * cols, s * rows);
+        draw_board_in(fb, f, p, Rect::new(area.x + area.w - w, area.y + (area.h - h) / 2, w, h), s);
+    }
+}
+
+fn draw_board_in(fb: &mut Framebuffer, f: &Fonts, page: &Page, area: Rect, max_cell: i32) -> i32 {
+    let top = area.y;
     let rows: Vec<Vec<char>> = page.board.lines().map(|l| l.chars().collect()).collect();
     let shade: Vec<Vec<char>> = page.shade.lines().map(|l| l.chars().collect()).collect();
     let cols = rows.iter().map(Vec::len).max().unwrap_or(0) as i32;
@@ -296,8 +312,8 @@ fn draw_board(fb: &mut Framebuffer, f: &Fonts, page: &Page, top: i32) -> i32 {
     if cols == 0 {
         return top;
     }
-    let s = (110).min((W - 2 * MARGIN) / cols).min(440 / n.max(1));
-    let x0 = (W - s * cols) / 2;
+    let s = max_cell.min(area.w / cols).min(area.h / n.max(1));
+    let x0 = area.x + (area.w - s * cols) / 2;
     let lines_mode = page.board.contains('+');
     for (r, row) in rows.iter().enumerate() {
         for (c, &ch) in row.iter().enumerate() {

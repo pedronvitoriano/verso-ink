@@ -157,6 +157,8 @@ pub struct App {
     mini_game: usize,
     /// Para onde volta o painel Luz e tela (aberto de qualquer tela deslizando de baixo).
     light_return: Option<Screen>,
+    /// De onde se abriu a tela de Wi-Fi (Luz e tela ou Ajustes).
+    wifi_back: Screen,
     /// Tutorial: jogo, página, para onde voltar e se abre o jogo ao terminar.
     tut: (usize, usize, Screen, bool),
     clips: Vec<crate::clippings::BookClips>,
@@ -271,6 +273,7 @@ impl App {
             mini_back: Screen::Games,
             mini_game: 0,
             light_return: None,
+            wifi_back: Screen::Settings,
             tut: (0, 0, Screen::Games, false),
             clips: Vec::new(),
             clip_page: 0,
@@ -464,8 +467,16 @@ impl App {
             Screen::Sleep => ui::draw_sleep(fb, f, st, data::last_book().as_ref()),
             Screen::Tutorial => crate::tutorial::draw(fb, f, self.tut.0, self.tut.1),
         }
-        if self.help_game().is_some() {
+        if let Some(g) = self.help_game() {
             crate::tutorial::draw_help_button(&mut self.fb, &self.fonts);
+            // Miniatura do jogo ao lado do título, quando o título deixa espaço.
+            if self.screen == Screen::Mini {
+                let title_w = self.fonts.measure(crate::text::Face::Display, 130.0, apps::GAMES.get(g).map(|x| x.0).unwrap_or(""));
+                let x = 72 + title_w + 40;
+                if 1072 - 72 - x >= 200 {
+                    crate::tutorial::draw_preview(&mut self.fb, &self.fonts, g, Rect::new(x, 196, 1072 - 72 - x, 170));
+                }
+            }
         }
         self.fb.present(Wave::Quality, flash);
         self.last_minute = clock::now(self.status.offset_min).minute;
@@ -527,6 +538,7 @@ impl App {
                 (Bar, ui::bar_rect()),
                 (Night, ui::night_rect()),
                 (OpenSettings, ui::settings_row_rect()),
+                (Wifi, ui::wifi_row_rect()),
             ],
             Screen::Library => {
                 let mut v = vec![(Back, ui::back_rect()), (Clips, apps::clips_rect())];
@@ -1792,7 +1804,10 @@ impl App {
                 self.render(false);
             }
             (Screen::Compose | Screen::WifiPass | Screen::ClaudeCompose | Screen::LibSearch, Key(i)) => self.press_key(i as usize),
-            (Screen::Wifi, Back) => self.go(Screen::Settings),
+            (Screen::Wifi, Back) => {
+                let back = self.wifi_back;
+                self.go(back);
+            }
             (Screen::Settings, Back) => self.go(Screen::Light),
             (Screen::Light, Back) => {
                 let back = self.light_return.take().unwrap_or(Screen::Home);
@@ -1939,6 +1954,11 @@ impl App {
                 self.render(true);
             }
             (Screen::Light, OpenSettings) => self.go(Screen::Settings),
+            (Screen::Light, Wifi) => {
+                self.wifi_back = Screen::Light;
+                self.wifi_note = "Toque numa rede para conectar.".into();
+                self.go(Screen::Wifi);
+            }
             (Screen::Library, Row(i)) => {
                 let Some(b) = self.lib.visible().get(i) else { return };
                 let (path, title) = (b.path.clone(), b.title.clone());
@@ -2277,6 +2297,7 @@ impl App {
                 }
             },
             (Screen::Settings, Wifi) => {
+                self.wifi_back = Screen::Settings;
                 self.wifi_note = "Toque numa rede para conectar.".into();
                 self.go(Screen::Wifi);
             }
@@ -2609,4 +2630,75 @@ impl App {
 
 fn chess_promo(uci: &str) -> Option<crate::chess::Kind> {
     crate::chess::parse_uci(uci).and_then(|(_, p)| p)
+}
+
+#[cfg(test)]
+mod raio_x {
+    use super::*;
+
+    /// Percorre as telas e salva cada uma (raio-x visual):
+    /// `VERSO_INK_SHOTS=pasta cargo test todas_as_telas -- --ignored --test-threads=1`
+    #[test]
+    #[ignore]
+    fn todas_as_telas() {
+        let home = std::env::temp_dir().join(format!("verso-ink-raiox-{}", std::process::id()));
+        std::fs::create_dir_all(home.join("data/tutoriais")).unwrap();
+        std::fs::create_dir_all(home.join("settings")).unwrap();
+        std::env::set_var("VERSO_INK_HOME", &home);
+        // Tutoriais já vistos, para os jogos abrirem direto no menu.
+        for g in 0..apps::GAMES.len() {
+            std::fs::write(home.join(format!("data/tutoriais/{g}.visto")), "1").unwrap();
+        }
+        std::fs::write(home.join("data/dia.txt"), "! Revisar o capítulo 3\n- Comprar pão\n@ 08:00 Remédio\n* Ler 20 min\n* {seg,qua,sex} Academia\n").unwrap();
+        let out = std::path::PathBuf::from(std::env::var("VERSO_INK_SHOTS").expect("VERSO_INK_SHOTS"));
+        let mut app = App::new(Framebuffer::memory());
+        let mut n = 0;
+        let mut shot = |app: &mut App, name: &str| {
+            app.render(false);
+            n += 1;
+            app.fb.save_pgm(&out.join(format!("{n:02}-{name}.pgm")));
+        };
+        shot(&mut app, "inicio");
+        for (s, name) in [
+            (Screen::Light, "luz"),
+            (Screen::Settings, "ajustes"),
+            (Screen::Library, "ler"),
+            (Screen::Today, "hoje"),
+            (Screen::Calendar, "calendario"),
+            (Screen::Focus, "foco"),
+            (Screen::Module(Module::Mais), "mais"),
+            (Screen::Games, "jogar"),
+            (Screen::Claude, "claude"),
+        ] {
+            app.go(s);
+            shot(&mut app, name);
+        }
+        app.cur_chat = None;
+        app.start_claude_compose();
+        shot(&mut app, "claude-pergunta");
+        // Cada jogo: menu e, quando dá, a partida começada.
+        for i in 0..apps::GAMES.len() {
+            app.go(Screen::Games);
+            app.activate(Target::Game(i), 0);
+            let name = crate::apps::fold(apps::GAMES[i].0).replace(' ', "-");
+            shot(&mut app, &format!("jogo-{name}-menu"));
+            if app.screen == Screen::Mini {
+                // Primeira opção do menu (fase 1 / contra a CPU / primeira história).
+                if let Some((id, _)) = app.mini.as_ref().and_then(|g| g.targets().into_iter().find(|(id, _)| *id == 900)) {
+                    app.mini_tap(id, 0);
+                    shot(&mut app, &format!("jogo-{name}-partida"));
+                }
+                app.activate(Target::Back, 0);
+            } else if app.screen == Screen::SudokuMenu {
+                app.activate(Target::Level(0), 0);
+                shot(&mut app, "jogo-sudoku-partida");
+            } else if app.screen == Screen::ChessHub {
+                app.activate(Target::Game(2), 0);
+                shot(&mut app, "jogo-xadrez-partida");
+                app.go(Screen::Coaches);
+                shot(&mut app, "jogo-xadrez-treinadores");
+            }
+        }
+        let _ = std::fs::remove_dir_all(&home);
+    }
 }
