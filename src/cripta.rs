@@ -233,15 +233,28 @@ impl Cripta {
         Rect::new(GX + (i % N) as i32 * CELL, GY + (i / N) as i32 * CELL, CELL, CELL)
     }
 
-    /// Bloco de pedra (casa fechada): tom de fundo e linhas das juntas.
-    fn stone(fb: &mut Framebuffer, r: Rect, tone: u8, joint: u8) {
-        fb.fill(r, tone);
-        let rows = 4;
-        for k in 0..rows {
-            let y = r.y + k * r.h / rows;
-            fb.fill(Rect::new(r.x, y, r.w, 3), joint);
-            let off = if k % 2 == 0 { r.w / 3 } else { r.w * 3 / 4 };
-            fb.fill(Rect::new(r.x + off, y, 3, r.h / rows), joint);
+    /// Casa fechada: textura de rocha (sprite) ou pedra lisa com relevo.
+    fn rock(fb: &mut Framebuffer, r: Rect) {
+        if crate::sprites::draw(fb, "pedra", r) {
+            return;
+        }
+        fb.fill(r, 0x4C);
+        fb.fill(Rect::new(r.x, r.y, r.w, 6), 0x66);
+        fb.fill(Rect::new(r.x, r.y, 6, r.h), 0x66);
+        fb.fill(Rect::new(r.x, r.y + r.h - 6, r.w, 6), 0x30);
+        fb.fill(Rect::new(r.x + r.w - 6, r.y, 6, r.h), 0x30);
+    }
+
+    /// Miolo da casa que dá para abrir (rocha clara).
+    fn rock_light(fb: &mut Framebuffer, r: Rect) {
+        if crate::sprites::draw(fb, "pedra", r) {
+            for yy in r.y..r.y + r.h {
+                for xx in r.x..r.x + r.w {
+                    fb.blend(xx, yy, PAPER, 150);
+                }
+            }
+        } else {
+            fb.fill(r, 0xC8);
         }
     }
 
@@ -371,24 +384,31 @@ impl MiniGame for Cripta {
         let status = format!("Andar {} · {} pontos", self.floor, self.score());
         minigame::header(fb, f, "Cripta", &status);
         let frame = if self.steps % 2 == 0 { "1" } else { "2" };
+        // Moldura de parede em volta da cripta.
+        let (bx, by, bw) = (GX - 14, GY - 14, N as i32 * CELL + 28);
+        fb.round_rect(Rect::new(bx, by, bw, bw), 18, 0x22);
         for i in 0..N * N {
             let r = Self::cell(i);
-            let inner = Rect::new(r.x + 3, r.y + 3, r.w - 6, r.h - 6);
+            let inner = Rect::new(r.x + 2, r.y + 2, r.w - 4, r.h - 4);
             if !self.open[i] {
-                if self.state == State::Play && self.reachable(i) {
-                    // Dá para descobrir: pedra clara com contorno.
-                    Self::stone(fb, inner, 0xC4, 0xA4);
-                    fb.round_outline(inner, 6, 4, INK, 0xC4);
-                    Self::stone(fb, Rect::new(inner.x + 4, inner.y + 4, inner.w - 8, inner.h - 8), 0xC4, 0xA4);
-                } else {
-                    Self::stone(fb, inner, 0x4A, 0x30);
+                let reach = self.state == State::Play && self.reachable(i);
+                Self::rock(fb, inner);
+                if reach {
+                    // Dá para descobrir: a rocha clareia e ganha contorno.
+                    for yy in inner.y..inner.y + inner.h {
+                        for xx in inner.x..inner.x + inner.w {
+                            fb.blend(xx, yy, PAPER, 140);
+                        }
+                    }
+                    fb.round_outline(Rect::new(inner.x + 4, inner.y + 4, inner.w - 8, inner.h - 8), 10, 4, INK, 0xFF);
+                    Self::rock_light(fb, Rect::new(inner.x + 8, inner.y + 8, inner.w - 16, inner.h - 16));
                 }
                 continue;
             }
-            // Piso de lajotas.
-            fb.fill(inner, 0xF2);
-            fb.fill(Rect::new(inner.x + inner.w / 2, inner.y, 2, inner.h), 0xDC);
-            fb.fill(Rect::new(inner.x, inner.y + inner.h / 2, inner.w, 2), 0xDC);
+            if !crate::sprites::draw(fb, "piso", inner) {
+                fb.fill(inner, 0xEE);
+                fb.round_outline(Rect::new(inner.x + 6, inner.y + 6, inner.w - 12, inner.h - 12), 8, 2, 0xD4, 0xEE);
+            }
             let t = self.thing[i];
             let art = Rect::new(r.x + 10, r.y + 10, r.w - 20, r.h - 20);
             let drawn = Self::sprite_of(t).is_some_and(|n| {
