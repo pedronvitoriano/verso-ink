@@ -13,6 +13,8 @@ log() { echo "[$(date -u '+%H:%M:%S')] [sh] $*" >>"$LOG"; }
 stage() {
     mkdir -p "$RUN/settings/SSH"
     cp "$H/bin/verso-ink" "$H/bin/dropbear" "$H/bin/stockfish" "$H/bin/"*.sh "$RUN/" 2>/dev/null
+    # Cliente SSH do KOReader, para o túnel (fica em /tmp: o modo USB desmonta /mnt/us).
+    [ -x /mnt/us/koreader/dbclient ] && cp /mnt/us/koreader/dbclient "$RUN/dbclient" 2>/dev/null
     cp "$H/settings/SSH/"* "$RUN/settings/SSH/" 2>/dev/null
     chmod +x "$RUN/verso-ink" "$RUN/dropbear" "$RUN/"*.sh "$RUN/stockfish" 2>/dev/null
 }
@@ -28,6 +30,14 @@ ssh_up() {
     iptables -C OUTPUT -p tcp --sport "$SSH_PORT" -m conntrack --ctstate ESTABLISHED -j ACCEPT 2>/dev/null ||
         iptables -A OUTPUT -p tcp --sport "$SSH_PORT" -m conntrack --ctstate ESTABLISHED -j ACCEPT
     log "ssh na porta $SSH_PORT"
+    tunel_up
+}
+
+# Túnel reverso para a VPS (acesso de qualquer rede), se configurado. Um só laço por vez.
+tunel_up() {
+    [ -f "$H/settings/tunel/id" ] || return 0
+    [ -f /tmp/verso-ink-tunel.pid ] && kill -0 "$(cat /tmp/verso-ink-tunel.pid)" 2>/dev/null && return 0
+    (setsid "$RUN/tunel.sh" </dev/null >/dev/null 2>&1 &)
 }
 
 amazon_stop() {
