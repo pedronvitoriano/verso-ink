@@ -112,6 +112,8 @@ pub struct Uno {
     page: usize,
     msg: String,
     rng: Rng,
+    /// O monte acabou e o descarte virou monte novo (avisa uma vez).
+    reshuffled: bool,
 }
 
 const MENU: [&str; 4] = ["Contra 1 CPU", "Contra 3 CPUs", "Duas pessoas", "Quatro pessoas"];
@@ -134,6 +136,7 @@ impl Uno {
             page: 0,
             msg: String::new(),
             rng: Rng::new(),
+            reshuffled: false,
         }
     }
 
@@ -194,6 +197,7 @@ impl Uno {
             if let Some(t) = top {
                 self.discard.push(t);
             }
+            self.reshuffled = true;
         }
         self.draw.pop().unwrap_or(Card { kind: Kind::Num(0), color: Color::Red })
     }
@@ -232,6 +236,7 @@ impl Uno {
 
     /// Joga a carta `i` da mão de quem está na vez.
     fn play(&mut self, i: usize) {
+        self.reshuffled = false;
         let p = self.turn;
         let c = self.hands[p].remove(i);
         self.discard.push(c);
@@ -282,6 +287,7 @@ impl Uno {
 
     /// Quem está na vez compra (ou paga o acúmulo, perdendo a vez).
     fn draw_turn(&mut self) {
+        self.reshuffled = false;
         let p = self.turn;
         if self.pending > 0 {
             let n = self.pending;
@@ -611,11 +617,10 @@ impl Uno {
         if self.phase != Phase::Turn || (self.is_cpu(self.turn)) {
             return vec![(803, "Novo jogo")];
         }
+        // Comprar é tocando no monte; aqui só o que não tem outro lugar.
         let mut v = Vec::new();
         if self.drew.is_some() {
             v.push((801, "Passar"));
-        } else {
-            v.push((800, if self.pending > 0 { "Comprar acúmulo" } else { "Comprar" }));
         }
         // Alguém ficou com uma carta sem dizer UNO: dá para pegar.
         if self.uno_open.is_some_and(|w| w != self.me()) {
@@ -660,9 +665,19 @@ impl MiniGame for Uno {
             Self::draw_back(fb, f, Rect::new(deck.x - k * 5, deck.y + k * 5, deck.w, deck.h));
         }
         Self::draw_back(fb, f, deck);
-        let left = format!("Monte · {}", self.draw.len());
-        let lw = f.measure(Face::Body, 26.0, &left);
-        f.draw(fb, Face::Body, 26.0, deck.x + (deck.w - lw) / 2, deck.y + deck.h + 40, MUTED, &left);
+        let my_turn = self.phase == Phase::Turn && !self.is_cpu(self.turn) && self.drew.is_none();
+        if my_turn {
+            // Na sua vez, o monte é o botão de comprar.
+            let t = if self.pending > 0 { format!("Comprar {}", self.pending) } else { "Toque para comprar".to_string() };
+            let tw = f.measure(Face::Strong, 26.0, &t);
+            let chip = Rect::new(deck.x + deck.w / 2 - (tw + 40) / 2, deck.y + deck.h + 14, tw + 40, 44);
+            fb.round_rect(chip, 22, INK);
+            f.draw(fb, Face::Strong, 26.0, chip.x + 20, chip.y + 31, PAPER, &t);
+        } else {
+            let left = format!("Monte · {}", self.draw.len());
+            let lw = f.measure(Face::Body, 26.0, &left);
+            f.draw(fb, Face::Body, 26.0, deck.x + (deck.w - lw) / 2, deck.y + deck.h + 40, MUTED, &left);
+        }
         let top = Self::top_rect();
         for k in (1..3).rev() {
             fb.round_rect(Rect::new(top.x + k * 6, top.y + k * 4, top.w, top.h), top.w / 9, if k == 1 { 0xBB } else { 0xDD });
@@ -687,7 +702,8 @@ impl MiniGame for Uno {
             f.draw(fb, Face::Display, 40.0, top.x + top.w / 2 - w / 2, top.y - 18, INK, &t);
         }
         // Recado da última jogada.
-        let msg = crate::apps::fit(f, Face::Body, 30.0, &self.msg, W - 2 * MARGIN);
+        let full = if self.reshuffled { format!("{} Monte reembaralhado.", self.msg) } else { self.msg.clone() };
+        let msg = crate::apps::fit(f, Face::Body, 30.0, &full, W - 2 * MARGIN);
         let mw = f.measure(Face::Body, 30.0, &msg);
         f.draw(fb, Face::Body, 30.0, (W - mw) / 2, 940, INK, &msg);
         if self.phase == Phase::PickColor {
@@ -875,6 +891,20 @@ mod render {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn monte_vazio_reembaralha_o_descarte() {
+        let mut g = Uno::new();
+        g.start(Mode::Cpu(1));
+        let top = g.top();
+        g.discard = vec![Card { kind: Kind::Num(1), color: Color::Red }, Card { kind: Kind::Num(2), color: Color::Blue }, top];
+        g.draw.clear();
+        let c = g.take();
+        assert!(g.reshuffled);
+        assert_eq!(g.discard, vec![top]);
+        assert_eq!(g.draw.len(), 1);
+        assert!(matches!(c.kind, Kind::Num(1) | Kind::Num(2)));
+    }
+
     #[test]
     fn baralho_e_acumulo() {
         assert_eq!(deck().len(), 108);
