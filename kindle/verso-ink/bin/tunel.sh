@@ -20,6 +20,6 @@ while true; do
         continue
     fi
     # -K 30 mantém vivo e percebe queda; sem -y: só aceita a VPS cuja chave está fixada.
-    "$RUN/dbclient" -N -T -K 30 -i "$T/id" -R "127.0.0.1:$REMOTE_PORT:127.0.0.1:$SSH_PORT" "$HOST" >>/tmp/verso-ink-tunel.log 2>&1
+    "$RUN/dbclient" -N -T -K 30 -o ExitOnForwardFailure=yes -i "$T/id" -R "127.0.0.1:$REMOTE_PORT:127.0.0.1:$SSH_PORT" "$HOST" >>/tmp/verso-ink-tunel.log 2>&1
     sleep 20
 done
