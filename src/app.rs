@@ -1363,6 +1363,10 @@ impl App {
         if let Some(over) = &self.chess_over {
             return (("Voltar ao menu".into(), true), (String::new(), false), Some(over.clone()));
         }
+        if self.chess.as_ref().is_some_and(|g| g.result().is_some()) {
+            // Fim por mate, afogamento ou empate de regra: só sair.
+            return (("Voltar ao menu".into(), true), (String::new(), false), None);
+        }
         if self.chess_offer {
             let who = if self.chess.as_ref().is_some_and(|g| g.pos.white_to_move) { "As brancas propõem empate." } else { "As pretas propõem empate." };
             return (("Aceitar empate".into(), true), ("Recusar".into(), false), Some(who.into()));
@@ -2134,8 +2138,12 @@ impl App {
             }
             // Botão da esquerda: empate (propor, confirmar ou aceitar) ou, no fim, voltar ao menu.
             (Screen::Chess, Undo) => {
-                if self.chess_over.is_some() {
+                let ended = self.chess.as_ref().is_some_and(|g| g.result().is_some());
+                if self.chess_over.is_some() || ended {
                     self.chess_over = None;
+                    if ended && self.coach_level().is_none() {
+                        crate::chess::Game::clear_saved();
+                    }
                     return self.go(Screen::ChessHub);
                 }
                 if self.chess_offer {

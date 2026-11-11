@@ -798,6 +798,27 @@ pub fn draw_square(fb: &mut Framebuffer, g: &Game, sp: &Sprites, i: usize) {
     if g.selected == Some(i) {
         fb.round_outline(Rect::new(r.x + 3, r.y + 3, r.w - 6, r.h - 6), 10, 7, INK, if dark { 0xB0 } else { 0xF2 });
     }
+    // Rei em xeque: listras e moldura grossa na casa dele.
+    let checked = g.pos.board[i].is_some_and(|p| p.kind == Kind::King && p.white == g.pos.white_to_move) && g.pos.in_check(g.pos.white_to_move);
+    if checked {
+        let bg = if dark { 0xB0 } else { 0xF2 };
+        fb.fill(r, bg);
+        for yy in r.y..r.y + r.h {
+            let mut xx = r.x + (12 - (r.x + yy).rem_euclid(12)) % 12;
+            while xx < r.x + r.w {
+                fb.fill(Rect::new(xx, yy, 4.min(r.x + r.w - xx), 1), 0x70);
+                xx += 12;
+            }
+        }
+        fb.round_outline(Rect::new(r.x + 2, r.y + 2, r.w - 4, r.h - 4), 6, 8, INK, bg);
+        for yy in r.y + 10..r.y + r.h - 10 {
+            let mut xx = r.x + 10 + (12 - (r.x + 10 + yy).rem_euclid(12)) % 12;
+            while xx < r.x + r.w - 10 {
+                fb.fill(Rect::new(xx, yy, 4.min(r.x + r.w - 10 - xx), 1), 0x70);
+                xx += 12;
+            }
+        }
+    }
     if let Some(p) = g.pos.board[i] {
         sp.draw(fb, p, r.x + 4, r.y + 4);
     }
@@ -841,6 +862,19 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites, btn: &Butto
     fb.round_outline(Rect::new(b.x - 6, b.y - 6, b.w + 12, b.h + 12), 8, 4, INK, PAPER);
     for i in 0..64 {
         draw_square(fb, g, sp, i);
+    }
+    // Xeque e xeque-mate escritos sobre o tabuleiro, além da casa marcada.
+    let stm = g.pos.white_to_move;
+    if g.pos.in_check(stm) {
+        let mate = !g.pos.has_moves();
+        let label = if mate { "Xeque-mate" } else { "Xeque" };
+        let size = if mate { 64.0 } else { 40.0 };
+        let w = f.measure(Face::Display, size, label);
+        let (bw, bh) = (w + 80, if mate { 120 } else { 76 });
+        let pill = if mate { Rect::new(b.x + (b.w - bw) / 2, b.y + (b.h - bh) / 2, bw, bh) } else { Rect::new(b.x + b.w - bw - 12, b.y - bh / 2, bw, bh) };
+        fb.round_rect(Rect::new(pill.x - 6, pill.y - 6, pill.w + 12, pill.h + 12), (pill.h + 12) / 2, PAPER);
+        fb.round_rect(pill, pill.h / 2, INK);
+        f.draw(fb, Face::Display, size, pill.x + 40, pill.y + pill.h / 2 + (size * 0.36) as i32, PAPER, label);
     }
     if let Some(n) = btn.note {
         let r = status_rect();
@@ -970,5 +1004,28 @@ mod tests {
         let mut g = Game::new();
         play(&mut g, &["g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1", "f6g8"]);
         assert_eq!(g.result().as_deref(), Some("Empate por repetição."));
+    }
+}
+
+#[cfg(test)]
+mod render {
+    use super::*;
+    #[test]
+    #[ignore]
+    fn xeque_em_imagem() {
+        std::env::set_var("VERSO_INK_HOME", std::env::temp_dir().join("verso-ink-xadrez"));
+        let out = std::path::PathBuf::from(std::env::var("VERSO_INK_SHOTS").expect("VERSO_INK_SHOTS"));
+        let f = Fonts::new();
+        let sp = Sprites::new();
+        let btn = Buttons { left: ("Empate", false), right: ("Desistir", false), note: None };
+        for (name, moves) in [("xeque", &["e2e4", "f7f6", "d1h5"][..]), ("mate", &["f2f3", "e7e5", "g2g4", "d8h4"][..])] {
+            let mut g = Game::new();
+            for m in moves {
+                g.play_uci(m);
+            }
+            let mut fb = crate::fb::Framebuffer::memory();
+            draw(&mut fb, &f, &g, &sp, &btn);
+            fb.save_pgm(&out.join(format!("{name}.pgm")));
+        }
     }
 }
