@@ -1,5 +1,6 @@
-//! Batalha naval 10×10 (navios de 5, 4, 3, 3 e 2). Contra a CPU (caça e alvo) ou duas pessoas,
-//! passando o Kindle com uma tela de troca que esconde os mares.
+//! Batalha naval 10×10 com a frota do Batalha-Naval do Pedro (Java, 2º período): porta-aviões (5),
+//! 2 navios-tanque (4), 2 contratorpedeiros (3) e 3 submarinos (2); quem acerta joga de novo.
+//! Contra a CPU (caça e alvo) ou duas pessoas, passando o Kindle com uma tela de troca.
 
 use crate::fb::{Framebuffer, Rect};
 use crate::minigame::{self, MiniGame, Redraw, Rng, MARGIN, W};
@@ -7,7 +8,8 @@ use crate::text::{Face, Fonts};
 use crate::ui::{self, INK, MUTED, PAPER};
 
 const N: usize = 10;
-const SHIPS: [usize; 5] = [5, 4, 3, 3, 2];
+const SHIPS: [usize; 8] = [5, 4, 4, 3, 3, 2, 2, 2];
+const NAMES: [&str; 8] = ["o porta-aviões", "um navio-tanque", "um navio-tanque", "um contratorpedeiro", "um contratorpedeiro", "um submarino", "um submarino", "um submarino"];
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Mode {
@@ -35,9 +37,16 @@ struct Sea {
 
 impl Sea {
     fn random(rng: &mut Rng) -> Sea {
+        // Com 8 navios sem encostar, um sorteio pode ficar sem saída: recomeça a frota.
+        'fleet: loop {
         let mut ship = [0u8; N * N];
         for (k, &len) in SHIPS.iter().enumerate() {
+            let mut tries = 0;
             loop {
+                tries += 1;
+                if tries > 400 {
+                    continue 'fleet;
+                }
                 let horiz = rng.next() % 2 == 0;
                 let r = (rng.next() % N as u64) as usize;
                 let c = (rng.next() % N as u64) as usize;
@@ -59,7 +68,8 @@ impl Sea {
                 }
             }
         }
-        Sea { ship, shot: [false; N * N] }
+        return Sea { ship, shot: [false; N * N] };
+        }
     }
 
     fn sunk(&self, k: u8) -> bool {
@@ -125,7 +135,7 @@ impl Naval {
         let text = if k == 0 {
             format!("{pos}: água.")
         } else if sea.sunk(k) {
-            format!("{pos}: afundou um navio de {}!", SHIPS[k as usize - 1])
+            format!("{pos}: afundou {}!", NAMES[k as usize - 1])
         } else {
             format!("{pos}: acertou!")
         };
@@ -178,7 +188,7 @@ impl MiniGame for Naval {
         fb.fill(fb.screen(), PAPER);
         ui::draw_back(fb, f, false);
         if self.mode == Mode::Menu {
-            minigame::draw_menu(fb, f, "Naval", "Afunde os cinco navios do adversário.", &MENU);
+            minigame::draw_menu(fb, f, "Naval", "Afunde os 8 navios da frota adversária.", &MENU);
             return;
         }
         match self.phase {
@@ -331,10 +341,10 @@ impl MiniGame for Naval {
 mod tests {
     use super::*;
     #[test]
-    fn frota_tem_17_casas_e_afunda() {
+    fn frota_tem_25_casas_e_afunda() {
         let mut rng = Rng::new();
         let mut s = Sea::random(&mut rng);
-        assert_eq!(s.ship.iter().filter(|&&k| k != 0).count(), 17);
+        assert_eq!(s.ship.iter().filter(|&&k| k != 0).count(), 25);
         for i in 0..N * N {
             s.shot[i] = true;
         }

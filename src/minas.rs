@@ -1,0 +1,211 @@
+//! Campo minado: primeiro toque sempre seguro, áreas vazias abrem sozinhas, modo bandeira.
+
+use crate::fb::{Framebuffer, Rect};
+use crate::minigame::{self, MiniGame, Redraw, Rng, MARGIN, W};
+use crate::text::{Face, Fonts};
+use crate::ui::{self, INK, MUTED, PAPER};
+
+const LEVELS: [(usize, usize, &str); 3] = [(9, 10, "Fácil · 9×9, 10 minas"), (12, 24, "Médio · 12×12, 24 minas"), (14, 40, "Difícil · 14×14, 40 minas")];
+
+pub struct Minas {
+    menu: bool,
+    n: usize,
+    mines: usize,
+    mine: Vec<bool>,
+    open: Vec<bool>,
+    flag: Vec<bool>,
+    placed: bool,
+    flag_mode: bool,
+    lost: Option<usize>,
+    won: bool,
+    started: std::time::Instant,
+}
+
+impl Minas {
+    pub fn new() -> Self {
+        Minas { menu: true, n: 0, mines: 0, mine: vec![], open: vec![], flag: vec![], placed: false, flag_mode: false, lost: None, won: false, started: std::time::Instant::now() }
+    }
+
+    fn start(&mut self, n: usize, mines: usize) {
+        *self = Minas { menu: false, n, mines, mine: vec![false; n * n], open: vec![false; n * n], flag: vec![false; n * n], placed: false, flag_mode: false, lost: None, won: false, started: std::time::Instant::now() };
+    }
+
+    fn neighbors(&self, i: usize) -> Vec<usize> {
+        let n = self.n as i32;
+        let (r, c) = ((i / self.n) as i32, (i % self.n) as i32);
+        let mut v = Vec::new();
+        for dr in -1..=1 {
+            for dc in -1..=1 {
+                let (a, b) = (r + dr, c + dc);
+                if (dr, dc) != (0, 0) && (0..n).contains(&a) && (0..n).contains(&b) {
+                    v.push((a * n + b) as usize);
+                }
+            }
+        }
+        v
+    }
+
+    fn count(&self, i: usize) -> usize {
+        self.neighbors(i).iter().filter(|&&j| self.mine[j]).count()
+    }
+
+    /// Minas sorteadas depois do primeiro toque, longe dele (3×3 livre).
+    fn place(&mut self, first: usize) {
+        let mut rng = Rng::new();
+        let mut safe = self.neighbors(first);
+        safe.push(first);
+        let mut left = self.mines;
+        while left > 0 {
+            let i = (rng.next() % (self.n * self.n) as u64) as usize;
+            if !self.mine[i] && !safe.contains(&i) {
+                self.mine[i] = true;
+                left -= 1;
+            }
+        }
+        self.placed = true;
+    }
+
+    fn reveal(&mut self, i: usize) {
+        let mut stack = vec![i];
+        while let Some(j) = stack.pop() {
+            if self.open[j] || self.flag[j] {
+                continue;
+            }
+            self.open[j] = true;
+            if self.count(j) == 0 && !self.mine[j] {
+                stack.extend(self.neighbors(j));
+            }
+        }
+    }
+
+    fn geom(&self) -> (i32, i32, i32) {
+        minigame::grid_geom(self.n as i32, self.n as i32, 290, 990)
+    }
+
+    fn cell(&self, i: usize) -> Rect {
+        let (x0, y0, s) = self.geom();
+        Rect::new(x0 + (i % self.n) as i32 * s, y0 + (i / self.n) as i32 * s, s, s)
+    }
+}
+
+impl MiniGame for Minas {
+    fn draw(&self, fb: &mut Framebuffer, f: &Fonts) {
+        fb.fill(fb.screen(), PAPER);
+        ui::draw_back(fb, f, false);
+        if self.menu {
+            let opts: Vec<&str> = LEVELS.iter().map(|l| l.2).collect();
+            minigame::draw_menu(fb, f, "Minas", "Abra tudo que não é mina. Números contam as vizinhas.", &opts);
+            return;
+        }
+        let flags = self.flag.iter().filter(|&&x| x).count();
+        let status = if self.won {
+            format!("Campo limpo em {} min!", self.started.elapsed().as_secs() / 60 + 1)
+        } else if self.lost.is_some() {
+            "Boom. Era uma mina.".to_string()
+        } else {
+            format!("{} minas · {} bandeiras", self.mines, flags)
+        };
+        minigame::header(fb, f, "Campo minado", &status);
+        let (_, _, s) = self.geom();
+        let size = s as f32 * 0.6;
+        for i in 0..self.n * self.n {
+            let r = self.cell(i);
+            let inner = Rect::new(r.x + 2, r.y + 2, r.w - 4, r.h - 4);
+            let show_mine = self.mine[i] && (self.lost.is_some() || self.won);
+            if self.open[i] || show_mine {
+                fb.fill(inner, if Some(i) == self.lost { INK } else { PAPER });
+                fb.round_outline(inner, 4, 1, 0xBB, if Some(i) == self.lost { INK } else { PAPER });
+                if self.mine[i] {
+                    let d = (s / 4).max(6);
+                    fb.round_rect(Rect::new(r.x + s / 2 - d, r.y + s / 2 - d, 2 * d, 2 * d), d, if Some(i) == self.lost { PAPER } else { INK });
+                } else {
+                    let k = self.count(i);
+                    if k > 0 {
+                        let t = k.to_string();
+                        let w = f.measure(Face::Display, size, &t);
+                        f.draw(fb, Face::Display, size, r.x + (s - w) / 2, r.y + s / 2 + (size * 0.36) as i32, if k >= 3 { INK } else { 0x44 }, &t);
+                    }
+                }
+            } else {
+                fb.round_rect(inner, 6, 0xC8);
+                if self.flag[i] {
+                    let (x, y) = (r.x as f32 + s as f32 * 0.38, r.y as f32 + s as f32 * 0.22);
+                    ui::stroke(fb, (x, y), (x, y + s as f32 * 0.56), 4.0, INK);
+                    for k in 0..6 {
+                        let yy = y + k as f32 * s as f32 * 0.04;
+                        ui::stroke(fb, (x, yy), (x + s as f32 * 0.3, y + s as f32 * 0.12), 3.0, INK);
+                    }
+                }
+            }
+        }
+        let mode = if self.flag_mode { "Modo: bandeira" } else { "Modo: abrir" };
+        minigame::pill(fb, f, minigame::bottom_button(0, 2), mode, self.flag_mode);
+        minigame::pill(fb, f, minigame::bottom_button(1, 2), "Novo jogo", false);
+        f.draw(fb, Face::Body, 26.0, MARGIN, 1300, MUTED, "Troque o modo para pôr ou tirar bandeiras.");
+    }
+
+    fn targets(&self) -> Vec<(u32, Rect)> {
+        if self.menu {
+            return (0..LEVELS.len()).map(|k| (900 + k as u32, minigame::menu_row(k))).collect();
+        }
+        let mut v = vec![(800u32, minigame::bottom_button(0, 2)), (801, minigame::bottom_button(1, 2))];
+        if self.lost.is_none() && !self.won {
+            v.extend((0..self.n * self.n).filter(|&i| !self.open[i]).map(|i| (i as u32, self.cell(i))));
+        }
+        v
+    }
+
+    fn tap(&mut self, id: u32, _x: i32, _y: i32) -> Redraw {
+        let all = Rect::new(0, 170, W, 1448 - 170);
+        match id {
+            900..=902 => {
+                let (n, m, _) = LEVELS[(id - 900) as usize];
+                self.start(n, m);
+                Redraw::Full
+            }
+            800 => {
+                self.flag_mode = !self.flag_mode;
+                Redraw::Part(all)
+            }
+            801 => {
+                self.menu = true;
+                Redraw::Full
+            }
+            i if (i as usize) < self.n * self.n => {
+                let i = i as usize;
+                if self.flag_mode {
+                    self.flag[i] = !self.flag[i];
+                    return Redraw::Part(all);
+                }
+                if self.flag[i] {
+                    return Redraw::None;
+                }
+                if !self.placed {
+                    self.place(i);
+                }
+                if self.mine[i] {
+                    self.lost = Some(i);
+                    return Redraw::Full;
+                }
+                self.reveal(i);
+                self.won = (0..self.n * self.n).all(|j| self.mine[j] || self.open[j]);
+                if self.won { Redraw::Full } else { Redraw::Part(all) }
+            }
+            _ => Redraw::None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn primeiro_toque_seguro_e_abre_vazio() {
+        let mut g = Minas::new();
+        g.start(9, 10);
+        g.tap(40, 0, 0);
+        assert!(!g.mine[40] && g.open[40]);
+        assert_eq!(g.mine.iter().filter(|&&m| m).count(), 10);
+        assert!(g.neighbors(40).iter().all(|&j| !g.mine[j]));
+    }
+}

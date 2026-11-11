@@ -1320,6 +1320,9 @@ impl App {
                     3 => Some(Box::new(crate::lig4::Lig4::new())),
                     4 => Some(Box::new(crate::caixas::Caixas::new())),
                     5 => Some(Box::new(crate::naval::Naval::new())),
+                    6 => Some(Box::new(crate::minas::Minas::new())),
+                    7 => Some(Box::new(crate::nonograma::Nonograma::new())),
+                    8 => Some(Box::new(crate::uno::Uno::new())),
                     _ => None,
                 };
                 if self.mini.is_some() {

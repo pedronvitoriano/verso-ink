@@ -17,6 +17,8 @@ mod chess_ui;
 mod caixas;
 mod coach;
 mod lig4;
+mod minas;
+mod nonograma;
 mod naval;
 mod coroas;
 mod minigame;
@@ -37,6 +39,7 @@ mod input;
 mod keyboard;
 mod sys;
 mod text;
+mod uno;
 mod ui;
 
 use app::{App, Screen};
