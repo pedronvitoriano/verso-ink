@@ -35,6 +35,9 @@ pub enum Screen {
     ClipBook,
     Compose,
     Claude,
+    ClaudeLive,
+    ClaudeChat,
+    ClaudeCompose,
     Update,
     Wifi,
     WifiPass,
@@ -122,6 +125,10 @@ pub struct App {
     kb_shift: bool,
     keys: Vec<crate::keyboard::Key>,
     claude: Vec<crate::claude_ui::Session>,
+    chats: Result<Vec<crate::chat::ChatInfo>, String>,
+    cur_chat: Option<crate::chat::Chat>,
+    chat_pages: Vec<Vec<(String, bool, bool)>>,
+    chat_page: usize,
     claude_stamp: u64,
     claude_checked: Instant,
     update_msg: (String, Vec<String>, Option<String>),
@@ -206,6 +213,10 @@ impl App {
             kb_shift: true,
             keys: Vec::new(),
             claude: Vec::new(),
+            chats: Ok(Vec::new()),
+            cur_chat: None,
+            chat_pages: Vec::new(),
+            chat_page: 0,
             claude_stamp: 0,
             claude_checked: Instant::now(),
             update_msg: (String::new(), Vec::new(), None),
@@ -294,7 +305,20 @@ impl App {
                 }
             }
             Screen::Clips => crate::clippings::draw_books(fb, f, &self.clips, self.clip_page),
-            Screen::Claude => crate::claude_ui::draw(fb, f, &self.claude),
+            Screen::Claude => crate::chat::draw_hub(fb, f, &self.chats, self.claude.len()),
+            Screen::ClaudeLive => crate::claude_ui::draw(fb, f, &self.claude),
+            Screen::ClaudeChat => {
+                if let Some(c) = &self.cur_chat {
+                    crate::chat::draw_chat(fb, f, c, &self.chat_pages, self.chat_page);
+                }
+            }
+            Screen::ClaudeCompose => {
+                let title = self.cur_chat.as_ref().map(|c| c.title.clone()).unwrap_or_else(|| "Nova conversa".into());
+                crate::chat::draw_compose_header(fb, f, &title);
+                crate::today_ui::draw_field(fb, f, &self.compose_text, &self.compose_hint);
+                self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
+                crate::keyboard::draw(fb, f, &self.keys);
+            }
             Screen::Wifi => crate::wifi::draw(fb, f, self.wifi_on, self.wifi_cur.as_deref(), &self.nets, &self.wifi_note),
             Screen::WifiPass => {
                 let essid = self.wifi_target.as_ref().map(|n| n.essid.clone()).unwrap_or_default();
@@ -365,7 +389,29 @@ impl App {
                 (PowerOff, apps::set_off_rect()),
                 (Check, apps::set_update_rect()),
             ],
-            Screen::Claude => vec![(Back, ui::back_rect())],
+            Screen::Claude => {
+                let mut v = vec![(Back, ui::back_rect()), (NewGame, crate::chat::new_rect()), (Continue, crate::chat::live_rect())];
+                if let Ok(c) = &self.chats {
+                    v.extend((0..c.len().min(crate::chat::ROWS)).map(|i| (Row(i), crate::chat::chat_row(i))));
+                }
+                v
+            }
+            Screen::ClaudeLive => vec![(Back, ui::back_rect())],
+            Screen::ClaudeChat => {
+                let mut v = vec![(Back, ui::back_rect()), (Primary, crate::chat::reply_rect())];
+                if self.chat_page > 0 {
+                    v.push((Prev, crate::chat::prev_rect()));
+                }
+                if self.chat_page + 1 < self.chat_pages.len() {
+                    v.push((Next, crate::chat::next_rect()));
+                }
+                v
+            }
+            Screen::ClaudeCompose => {
+                let mut v = vec![(Back, ui::back_rect())];
+                v.extend(self.keys.iter().enumerate().map(|(i, k)| (Key(i as u8), k.rect)));
+                v
+            }
             Screen::Wifi => {
                 let mut v = vec![(Back, ui::back_rect()), (Wifi, crate::wifi::toggle_rect()), (Check, crate::wifi::rescan_rect())];
                 if self.wifi_on {
@@ -587,6 +633,9 @@ impl App {
                 relayout = true;
             }
             Action::Done => {
+                if self.screen == Screen::ClaudeCompose {
+                    return self.send_claude();
+                }
                 if self.screen == Screen::WifiPass {
                     let (Some(n), psk) = (self.wifi_target.clone(), self.compose_text.clone()) else { return };
                     if psk.chars().count() < 8 {
@@ -605,6 +654,55 @@ impl App {
             self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
             crate::keyboard::draw(&mut self.fb, &self.fonts, &self.keys);
             self.fb.refresh(crate::keyboard::area(), Wave::Quality, false);
+        }
+    }
+
+    fn start_claude_compose(&mut self) {
+        self.compose_text.clear();
+        self.compose_hint = "Escreva e toque em OK para enviar.".into();
+        self.kb_mode = crate::keyboard::Mode::Letters;
+        self.kb_shift = true;
+        self.go(Screen::ClaudeCompose);
+    }
+
+    fn open_chat(&mut self, id: &str) {
+        match crate::chat::open(id) {
+            Ok(c) => {
+                self.chat_pages = crate::chat::paginate(&self.fonts, &c);
+                self.chat_page = self.chat_pages.len().saturating_sub(1);
+                self.cur_chat = Some(c);
+                self.go(Screen::ClaudeChat);
+            }
+            Err(e) => {
+                self.chats = Err(e);
+                self.render(false);
+            }
+        }
+    }
+
+    /// Envia a mensagem e mostra a espera; a resposta abre na última página da conversa.
+    fn send_claude(&mut self) {
+        let text = self.compose_text.trim().to_string();
+        if text.is_empty() {
+            self.compose_hint = "Escreva alguma coisa antes do OK.".into();
+            return self.render(false);
+        }
+        let id = self.cur_chat.as_ref().map(|c| c.id.clone());
+        self.update_msg = ("Claude".into(), vec!["Pensando… pode levar até um minuto.".into(), "".into(), text.chars().take(80).collect()], None);
+        self.screen = Screen::Update;
+        self.render(true);
+        self.fb.wait();
+        match crate::chat::send(id.as_deref(), &text) {
+            Ok(new_id) => {
+                self.compose_text.clear();
+                self.open_chat(&new_id);
+            }
+            Err(e) => {
+                // Mantém o texto para tentar de novo.
+                self.compose_hint = e;
+                self.screen = Screen::ClaudeCompose;
+                self.render(true);
+            }
         }
     }
 
@@ -948,6 +1046,10 @@ impl App {
             Screen::Wifi => self.refresh_wifi(),
             Screen::Claude => {
                 self.claude = crate::claude_ui::load();
+                self.chats = crate::chat::list();
+            }
+            Screen::ClaudeLive => {
+                self.claude = crate::claude_ui::load();
                 self.claude_stamp = crate::claude_ui::stamp();
             }
             Screen::Clips => {
@@ -1027,6 +1129,35 @@ impl App {
             (Screen::Clips, Back) => self.go(Screen::Library),
             (Screen::ClipBook, Back) => self.go(Screen::Clips),
             (Screen::Compose, Back) => self.go(Screen::Today),
+            (Screen::ClaudeLive | Screen::ClaudeChat, Back) => self.go(Screen::Claude),
+            (Screen::ClaudeCompose, Back) => {
+                if self.cur_chat.is_some() {
+                    self.screen = Screen::ClaudeChat;
+                    self.render(true);
+                } else {
+                    self.go(Screen::Claude);
+                }
+            }
+            (Screen::Claude, Continue) => self.go(Screen::ClaudeLive),
+            (Screen::Claude, NewGame) => {
+                self.cur_chat = None;
+                self.start_claude_compose();
+            }
+            (Screen::Claude, Row(i)) => {
+                let id = self.chats.as_ref().ok().and_then(|c| c.get(i)).map(|c| c.id.clone());
+                if let Some(id) = id {
+                    self.open_chat(&id);
+                }
+            }
+            (Screen::ClaudeChat, Primary) => self.start_claude_compose(),
+            (Screen::ClaudeChat, Prev) => {
+                self.chat_page = self.chat_page.saturating_sub(1);
+                self.render(true);
+            }
+            (Screen::ClaudeChat, Next) => {
+                self.chat_page += 1;
+                self.render(true);
+            }
             (Screen::Settings, Check) => self.run_update(),
             (Screen::Update, Primary) => self.go(Screen::Settings),
             (Screen::Today, NewGame) => {
@@ -1045,7 +1176,7 @@ impl App {
                 }
                 self.render(false);
             }
-            (Screen::Compose | Screen::WifiPass, Key(i)) => self.press_key(i as usize),
+            (Screen::Compose | Screen::WifiPass | Screen::ClaudeCompose, Key(i)) => self.press_key(i as usize),
             (Screen::Wifi, Back) => self.go(Screen::Settings),
             (Screen::WifiPass, Back) => self.go(Screen::Wifi),
             (_, Back) => self.go(Screen::Home),
@@ -1472,7 +1603,7 @@ impl App {
             }
         }
         // Bloco Claude: atualiza sozinho quando chega evento novo do PC.
-        if self.screen == Screen::Claude && self.claude_checked.elapsed() >= Duration::from_secs(2) {
+        if self.screen == Screen::ClaudeLive && self.claude_checked.elapsed() >= Duration::from_secs(2) {
             self.claude_checked = Instant::now();
             let s = crate::claude_ui::stamp();
             if s != self.claude_stamp {

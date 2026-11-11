@@ -11,6 +11,7 @@
 
 mod app;
 mod apps;
+mod chat;
 mod chess;
 mod chess_ui;
 mod coach;
