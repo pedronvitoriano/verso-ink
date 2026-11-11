@@ -86,6 +86,8 @@ pub struct Framebuffer {
     /// Buffer de trabalho: um byte por pixel, 0 = preto, 255 = branco.
     pub buf: Vec<u8>,
     marker: u32,
+    /// Modo noturno: inverte os tons ao enviar para a tela (o desenho continua normal).
+    pub invert: bool,
 }
 
 fn u32_at(b: &[u8], off: usize) -> u32 {
@@ -119,6 +121,7 @@ impl Framebuffer {
             yoffset: u32_at(&var, 20),
             buf: vec![0xFF; width as usize * height as usize],
             marker: 1,
+            invert: false,
         })
     }
 
@@ -133,6 +136,41 @@ impl Framebuffer {
             let i = (y * self.width + x) as usize;
             let old = self.buf[i] as u32;
             self.buf[i] = ((old * (255 - a as u32) + v as u32 * a as u32 + 127) / 255) as u8;
+        }
+    }
+
+    /// Copia uma imagem em cinza (um byte por pixel) para o buffer.
+    pub fn blit(&mut self, x: i32, y: i32, w: i32, h: i32, px: &[u8]) {
+        for row in 0..h {
+            for col in 0..w {
+                if let Some(&v) = px.get((row * w + col) as usize) {
+                    let (px_, py) = (x + col, y + row);
+                    if px_ >= 0 && py >= 0 && px_ < self.width && py < self.height {
+                        self.buf[(py * self.width + px_) as usize] = v;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Inverte os tons dentro de um retângulo arredondado (destaque de toque).
+    /// Aplicar duas vezes devolve exatamente o desenho original.
+    pub fn invert_round(&mut self, r: Rect, radius: i32) {
+        // Raio limitado a (lado - 1) / 2: com metade exata, o clamp abaixo teria mínimo > máximo.
+        let rad = radius.min((r.w - 1) / 2).min((r.h - 1) / 2);
+        for y in r.y.max(0)..(r.y + r.h).min(self.height) {
+            for x in r.x.max(0)..(r.x + r.w).min(self.width) {
+                if rad > 0 {
+                    let cx = x.clamp(r.x + rad, r.x + r.w - 1 - rad);
+                    let cy = y.clamp(r.y + rad, r.y + r.h - 1 - rad);
+                    let (dx, dy) = (x - cx, y - cy);
+                    if dx * dx + dy * dy > rad * rad {
+                        continue;
+                    }
+                }
+                let i = (y * self.width + x) as usize;
+                self.buf[i] = 255 - self.buf[i];
+            }
         }
     }
 
@@ -178,11 +216,20 @@ impl Framebuffer {
         if x1 <= x0 || y1 <= y0 {
             return;
         }
+        let len = (x1 - x0) as usize;
+        let mut row = vec![0u8; len];
         for y in y0..y1 {
             let src = (y * self.width + x0) as usize;
-            let len = (x1 - x0) as usize;
             let off = (y as u64 + self.yoffset as u64) * self.stride as u64 + x0 as u64;
-            let _ = self.file.write_all_at(&self.buf[src..src + len], off);
+            let data = &self.buf[src..src + len];
+            if self.invert {
+                for (d, s) in row.iter_mut().zip(data) {
+                    *d = 255 - *s;
+                }
+                let _ = self.file.write_all_at(&row, off);
+            } else {
+                let _ = self.file.write_all_at(data, off);
+            }
         }
         self.marker = self.marker.wrapping_add(1).max(1);
         let mut upd = MxcfbUpdateData {
@@ -219,5 +266,36 @@ impl Framebuffer {
     pub fn present(&mut self, wave: Wave, flash: bool) {
         let r = self.screen();
         self.refresh(r, wave, flash);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fake(w: i32, h: i32) -> Framebuffer {
+        Framebuffer {
+            file: File::open("/dev/null").unwrap(),
+            width: w,
+            height: h,
+            stride: w as usize,
+            yoffset: 0,
+            buf: vec![0xFF; (w * h) as usize],
+            marker: 1,
+            invert: false,
+        }
+    }
+
+    #[test]
+    fn inverter_duas_vezes_restaura_e_nao_cai_com_raio_de_pilula() {
+        let mut fb = fake(300, 200);
+        fb.round_rect(Rect::new(20, 20, 200, 120), 60, 0x40);
+        let before = fb.buf.clone();
+        for r in [Rect::new(20, 20, 200, 120), Rect::new(0, 0, 1, 1), Rect::new(10, 10, 168, 168)] {
+            let rad = r.h / 2; // pílula/círculo: o caso que derrubava
+            fb.invert_round(r, rad);
+            fb.invert_round(r, rad);
+        }
+        assert_eq!(fb.buf, before);
     }
 }

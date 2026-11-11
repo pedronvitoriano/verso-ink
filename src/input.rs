@@ -166,6 +166,12 @@ pub fn spawn_power(tx: Sender<Event>) {
 /// Injeta um toque no dispositivo (usado nos testes automáticos pelo SSH).
 /// Coordenadas em pixels da tela; convertidas de volta para a faixa do sensor.
 pub fn inject_tap(x: i32, y: i32, hold_ms: u64, width: i32, height: i32) -> std::io::Result<()> {
+    inject_drag(x, y, y, hold_ms, width, height)
+}
+
+/// Injeta um arraste vertical de `y0` até `y1` (com passos intermediários).
+pub fn inject_drag(x: i32, y0: i32, y1: i32, hold_ms: u64, width: i32, height: i32) -> std::io::Result<()> {
+    let y = y0;
     let mut f = OpenOptions::new().read(true).write(true).open(TOUCH_DEV)?;
     let rx = abs_range(&f, ABS_MT_POSITION_X);
     let ry = abs_range(&f, ABS_MT_POSITION_Y);
@@ -186,7 +192,16 @@ pub fn inject_tap(x: i32, y: i32, hold_ms: u64, width: i32, height: i32) -> std:
     put(EV_ABS, ABS_MT_POSITION_Y, sy)?;
     put(EV_KEY, BTN_TOUCH, 1)?;
     put(EV_SYN, SYN_REPORT, 0)?;
-    std::thread::sleep(std::time::Duration::from_millis(hold_ms));
+    let steps = if y1 == y0 { 0 } else { 8 };
+    for k in 1..=steps {
+        std::thread::sleep(std::time::Duration::from_millis(hold_ms / steps as u64));
+        let yk = y0 + (y1 - y0) * k / steps;
+        put(EV_ABS, ABS_MT_POSITION_Y, unscale(yk, ry, height))?;
+        put(EV_SYN, SYN_REPORT, 0)?;
+    }
+    if steps == 0 {
+        std::thread::sleep(std::time::Duration::from_millis(hold_ms));
+    }
     put(EV_ABS, ABS_MT_TRACKING_ID, -1)?;
     put(EV_KEY, BTN_TOUCH, 0)?;
     put(EV_SYN, SYN_REPORT, 0)?;
@@ -195,17 +210,27 @@ pub fn inject_tap(x: i32, y: i32, hold_ms: u64, width: i32, height: i32) -> std:
 
 /// Lê o estado atual do toque, sem capturar: devolve a posição se há dedo na tela
 /// dentro de `timeout_ms` (usado pelo portão do boot).
-pub fn finger_in(region: crate::fb::Rect, timeout_ms: u64, width: i32, height: i32) -> bool {
-    let Ok(mut f) = OpenOptions::new().read(true).open(TOUCH_DEV) else { return false };
+/// Abre o toque cedo: o kernel guarda os eventos a partir daqui, mesmo enquanto a tela é desenhada.
+pub fn open_touch() -> Option<File> {
+    // Sem EVIOCGRAB aqui: capturar e soltar deixou este descritor sem eventos no kernel 3.0 do Kindle.
+    OpenOptions::new().read(true).open(TOUCH_DEV).ok()
+}
+
+pub fn finger_in(mut f: File, region: crate::fb::Rect, timeout_ms: u64, width: i32, height: i32) -> bool {
     let rx = abs_range(&f, ABS_MT_POSITION_X);
     let ry = abs_range(&f, ABS_MT_POSITION_Y);
     let deadline = std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms);
+    // O arquivo foi aberto antes de desenhar a tela: os eventos desde então estão na fila.
+    // O tempo segurado vem do horário de cada evento (relógio do sistema), não de quando o lemos:
+    // no boot o processador está ocupado e a fila pode ser lida segundos depois.
+    let now_us = || {
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_micros() as i64).unwrap_or(0)
+    };
     let (mut x, mut y, mut touching) = (-1, -1, false);
-    let mut held_since: Option<std::time::Instant> = None;
+    let mut held_from: Option<i64> = None;
     let mut ev = [0u8; 16];
     loop {
-        // Dedo parado não gera eventos: o tempo segurado é conferido também sem evento novo.
-        if touching && held_since.is_some_and(|s| s.elapsed().as_millis() >= 1000) {
+        if touching && held_from.is_some_and(|t| now_us() - t >= 1_000_000) {
             return true;
         }
         let now = std::time::Instant::now();
@@ -219,6 +244,9 @@ pub fn finger_in(region: crate::fb::Rect, timeout_ms: u64, width: i32, height: i
         if f.read_exact(&mut ev).is_err() {
             return false;
         }
+        let sec = i32::from_le_bytes([ev[0], ev[1], ev[2], ev[3]]) as i64;
+        let usec = i32::from_le_bytes([ev[4], ev[5], ev[6], ev[7]]) as i64;
+        let t = sec * 1_000_000 + usec;
         let typ = u16::from_le_bytes([ev[8], ev[9]]);
         let code = u16::from_le_bytes([ev[10], ev[11]]);
         let val = i32::from_le_bytes([ev[12], ev[13], ev[14], ev[15]]);
@@ -229,9 +257,13 @@ pub fn finger_in(region: crate::fb::Rect, timeout_ms: u64, width: i32, height: i
             (EV_KEY, BTN_TOUCH) => touching = val == 1,
             (EV_SYN, SYN_REPORT) => {
                 if touching && region.contains(x, y) {
-                    held_since.get_or_insert_with(std::time::Instant::now);
+                    held_from.get_or_insert(t);
                 } else {
-                    held_since = None;
+                    // Soltou (ou saiu do canto): vale se ficou segurado 1 s até aqui.
+                    if held_from.is_some_and(|h| t - h >= 1_000_000) {
+                        return true;
+                    }
+                    held_from = None;
                 }
             }
             _ => {}

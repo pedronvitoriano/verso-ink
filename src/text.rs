@@ -2,6 +2,7 @@
 
 use crate::fb::Framebuffer;
 use fontdue::{Font, FontSettings};
+use unicode_normalization::UnicodeNormalization;
 
 #[derive(Clone, Copy)]
 pub enum Face {
@@ -42,6 +43,8 @@ impl Fonts {
 
     /// Largura do texto em pixels, com kerning.
     pub fn measure(&self, face: Face, size: f32, text: &str) -> i32 {
+        // Acentos como caractere separado (NFD, comum em nomes de arquivo) viram um caractere só.
+        let text: String = text.nfc().collect();
         let f = self.font(face);
         let mut w = 0.0;
         let mut prev = None;
@@ -57,6 +60,7 @@ impl Fonts {
 
     /// Desenha `text` com a linha de base em `baseline`. `ink` é o tom (0 = preto).
     pub fn draw(&self, fb: &mut Framebuffer, face: Face, size: f32, x: i32, baseline: i32, ink: u8, text: &str) -> i32 {
+        let text: String = text.nfc().collect();
         let f = self.font(face);
         let mut pen = x as f32;
         let mut prev = None;

@@ -11,3 +11,6 @@ panic = "abort"
 
 [dependencies]
 fontdue = "0.9.5"
+image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "gif"] }
+unicode-normalization = "0.1.26"
+zip = { version = "9.5.1", default-features = false, features = ["deflate-flate2"] }

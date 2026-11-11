@@ -67,12 +67,6 @@ impl Module {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Screen {
-    Home,
-    Module(Module),
-    Sleep,
-}
 
 pub struct Status {
     pub battery: Option<u8>,
@@ -102,6 +96,28 @@ pub fn tile_rect(i: usize) -> Rect {
     let k = (i - 1) as i32;
     let (col, row) = (k % 2, k / 2);
     Rect::new(MARGIN + col * (w + gap), grid_top + row * (h + gap), w, h)
+}
+/// Faixa do topo (data e bateria): tocar abre Luz e tela.
+pub fn header_rect() -> Rect {
+    Rect::new(0, 60, 1072, 120)
+}
+pub fn minus_rect() -> Rect {
+    Rect::new(1072 - MARGIN - 2 * 168 - 28, 476, 168, 168)
+}
+pub fn plus_rect() -> Rect {
+    Rect::new(1072 - MARGIN - 168, 476, 168, 168)
+}
+pub fn bar_rect() -> Rect {
+    Rect::new(MARGIN, 712, 1072 - 2 * MARGIN, 96)
+}
+pub fn night_rect() -> Rect {
+    Rect::new(MARGIN - 16, 900, 1072 - 2 * MARGIN + 32, 170)
+}
+pub fn settings_row_rect() -> Rect {
+    Rect::new(MARGIN - 16, 1120, 1072 - 2 * MARGIN + 32, 150)
+}
+pub fn low_battery_ok_rect() -> Rect {
+    Rect::new(MARGIN, 1150, 1072 - 2 * MARGIN, 120)
 }
 pub fn back_rect() -> Rect {
     Rect::new(MARGIN - 16, 72, 230, 88)
@@ -299,10 +315,14 @@ pub fn draw_footer(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     f.draw(fb, Face::Body, 28.0, 1072 - MARGIN - w, 1384, MUTED, wifi);
 }
 
-pub fn draw_home(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
+pub fn draw_home(fb: &mut Framebuffer, f: &Fonts, st: &Status, sum: &crate::data::Summary) {
     fb.fill(fb.screen(), PAPER);
     draw_header(fb, f, st);
     draw_clock(fb, f, st);
+    if let Some(line) = &sum.line {
+        let w = f.measure(Face::Strong, 30.0, line);
+        f.draw(fb, Face::Strong, 30.0, 1072 - MARGIN - w, 404, INK, line);
+    }
     fb.fill(Rect::new(MARGIN, 432, 1072 - 2 * MARGIN, 4), INK);
     for i in 0..Module::ALL.len() {
         draw_tile(fb, f, i, false);
@@ -374,13 +394,29 @@ pub fn draw_module(fb: &mut Framebuffer, f: &Fonts, m: Module, st: &Status) {
 }
 
 /// Tela de repouso: fica fixa enquanto o Kindle dorme (o e-ink não gasta energia para mantê-la).
-/// Clara de propósito: escura parecia aparelho apagado.
-pub fn draw_sleep(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
+/// Clara de propósito: escura parecia aparelho apagado. Mostra o livro em andamento, se houver.
+pub fn draw_sleep(fb: &mut Framebuffer, f: &Fonts, st: &Status, book: Option<&crate::data::LastBook>) {
     fb.fill(fb.screen(), PAPER);
     f.draw(fb, Face::Display, 40.0, MARGIN, 150, INK, "Verso Ink");
-    icon_moon(fb, MARGIN, 420, 150);
-    f.draw(fb, Face::Display, 150.0, MARGIN - 6, 760, INK, "Em repouso");
-    f.draw(fb, Face::Body, 42.0, MARGIN, 850, INK, "Aperte o botão de ligar para acordar.");
+    icon_moon(fb, MARGIN, 300, 130);
+    f.draw(fb, Face::Display, 150.0, MARGIN - 6, 600, INK, "Em repouso");
+    f.draw(fb, Face::Body, 42.0, MARGIN, 690, INK, "Aperte o botão de ligar para acordar.");
+    if let Some(b) = book {
+        fb.fill(Rect::new(MARGIN, 820, 1072 - 2 * MARGIN, 3), INK);
+        f.draw(fb, Face::Strong, 32.0, MARGIN, 900, MUTED, "LENDO");
+        let title = crate::apps::fit(f, Face::Display, 72.0, &b.title, 1072 - 2 * MARGIN);
+        f.draw(fb, Face::Display, 72.0, MARGIN - 4, 990, INK, &title);
+        if let Some(p) = b.progress {
+            let pct = (p * 100.0).round() as i32;
+            let bar = Rect::new(MARGIN, 1040, 1072 - 2 * MARGIN, 28);
+            fb.round_outline(bar, 14, 4, INK, PAPER);
+            let w = ((bar.w - 12) * pct.clamp(0, 100)) / 100;
+            if w > 16 {
+                fb.round_rect(Rect::new(bar.x + 6, bar.y + 6, w, bar.h - 12), 8, INK);
+            }
+            f.draw(fb, Face::Body, 34.0, MARGIN, 1120, INK, &format!("{pct}% lido"));
+        }
+    }
     let now = clock::now(st.offset_min);
     let since = if now.plausible() { format!("Dormiu às {} · {}", now.time(), now.date()) } else { "Dormindo".into() };
     fb.fill(Rect::new(MARGIN, 1280, 1072 - 2 * MARGIN, 3), INK);
@@ -392,6 +428,25 @@ pub fn draw_sleep(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
         f.draw(fb, Face::Strong, 30.0, gx - 16 - lw, 1350, INK, &label);
         battery_glyph(fb, gx, 1324, p, st.charging);
     }
+}
+
+pub fn draw_low_battery(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
+    fb.fill(fb.screen(), PAPER);
+    f.draw(fb, Face::Display, 40.0, MARGIN, 150, INK, "Verso Ink");
+    let p = st.battery.unwrap_or(0);
+    // Pilha grande quase vazia.
+    let body = Rect::new(MARGIN, 300, 360, 170);
+    fb.round_outline(body, 28, 12, INK, PAPER);
+    fb.round_rect(Rect::new(body.x + body.w + 6, body.y + 52, 26, 66), 8, INK);
+    fb.round_rect(Rect::new(body.x + 26, body.y + 26, ((308 * p as i32) / 100).max(20), body.h - 52), 10, INK);
+    f.draw(fb, Face::Display, 150.0, MARGIN - 6, 720, INK, "Bateria fraca");
+    f.draw(fb, Face::Display, 96.0, MARGIN - 4, 840, INK, &format!("{p}%"));
+    f.draw(fb, Face::Body, 42.0, MARGIN, 940, INK, "Ligue o Kindle no carregador.");
+    f.draw(fb, Face::Body, 34.0, MARGIN, 1000, MUTED, "Se a carga acabar, ele se desliga sozinho.");
+    let r = low_battery_ok_rect();
+    fb.round_rect(r, r.h / 2, INK);
+    let tw = f.measure(Face::Strong, 44.0, "Entendi");
+    f.draw(fb, Face::Strong, 44.0, r.x + (r.w - tw) / 2, r.y + 76, PAPER, "Entendi");
 }
 
 /// Lua crescente: dois discos, o segundo "recorta" o primeiro.
@@ -425,4 +480,99 @@ pub fn draw_gate_hint(fb: &mut Framebuffer, f: &Fonts) {
     let hint = "Para abrir o Kindle original, segure o canto marcado";
     let hw = f.measure(Face::Body, 28.0, hint);
     f.draw(fb, Face::Body, 28.0, (1072 - hw) / 2, 1360, MUTED, hint);
+}
+
+// ---------- Luz e tela ----------
+
+pub struct Light {
+    pub level: i32,
+    pub max: i32,
+    pub night: bool,
+}
+
+fn round_button(fb: &mut Framebuffer, r: Rect, pressed: bool, plus: bool) {
+    let (cx, cy, rad) = (r.x as f32 + r.w as f32 / 2.0, r.y as f32 + r.h as f32 / 2.0, r.w as f32 / 2.0 - 3.0);
+    fb.fill(r, PAPER);
+    let fg = if pressed {
+        disc(fb, cx, cy, rad, INK);
+        PAPER
+    } else {
+        ring(fb, cx, cy, rad - 3.0, 6.0, INK);
+        INK
+    };
+    let arm = rad * 0.42;
+    line(fb, (cx - arm, cy), (cx + arm, cy), 9.0, fg);
+    if plus {
+        line(fb, (cx, cy - arm), (cx, cy + arm), 9.0, fg);
+    }
+}
+
+pub fn draw_light_minus(fb: &mut Framebuffer, pressed: bool) {
+    round_button(fb, minus_rect(), pressed, false);
+}
+pub fn draw_light_plus(fb: &mut Framebuffer, pressed: bool) {
+    round_button(fb, plus_rect(), pressed, true);
+}
+
+/// Nível da luz: número grande e uma barra de segmentos que dá para tocar.
+pub fn draw_light_level(fb: &mut Framebuffer, f: &Fonts, l: &Light) {
+    fb.fill(Rect::new(MARGIN - 8, 440, 560, 230), PAPER);
+    f.draw(fb, Face::Strong, 36.0, MARGIN, 470, MUTED, "LUZ");
+    let label = if l.level == 0 { "Apagada".to_string() } else { l.level.to_string() };
+    let end = f.draw(fb, Face::Display, if l.level == 0 { 120.0 } else { 170.0 }, MARGIN - 6, 640, INK, &label);
+    if l.level > 0 {
+        f.draw(fb, Face::Body, 36.0, end + 16, 640, MUTED, &format!("de {}", l.max));
+    }
+    let r = bar_rect();
+    fb.fill(r, PAPER);
+    let n = l.max.max(1);
+    let gap = 6;
+    let seg = (r.w - gap * (n - 1)) / n;
+    for i in 0..n {
+        let sx = r.x + i * (seg + gap);
+        let cell = Rect::new(sx, r.y, seg, r.h);
+        if i < l.level {
+            fb.round_rect(cell, 6, INK);
+        } else {
+            fb.round_outline(cell, 6, 3, INK, PAPER);
+        }
+    }
+}
+
+pub fn draw_night(fb: &mut Framebuffer, f: &Fonts, l: &Light, pressed: bool) {
+    let r = night_rect();
+    fb.fill(r, PAPER);
+    if pressed {
+        fb.round_rect(r, 32, 0xDD);
+    }
+    f.draw(fb, Face::Display, 64.0, MARGIN, r.y + 82, INK, "Modo noturno");
+    f.draw(fb, Face::Body, 32.0, MARGIN, r.y + 134, MUTED, "Texto claro sobre fundo escuro");
+    // Chave liga/desliga.
+    let sw = Rect::new(1072 - MARGIN - 180, r.y + 40, 180, 96);
+    if l.night {
+        fb.round_rect(sw, 48, INK);
+        disc(fb, sw.x as f32 + sw.w as f32 - 48.0, sw.y as f32 + 48.0, 36.0, PAPER);
+    } else {
+        fb.round_outline(sw, 48, 5, INK, if pressed { 0xDD } else { PAPER });
+        disc(fb, sw.x as f32 + 48.0, sw.y as f32 + 48.0, 30.0, INK);
+    }
+}
+
+pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status) {
+    fb.fill(fb.screen(), PAPER);
+    draw_back(fb, f, false);
+    f.draw(fb, Face::Display, 120.0, MARGIN - 4, 360, INK, "Luz e tela");
+    draw_light_level(fb, f, l);
+    draw_light_minus(fb, false);
+    draw_light_plus(fb, false);
+    fb.fill(Rect::new(MARGIN, 862, 1072 - 2 * MARGIN, 3), INK);
+    draw_night(fb, f, l, false);
+    fb.fill(Rect::new(MARGIN, 1100, 1072 - 2 * MARGIN, 3), INK);
+    let r = settings_row_rect();
+    f.draw(fb, Face::Display, 56.0, MARGIN, r.y + 74, INK, "Ajustes do sistema");
+    f.draw(fb, Face::Body, 30.0, MARGIN, r.y + 120, MUTED, "Wi-Fi, endereço, bateria, reiniciar e desligar");
+    let (cx, cy) = (r.x + r.w - 40, r.y + r.h / 2);
+    line(fb, ((cx - 14) as f32, (cy - 22) as f32), (cx as f32, cy as f32), 6.0, INK);
+    line(fb, (cx as f32, cy as f32), ((cx - 14) as f32, (cy + 22) as f32), 6.0, INK);
+    draw_footer(fb, f, st);
 }

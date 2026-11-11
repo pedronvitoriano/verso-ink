@@ -1,32 +1,40 @@
 //! Verso Ink: sistema próprio para o Kindle Paperwhite 3.
 //!
 //! Subcomandos:
-//!   run            abre a interface (a interface da Amazon deve estar parada)
-//!   gate           portão do boot: sai com 0 para abrir o Verso Ink, 3 para pular
-//!   tap X Y [ms]   injeta um toque (testes pelo SSH)
-//!   info           mostra tela, toque e relógio
+//!   run                 abre a interface (a interface da Amazon deve estar parada)
+//!   gate                portão do boot: sai com 0 para abrir o Verso Ink, 3 para pular
+//!   splash-amazon       tela "Abrindo o Kindle original"
+//!   preview off|reboot  desenha a tela de desligado/reiniciando (testes)
+//!   tap X Y [ms]        injeta um toque (testes pelo SSH)
+//!   swipe X Y0 Y1       injeta um deslize vertical
+//!   info                mostra tela, relógio, bateria e Wi-Fi
 
+mod app;
+mod apps;
 mod clock;
+mod covers;
+mod data;
 mod fb;
 mod input;
 mod sys;
 mod text;
 mod ui;
 
+use app::{App, Screen};
 use fb::{Framebuffer, Wave};
-use input::{Event, Touch};
+use input::Event;
 use std::path::PathBuf;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 use sys::{log, read_trim, sh};
 use text::Fonts;
-use ui::{Module, Screen, Status};
+use ui::Status;
 
 const BATTERY: &str = "/sys/class/power_supply/max77696-battery";
 /// Depois desse tempo aberto sem cair, o boot é considerado bem-sucedido.
 const HEALTHY_AFTER: Duration = Duration::from_secs(20);
 
-fn home_dir() -> PathBuf {
+pub fn home_dir() -> PathBuf {
     std::env::var_os("VERSO_INK_HOME").map(PathBuf::from).unwrap_or_else(|| "/mnt/us/verso-ink".into())
 }
 
@@ -36,21 +44,22 @@ fn offset_min() -> i64 {
         .unwrap_or(-240) // Manaus (UTC-4), sem horário de verão. Mude em settings/utc_offset_min.
 }
 
-fn read_status() -> Status {
-    let battery = read_trim(&format!("{BATTERY}/capacity")).and_then(|s| s.parse().ok());
-    let charging = read_trim(&format!("{BATTERY}/status")).is_some_and(|s| s == "Charging" || s == "Full");
+pub fn read_status() -> Status {
+    // settings/dev_battery simula um nível de bateria (testes do aviso de bateria fraca).
+    let fake: Option<u8> = read_trim(home_dir().join("settings/dev_battery").to_str().unwrap_or("")).and_then(|s| s.parse().ok());
+    let battery = fake.or_else(|| read_trim(&format!("{BATTERY}/capacity")).and_then(|s| s.parse().ok()));
+    let charging = fake.is_none() && read_trim(&format!("{BATTERY}/status")).is_some_and(|s| s == "Charging" || s == "Full");
     let wifi = sh("lipc-get-prop", &["com.lab126.wifid", "cmState"]).is_some_and(|s| s == "CONNECTED");
     Status { battery, charging, wifi, offset_min: offset_min() }
 }
 
-fn set_wifi(on: bool) {
+pub fn set_wifi(on: bool) {
     // Modo de desenvolvimento: mantém o Wi-Fi (e o SSH) ao dormir, para testes remotos.
     if !on && home_dir().join("settings/dev_keep_wifi").exists() {
         log("wifi mantido (dev_keep_wifi)");
         return;
     }
-    let v = if on { "1" } else { "0" };
-    let _ = sh("lipc-set-prop", &["com.lab126.cmd", "wirelessEnable", v]);
+    let _ = sh("lipc-set-prop", &["com.lab126.cmd", "wirelessEnable", if on { "1" } else { "0" }]);
     log(&format!("wifi {}", if on { "ligado" } else { "desligado" }));
 }
 
@@ -68,102 +77,11 @@ fn sync_clock_async() {
     });
 }
 
-struct App {
-    fb: Framebuffer,
-    fonts: Fonts,
-    screen: Screen,
-    pressed: Option<usize>, // índice do bloco ou 99 para o botão Início
-    status: Status,
-    last_minute: u32,
-}
-
-const BACK: usize = 99;
-
-impl App {
-    fn render(&mut self, flash: bool) {
-        self.status = read_status();
-        match self.screen {
-            Screen::Home => ui::draw_home(&mut self.fb, &self.fonts, &self.status),
-            Screen::Module(m) => ui::draw_module(&mut self.fb, &self.fonts, m, &self.status),
-            Screen::Sleep => ui::draw_sleep(&mut self.fb, &self.fonts, &self.status),
-        }
-        self.fb.present(Wave::Quality, flash);
-        self.last_minute = clock::now(self.status.offset_min).minute;
-    }
-
-    fn hit(&self, x: i32, y: i32) -> Option<usize> {
-        match self.screen {
-            Screen::Home => (0..Module::ALL.len()).find(|&i| ui::tile_rect(i).contains(x, y)),
-            Screen::Module(_) => ui::back_rect().contains(x, y).then_some(BACK),
-            Screen::Sleep => None,
-        }
-    }
-
-    fn draw_pressed(&mut self, target: usize, pressed: bool) {
-        if target == BACK {
-            ui::draw_back(&mut self.fb, &self.fonts, pressed);
-            self.fb.refresh(ui::back_rect(), Wave::Fast, false);
-        } else {
-            ui::draw_tile(&mut self.fb, &self.fonts, target, pressed);
-            self.fb.refresh(ui::tile_rect(target), Wave::Fast, false);
-        }
-    }
-
-    fn on_touch(&mut self, t: Touch) {
-        match t {
-            Touch::Down(x, y) => {
-                if let Some(h) = self.hit(x, y) {
-                    self.pressed = Some(h);
-                    self.draw_pressed(h, true);
-                }
-            }
-            Touch::Move(x, y) => {
-                // Arrastar para fora cancela o toque, como num botão nativo.
-                if let Some(h) = self.pressed {
-                    if self.hit(x, y) != Some(h) {
-                        self.pressed = None;
-                        self.restore(h);
-                    }
-                }
-            }
-            Touch::Up(x, y) => {
-                let Some(h) = self.pressed.take() else { return };
-                if self.hit(x, y) != Some(h) {
-                    self.restore(h);
-                    return;
-                }
-                self.screen = if h == BACK { Screen::Home } else { Screen::Module(Module::ALL[h]) };
-                log(&format!("tela: {:?}", self.screen));
-                self.render(true);
-            }
-        }
-    }
-
-    fn restore(&mut self, target: usize) {
-        self.draw_pressed(target, false);
-        let r = if target == BACK { ui::back_rect() } else { ui::tile_rect(target) };
-        self.fb.refresh(r, Wave::Quality, false);
-    }
-
-    fn tick(&mut self) {
-        let now = clock::now(self.status.offset_min);
-        if self.screen == Screen::Home && now.minute != self.last_minute {
-            self.last_minute = now.minute;
-            self.status = read_status();
-            ui::draw_clock(&mut self.fb, &self.fonts, &self.status);
-            ui::draw_header(&mut self.fb, &self.fonts, &self.status);
-            ui::draw_footer(&mut self.fb, &self.fonts, &self.status);
-            // A cada hora cheia, uma atualização completa limpa os fantasmas do e-ink.
-            if now.minute == 0 {
-                self.fb.present(Wave::Quality, true);
-            } else {
-                let c = ui::clock_rect();
-                let d = ui::date_rect();
-                self.fb.refresh(fb::Rect::new(0, d.y, 1072, c.y + c.h - d.y), Wave::Quality, false);
-                self.fb.refresh(fb::Rect::new(0, 1300, 1072, 148), Wave::Quality, false);
-            }
-        }
-    }
+/// Gancho de teste: `echo sleep|wake|home > /tmp/verso-ink.cmd`.
+fn injected_command() -> Option<String> {
+    let c = std::fs::read_to_string("/tmp/verso-ink.cmd").ok()?;
+    let _ = std::fs::remove_file("/tmp/verso-ink.cmd");
+    Some(c.trim().to_string())
 }
 
 fn run() -> i32 {
@@ -190,30 +108,41 @@ fn run() -> i32 {
     set_wifi(true);
     sync_clock_async();
 
-    let mut app = App { fb, fonts: Fonts::new(), screen: Screen::Home, pressed: None, status: read_status(), last_minute: 99 };
+    let mut app = App::new(fb);
+    // Voltando do KOReader, reabre a biblioteca, onde a pessoa estava.
+    if std::env::var_os("VERSO_INK_RETURN").is_some() {
+        app.go(Screen::Library);
+    }
     let t0 = Instant::now();
-    app.render(true);
+    if app.screen == Screen::Home {
+        app.render(true);
+    }
     log(&format!("primeira tela em {} ms", t0.elapsed().as_millis()));
 
     // A Amazon ainda limpa a tela alguns instantes depois de parar; redesenhamos uma vez.
     let mut redraw_at = Some(t0 + Duration::from_millis(2500));
-    let healthy_flag = home_dir().join("state/fail_count");
     let mut healthy_marked = false;
     let mut clock_was_plausible = clock::now(app.status.offset_min).plausible();
 
     loop {
-        // Gancho de teste: `echo sleep > /tmp/verso-ink.cmd` simula o powerd (sleep|wake).
-        let injected = std::fs::read_to_string("/tmp/verso-ink.cmd").ok().and_then(|c| {
-            let _ = std::fs::remove_file("/tmp/verso-ink.cmd");
-            match c.trim() {
-                "sleep" => Some(Event::Sleep),
-                "wake" => Some(Event::Wake),
-                _ => None,
+        let next = match injected_command().as_deref() {
+            Some("sleep") => Ok(Event::Sleep),
+            Some("wake") => Ok(Event::Wake),
+            Some("home") => {
+                app.go(Screen::Home);
+                continue;
             }
-        });
-        let next = match injected {
-            Some(ev) => Ok(ev),
-            None => rx.recv_timeout(Duration::from_millis(500)),
+            Some("library") => {
+                app.go(Screen::Library);
+                continue;
+            }
+            Some("refresh") => {
+                if app.screen == Screen::Library {
+                    app.go(Screen::Library);
+                }
+                continue;
+            }
+            _ => rx.recv_timeout(Duration::from_millis(250)),
         };
         match next {
             Ok(Event::Touch(t)) => {
@@ -223,9 +152,7 @@ fn run() -> i32 {
             }
             Ok(Event::Sleep) => {
                 log("dormindo");
-                app.screen = Screen::Sleep;
-                app.pressed = None;
-                app.render(true);
+                app.go(Screen::Sleep);
                 app.fb.wait();
                 set_wifi(false);
             }
@@ -233,8 +160,7 @@ fn run() -> i32 {
                 log("acordando");
                 set_wifi(true);
                 sync_clock_async();
-                app.screen = Screen::Home;
-                app.render(true);
+                app.go(Screen::Home);
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {}
             Err(mpsc::RecvTimeoutError::Disconnected) => {
@@ -242,14 +168,17 @@ fn run() -> i32 {
                 return 1;
             }
         }
+        if let Some(code) = app.exit_code {
+            return code;
+        }
         if redraw_at.is_some_and(|t| Instant::now() >= t) {
             redraw_at = None;
-            if app.pressed.is_none() && app.screen != Screen::Sleep {
+            if app.screen != Screen::Sleep {
                 app.render(true);
             }
         }
         if !healthy_marked && t0.elapsed() >= HEALTHY_AFTER {
-            let _ = std::fs::write(&healthy_flag, "0");
+            let _ = std::fs::write(home_dir().join("state/fail_count"), "0");
             healthy_marked = true;
             log("boot saudável: contador de falhas zerado");
         }
@@ -259,7 +188,9 @@ fn run() -> i32 {
             clock_was_plausible = plausible;
             app.last_minute = 99;
         }
-        app.tick();
+        if app.screen != Screen::Sleep {
+            app.tick();
+        }
     }
 }
 
@@ -280,12 +211,15 @@ fn gate() -> i32 {
     let _ = std::fs::create_dir_all(home.join("state"));
     let _ = std::fs::write(&count_path, (fails + 1).to_string());
 
-    if let Ok(mut fb) = Framebuffer::open() {
+    let touch = input::open_touch();
+    if let (Ok(mut fb), Some(touch)) = (Framebuffer::open(), touch) {
         let fonts = Fonts::new();
+        let t = Instant::now();
         ui::draw_gate_hint(&mut fb, &fonts);
         fb.present(Wave::Quality, true);
+        log(&format!("portão: tela desenhada em {} ms", t.elapsed().as_millis()));
         let (w, h) = (fb.width, fb.height);
-        if input::finger_in(ui::gate_corner(), 3000, w, h) {
+        if input::finger_in(touch, ui::gate_corner(), 3000, w, h) {
             log("portão: gesto de emergência, pulando");
             let _ = std::fs::write(&count_path, fails.to_string());
             return 3;
@@ -307,11 +241,22 @@ fn info() -> i32 {
 }
 
 fn main() {
+    // Com panic = "abort" a mensagem se perderia: grava no log antes de cair.
+    std::panic::set_hook(Box::new(|info| log(&format!("PANIC: {info}"))));
     let args: Vec<String> = std::env::args().collect();
     let code = match args.get(1).map(String::as_str) {
         Some("run") => run(),
         Some("gate") => gate(),
         Some("info") => info(),
+        Some("preview") => match Framebuffer::open() {
+            Ok(mut fb) => {
+                apps::draw_powered_off(&mut fb, &Fonts::new(), args.get(2).is_some_and(|a| a == "reboot"));
+                fb.present(Wave::Quality, true);
+                fb.wait();
+                0
+            }
+            Err(_) => 1,
+        },
         Some("splash-amazon") => match Framebuffer::open() {
             Ok(mut fb) => {
                 ui::draw_amazon_splash(&mut fb, &Fonts::new());
@@ -321,6 +266,22 @@ fn main() {
             }
             Err(_) => 1,
         },
+        Some("swipe") => {
+            let n = |i: usize| args.get(i).and_then(|s| s.parse::<i32>().ok());
+            match (n(2), n(3), n(4)) {
+                (Some(x), Some(y0), Some(y1)) => match input::inject_drag(x, y0, y1, 400, 1072, 1448) {
+                    Ok(()) => 0,
+                    Err(e) => {
+                        eprintln!("swipe: {e}");
+                        1
+                    }
+                },
+                _ => {
+                    eprintln!("uso: verso-ink swipe X Y0 Y1");
+                    2
+                }
+            }
+        }
         Some("tap") => {
             let n = |i: usize| args.get(i).and_then(|s| s.parse::<i32>().ok());
             match (n(2), n(3)) {
