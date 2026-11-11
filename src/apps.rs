@@ -194,7 +194,7 @@ pub fn clips_rect() -> Rect {
     Rect::new(W - MARGIN - 250, 76, 250, 84)
 }
 /// Jogos na tela Jogar (a ordem define o índice usado pelo app).
-pub const GAMES: [(&str, &str); 12] = [
+pub const GAMES: [(&str, &str); 13] = [
     ("Sudoku", "Três níveis, anotações e dicas"),
     ("Xadrez", "Treinadores, revisão e duas pessoas"),
     ("Coroas", "Uma por linha, coluna e reino"),
@@ -207,12 +207,13 @@ pub const GAMES: [(&str, &str); 12] = [
     ("Palavra", "A palavra do dia em 6 tentativas"),
     ("Sokoban", "Empurre as caixas até os alvos"),
     ("Paciência", "Klondike, comprar 1 ou 3"),
+    ("Masmorra", "Roguelike por turnos, 5 andares"),
 ];
 
 /// Grade de blocos 2 colunas.
 pub fn games_row(i: usize) -> Rect {
     let w = (W - 2 * MARGIN - 24) / 2;
-    Rect::new(MARGIN + (i % 2) as i32 * (w + 24), 430 + (i / 2) as i32 * 156, w, 140)
+    Rect::new(MARGIN + (i % 2) as i32 * (w + 24), 420 + (i / 2) as i32 * 132, w, 120)
 }
 
 pub fn draw_games(fb: &mut Framebuffer, f: &Fonts, sudoku: Option<String>, chess: Option<String>) {
@@ -234,9 +235,9 @@ pub fn draw_games(fb: &mut Framebuffer, f: &Fonts, sudoku: Option<String>, chess
         } else {
             fb.round_outline(r, 32, 4, INK, PAPER);
         }
-        f.draw(fb, Face::Display, 50.0, r.x + 28, r.y + 66, fg, title);
+        f.draw(fb, Face::Display, 44.0, r.x + 26, r.y + 56, fg, title);
         let s = live.unwrap_or_else(|| sub.to_string());
-        f.draw(fb, Face::Body, 24.0, r.x + 30, r.y + 106, sc, &fit(f, Face::Body, 24.0, &s, r.w - 50));
+        f.draw(fb, Face::Body, 22.0, r.x + 28, r.y + 94, sc, &fit(f, Face::Body, 22.0, &s, r.w - 50));
     }
 }
 

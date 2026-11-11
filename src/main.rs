@@ -17,6 +17,7 @@ mod chess_ui;
 mod caixas;
 mod coach;
 mod lig4;
+mod masmorra;
 mod minas;
 mod nonograma;
 mod paciencia;
