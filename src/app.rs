@@ -1323,6 +1323,8 @@ impl App {
                     6 => Some(Box::new(crate::minas::Minas::new())),
                     7 => Some(Box::new(crate::nonograma::Nonograma::new())),
                     8 => Some(Box::new(crate::uno::Uno::new())),
+                    9 => Some(Box::new(crate::palavra::Palavra::new())),
+                    10 => Some(Box::new(crate::sokoban::Sokoban::new())),
                     _ => None,
                 };
                 if self.mini.is_some() {

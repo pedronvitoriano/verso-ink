@@ -22,6 +22,8 @@ enum Mode {
 enum Phase {
     /// Posicionando (pode sortear de novo).
     Setup(u8),
+    /// Local: troca antes do jogador 2 posicionar (esconde o mar do jogador 1).
+    SetupHandoff,
     /// Tela de troca entre jogadores (local).
     Handoff(u8),
     Play,
@@ -35,7 +37,49 @@ struct Sea {
     shot: [bool; N * N],
 }
 
+const PIECE: [&str; 8] = ["porta-aviões", "navio-tanque", "navio-tanque", "contratorpedeiro", "contratorpedeiro", "submarino", "submarino", "submarino"];
+
 impl Sea {
+    fn empty() -> Sea {
+        Sea { ship: [0; N * N], shot: [false; N * N] }
+    }
+
+    /// Casas do navio `k` começando em `start` (proa) na orientação dada, se couber sem encostar.
+    fn fit(&self, k: usize, start: usize, horiz: bool) -> Option<Vec<usize>> {
+        let (r, c) = (start / N, start % N);
+        let len = SHIPS[k];
+        let cells: Vec<usize> = (0..len).map(|i| if horiz { (r, c + i) } else { (r + i, c) }).filter(|&(a, b)| a < N && b < N).map(|(a, b)| a * N + b).collect();
+        let ok = cells.len() == len
+            && cells.iter().all(|&i| {
+                let (a, b) = ((i / N) as i32, (i % N) as i32);
+                (-1..=1).all(|dr| (-1..=1).all(|dc| {
+                    let (x, y) = (a + dr, b + dc);
+                    !(0..N as i32).contains(&x) || !(0..N as i32).contains(&y) || self.ship[(x as usize) * N + y as usize] == 0
+                }))
+            });
+        ok.then_some(cells)
+    }
+
+    fn place(&mut self, k: usize, start: usize, horiz: bool) -> bool {
+        match self.fit(k, start, horiz) {
+            Some(cells) => {
+                for i in cells {
+                    self.ship[i] = k as u8 + 1;
+                }
+                true
+            }
+            None => false,
+        }
+    }
+
+    fn remove(&mut self, k: usize) {
+        for v in self.ship.iter_mut() {
+            if *v == k as u8 + 1 {
+                *v = 0;
+            }
+        }
+    }
+
     fn random(rng: &mut Rng) -> Sea {
         // Com 8 navios sem encostar, um sorteio pode ficar sem saída: recomeça a frota.
         'fleet: loop {
@@ -94,6 +138,9 @@ pub struct Naval {
     view_own: bool,
     msg: String,
     rng: Rng,
+    /// Posicionamento manual: próximo navio e orientação.
+    placing: usize,
+    horiz: bool,
 }
 
 const MENU: [&str; 4] = ["Contra a CPU · Fácil", "Contra a CPU · Médio", "Contra a CPU · Difícil", "Duas pessoas"];
@@ -102,7 +149,7 @@ impl Naval {
     pub fn new() -> Self {
         let mut rng = Rng::new();
         let seas = [Sea::random(&mut rng), Sea::random(&mut rng)];
-        Naval { mode: Mode::Menu, phase: Phase::Setup(0), seas, turn: 0, view_own: false, msg: String::new(), rng }
+        Naval { mode: Mode::Menu, phase: Phase::Setup(0), seas, turn: 0, view_own: false, msg: String::new(), rng, placing: 0, horiz: true }
     }
 
     fn geom() -> (i32, i32, i32) {
@@ -200,9 +247,21 @@ impl MiniGame for Naval {
                 minigame::pill(fb, f, minigame::bottom_button(0, 1), "Pronto", true);
                 return;
             }
+            Phase::SetupHandoff => {
+                minigame::header(fb, f, "Batalha naval", "");
+                f.draw(fb, Face::Display, 80.0, MARGIN, 600, INK, "Vez do Jogador 2");
+                f.draw(fb, Face::Body, 38.0, MARGIN, 680, INK, "Passe o Kindle para posicionar a frota.");
+                minigame::pill(fb, f, minigame::bottom_button(0, 1), "Pronto", true);
+                return;
+            }
             Phase::Setup(p) => {
-                let who = if self.mode == Mode::Local { format!("{}: seus navios", self.name(p)) } else { "Seus navios".into() };
-                minigame::header(fb, f, "Batalha naval", &who);
+                let who = if self.mode == Mode::Local { format!("{}: ", self.name(p)) } else { String::new() };
+                let text = if self.placing < SHIPS.len() {
+                    format!("{who}{} o {} ({}) · {} de 8", if who.is_empty() { "Posicione" } else { "posicione" }, PIECE[self.placing], SHIPS[self.placing], self.placing + 1)
+                } else {
+                    format!("{who}{}", if who.is_empty() { "Frota pronta. Toque em Começar." } else { "frota pronta. Toque em Começar." })
+                };
+                minigame::header(fb, f, "Batalha naval", &text);
             }
             _ => {
                 let status = match self.phase {
@@ -223,14 +282,16 @@ impl MiniGame for Naval {
             _ => (1 - me, false),
         };
         self.draw_sea(fb, f, owner, reveal);
-        f.draw(fb, Face::Body, 28.0, MARGIN, 1250, MUTED, &self.msg);
+        let hint = if matches!(self.phase, Phase::Setup(_)) && self.placing < SHIPS.len() && self.msg.is_empty() { "Toque na casa da proa (topo ou ponta esquerda do navio)." } else { self.msg.as_str() };
+        f.draw(fb, Face::Body, 28.0, MARGIN, 1250, MUTED, hint);
         let buttons: Vec<&str> = match self.phase {
-            Phase::Setup(_) => vec!["Sortear de novo", "Começar"],
+            Phase::Setup(_) => vec![if self.horiz { "Girar: deitado" } else { "Girar: em pé" }, "Sortear", "Desfazer", "Começar"],
             Phase::Over(_) => vec!["Novo jogo"],
             _ => vec![if self.view_own { "Ver mar inimigo" } else { "Ver meu mar" }, "Novo jogo"],
         };
         for (k, l) in buttons.iter().enumerate() {
-            minigame::pill(fb, f, minigame::bottom_button(k, buttons.len()), l, matches!(self.phase, Phase::Setup(_)) && k == 1);
+            let ready = self.placing >= SHIPS.len();
+            minigame::pill(fb, f, minigame::bottom_button(k, buttons.len()), l, matches!(self.phase, Phase::Setup(_)) && k == 3 && ready);
         }
     }
 
@@ -240,7 +301,16 @@ impl MiniGame for Naval {
         }
         match self.phase {
             Phase::Handoff(_) => vec![(810, minigame::bottom_button(0, 1))],
-            Phase::Setup(_) => vec![(811, minigame::bottom_button(0, 2)), (812, minigame::bottom_button(1, 2))],
+            Phase::SetupHandoff => vec![(817, minigame::bottom_button(0, 1))],
+            Phase::Setup(_) => {
+                let mut v = vec![(815, minigame::bottom_button(0, 4)), (811, minigame::bottom_button(1, 4)), (816, minigame::bottom_button(2, 4))];
+                if self.placing >= SHIPS.len() {
+                    v.push((812, minigame::bottom_button(3, 4)));
+                } else {
+                    v.extend((0..N * N).map(|i| (i as u32, Self::cell(i))));
+                }
+                v
+            }
             Phase::Over(_) => vec![(813, minigame::bottom_button(0, 1))],
             Phase::Play => {
                 let mut v = vec![(814, minigame::bottom_button(0, 2)), (813, minigame::bottom_button(1, 2))];
@@ -259,6 +329,31 @@ impl MiniGame for Naval {
             900..=903 => {
                 let mode = if id == 903 { Mode::Local } else { Mode::Cpu((id - 900) as u8) };
                 *self = Naval { mode, ..Naval::new() };
+                // Você posiciona a sua frota; a da CPU é sorteada.
+                self.seas[0] = Sea::empty();
+                if mode == Mode::Local {
+                    self.seas[1] = Sea::empty();
+                }
+                Redraw::Full
+            }
+            815 => {
+                self.horiz = !self.horiz;
+                Redraw::Full
+            }
+            816 => {
+                if let Phase::Setup(p) = self.phase {
+                    if self.placing > 0 {
+                        self.placing -= 1;
+                        self.seas[p as usize].remove(self.placing);
+                    }
+                }
+                self.msg.clear();
+                Redraw::Full
+            }
+            817 => {
+                self.phase = Phase::Setup(1);
+                self.placing = 0;
+                self.msg.clear();
                 Redraw::Full
             }
             810 => {
@@ -269,13 +364,15 @@ impl MiniGame for Naval {
             811 => {
                 if let Phase::Setup(p) = self.phase {
                     self.seas[p as usize] = Sea::random(&mut self.rng);
+                    self.placing = SHIPS.len();
                 }
+                self.msg.clear();
                 Redraw::Full
             }
             812 => {
                 // Local: o jogador 2 posiciona depois do 1 (com troca no meio).
                 self.phase = match (self.mode, self.phase) {
-                    (Mode::Local, Phase::Setup(0)) => Phase::Setup(1),
+                    (Mode::Local, Phase::Setup(0)) => Phase::SetupHandoff,
                     (Mode::Local, _) => Phase::Handoff(0),
                     _ => Phase::Play,
                 };
@@ -289,6 +386,16 @@ impl MiniGame for Naval {
             814 => {
                 self.view_own = !self.view_own;
                 Redraw::Full
+            }
+            i if (i as usize) < N * N && matches!(self.phase, Phase::Setup(_)) => {
+                let Phase::Setup(p) = self.phase else { return Redraw::None };
+                if self.seas[p as usize].place(self.placing, i as usize, self.horiz) {
+                    self.placing += 1;
+                    self.msg.clear();
+                } else {
+                    self.msg = "Não cabe aí (ou encosta em outro navio).".into();
+                }
+                Redraw::Part(Rect::new(0, 170, W, 1448 - 170))
             }
             i if (i as usize) < N * N => {
                 if let Some(t) = self.fire(self.turn, i as usize) {

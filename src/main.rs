@@ -19,6 +19,8 @@ mod coach;
 mod lig4;
 mod minas;
 mod nonograma;
+mod palavra;
+mod sokoban;
 mod naval;
 mod coroas;
 mod minigame;
