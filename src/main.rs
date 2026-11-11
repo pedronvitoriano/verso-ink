@@ -43,6 +43,7 @@ mod today_ui;
 mod weather;
 mod wifi;
 mod fb;
+mod historias;
 mod input;
 mod keyboard;
 mod sys;

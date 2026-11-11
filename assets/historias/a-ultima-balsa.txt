@@ -1,0 +1,140 @@
+# A última balsa
+@ Uma noite no porto, um envelope e uma escolha por página.
+
+== inicio
+O apito da balsa corta a chuva quando você chega ao porto. Último horário da noite. Na mão, um envelope que a sua avó pediu para entregar "a quem estiver esperando do outro lado". Ela não disse quem.
+
+No guichê, um homem de boné desbotado conta moedas devagar, como se o tempo fosse dele.
+
+— A balsa sai em dez minutos — diz, sem levantar os olhos. — Ou não sai. Depende do rio.
+
+* Comprar a passagem e embarcar -> embarque
+* Perguntar o que ele quer dizer com "depende do rio" -> rio
+* Abrir o envelope antes de tudo -> envelope
+
+== rio
+O homem finalmente olha para você. Tem um olho cinzento, como água parada.
+
+— O rio decide quem atravessa à noite. Leva quem precisa ir. Quem só quer ir, ele devolve para a margem.
+
+Ele empurra um bilhete pelo vão do vidro. No verso, alguém escreveu a lápis: "não durma na travessia".
+
++aviso
+* Embarcar com o bilhete -> embarque
+* Abrir o envelope primeiro -> envelope
+
+== envelope
+Dentro do envelope há uma chave pequena, de latão, e um bilhete na letra apertada da sua avó:
+
+"Se abriu, é porque tem medo. Tudo bem. A chave abre o que ficou fechado tempo demais. Não entregue a chave a quem pedir por ela; entregue a quem não pedir."
+
+Você fecha o envelope com cuidado. O apito soa de novo, mais curto.
+
++chave
+* Correr para a balsa -> embarque
+
+== embarque
+A balsa cheira a diesel e a fruta madura. Poucos passageiros: uma mulher com uma gaiola coberta por um pano, um menino dormindo sobre sacos de farinha e, na proa, uma figura de capa de chuva que não se vira.
+
+O motor ronca. A margem vira uma linha de luzes tremendo e depois some.
+
+* Sentar perto da mulher da gaiola -> gaiola
+* Ir até a proa falar com a figura de capa -> proa
+* Sentar num canto e fechar os olhos um instante -> sono
+
+== gaiola
+— É um bem-te-vi — diz a mulher, antes que você pergunte. — Canta quando a gente chega. Se não cantar, a gente não chegou.
+
+Ela levanta um canto do pano. O pássaro olha para você com um interesse quase educado.
+
+— Sua avó atravessava muito — continua ela. — Sempre com um envelope. Você tem os olhos dela.
+
+* Perguntar como ela conheceu sua avó -> avo
+* Agradecer e ir até a proa -> proa
+
+== avo
+— Ela me ensinou a esperar — diz a mulher. — Do outro lado tem gente que esperou demais. Uma porta que ninguém abre há anos, numa casa de palafita. Ela ia abrir. Não deu tempo.
+
+O bem-te-vi se mexe na gaiola.
+
+— Quem estiver esperando não vai pedir nada a você. É assim que você sabe.
+
++pista
+* Ir até a proa -> proa
+* Ficar ali, ouvindo a chuva -> sono
+
+== proa
+A figura de capa estende a mão sem se virar.
+
+— O envelope. Eu sou quem espera.
+
+A voz é gentil, convincente. A mão está aberta, paciente, molhada de chuva.
+
+* [chave] Lembrar do bilhete da avó e recusar -> recusa
+* [!chave] Entregar o envelope -> engano
+* [chave] Entregar o envelope mesmo assim -> engano
+* Voltar para dentro sem responder -> sono
+
+== recusa
+— Não — você diz. — A senhora pediu.
+
+A figura fica parada um momento. Depois ri, um riso baixo, quase aliviado, e a capa cai no convés vazia. Não havia ninguém dentro. Só água escorrendo pelas tábuas.
+
+Lá atrás, o bem-te-vi começa a cantar.
+
+* Olhar para a margem que se aproxima -> chegada
+
+== engano
+A mão se fecha sobre o envelope. A capa se vira e não tem rosto, só o reflexo das luzes do rio. O envelope se desfaz em papel molhado entre dedos que não existem.
+
+A balsa dá um tranco e começa a voltar.
+
+— Quem só quer ir, o rio devolve — você lembra.
+
+* Recomeçar a travessia -> inicio
+
+== sono
+Você fecha os olhos só por um instante.
+
+Quando abre, a balsa está atracada. Na margem de onde você saiu.
+
+O homem do guichê acena de longe, como quem já sabia.
+
+* [aviso] Lembrar do aviso no bilhete: "não durma na travessia" -> sono_aviso
+* Tentar de novo -> inicio
+
+== sono_aviso
+Estava escrito no verso do bilhete. Você leu e mesmo assim dormiu. O rio não perdoa distração, mas também não guarda rancor.
+
+O homem do guichê empurra outro bilhete pelo vão do vidro. Desta vez, sem cobrar.
+
+* Embarcar de novo, de olhos abertos -> embarque
+
+== chegada
+A outra margem é uma fileira de casas de palafita com as janelas apagadas, menos uma. Na varanda, um velho sentado numa cadeira de balanço olha o rio. Não olha para você. Não pede nada.
+
+Ao lado dele, uma porta pequena com cadeado enferrujado.
+
+* [chave] Abrir o cadeado com a chave de latão -> fim_porta
+* [!chave] Entregar o envelope fechado ao velho -> fim_envelope
+* [chave] Entregar o envelope ao velho, sem abrir a porta -> fim_envelope
+
+== fim_porta
+O cadeado cede com um estalo cansado. Dentro, só um armário de madeira e, sobre ele, um rádio antigo. Você gira o botão.
+
+A voz da sua avó, gravada há muitos anos, enche a varanda: ela canta uma música que o velho acompanha, primeiro baixinho, depois sem vergonha nenhuma.
+
+Ele chora e ri ao mesmo tempo. O bem-te-vi canta junto, lá no barco.
+
+Algumas portas não guardam coisas. Guardam esperas.
+
+FIM
+
+== fim_envelope
+O velho recebe o envelope com as duas mãos, como se pesasse. Abre devagar, encontra o bilhete e lê em silêncio. Depois guarda tudo no bolso da camisa, perto do peito.
+
+— Ela sempre chegava — diz. — Mesmo quando não vinha.
+
+Vocês ficam olhando o rio juntos até a chuva parar. A porta continua fechada; talvez seja assim que tem que ser.
+
+FIM
