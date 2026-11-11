@@ -26,6 +26,9 @@ pub enum Screen {
     Chess,
     Clips,
     ClipBook,
+    Compose,
+    Claude,
+    Update,
     Sleep,
 }
 
@@ -92,6 +95,16 @@ pub struct App {
     clip_book: usize,
     clip_pages: Vec<Vec<(String, bool)>>,
     clip_bpage: usize,
+    compose_kind: usize,
+    compose_text: String,
+    compose_hint: String,
+    kb_mode: crate::keyboard::Mode,
+    kb_shift: bool,
+    keys: Vec<crate::keyboard::Key>,
+    claude: Vec<crate::claude_ui::Session>,
+    claude_stamp: u64,
+    claude_checked: Instant,
+    update_msg: (String, Vec<String>, Option<String>),
     /// Quando definido, o laço principal sai com este código.
     pub exit_code: Option<i32>,
 }
@@ -150,6 +163,16 @@ impl App {
             clip_book: 0,
             clip_pages: Vec::new(),
             clip_bpage: 0,
+            compose_kind: 0,
+            compose_text: String::new(),
+            compose_hint: String::new(),
+            kb_mode: crate::keyboard::Mode::Letters,
+            kb_shift: true,
+            keys: Vec::new(),
+            claude: Vec::new(),
+            claude_stamp: 0,
+            claude_checked: Instant::now(),
+            update_msg: (String::new(), Vec::new(), None),
             exit_code: None,
         }
     }
@@ -193,6 +216,16 @@ impl App {
                 }
             }
             Screen::Clips => crate::clippings::draw_books(fb, f, &self.clips, self.clip_page),
+            Screen::Claude => crate::claude_ui::draw(fb, f, &self.claude),
+            Screen::Update => {
+                let (t, l, b) = &self.update_msg;
+                apps::draw_update(fb, f, t, l, b.as_deref());
+            }
+            Screen::Compose => {
+                crate::today_ui::draw_compose(fb, f, self.compose_kind, &self.compose_text, &self.compose_hint);
+                self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
+                crate::keyboard::draw(fb, f, &self.keys);
+            }
             Screen::ClipBook => {
                 if let Some(b) = self.clips.get(self.clip_book) {
                     crate::clippings::draw_book(fb, f, b, &self.clip_pages, self.clip_bpage);
@@ -244,10 +277,25 @@ impl App {
                 (Wifi, apps::set_wifi_row()),
                 (Reboot, apps::set_reboot_rect()),
                 (PowerOff, apps::set_off_rect()),
+                (Check, apps::set_update_rect()),
             ],
+            Screen::Claude => vec![(Back, ui::back_rect())],
+            Screen::Update => {
+                if self.update_msg.2.is_some() {
+                    vec![(Primary, apps::update_ok_rect())]
+                } else {
+                    vec![]
+                }
+            }
             Screen::LowBattery => vec![(Primary, ui::low_battery_ok_rect())],
+            Screen::Compose => {
+                let mut v = vec![(Back, ui::back_rect())];
+                v.extend((0..4).map(|k| (Level(k), crate::today_ui::chip_rect(k))));
+                v.extend(self.keys.iter().enumerate().map(|(i, k)| (Key(i as u8), k.rect)));
+                v
+            }
             Screen::Today => {
-                let mut v = vec![(Back, ui::back_rect()), (Primary, crate::today_ui::pomodoro_rect())];
+                let mut v = vec![(Back, ui::back_rect()), (Primary, crate::today_ui::pomodoro_rect()), (NewGame, crate::today_ui::add_rect())];
                 v.extend(self.today_hits.iter().map(|(i, r)| (Item(*i), *r)));
                 v
             }
@@ -333,6 +381,90 @@ impl App {
         }
     }
 
+    fn show_update(&mut self, title: &str, lines: &[&str], button: Option<&str>) {
+        self.update_msg = (title.into(), lines.iter().map(|s| s.to_string()).collect(), button.map(str::to_string));
+        self.screen = Screen::Update;
+        self.render(true);
+        self.fb.wait();
+    }
+
+    /// Procura, baixa e instala a versão nova, mostrando cada etapa na tela.
+    fn run_update(&mut self) {
+        use crate::update::{check, install, Check, EXIT_UPDATED};
+        self.show_update("Atualização", &["Procurando a versão mais nova no GitHub…"], None);
+        match check() {
+            Check::Failed(msg) => self.show_update("Não deu", &[&msg], Some("Voltar")),
+            Check::UpToDate(v) => self.show_update("Tudo em dia", &[&format!("Você já tem a versão mais nova ({v})."), ""], Some("Voltar")),
+            Check::Available { version, url, sha_url } => {
+                self.show_update("Atualizando", &[&format!("Baixando a versão {version}…"), "Não desligue o Kindle."], None);
+                match install(&url, &sha_url) {
+                    Ok(()) => {
+                        self.show_update("Atualizado", &[&format!("Versão {version} instalada."), "Reiniciando o Verso Ink…"], None);
+                        self.exit_code = Some(EXIT_UPDATED);
+                    }
+                    Err(e) => self.show_update("Não deu", &[&e], Some("Voltar")),
+                }
+            }
+        }
+    }
+
+    fn press_key(&mut self, i: usize) {
+        use crate::keyboard::{Action, Mode};
+        let Some(action) = self.keys.get(i).map(|k| k.action.clone()) else { return };
+        let mut relayout = false;
+        match action {
+            Action::Char(c) => {
+                self.compose_text.push(c);
+                if self.kb_shift && self.kb_mode != Mode::Numbers {
+                    self.kb_shift = false;
+                    relayout = true;
+                }
+            }
+            Action::Space => self.compose_text.push(' '),
+            Action::Backspace => {
+                self.compose_text.pop();
+            }
+            Action::Shift => {
+                self.kb_shift = !self.kb_shift;
+                relayout = true;
+            }
+            Action::Mode(m) => {
+                self.kb_mode = m;
+                relayout = true;
+            }
+            Action::Done => return self.save_compose(),
+        }
+        crate::today_ui::draw_field(&mut self.fb, &self.fonts, &self.compose_text, &self.compose_hint);
+        self.fb.refresh(Rect::new(0, crate::today_ui::field_rect().y - 4, 1072, 470), Wave::Quality, false);
+        if relayout {
+            self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
+            crate::keyboard::draw(&mut self.fb, &self.fonts, &self.keys);
+            self.fb.refresh(crate::keyboard::area(), Wave::Quality, false);
+        }
+    }
+
+    fn save_compose(&mut self) {
+        let text = self.compose_text.split_whitespace().collect::<Vec<_>>().join(" ");
+        let mark = crate::today_ui::KINDS[self.compose_kind].1;
+        let line = format!("{mark} {text}");
+        if text.is_empty() || crate::day::parse(&line).is_empty() {
+            self.compose_hint = if mark == '@' { "Para lembrete, comece com a hora: 14:30 Texto".into() } else { "Escreva alguma coisa antes do OK.".into() };
+            crate::today_ui::draw_field(&mut self.fb, &self.fonts, &self.compose_text, &self.compose_hint);
+            self.fb.refresh(Rect::new(0, crate::today_ui::field_rect().y - 4, 1072, 470), Wave::Quality, false);
+            return;
+        }
+        let path = home_dir().join("data/dia.txt");
+        let mut cur = std::fs::read_to_string(&path).unwrap_or_default();
+        if !cur.is_empty() && !cur.ends_with('\n') {
+            cur.push('\n');
+        }
+        cur.push_str(&line);
+        cur.push('\n');
+        let _ = std::fs::write(&path, cur);
+        log(&format!("adicionado ao dia: {line}"));
+        self.go(Screen::Today);
+    }
+
     fn redraw_sudoku_grid(&mut self) {
         let Some(g) = &self.sudoku else { return };
         for i in 0..81 {
@@ -365,6 +497,10 @@ impl App {
                 self.confirm = None;
             }
             Screen::Today => self.items = crate::day::load_items(),
+            Screen::Claude => {
+                self.claude = crate::claude_ui::load();
+                self.claude_stamp = crate::claude_ui::stamp();
+            }
             Screen::Clips => {
                 self.clips = crate::clippings::load();
                 self.clip_page = 0;
@@ -418,12 +554,33 @@ impl App {
             (Screen::SudokuMenu | Screen::Sudoku | Screen::Chess, Back) => self.go(Screen::Games),
             (Screen::Clips, Back) => self.go(Screen::Library),
             (Screen::ClipBook, Back) => self.go(Screen::Clips),
+            (Screen::Compose, Back) => self.go(Screen::Today),
+            (Screen::Settings, Check) => self.run_update(),
+            (Screen::Update, Primary) => self.go(Screen::Settings),
+            (Screen::Today, NewGame) => {
+                self.compose_text.clear();
+                self.compose_kind = 0;
+                self.kb_mode = crate::keyboard::Mode::Letters;
+                self.kb_shift = true;
+                self.compose_hint = "Escreva e toque em OK.".into();
+                self.go(Screen::Compose);
+            }
+            (Screen::Compose, Level(k)) => {
+                self.compose_kind = k;
+                self.compose_hint = if k == 2 { "Comece com a hora, por exemplo: 14:30 Ligar para a Ana".into() } else { "Escreva e toque em OK.".into() };
+                if k == 2 && self.compose_text.is_empty() {
+                    self.kb_mode = crate::keyboard::Mode::Numbers;
+                }
+                self.render(false);
+            }
+            (Screen::Compose, Key(i)) => self.press_key(i as usize),
             (_, Back) => self.go(Screen::Home),
             (Screen::Home, Header) => self.go(Screen::Light),
             (Screen::Home, Tile(i)) => match Module::ALL[i] {
                 Module::Ler => self.go(Screen::Library),
                 Module::Foco => self.go(Screen::Today),
                 Module::Jogar => self.go(Screen::Games),
+                Module::Claude => self.go(Screen::Claude),
                 m => self.go(Screen::Module(m)),
             },
             (Screen::Light, Minus) => self.set_light(self.light.level - 1),
@@ -676,6 +833,16 @@ impl App {
                 apps::draw_focus_live(&mut self.fb, &self.fonts, self.pomo, self.status.offset_min);
                 self.fb.refresh(apps::focus_live_rect(), Wave::Quality, false);
                 return;
+            }
+        }
+        // Bloco Claude: atualiza sozinho quando chega evento novo do PC.
+        if self.screen == Screen::Claude && self.claude_checked.elapsed() >= Duration::from_secs(2) {
+            self.claude_checked = Instant::now();
+            let s = crate::claude_ui::stamp();
+            if s != self.claude_stamp {
+                self.claude_stamp = s;
+                self.claude = crate::claude_ui::load();
+                self.render(false);
             }
         }
         if self.screen == Screen::Settings {

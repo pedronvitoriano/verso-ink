@@ -13,7 +13,9 @@ mod app;
 mod apps;
 mod chess;
 mod clippings;
+mod claude_ui;
 mod clock;
+mod update;
 mod sudoku;
 mod covers;
 mod data;
@@ -22,6 +24,7 @@ mod today_ui;
 mod weather;
 mod fb;
 mod input;
+mod keyboard;
 mod sys;
 mod text;
 mod ui;
@@ -259,6 +262,17 @@ fn main() {
         Some("run") => run(),
         Some("gate") => gate(),
         Some("info") => info(),
+        // Teste da instalação sem publicar no GitHub: verso-ink update-test URL URL_SHA256
+        Some("update-test") => match (args.get(2), args.get(3)) {
+            (Some(u), Some(s)) => match update::install(u, s) {
+                Ok(()) => 0,
+                Err(e) => {
+                    eprintln!("{e}");
+                    1
+                }
+            },
+            _ => 2,
+        },
         Some("preview") => match Framebuffer::open() {
             Ok(mut fb) => {
                 apps::draw_powered_off(&mut fb, &Fonts::new(), args.get(2).is_some_and(|a| a == "reboot"));

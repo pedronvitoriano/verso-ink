@@ -36,6 +36,13 @@ while :; do
     VERSO_INK_HOME="$H" VERSO_INK_RETURN="$RETURN" "$RUN/verso-ink" run
     rc=$?
     log "verso-ink saiu com $rc"
+    # 43 = atualizado pelo próprio Kindle: copia os arquivos novos para /tmp e reabre.
+    if [ "$rc" -eq 43 ]; then
+        stage
+        log "atualizado; reabrindo"
+        RETURN=""
+        continue
+    fi
     # 42 = abrir um livro no KOReader e voltar para o Verso Ink quando ele fechar.
     [ "$rc" -eq 42 ] && [ -f /tmp/verso-ink.open-file ] || break
     BOOK="$(cat /tmp/verso-ink.open-file)"

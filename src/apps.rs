@@ -467,7 +467,26 @@ pub fn set_wifi_row() -> Rect {
     Rect::new(MARGIN - 16, 400, W - 2 * MARGIN + 32, 170)
 }
 pub fn set_reboot_rect() -> Rect {
-    Rect::new(MARGIN, 1150, (W - 2 * MARGIN - 28) / 2, 120)
+    Rect::new(MARGIN, 1140, (W - 2 * MARGIN - 28) / 2, 110)
+}
+pub fn set_update_rect() -> Rect {
+    Rect::new(MARGIN, 1280, W - 2 * MARGIN, 110)
+}
+
+/// Tela de atualização: título, linhas de estado e, ao final, um botão.
+pub fn draw_update(fb: &mut Framebuffer, f: &Fonts, title: &str, lines: &[String], button: Option<&str>) {
+    fb.fill(fb.screen(), PAPER);
+    f.draw(fb, Face::Display, 40.0, MARGIN, 150, INK, "Verso Ink");
+    f.draw(fb, Face::Display, 110.0, MARGIN - 4, 640, INK, title);
+    for (k, l) in lines.iter().enumerate() {
+        f.draw(fb, Face::Body, 40.0, MARGIN, 740 + k as i32 * 60, INK, l);
+    }
+    if let Some(b) = button {
+        pill(fb, f, update_ok_rect(), b, true, 44.0);
+    }
+}
+pub fn update_ok_rect() -> Rect {
+    Rect::new(MARGIN, 1150, W - 2 * MARGIN, 120)
 }
 pub fn set_off_rect() -> Rect {
     let r = set_reboot_rect();
@@ -523,11 +542,11 @@ pub fn draw_settings(fb: &mut Framebuffer, f: &Fonts, s: &SysInfo, st: &Status, 
         _ => ("Reiniciar", "Desligar"),
     };
     if confirm.is_some() {
-        f.draw(fb, Face::Body, 32.0, MARGIN, 1100, INK, "Confirme tocando no mesmo botão em até 5 segundos.");
+        f.draw(fb, Face::Body, 32.0, MARGIN, 1098, INK, "Confirme tocando no mesmo botão em até 5 segundos.");
     }
     pill(fb, f, set_reboot_rect(), rl, confirm == Some(0), 40.0);
     pill(fb, f, set_off_rect(), ol, confirm == Some(1), 40.0);
-    ui::draw_footer(fb, f, st);
+    pill(fb, f, set_update_rect(), "Procurar atualização", false, 40.0);
 }
 
 /// Fica na tela com o aparelho desligado (o e-ink mantém a imagem sem energia).

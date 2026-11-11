@@ -37,10 +37,14 @@ pub fn draw_today(fb: &mut Framebuffer, f: &Fonts, items: &[Item], done: &HashSe
     ui::draw_back(fb, f, false);
     f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Hoje");
     let streak = day::todo_streak(items, st.offset_min);
+    let add = add_rect();
+    fb.round_outline(add, add.h / 2, 4, INK, PAPER);
+    let aw = f.measure(Face::Strong, 32.0, "+ Adicionar");
+    f.draw(fb, Face::Strong, 32.0, add.x + (add.w - aw) / 2, add.y + 54, INK, "+ Adicionar");
     if streak > 0 {
         let label = if streak == 1 { "1 dia completo".to_string() } else { format!("{streak} dias seguidos") };
         let tw = f.measure(Face::Strong, 30.0, &label);
-        let r = Rect::new(W - MARGIN - tw - 56, 80, tw + 56, 72);
+        let r = Rect::new(W - MARGIN - tw - 56, 236, tw + 56, 72);
         fb.round_rect(r, 36, INK);
         f.draw(fb, Face::Strong, 30.0, r.x + 28, r.y + 47, PAPER, &label);
     }
@@ -156,6 +160,53 @@ pub fn draw_today(fb: &mut Framebuffer, f: &Fonts, items: &[Item], done: &HashSe
     let tw = f.measure(Face::Strong, 40.0, &label);
     f.draw(fb, Face::Strong, 40.0, r.x + (r.w - tw) / 2, r.y + 70, PAPER, &label);
     hits
+}
+
+pub fn add_rect() -> Rect {
+    Rect::new(W - MARGIN - 270, 76, 270, 84)
+}
+
+pub const KINDS: [(&str, char); 4] = [("Tarefa", '-'), ("Prioridade", '!'), ("Lembrete", '@'), ("Hábito", '*')];
+
+pub fn chip_rect(k: usize) -> Rect {
+    let w = (W - 2 * MARGIN - 3 * 16) / 4;
+    Rect::new(MARGIN + k as i32 * (w + 16), 300, w, 80)
+}
+pub fn field_rect() -> Rect {
+    Rect::new(MARGIN, 420, W - 2 * MARGIN, 180)
+}
+
+pub fn draw_compose(fb: &mut Framebuffer, f: &Fonts, kind: usize, text: &str, hint: &str) {
+    fb.fill(fb.screen(), PAPER);
+    ui::draw_back(fb, f, false);
+    f.draw(fb, Face::Display, 64.0, MARGIN, 250, INK, "Adicionar ao dia");
+    for (k, (label, _)) in KINDS.iter().enumerate() {
+        let r = chip_rect(k);
+        let on = k == kind;
+        if on {
+            fb.round_rect(r, 40, INK);
+        } else {
+            fb.round_outline(r, 40, 4, INK, PAPER);
+        }
+        let w = f.measure(Face::Strong, 30.0, label);
+        f.draw(fb, Face::Strong, 30.0, r.x + (r.w - w) / 2, r.y + 51, if on { PAPER } else { INK }, label);
+    }
+    draw_field(fb, f, text, hint);
+}
+
+pub fn draw_field(fb: &mut Framebuffer, f: &Fonts, text: &str, hint: &str) {
+    let r = field_rect();
+    fb.fill(Rect::new(0, r.y - 4, W, 470), PAPER);
+    fb.round_outline(r, 24, 4, INK, PAPER);
+    // Mostra o final do texto se não couber; o cursor é um traço vertical.
+    let max_w = r.w - 60;
+    let mut shown: String = text.to_string();
+    while f.measure(Face::Body, 48.0, &shown) > max_w && !shown.is_empty() {
+        shown.remove(0);
+    }
+    let end = f.draw(fb, Face::Body, 48.0, r.x + 28, r.y + 108, INK, &shown);
+    fb.fill(Rect::new(end + 4, r.y + 62, 4, 60), INK);
+    f.draw(fb, Face::Body, 32.0, MARGIN, r.y + r.h + 60, crate::ui::MUTED, hint);
 }
 
 pub fn reminder_ok_rect() -> Rect {
