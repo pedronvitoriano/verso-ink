@@ -26,6 +26,7 @@ mod palavra;
 mod reader;
 mod receitas;
 mod sokoban;
+mod sprites;
 mod naval;
 mod coroas;
 mod coroas_logic;

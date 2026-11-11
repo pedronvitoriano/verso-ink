@@ -207,6 +207,9 @@ impl Framebuffer {
     pub fn fill(&mut self, r: Rect, v: u8) {
         let x0 = r.x.max(0);
         let x1 = (r.x + r.w).min(self.width);
+        if x1 <= x0 {
+            return;
+        }
         for y in r.y.max(0)..(r.y + r.h).min(self.height) {
             let row = (y * self.width) as usize;
             self.buf[row + x0 as usize..row + x1 as usize].fill(v);

@@ -53,6 +53,8 @@ pub struct Masmorra {
     dead: bool,
     won: bool,
     rng: Rng,
+    /// Passos dados (alterna o quadro da animação dos sprites).
+    steps: u32,
 }
 
 const DIRS: [(i32, i32); 4] = [(-1, 0), (1, 0), (0, -1), (0, 1)];
@@ -79,7 +81,7 @@ impl Masmorra {
             log: String::new(),
             dead: false,
             won: false,
-            rng: Rng::new(),
+            rng: Rng::new(), steps: 0,
         }
     }
 
@@ -178,6 +180,7 @@ impl Masmorra {
     }
 
     fn step(&mut self, d: (i32, i32)) {
+        self.steps += 1;
         let (r, c) = ((self.pos / MW) as i32 + d.0, (self.pos % MW) as i32 + d.1);
         let Some(t) = idx(r, c) else { return };
         if self.map[t] == Tile::Wall {
@@ -304,11 +307,22 @@ impl MiniGame for Masmorra {
             }
             let vis = self.visible(i);
             match self.map[i] {
-                Tile::Wall => fb.fill(r, if vis { 0x88 } else { 0xC8 }),
+                Tile::Wall => {
+                    // Parede de pedra: blocos desencontrados.
+                    fb.fill(r, if vis { 0x5C } else { 0xB4 });
+                    let line = if vis { 0x3A } else { 0xA0 };
+                    for k in 0..4 {
+                        let y = r.y + k * CELL / 4;
+                        fb.fill(Rect::new(r.x, y, CELL, 2), line);
+                        let off = if k % 2 == 0 { CELL / 3 } else { CELL * 5 / 6 };
+                        fb.fill(Rect::new(r.x + off, y, 2, CELL / 4), line);
+                    }
+                }
                 Tile::Floor => {
                     fb.fill(r, if vis { PAPER } else { 0xEE });
                     fb.fill(Rect::new(r.x + CELL / 2 - 3, r.y + CELL / 2 - 3, 6, 6), 0xBB);
                 }
+                Tile::Stairs if crate::sprites::draw(fb, "escada", r) => {}
                 Tile::Stairs => {
                     let t = ">";
                     let tw = f.measure(Face::Display, 50.0, t);
@@ -316,9 +330,26 @@ impl MiniGame for Masmorra {
                 }
             }
         }
+        // Sprite (quando houver) ou a letra do Rogue de sempre. Personagens alternam dois quadros a cada passo.
+        let frame = if self.steps % 2 == 0 { "1" } else { "2" };
         let glyph = |fb: &mut Framebuffer, i: usize, ch: &str, ink: u8| {
             let r = Rect::new(MX + (i % MW) as i32 * CELL, MY + (i / MW) as i32 * CELL, CELL, CELL);
+            let sprite = match ch {
+                "@" => format!("heroi-{frame}"),
+                "r" => format!("rato-{frame}"),
+                "g" => format!("goblin-{frame}"),
+                "o" => format!("orc-{frame}"),
+                "D" => format!("dragao-{frame}"),
+                "!" => "pocao".into(),
+                "/" => "espada".into(),
+                "[" => "escudo".into(),
+                "$" => "ouro".into(),
+                _ => String::new(),
+            };
             fb.fill(r, PAPER);
+            if !sprite.is_empty() && crate::sprites::draw(fb, &sprite, Rect::new(r.x + 2, r.y + 2, r.w - 4, r.h - 4)) {
+                return;
+            }
             let tw = f.measure(Face::Display, 50.0, ch);
             f.draw(fb, Face::Display, 50.0, r.x + (CELL - tw) / 2, r.y + 48, ink, ch);
         };

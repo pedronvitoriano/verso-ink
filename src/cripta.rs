@@ -49,6 +49,9 @@ pub struct Cripta {
     selected: Option<usize>,
     note: String,
     best: u32,
+    /// Onde o herói está (última casa livre aonde chegou) e passos (quadro da animação).
+    hero: usize,
+    steps: u32,
 }
 
 fn neighbors(i: usize) -> impl Iterator<Item = usize> {
@@ -85,6 +88,8 @@ impl Cripta {
             selected: None,
             note: String::new(),
             best,
+            hero: 0,
+            steps: 0,
         }
     }
 
@@ -127,6 +132,7 @@ impl Cripta {
             self.thing = thing;
             self.open = vec![false; N * N];
             self.open[entry] = true;
+            self.hero = entry;
             self.selected = None;
             self.note = format!("Andar {f}. Toque numa casa vizinha para descobrir.");
             return;
@@ -163,6 +169,10 @@ impl Cripta {
 
     fn reveal(&mut self, i: usize) {
         self.open[i] = true;
+        self.steps += 1;
+        if !matches!(self.thing[i], Thing::Monster(_)) {
+            self.hero = i;
+        }
         self.note = match self.thing[i] {
             Thing::Empty => {
                 // Explorar descansa: casa vazia recupera 1 de vida.
@@ -209,6 +219,8 @@ impl Cripta {
             return;
         }
         self.thing[i] = Thing::Empty;
+        self.hero = i;
+        self.steps += 1;
         self.note = format!("Venceu {} perdendo {cost} de vida.", name(k));
         self.gain_xp(k);
     }
@@ -219,6 +231,42 @@ impl Cripta {
 
     fn cell(i: usize) -> Rect {
         Rect::new(GX + (i % N) as i32 * CELL, GY + (i / N) as i32 * CELL, CELL, CELL)
+    }
+
+    /// Bloco de pedra (casa fechada): tom de fundo e linhas das juntas.
+    fn stone(fb: &mut Framebuffer, r: Rect, tone: u8, joint: u8) {
+        fb.fill(r, tone);
+        let rows = 4;
+        for k in 0..rows {
+            let y = r.y + k * r.h / rows;
+            fb.fill(Rect::new(r.x, y, r.w, 3), joint);
+            let off = if k % 2 == 0 { r.w / 3 } else { r.w * 3 / 4 };
+            fb.fill(Rect::new(r.x + off, y, 3, r.h / rows), joint);
+        }
+    }
+
+    /// Ícones do painel.
+    fn heart(fb: &mut Framebuffer, x: i32, y: i32, s: i32, v: u8) {
+        fb.round_rect(Rect::new(x, y, s / 2 + 2, s / 2 + 2), s / 4 + 1, v);
+        fb.round_rect(Rect::new(x + s / 2 - 2, y, s / 2 + 2, s / 2 + 2), s / 4 + 1, v);
+        for k in 0..s / 2 {
+            fb.fill(Rect::new(x + k, y + s / 4 + k, s - 2 * k, 1), v);
+        }
+    }
+
+    fn sprite_of(t: Thing) -> Option<&'static str> {
+        match t {
+            Thing::Monster(1) => Some("rato"),
+            Thing::Monster(2) => Some("morcego"),
+            Thing::Monster(3) => Some("esqueleto"),
+            Thing::Monster(4) => Some("ogro"),
+            Thing::Monster(_) => Some("dragao"),
+            Thing::Potion => Some("pocao"),
+            Thing::Sword => Some("espada"),
+            Thing::Gold => Some("ouro"),
+            Thing::Stairs => Some("escada"),
+            Thing::Empty => None,
+        }
     }
 
     fn draw_thing(fb: &mut Framebuffer, f: &Fonts, r: Rect, t: Thing) {
@@ -320,44 +368,88 @@ impl MiniGame for Cripta {
             }
             return;
         }
-        let status = format!("Andar {} · Vida {}/{} · Força {} · Nv {} · Ouro {}", self.floor, self.hp, self.max_hp, self.atk, self.level, self.gold);
+        let status = format!("Andar {} · {} pontos", self.floor, self.score());
         minigame::header(fb, f, "Cripta", &status);
+        let frame = if self.steps % 2 == 0 { "1" } else { "2" };
         for i in 0..N * N {
             let r = Self::cell(i);
-            let inner = Rect::new(r.x + 4, r.y + 4, r.w - 8, r.h - 8);
+            let inner = Rect::new(r.x + 3, r.y + 3, r.w - 6, r.h - 6);
             if !self.open[i] {
                 if self.state == State::Play && self.reachable(i) {
-                    // Dá para descobrir: clara com contorno.
-                    fb.round_outline(inner, 14, 4, INK, 0xD8);
+                    // Dá para descobrir: pedra clara com contorno.
+                    Self::stone(fb, inner, 0xC4, 0xA4);
+                    fb.round_outline(inner, 6, 4, INK, 0xC4);
+                    Self::stone(fb, Rect::new(inner.x + 4, inner.y + 4, inner.w - 8, inner.h - 8), 0xC4, 0xA4);
                 } else {
-                    fb.round_rect(inner, 14, 0x66);
+                    Self::stone(fb, inner, 0x4A, 0x30);
                 }
                 continue;
             }
-            fb.round_rect(inner, 14, 0xF0);
-            Self::draw_thing(fb, f, r, self.thing[i]);
+            // Piso de lajotas.
+            fb.fill(inner, 0xF2);
+            fb.fill(Rect::new(inner.x + inner.w / 2, inner.y, 2, inner.h), 0xDC);
+            fb.fill(Rect::new(inner.x, inner.y + inner.h / 2, inner.w, 2), 0xDC);
+            let t = self.thing[i];
+            let art = Rect::new(r.x + 10, r.y + 10, r.w - 20, r.h - 20);
+            let drawn = Self::sprite_of(t).is_some_and(|n| {
+                let name = if matches!(t, Thing::Monster(_)) { format!("{n}-{frame}") } else { n.to_string() };
+                crate::sprites::draw(fb, &name, art)
+            });
+            if !drawn {
+                Self::draw_thing(fb, f, r, t);
+            } else if let Thing::Monster(k) = t {
+                // Selo com o nível do monstro.
+                let b = Rect::new(r.x + r.w - 46, r.y + 6, 40, 40);
+                fb.round_rect(b, 20, INK);
+                let num = k.to_string();
+                let w = f.measure(Face::Display, 28.0, &num);
+                f.draw(fb, Face::Display, 28.0, b.x + (b.w - w) / 2, b.y + 30, PAPER, &num);
+            }
+            if i == self.hero && !matches!(t, Thing::Monster(_)) && !crate::sprites::draw(fb, &format!("heroi-{frame}"), art) {
+                // Sem sprite: um peão simples marca o herói.
+                let (cx, cy) = (r.x + r.w / 2, r.y + r.h / 2);
+                fb.round_rect(Rect::new(cx - 14, cy - 34, 28, 28), 14, INK);
+                fb.round_rect(Rect::new(cx - 24, cy - 2, 48, 38), 16, INK);
+            }
             if self.selected == Some(i) {
-                fb.round_outline(Rect::new(r.x, r.y, r.w, r.h), 18, 6, INK, PAPER);
-                fb.round_rect(Rect::new(r.x + 6, r.y + 6, r.w - 12, r.h - 12), 14, 0xF0);
-                Self::draw_thing(fb, f, r, self.thing[i]);
+                fb.round_outline(Rect::new(r.x, r.y, r.w, r.h), 10, 7, INK, PAPER);
+                fb.fill(Rect::new(r.x + 7, r.y + 7, r.w - 14, r.h - 14), 0xF2);
+                Self::sprite_of(t).map(|n| crate::sprites::draw(fb, &format!("{n}-{frame}"), art)).filter(|&ok| ok).unwrap_or_else(|| {
+                    Self::draw_thing(fb, f, r, t);
+                    true
+                });
             }
         }
-        // Barra de vida e de experiência.
-        let y = GY + N as i32 * CELL + 22;
-        let w = W - 2 * GX;
-        fb.fill(Rect::new(GX, y, w, 14), 0xDD);
-        fb.fill(Rect::new(GX, y, w * self.hp.max(0) / self.max_hp.max(1), 14), INK);
-        fb.fill(Rect::new(GX, y + 22, w, 6), 0xDD);
-        fb.fill(Rect::new(GX, y + 22, w * self.xp / (self.level * 5), 6), 0x66);
+        // Painel: vida, força, nível e ouro, com ícones.
+        let y = GY + N as i32 * CELL + 18;
+        Self::heart(fb, GX, y + 4, 34, INK);
+        let life = format!("{}/{}", self.hp.max(0), self.max_hp);
+        let end = f.draw(fb, Face::Display, 34.0, GX + 46, y + 34, INK, &life);
+        let bar = Rect::new(end + 14, y + 16, 200, 14);
+        fb.round_outline(bar, 7, 2, INK, PAPER);
+        fb.round_rect(Rect::new(bar.x, bar.y, (bar.w * self.hp.max(0) / self.max_hp.max(1)).max(14), bar.h), 7, INK);
+        let mut x = bar.x + bar.w + 30;
+        ui::stroke(fb, (x as f32, (y + 36) as f32), ((x + 26) as f32, (y + 6) as f32), 5.0, INK);
+        ui::stroke(fb, (x as f32 + 2.0, (y + 20) as f32), (x as f32 + 14.0, (y + 32) as f32), 5.0, INK);
+        x = f.draw(fb, Face::Display, 34.0, x + 34, y + 34, INK, &self.atk.to_string()) + 30;
+        let lv = format!("Nv {}", self.level);
+        x = f.draw(fb, Face::Strong, 30.0, x, y + 32, INK, &lv) + 10;
+        let xb = Rect::new(x, y + 20, 90, 8);
+        fb.fill(xb, 0xDD);
+        fb.fill(Rect::new(xb.x, xb.y, xb.w * self.xp / (self.level * 5).max(1), xb.h), 0x5C);
+        let gold = format!("{}", self.gold);
+        let gw = f.measure(Face::Display, 34.0, &gold);
+        fb.round_outline(Rect::new(W - GX - gw - 44, y + 6, 32, 32), 16, 5, INK, 0xDD);
+        f.draw(fb, Face::Display, 34.0, W - GX - gw, y + 34, INK, &gold);
         let note = crate::apps::fit(f, Face::Body, 28.0, &self.note, W - 2 * GX);
-        f.draw(fb, Face::Body, 28.0, GX, y + 76, INK, &note);
+        f.draw(fb, Face::Body, 28.0, GX, y + 88, INK, &note);
         if self.state == State::Dead {
             let t = format!("Pontos: {} (andares × 100 + ouro)", self.score());
-            f.draw(fb, Face::Strong, 30.0, GX, y + 120, MUTED, &t);
+            f.draw(fb, Face::Strong, 30.0, GX, y + 130, MUTED, &t);
             minigame::pill(fb, f, minigame::bottom_button(0, 1), "Nova descida", true);
         } else {
             let p = format!("Beber poção ({})", self.potions);
-            minigame::pill(fb, f, minigame::bottom_button(0, 2), &p, false);
+            minigame::pill(fb, f, minigame::bottom_button(0, 2), &p, self.potions > 0 && self.hp < self.max_hp);
             minigame::pill(fb, f, minigame::bottom_button(1, 2), "Recomeçar", false);
         }
     }
@@ -462,5 +554,27 @@ mod tests {
         assert_eq!(g.level, 2);
         assert_eq!(g.hp, g.max_hp);
         assert_eq!(g.atk, 3);
+    }
+}
+
+#[cfg(test)]
+mod render {
+    use super::*;
+    #[test]
+    #[ignore]
+    fn cripta_em_imagem() {
+        let out = std::path::PathBuf::from(std::env::var("VERSO_INK_SHOTS").expect("VERSO_INK_SHOTS"));
+        let f = Fonts::new();
+        let mut g = Cripta::new();
+        g.start();
+        for _ in 0..6 {
+            if let Some(i) = (0..N * N).find(|&i| g.reachable(i)) {
+                g.reveal(i);
+            }
+        }
+        g.selected = (0..N * N).find(|&i| g.open[i] && matches!(g.thing[i], Thing::Monster(_)));
+        let mut fb = crate::fb::Framebuffer::memory();
+        g.draw(&mut fb, &f);
+        fb.save_pgm(&out.join("cripta.pgm"));
     }
 }
