@@ -23,6 +23,8 @@ pub enum Screen {
     Games,
     SudokuMenu,
     Sudoku,
+    SudokuWon,
+    ChessResume,
     Chess,
     Clips,
     ClipBook,
@@ -90,6 +92,7 @@ pub struct App {
     before_reminder: Screen,
     sudoku: Option<crate::sudoku::Game>,
     sudoku_note: String,
+    sudoku_won: (u64, bool),
     chess: Option<crate::chess::Game>,
     sprites: Option<crate::chess::Sprites>,
     clips: Vec<crate::clippings::BookClips>,
@@ -163,6 +166,7 @@ impl App {
             before_reminder: Screen::Home,
             sudoku: None,
             sudoku_note: String::new(),
+            sudoku_won: (0, false),
             chess: None,
             sprites: None,
             clips: Vec::new(),
@@ -216,10 +220,20 @@ impl App {
                 let c = crate::chess::Game::load().filter(|g| !g.history.is_empty()).map(|g| format!("Partida em andamento · {} lances", g.history.len()));
                 apps::draw_games(fb, f, s, c);
             }
-            Screen::SudokuMenu => crate::sudoku::draw_menu(fb, f, crate::sudoku::Game::load().filter(|g| !g.solved()).as_ref()),
+            Screen::SudokuMenu => crate::sudoku::draw_resume(fb, f, crate::sudoku::Game::load().filter(|g| !g.solved()).as_ref()),
             Screen::Sudoku => {
                 if let Some(g) = &self.sudoku {
                     crate::sudoku::draw_board(fb, f, g, &self.sudoku_note);
+                }
+            }
+            Screen::SudokuWon => {
+                if let Some(g) = &self.sudoku {
+                    crate::sudoku::draw_won(fb, f, g, self.sudoku_won.0, self.sudoku_won.1);
+                }
+            }
+            Screen::ChessResume => {
+                if let Some(g) = &self.chess {
+                    crate::chess::draw_resume(fb, f, g);
                 }
             }
             Screen::Chess => {
@@ -335,21 +349,28 @@ impl App {
             Screen::Games => vec![(Back, ui::back_rect()), (Game(0), apps::games_row(0)), (Game(1), apps::games_row(1))],
             Screen::SudokuMenu => {
                 let mut v = vec![(Back, ui::back_rect())];
-                v.extend((0..3).map(|k| (Level(k), crate::sudoku::level_rect(k))));
+                v.extend((0..3).map(|k| (Level(k), crate::sudoku::resume_level_rect(k))));
                 if crate::sudoku::Game::load().is_some_and(|g| !g.solved()) {
                     v.push((Continue, crate::sudoku::continue_rect()));
                 }
                 v
             }
             Screen::Sudoku => {
-                let mut v = vec![(Back, ui::back_rect()), (Check, crate::sudoku::check_rect()), (NewGame, crate::sudoku::new_game_rect())];
+                let mut v = vec![(Back, ui::back_rect())];
+                v.extend((0..4).map(|k| (Game(k), crate::sudoku::action_rect(k))));
                 v.extend((0..81).map(|i| (Cell(i), crate::sudoku::cell_rect(i))));
                 v.extend((0..=9u8).map(|n| (Key(n), crate::sudoku::key_rect(n))));
                 v
             }
+            Screen::SudokuWon => vec![(Back, ui::back_rect()), (NewGame, crate::sudoku::won_new_rect())],
+            Screen::ChessResume => vec![(Back, ui::back_rect()), (Continue, crate::chess::resume_continue_rect()), (NewGame, crate::chess::resume_new_rect())],
             Screen::Chess => {
                 let mut v = vec![(Back, ui::back_rect()), (Undo, crate::chess::undo_rect()), (NewGame, crate::chess::new_rect())];
-                v.extend((0..64).map(|i| (Cell(i), crate::chess::square_rect(i))));
+                if self.chess.as_ref().is_some_and(|g| g.pending_promo.is_some()) {
+                    v.extend((0..4).map(|k| (Level(k), crate::chess::promo_rect(k))));
+                } else {
+                    v.extend((0..64).map(|i| (Cell(i), crate::chess::square_rect(i))));
+                }
                 v
             }
             Screen::Clips => {
@@ -529,16 +550,43 @@ impl App {
         self.go(Screen::Today);
     }
 
+    /// Redesenha grade, teclado, ações e linha de estado do Sudoku (atualização parcial).
     fn redraw_sudoku_grid(&mut self) {
         let Some(g) = &self.sudoku else { return };
+        crate::sudoku::draw_status(&mut self.fb, &self.fonts, g, &self.sudoku_note);
         for i in 0..81 {
             crate::sudoku::draw_cell(&mut self.fb, &self.fonts, g, i);
         }
         crate::sudoku::draw_grid_lines(&mut self.fb);
-        let n = crate::sudoku::note_rect();
-        self.fb.fill(n, ui::PAPER);
-        self.fonts.draw(&mut self.fb, crate::text::Face::Body, 32.0, crate::sudoku::GRID_X, crate::sudoku::GRID_Y - 40, ui::MUTED, &self.sudoku_note);
-        self.fb.refresh(Rect::new(0, n.y, 1072, crate::sudoku::grid_rect().y + crate::sudoku::grid_rect().h - n.y), Wave::Quality, false);
+        crate::sudoku::draw_keys(&mut self.fb, &self.fonts, g);
+        crate::sudoku::draw_actions(&mut self.fb, &self.fonts, g);
+        self.fb.refresh(Rect::new(0, 170, 1072, 1448 - 170), Wave::Quality, false);
+    }
+
+    /// Depois de uma jogada: vitória (com recorde) ou só redesenho.
+    fn after_sudoku_move(&mut self) {
+        let won = self.sudoku.as_ref().is_some_and(|g| g.solved());
+        if !won {
+            return self.redraw_sudoku_grid();
+        }
+        let (lv, secs, hints) = self.sudoku.as_ref().map(|g| (g.level, g.seconds(), g.hints)).unwrap();
+        // Recorde só vale sem dicas.
+        let rec = hints == 0 && crate::sudoku::submit_record(lv, secs);
+        crate::sudoku::Game::clear_saved();
+        log(&format!("sudoku {} resolvido em {} s (recorde: {rec})", lv.name(), secs));
+        self.sudoku_won = (secs, rec);
+        self.go(Screen::SudokuWon);
+    }
+
+    fn start_sudoku(&mut self, lv: crate::sudoku::Level) {
+        let t = Instant::now();
+        let g = crate::sudoku::Game::new(lv);
+        log(&format!("sudoku {} gerado em {} ms", lv.name(), t.elapsed().as_millis()));
+        g.save();
+        crate::sudoku::set_last_level(lv);
+        self.sudoku = Some(g);
+        self.sudoku_note = "Toque numa casa e depois num número.".into();
+        self.go(Screen::Sudoku);
     }
 
     fn redraw_chess(&mut self) {
@@ -546,7 +594,7 @@ impl App {
         for i in 0..64 {
             crate::chess::draw_square(&mut self.fb, g, sp, i);
         }
-        crate::chess::draw_status(&mut self.fb, &self.fonts, g);
+        crate::chess::draw_status(&mut self.fb, &self.fonts, g, sp);
         let b = crate::chess::board_rect();
         let s = crate::chess::status_rect();
         self.fb.refresh(Rect::new(0, b.y, 1072, s.y + s.h - b.y), Wave::Quality, false);
@@ -577,7 +625,7 @@ impl App {
                     log(&format!("peças desenhadas em {} ms", t.elapsed().as_millis()));
                 }
                 if self.chess.is_none() {
-                    self.chess = Some(crate::chess::Game::load().unwrap_or_else(crate::chess::Game::new));
+                    self.chess = Some(crate::chess::Game::new());
                 }
             }
             _ => {}
@@ -626,7 +674,13 @@ impl App {
     fn activate(&mut self, t: Target, x: i32) {
         use Target::*;
         match (self.screen, t) {
-            (Screen::SudokuMenu | Screen::Sudoku | Screen::Chess, Back) => self.go(Screen::Games),
+            (Screen::Sudoku, Back) => {
+                if let Some(g) = &self.sudoku {
+                    g.save(); // guarda o tempo jogado
+                }
+                self.go(Screen::Games);
+            }
+            (Screen::SudokuMenu | Screen::SudokuWon | Screen::ChessResume | Screen::Chess, Back) => self.go(Screen::Games),
             (Screen::Clips, Back) => self.go(Screen::Library),
             (Screen::ClipBook, Back) => self.go(Screen::Clips),
             (Screen::Compose, Back) => self.go(Screen::Today),
@@ -710,21 +764,32 @@ impl App {
                 self.clip_bpage += 1;
                 self.render(true);
             }
-            (Screen::Games, Game(0)) => self.go(Screen::SudokuMenu),
-            (Screen::Games, Game(_)) => self.go(Screen::Chess),
-            (Screen::SudokuMenu, Level(k)) => {
-                let lv = [crate::sudoku::Level::Easy, crate::sudoku::Level::Medium, crate::sudoku::Level::Hard][k.min(2)];
-                let t = Instant::now();
-                let g = crate::sudoku::Game::new(lv);
-                log(&format!("sudoku {} gerado em {} ms", lv.name(), t.elapsed().as_millis()));
-                g.save();
-                self.sudoku = Some(g);
-                self.sudoku_note = "Toque numa casa e depois num número.".into();
-                self.go(Screen::Sudoku);
+            // Sudoku: com partida pela metade, pergunta; sem ela, já começa um jogo novo.
+            (Screen::Games, Game(0)) => {
+                if crate::sudoku::Game::load().is_some_and(|g| !g.solved()) {
+                    self.go(Screen::SudokuMenu);
+                } else {
+                    self.start_sudoku(crate::sudoku::last_level());
+                }
             }
+            (Screen::Games, Game(_)) => {
+                match crate::chess::Game::load().filter(|g| g.in_progress()) {
+                    Some(g) => {
+                        self.chess = Some(g);
+                        self.go(Screen::ChessResume);
+                    }
+                    None => {
+                        let g = crate::chess::Game::new();
+                        g.save();
+                        self.chess = Some(g);
+                        self.go(Screen::Chess);
+                    }
+                }
+            }
+            (Screen::SudokuMenu, Level(k)) => self.start_sudoku(crate::sudoku::LEVELS[k.min(2)]),
             (Screen::SudokuMenu, Continue) => {
                 self.sudoku = crate::sudoku::Game::load();
-                self.sudoku_note = "Jogo retomado.".into();
+                self.sudoku_note = "Partida retomada.".into();
                 self.go(Screen::Sudoku);
             }
             (Screen::Sudoku, Cell(i)) => {
@@ -734,37 +799,65 @@ impl App {
                 self.redraw_sudoku_grid();
             }
             (Screen::Sudoku, Key(n)) => {
-                let solved = if let Some(g) = &mut self.sudoku {
-                    g.set(n);
-                    g.save();
-                    g.solved()
-                } else {
-                    false
-                };
-                if solved {
-                    self.sudoku_note = "Resolvido! Parabéns.".into();
-                    crate::sudoku::Game::clear_saved();
-                    if let Some(g) = &mut self.sudoku {
-                        g.selected = None;
+                if let Some(g) = &mut self.sudoku {
+                    if g.selected.is_none() {
+                        self.sudoku_note = "Escolha uma casa primeiro.".into();
+                    } else {
+                        let before = g.mistakes;
+                        g.press(n);
+                        g.save();
+                        self.sudoku_note = if g.mistakes > before { "Esse número não vai aí.".into() } else { String::new() };
                     }
-                    self.render(true);
-                } else {
-                    self.redraw_sudoku_grid();
                 }
+                self.after_sudoku_move();
             }
-            (Screen::Sudoku, Check) => {
-                let bad = self.sudoku.as_mut().map(|g| g.check()).unwrap_or(0);
-                self.sudoku_note = match bad {
-                    0 => "Nenhum erro até aqui.".into(),
-                    1 => "1 casa errada, marcada com um traço.".into(),
-                    n => format!("{n} casas erradas, marcadas com um traço."),
-                };
+            (Screen::Sudoku, Game(0)) => {
+                if let Some(g) = &mut self.sudoku {
+                    g.notes_mode = !g.notes_mode;
+                    self.sudoku_note = if g.notes_mode { "Anotando: os números entram pequenos, como lembrete.".into() } else { String::new() };
+                }
                 self.redraw_sudoku_grid();
             }
-            (Screen::Sudoku, NewGame) => self.go(Screen::SudokuMenu),
+            (Screen::Sudoku, Game(1)) => {
+                if let Some(g) = &mut self.sudoku {
+                    self.sudoku_note = if g.hint().is_some() { "Dica: a casa destacada recebeu o número certo.".into() } else { String::new() };
+                    g.save();
+                }
+                self.after_sudoku_move();
+            }
+            (Screen::Sudoku, Game(2)) => {
+                if let Some(g) = &mut self.sudoku {
+                    self.sudoku_note = if g.undo() { "Jogada desfeita.".into() } else { "Nada para desfazer.".into() };
+                    g.save();
+                }
+                self.redraw_sudoku_grid();
+            }
+            (Screen::Sudoku, Game(_)) => {
+                if let Some(g) = &self.sudoku {
+                    g.save();
+                }
+                self.go(Screen::SudokuMenu);
+            }
+            (Screen::SudokuWon, NewGame) => {
+                let lv = self.sudoku.as_ref().map(|g| g.level).unwrap_or_else(crate::sudoku::last_level);
+                self.start_sudoku(lv);
+            }
+            (Screen::ChessResume, Continue) => self.go(Screen::Chess),
+            (Screen::ChessResume, NewGame) | (Screen::Chess, NewGame) => {
+                let g = crate::chess::Game::new();
+                g.save();
+                self.chess = Some(g);
+                self.go(Screen::Chess);
+            }
             (Screen::Chess, Cell(i)) => {
                 if let Some(g) = &mut self.chess {
                     g.tap(i);
+                }
+                self.redraw_chess();
+            }
+            (Screen::Chess, Level(k)) => {
+                if let Some(g) = &mut self.chess {
+                    g.promote(crate::chess::PROMO[k.min(3)]);
                 }
                 self.redraw_chess();
             }
@@ -773,12 +866,6 @@ impl App {
                     g.undo();
                 }
                 self.redraw_chess();
-            }
-            (Screen::Chess, NewGame) => {
-                let g = crate::chess::Game::new();
-                g.save();
-                self.chess = Some(g);
-                self.render(true);
             }
             (Screen::Library, Prev) => {
                 self.lib.page = self.lib.page.saturating_sub(1);

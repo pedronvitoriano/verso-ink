@@ -29,6 +29,8 @@ pub struct Pos {
     /// Roques possíveis: brancas curto, brancas longo, pretas curto, pretas longo.
     pub castle: [bool; 4],
     pub ep: Option<usize>,
+    /// Meios-lances desde a última captura ou lance de peão (regra dos 50 lances).
+    pub halfmove: u32,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -48,7 +50,7 @@ impl Pos {
             b[48 + c] = Some(Piece { kind: Kind::Pawn, white: true });
             b[56 + c] = Some(Piece { kind: BACK[c], white: true });
         }
-        Pos { board: b, white_to_move: true, castle: [true; 4], ep: None }
+        Pos { board: b, white_to_move: true, castle: [true; 4], ep: None, halfmove: 0 }
     }
 
     fn king(&self, white: bool) -> Option<usize> {
@@ -164,9 +166,19 @@ impl Pos {
         }
     }
 
+    pub fn is_promotion(&self, m: Move) -> bool {
+        self.board[m.from].is_some_and(|p| p.kind == Kind::Pawn) && (m.to / 8 == 0 || m.to / 8 == 7)
+    }
+
     pub fn apply(&self, m: Move) -> Pos {
+        self.apply_promo(m, Kind::Queen)
+    }
+
+    pub fn apply_promo(&self, m: Move, promo_kind: Kind) -> Pos {
         let mut n = self.clone();
+        let capture = self.board[m.to].is_some();
         let p = n.board[m.from].take().expect("casa de origem vazia");
+        n.halfmove = if p.kind == Kind::Pawn || capture { 0 } else { self.halfmove + 1 };
         let (fr, fc, tr, tc) = (m.from / 8, m.from % 8, m.to / 8, m.to % 8);
         // En passant: captura o peão que passou.
         if p.kind == Kind::Pawn && Some(m.to) == self.ep && self.board[m.to].is_none() {
@@ -179,7 +191,7 @@ impl Pos {
             n.board[rook_to] = n.board[rook_from].take();
         }
         let promo = p.kind == Kind::Pawn && (tr == 0 || tr == 7);
-        n.board[m.to] = Some(if promo { Piece { kind: Kind::Queen, white: p.white } } else { p });
+        n.board[m.to] = Some(if promo { Piece { kind: promo_kind, white: p.white } } else { p });
         for (sq, idx) in [(60usize, [0usize, 1]), (4, [2, 3])] {
             if m.from == sq || m.to == sq {
                 for i in idx {
@@ -209,6 +221,35 @@ impl Pos {
         (0..64).any(|i| !self.legal_from(i).is_empty())
     }
 
+    /// Mesma posição para a regra da repetição (tabuleiro, vez, roques e en passant).
+    fn same(&self, o: &Pos) -> bool {
+        self.board == o.board && self.white_to_move == o.white_to_move && self.castle == o.castle && self.ep == o.ep
+    }
+
+    /// Só reis, ou rei com um bispo ou um cavalo: ninguém consegue dar mate.
+    pub fn insufficient(&self) -> bool {
+        let others: Vec<Kind> = self.board.iter().flatten().filter(|p| p.kind != Kind::King).map(|p| p.kind).collect();
+        others.is_empty() || (others.len() == 1 && matches!(others[0], Kind::Bishop | Kind::Knight))
+    }
+
+    /// Vantagem de material das brancas (peão 1, cavalo e bispo 3, torre 5, dama 9).
+    pub fn material(&self) -> i32 {
+        self.board
+            .iter()
+            .flatten()
+            .map(|p| {
+                let v = match p.kind {
+                    Kind::Pawn => 1,
+                    Kind::Knight | Kind::Bishop => 3,
+                    Kind::Rook => 5,
+                    Kind::Queen => 9,
+                    Kind::King => 0,
+                };
+                if p.white { v } else { -v }
+            })
+            .sum()
+    }
+
     fn encode(&self) -> String {
         let mut s: String = self
             .board
@@ -230,7 +271,7 @@ impl Pos {
             .collect();
         s.push(if self.white_to_move { 'w' } else { 'b' });
         s.extend(self.castle.iter().map(|&c| if c { '1' } else { '0' }));
-        s.push_str(&format!(" {}", self.ep.map(|e| e as i32).unwrap_or(-1)));
+        s.push_str(&format!(" {} {}", self.ep.map(|e| e as i32).unwrap_or(-1), self.halfmove));
         s
     }
 
@@ -252,8 +293,10 @@ impl Pos {
             };
             Some(Piece { kind: k, white: ch[i].is_ascii_uppercase() })
         });
-        let ep: i32 = ep.trim().parse().ok()?;
-        Some(Pos { board, white_to_move: ch[64] == 'w', castle: std::array::from_fn(|i| ch[65 + i] == '1'), ep: (ep >= 0).then_some(ep as usize) })
+        let mut nums = ep.split_whitespace();
+        let ep: i32 = nums.next()?.parse().ok()?;
+        let halfmove: u32 = nums.next().and_then(|h| h.parse().ok()).unwrap_or(0);
+        Some(Pos { board, white_to_move: ch[64] == 'w', castle: std::array::from_fn(|i| ch[65 + i] == '1'), ep: (ep >= 0).then_some(ep as usize), halfmove })
     }
 }
 
@@ -263,11 +306,15 @@ pub struct Game {
     pub selected: Option<usize>,
     pub targets: Vec<usize>,
     pub last: Option<Move>,
+    /// Peão chegou à última fileira: esperando a escolha da peça.
+    pub pending_promo: Option<Move>,
 }
+
+pub const PROMO: [Kind; 4] = [Kind::Queen, Kind::Rook, Kind::Bishop, Kind::Knight];
 
 impl Game {
     pub fn new() -> Self {
-        Game { pos: Pos::start(), history: Vec::new(), selected: None, targets: Vec::new(), last: None }
+        Game { pos: Pos::start(), history: Vec::new(), selected: None, targets: Vec::new(), last: None, pending_promo: None }
     }
 
     fn path() -> std::path::PathBuf {
@@ -284,30 +331,70 @@ impl Game {
         let s = std::fs::read_to_string(Self::path()).ok()?;
         let mut all: Vec<Pos> = s.lines().filter_map(Pos::decode).collect();
         let pos = all.pop()?;
-        Some(Game { pos, history: all, selected: None, targets: Vec::new(), last: None })
+        Some(Game { pos, history: all, selected: None, targets: Vec::new(), last: None, pending_promo: None })
+    }
+
+    /// Partida terminada? Devolve o texto do resultado.
+    pub fn result(&self) -> Option<String> {
+        let other = if self.pos.white_to_move { "pretas" } else { "brancas" };
+        if !self.pos.has_moves() {
+            return Some(if self.pos.in_check(self.pos.white_to_move) { format!("Xeque-mate. Vitória das {other}.") } else { "Empate por afogamento.".into() });
+        }
+        if self.pos.insufficient() {
+            return Some("Empate: ninguém consegue dar mate.".into());
+        }
+        if self.pos.halfmove >= 100 {
+            return Some("Empate pela regra dos 50 lances.".into());
+        }
+        let reps = self.history.iter().filter(|p| p.same(&self.pos)).count() + 1;
+        if reps >= 3 {
+            return Some("Empate por repetição.".into());
+        }
+        None
     }
 
     pub fn status(&self) -> String {
+        if let Some(r) = self.result() {
+            return r;
+        }
         let side = if self.pos.white_to_move { "brancas" } else { "pretas" };
-        let other = if self.pos.white_to_move { "pretas" } else { "brancas" };
-        let check = self.pos.in_check(self.pos.white_to_move);
-        match (self.pos.has_moves(), check) {
-            (false, true) => format!("Xeque-mate. Vitória das {other}."),
-            (false, false) => "Empate por afogamento.".to_string(),
-            (true, true) => format!("Xeque! Vez das {side}."),
-            (true, false) => format!("Vez das {side}."),
+        if self.pos.in_check(self.pos.white_to_move) { format!("Xeque! Vez das {side}.") } else { format!("Vez das {side}.") }
+    }
+
+    pub fn in_progress(&self) -> bool {
+        !self.history.is_empty() && self.result().is_none()
+    }
+
+    fn commit(&mut self, next: Pos, m: Move) {
+        self.history.push(self.pos.clone());
+        self.pos = next;
+        self.last = Some(m);
+        self.selected = None;
+        self.targets.clear();
+        self.pending_promo = None;
+        self.save();
+    }
+
+    /// Escolha da peça na promoção.
+    pub fn promote(&mut self, k: Kind) {
+        if let Some(m) = self.pending_promo {
+            let next = self.pos.apply_promo(m, k);
+            self.commit(next, m);
         }
     }
 
     /// Toque numa casa: escolhe a peça, move ou troca de peça. Devolve true se moveu.
     pub fn tap(&mut self, sq: usize) -> bool {
+        if self.result().is_some() || self.pending_promo.is_some() {
+            return false;
+        }
         if let Some(m) = self.selected.and_then(|from| self.targets.contains(&sq).then_some(Move { from, to: sq })) {
-            self.history.push(self.pos.clone());
-            self.pos = self.pos.apply(m);
-            self.last = Some(m);
-            self.selected = None;
-            self.targets.clear();
-            self.save();
+            if self.pos.is_promotion(m) {
+                self.pending_promo = Some(m);
+                return false;
+            }
+            let next = self.pos.apply(m);
+            self.commit(next, m);
             return true;
         }
         let moves = self.pos.legal_from(sq);
@@ -322,6 +409,9 @@ impl Game {
     }
 
     pub fn undo(&mut self) {
+        if self.pending_promo.take().is_some() {
+            return;
+        }
         if let Some(p) = self.history.pop() {
             self.pos = p;
             self.selected = None;
@@ -458,7 +548,7 @@ impl Sprites {
         let _ = std::fs::write(path, [sp.full.concat(), sp.inner.concat()].concat());
         sp
     }
-    fn draw(&self, fb: &mut Framebuffer, p: Piece, x: i32, y: i32) {
+    pub fn draw(&self, fb: &mut Framebuffer, p: Piece, x: i32, y: i32) {
         let k = KINDS.iter().position(|&q| q == p.kind).unwrap_or(0);
         let size = SQ - 8;
         for (layer, v) in [(&self.full[k], INK), (&self.inner[k], if p.white { PAPER } else { 0x55 })] {
@@ -506,10 +596,7 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites) {
     ui::draw_back(fb, f, false);
     let tw = f.measure(Face::Strong, 34.0, "Xadrez");
     f.draw(fb, Face::Strong, 34.0, 1072 - 72 - tw, 128, INK, "Xadrez");
-    draw_status(fb, f, g);
-    for i in 0..64 {
-        draw_square(fb, g, sp, i);
-    }
+    draw_status(fb, f, g, sp);
     let b = board_rect();
     fb.round_outline(Rect::new(b.x - 6, b.y - 6, b.w + 12, b.h + 12), 8, 4, INK, PAPER);
     for i in 0..64 {
@@ -526,15 +613,60 @@ pub fn status_rect() -> Rect {
     Rect::new(0, 1180, 1072, 90)
 }
 
-pub fn draw_status(fb: &mut Framebuffer, f: &Fonts, g: &Game) {
+pub fn promo_rect(k: usize) -> Rect {
+    let w = (1072 - 144 - 3 * 16) / 4;
+    Rect::new(72 + k as i32 * (w + 16), 1176, w, 96)
+}
+
+pub fn draw_status(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites) {
     let r = status_rect();
     fb.fill(r, PAPER);
+    if g.pending_promo.is_some() {
+        // Escolha da peça: quatro botões com a peça desenhada.
+        let white = g.pos.white_to_move;
+        for (k, kind) in PROMO.iter().enumerate() {
+            let b = promo_rect(k);
+            fb.round_outline(b, 20, 4, INK, PAPER);
+            sp.draw(fb, Piece { kind: *kind, white }, b.x + (b.w - (SQ - 8)) / 2, b.y - 4);
+        }
+        return;
+    }
     let s = g.status();
-    f.draw(fb, Face::Display, 48.0, 72, r.y + 62, if s.starts_with("Vez") { INK } else { INK }, &s);
+    let s = crate::apps::fit(f, Face::Display, 46.0, &s, 1072 - 144 - 200);
+    f.draw(fb, Face::Display, 46.0, 72, r.y + 62, INK, &s);
     let n = g.history.len();
-    let moves = if n == 0 { "início".to_string() } else { format!("{} lances", n) };
-    let w = f.measure(Face::Body, 30.0, &moves);
-    f.draw(fb, Face::Body, 30.0, 1072 - 72 - w, r.y + 60, MUTED, &moves);
+    let mat = g.pos.material();
+    let side = match mat {
+        0 => String::new(),
+        m if m > 0 => format!("brancas +{m} · "),
+        m => format!("pretas +{} · ", -m),
+    };
+    let moves = if n == 0 { "início".to_string() } else { format!("{side}{n} {}", if n == 1 { "lance" } else { "lances" }) };
+    let w = f.measure(Face::Body, 28.0, &moves);
+    f.draw(fb, Face::Body, 28.0, 1072 - 72 - w, r.y + 60, MUTED, &moves);
+}
+
+pub fn draw_resume(fb: &mut Framebuffer, f: &Fonts, g: &Game) {
+    fb.fill(fb.screen(), PAPER);
+    ui::draw_back(fb, f, false);
+    f.draw(fb, Face::Display, 150.0, 66, 330, INK, "Xadrez");
+    f.draw(fb, Face::Strong, 34.0, 72, 420, MUTED, "Você tem uma partida pela metade");
+    let r = resume_continue_rect();
+    fb.round_rect(r, 50, INK);
+    f.draw(fb, Face::Display, 56.0, r.x + 44, r.y + 70, PAPER, "Continuar");
+    let side = if g.pos.white_to_move { "vez das brancas" } else { "vez das pretas" };
+    let n = g.history.len();
+    f.draw(fb, Face::Body, 30.0, r.x + 46, r.y + 116, 0xCC, &format!("{n} {} · {side}", if n == 1 { "lance" } else { "lances" }));
+    let n = resume_new_rect();
+    fb.round_outline(n, n.h / 2, 4, INK, PAPER);
+    let w = f.measure(Face::Strong, 40.0, "Partida nova");
+    f.draw(fb, Face::Strong, 40.0, n.x + (n.w - w) / 2, n.y + 72, INK, "Partida nova");
+}
+pub fn resume_continue_rect() -> Rect {
+    Rect::new(72, 520, 1072 - 144, 140)
+}
+pub fn resume_new_rect() -> Rect {
+    Rect::new(72, 700, 1072 - 144, 116)
 }
 
 #[cfg(test)]
@@ -569,9 +701,18 @@ mod tests {
         assert!(g.pos.board[sq("d5")].is_none());
         play(&mut g, &["a6a5", "g1f3", "a5a4", "f1e2", "a4a3", "e1g1"]); // roque curto
         assert_eq!(g.pos.board[sq("f1")].map(|p| p.kind), Some(Kind::Rook));
-        play(&mut g, &["a3b2", "d6c7", "b2a1"]); // promoção das pretas
-        assert_eq!(g.pos.board[sq("a1")].map(|p| p.kind), Some(Kind::Queen));
+        play(&mut g, &["a3b2", "d6c7"]);
+        g.tap(sq("b2"));
+        assert!(!g.tap(sq("a1")) && g.pending_promo.is_some()); // promoção espera a escolha
+        g.promote(Kind::Knight);
+        assert_eq!(g.pos.board[sq("a1")].map(|p| p.kind), Some(Kind::Knight));
         g.undo();
         assert_eq!(g.pos.board[sq("b2")].map(|p| p.kind), Some(Kind::Pawn));
+    }
+    #[test]
+    fn empate_por_repeticao() {
+        let mut g = Game::new();
+        play(&mut g, &["g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1", "f6g8"]);
+        assert_eq!(g.result().as_deref(), Some("Empate por repetição."));
     }
 }

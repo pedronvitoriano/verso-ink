@@ -106,14 +106,36 @@ impl Level {
     }
 }
 
+
+pub const LEVELS: [Level; 3] = [Level::Easy, Level::Medium, Level::Hard];
+
+impl Level {
+    fn from_name(s: &str) -> Option<Level> {
+        LEVELS.into_iter().find(|l| l.name() == s)
+    }
+}
+
+/// Uma jogada, para o desfazer: casa, valor e anotações de antes (e das casas que perderam anotação).
+#[derive(Clone)]
+struct Undo {
+    cells: Vec<(usize, u8, u16)>,
+}
+
 pub struct Game {
     pub solution: [u8; 81],
     pub given: [bool; 81],
     pub cells: [u8; 81],
+    /// Anotações a lápis: bit n-1 = número n.
+    pub notes: [u16; 81],
     pub selected: Option<usize>,
     pub level: Level,
-    /// Depois de "Conferir": casas erradas ficam marcadas até serem mudadas.
-    pub wrong: [bool; 81],
+    pub notes_mode: bool,
+    pub mistakes: u32,
+    pub hints: u32,
+    /// Segundos jogados antes desta abertura; o relógio desta sessão soma por cima.
+    pub played: u64,
+    pub resumed: std::time::Instant,
+    undo: Vec<Undo>,
 }
 
 impl Game {
@@ -139,7 +161,24 @@ impl Game {
             }
         }
         let given = std::array::from_fn(|i| puzzle[i] != 0);
-        Game { solution: sol, given, cells: puzzle, selected: None, level, wrong: [false; 81] }
+        Game {
+            solution: sol,
+            given,
+            cells: puzzle,
+            notes: [0; 81],
+            selected: None,
+            level,
+            notes_mode: false,
+            mistakes: 0,
+            hints: 0,
+            played: 0,
+            resumed: std::time::Instant::now(),
+            undo: Vec::new(),
+        }
+    }
+
+    pub fn seconds(&self) -> u64 {
+        self.played + self.resumed.elapsed().as_secs()
     }
 
     pub fn solved(&self) -> bool {
@@ -150,22 +189,74 @@ impl Game {
         self.cells.iter().filter(|&&v| v != 0).count()
     }
 
-    pub fn set(&mut self, n: u8) {
-        if let Some(i) = self.selected {
-            if !self.given[i] {
-                self.cells[i] = n;
-                self.wrong[i] = false;
-            }
-        }
+    /// O número `n` já está em todas as 9 casas certas?
+    pub fn complete(&self, n: u8) -> bool {
+        (0..81).filter(|&i| self.cells[i] == n && self.solution[i] == n).count() == 9
     }
 
-    pub fn check(&mut self) -> usize {
-        let mut bad = 0;
-        for i in 0..81 {
-            self.wrong[i] = self.cells[i] != 0 && self.cells[i] != self.solution[i];
-            bad += self.wrong[i] as usize;
+    pub fn wrong(&self, i: usize) -> bool {
+        self.cells[i] != 0 && self.cells[i] != self.solution[i]
+    }
+
+    fn peers(i: usize) -> impl Iterator<Item = usize> {
+        (0..81).filter(move |&j| j != i && (j / 9 == i / 9 || j % 9 == i % 9 || (j / 27 == i / 27 && j % 9 / 3 == i % 9 / 3)))
+    }
+
+    /// Toque numa tecla: número (0 apaga) ou anotação, conforme o modo.
+    pub fn press(&mut self, n: u8) {
+        let Some(i) = self.selected else { return };
+        if self.given[i] {
+            return;
         }
-        bad
+        let mut u = Undo { cells: vec![(i, self.cells[i], self.notes[i])] };
+        if self.notes_mode && n != 0 {
+            if self.cells[i] != 0 {
+                return;
+            }
+            self.notes[i] ^= 1 << (n - 1);
+        } else {
+            if self.cells[i] == n {
+                return;
+            }
+            self.cells[i] = n;
+            self.notes[i] = 0;
+            if n != 0 {
+                if n != self.solution[i] {
+                    self.mistakes += 1;
+                }
+                // Tira o número das anotações da linha, coluna e bloco.
+                for j in Self::peers(i) {
+                    if self.notes[j] & (1 << (n - 1)) != 0 {
+                        u.cells.push((j, self.cells[j], self.notes[j]));
+                        self.notes[j] &= !(1 << (n - 1));
+                    }
+                }
+            }
+        }
+        self.undo.push(u);
+    }
+
+    pub fn undo(&mut self) -> bool {
+        let Some(u) = self.undo.pop() else { return false };
+        for (i, v, notes) in u.cells.into_iter().rev() {
+            self.cells[i] = v;
+            self.notes[i] = notes;
+        }
+        true
+    }
+
+    /// Dica: preenche a casa escolhida (ou a primeira vazia/errada) com o número certo.
+    pub fn hint(&mut self) -> Option<usize> {
+        let i = self.selected.filter(|&i| !self.given[i] && self.cells[i] != self.solution[i]).or_else(|| (0..81).find(|&i| self.cells[i] != self.solution[i]))?;
+        self.selected = Some(i);
+        let mode = self.notes_mode;
+        self.notes_mode = false;
+        let before = self.mistakes;
+        self.press(self.solution[i]);
+        self.mistakes = before;
+        self.notes_mode = mode;
+        self.hints += 1;
+        Some(i)
     }
 
     fn path() -> std::path::PathBuf {
@@ -175,14 +266,17 @@ impl Game {
     pub fn save(&self) {
         let enc = |a: &[u8; 81]| a.iter().map(|d| (b'0' + d) as char).collect::<String>();
         let given: String = self.given.iter().map(|&g| if g { '1' } else { '0' }).collect();
-        let _ = std::fs::write(Self::path(), format!("{}\n{}\n{}\n{}\n", self.level.name(), enc(&self.solution), given, enc(&self.cells)));
+        let notes: String = self.notes.iter().map(|n| format!("{n:03x}")).collect();
+        let _ = std::fs::write(
+            Self::path(),
+            format!("{}\n{}\n{}\n{}\n{}\n{} {} {}\n", self.level.name(), enc(&self.solution), given, enc(&self.cells), notes, self.seconds(), self.mistakes, self.hints),
+        );
     }
 
     pub fn load() -> Option<Self> {
         let s = std::fs::read_to_string(Self::path()).ok()?;
         let l: Vec<&str> = s.lines().collect();
-        let first = *l.first()?;
-        let level = [Level::Easy, Level::Medium, Level::Hard].into_iter().find(|lv| lv.name() == first)?;
+        let level = Level::from_name(l.first()?)?;
         let dec = |t: &str| -> Option<[u8; 81]> {
             let v: Vec<u8> = t.bytes().map(|b| b.wrapping_sub(b'0')).collect();
             (v.len() == 81 && v.iter().all(|&d| d <= 9)).then(|| std::array::from_fn(|i| v[i]))
@@ -190,11 +284,72 @@ impl Game {
         let solution = dec(l.get(1)?)?;
         let given: Vec<bool> = l.get(2)?.chars().map(|c| c == '1').collect();
         let cells = dec(l.get(3)?)?;
-        (given.len() == 81).then(|| Game { solution, given: std::array::from_fn(|i| given[i]), cells, selected: None, level, wrong: [false; 81] })
+        let notes_s = l.get(4).copied().unwrap_or("");
+        let notes: [u16; 81] = std::array::from_fn(|i| notes_s.get(i * 3..i * 3 + 3).and_then(|h| u16::from_str_radix(h, 16).ok()).unwrap_or(0));
+        let nums: Vec<u64> = l.get(5).map(|x| x.split_whitespace().filter_map(|n| n.parse().ok()).collect()).unwrap_or_default();
+        if given.len() != 81 {
+            return None;
+        }
+        Some(Game {
+            solution,
+            given: std::array::from_fn(|i| given[i]),
+            cells,
+            notes,
+            selected: None,
+            level,
+            notes_mode: false,
+            mistakes: nums.get(1).copied().unwrap_or(0) as u32,
+            hints: nums.get(2).copied().unwrap_or(0) as u32,
+            played: nums.first().copied().unwrap_or(0),
+            resumed: std::time::Instant::now(),
+            undo: Vec::new(),
+        })
     }
 
     pub fn clear_saved() {
         let _ = std::fs::remove_file(Self::path());
+    }
+}
+
+// ---------- Nível preferido e recordes ----------
+
+pub fn last_level() -> Level {
+    std::fs::read_to_string(crate::home_dir().join("data/sudoku-nivel.txt")).ok().and_then(|s| Level::from_name(s.trim())).unwrap_or(Level::Medium)
+}
+
+pub fn set_last_level(l: Level) {
+    let _ = std::fs::write(crate::home_dir().join("data/sudoku-nivel.txt"), l.name());
+}
+
+fn records_path() -> std::path::PathBuf {
+    crate::home_dir().join("data/sudoku-recordes.txt")
+}
+
+pub fn record(l: Level) -> Option<u64> {
+    let s = std::fs::read_to_string(records_path()).ok()?;
+    s.lines().find_map(|line| {
+        let (name, secs) = line.rsplit_once(' ')?;
+        (name == l.name()).then(|| secs.parse().ok()).flatten()
+    })
+}
+
+/// Registra o tempo; devolve true se for recorde novo.
+pub fn submit_record(l: Level, secs: u64) -> bool {
+    let best = record(l);
+    if best.is_some_and(|b| b <= secs) {
+        return false;
+    }
+    let mut lines: Vec<String> = std::fs::read_to_string(records_path()).unwrap_or_default().lines().filter(|x| !x.starts_with(l.name())).map(str::to_string).collect();
+    lines.push(format!("{} {secs}", l.name()));
+    let _ = std::fs::write(records_path(), lines.join("\n"));
+    true
+}
+
+pub fn mmss(secs: u64) -> String {
+    if secs >= 3600 {
+        format!("{}h{:02}", secs / 3600, secs % 3600 / 60)
+    } else {
+        format!("{}:{:02}", secs / 60, secs % 60)
     }
 }
 
@@ -213,20 +368,14 @@ pub fn key_rect(n: u8) -> Rect {
     Rect::new(x0 + k * (w + gap), GRID_Y + 9 * CELL + 28, w, 100)
 }
 
-pub fn check_rect() -> Rect {
-    Rect::new(MARGIN, 1322, (W - 2 * MARGIN - 24) / 2, 96)
-}
-pub fn new_game_rect() -> Rect {
-    let r = check_rect();
-    Rect::new(r.x + r.w + 24, r.y, r.w, r.h)
-}
-pub fn level_rect(k: usize) -> Rect {
-    Rect::new(MARGIN, 520 + k as i32 * 150, W - 2 * MARGIN, 120)
+/// Barra de ações: Anotar, Dica, Desfazer, Novo.
+pub fn action_rect(k: usize) -> Rect {
+    let w = (W - 2 * MARGIN - 3 * 16) / 4;
+    Rect::new(MARGIN + k as i32 * (w + 16), 1322, w, 96)
 }
 pub fn continue_rect() -> Rect {
-    Rect::new(MARGIN, 1000, W - 2 * MARGIN, 120)
+    Rect::new(MARGIN, 520, W - 2 * MARGIN, 140)
 }
-
 fn pill(fb: &mut Framebuffer, f: &Fonts, r: Rect, label: &str, filled: bool) {
     fb.fill(r, PAPER);
     let fg = if filled {
@@ -236,70 +385,124 @@ fn pill(fb: &mut Framebuffer, f: &Fonts, r: Rect, label: &str, filled: bool) {
         fb.round_outline(r, r.h / 2, 4, INK, PAPER);
         INK
     };
-    let tw = f.measure(Face::Strong, 38.0, label);
-    f.draw(fb, Face::Strong, 38.0, r.x + (r.w - tw) / 2, r.y + r.h / 2 + 14, fg, label);
+    let size = if f.measure(Face::Strong, 38.0, label) > r.w - 30 { 30.0 } else { 38.0 };
+    let tw = f.measure(Face::Strong, size, label);
+    f.draw(fb, Face::Strong, size, r.x + (r.w - tw) / 2, r.y + r.h / 2 + (size * 0.36) as i32, fg, label);
 }
 
-pub fn draw_menu(fb: &mut Framebuffer, f: &Fonts, saved: Option<&Game>) {
+/// Abrir o Sudoku com uma partida pela metade: continuar ou começar outra.
+pub fn draw_resume(fb: &mut Framebuffer, f: &Fonts, saved: Option<&Game>) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
     f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Sudoku");
-    f.draw(fb, Face::Strong, 34.0, MARGIN, 420, MUTED, "Escolha o nível de um jogo novo");
-    for (k, lv) in [Level::Easy, Level::Medium, Level::Hard].iter().enumerate() {
-        pill(fb, f, level_rect(k), lv.name(), false);
-    }
     if let Some(g) = saved {
-        pill(fb, f, continue_rect(), &format!("Continuar · {} · {}/81", g.level.name(), g.filled()), true);
+        f.draw(fb, Face::Strong, 34.0, MARGIN, 420, MUTED, "Você tem uma partida pela metade");
+        let r = continue_rect();
+        fb.round_rect(r, 50, INK);
+        f.draw(fb, Face::Display, 56.0, r.x + 44, r.y + 70, PAPER, "Continuar");
+        let sub = format!("{} · {} de 81 · {}", g.level.name(), g.filled(), mmss(g.seconds()));
+        f.draw(fb, Face::Body, 30.0, r.x + 46, r.y + 116, 0xCC, &sub);
+        f.draw(fb, Face::Strong, 30.0, MARGIN, 740, MUTED, "OU COMECE UM JOGO NOVO");
+    } else {
+        f.draw(fb, Face::Strong, 34.0, MARGIN, 420, MUTED, "Escolha o nível do jogo novo");
     }
+    for (k, lv) in LEVELS.iter().enumerate() {
+        let rr = Rect::new(MARGIN, 780 + k as i32 * 140, W - 2 * MARGIN, 116);
+        let label = match record(*lv) {
+            Some(s) => format!("{} · recorde {}", lv.name(), mmss(s)),
+            None => lv.name().to_string(),
+        };
+        pill(fb, f, rr, &label, false);
+    }
+}
+
+pub fn resume_level_rect(k: usize) -> Rect {
+    Rect::new(MARGIN, 780 + k as i32 * 140, W - 2 * MARGIN, 116)
+}
+
+pub fn draw_status(fb: &mut Framebuffer, f: &Fonts, g: &Game, note: &str) {
+    let r = Rect::new(0, 170, W, GRID_Y - 176);
+    fb.fill(r, PAPER);
+    let mins = g.seconds() / 60;
+    let time = if mins == 0 { "menos de 1 min".to_string() } else { format!("{mins} min") };
+    let errs = match g.mistakes {
+        0 => "sem erros".to_string(),
+        1 => "1 erro".to_string(),
+        n => format!("{n} erros"),
+    };
+    f.draw(fb, Face::Display, 48.0, GRID_X, 228, INK, &format!("{} · {time} · {errs}", g.level.name()));
+    f.draw(fb, Face::Body, 30.0, GRID_X, 272, MUTED, note);
 }
 
 pub fn draw_board(fb: &mut Framebuffer, f: &Fonts, g: &Game, note: &str) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
-    let title = format!("Sudoku · {}", g.level.name());
-    let tw = f.measure(Face::Strong, 34.0, &title);
-    f.draw(fb, Face::Strong, 34.0, W - MARGIN - tw, 128, INK, &title);
-    f.draw(fb, Face::Body, 32.0, GRID_X, GRID_Y - 40, MUTED, note);
+    draw_status(fb, f, g, note);
     for i in 0..81 {
         draw_cell(fb, f, g, i);
     }
     draw_grid_lines(fb);
+    draw_keys(fb, f, g);
+    draw_actions(fb, f, g);
+}
+
+pub fn draw_keys(fb: &mut Framebuffer, f: &Fonts, g: &Game) {
     for n in 0..=9u8 {
         let r = key_rect(n);
-        fb.round_outline(r, 18, 4, INK, PAPER);
+        fb.fill(r, PAPER);
+        // Número já completo: tecla apagada.
+        let done = n != 0 && g.complete(n);
+        fb.round_outline(r, 18, if done { 2 } else { 4 }, if done { 0xBB } else { INK }, PAPER);
         if n == 0 {
-            // Apagar: um "x".
             let (cx, cy) = (r.x as f32 + r.w as f32 / 2.0, r.y as f32 + r.h as f32 / 2.0);
             ui::stroke(fb, (cx - 16.0, cy - 16.0), (cx + 16.0, cy + 16.0), 6.0, INK);
             ui::stroke(fb, (cx + 16.0, cy - 16.0), (cx - 16.0, cy + 16.0), 6.0, INK);
         } else {
             let s = n.to_string();
-            let w = f.measure(Face::Display, 56.0, &s);
-            f.draw(fb, Face::Display, 56.0, r.x + (r.w - w) / 2, r.y + 70, INK, &s);
+            let face = if g.notes_mode { Face::Body } else { Face::Display };
+            let size = if g.notes_mode { 40.0 } else { 56.0 };
+            let w = f.measure(face, size, &s);
+            f.draw(fb, face, size, r.x + (r.w - w) / 2, r.y + if g.notes_mode { 64 } else { 70 }, if done { 0xBB } else { INK }, &s);
         }
     }
-    pill(fb, f, check_rect(), "Conferir", false);
-    pill(fb, f, new_game_rect(), "Novo jogo", false);
+}
+
+pub fn draw_actions(fb: &mut Framebuffer, f: &Fonts, g: &Game) {
+    let labels = [if g.notes_mode { "Anotando" } else { "Anotar" }, "Dica", "Desfazer", "Novo"];
+    for (k, l) in labels.iter().enumerate() {
+        pill(fb, f, action_rect(k), l, k == 0 && g.notes_mode);
+    }
 }
 
 pub fn draw_cell(fb: &mut Framebuffer, f: &Fonts, g: &Game, i: usize) {
     let r = cell_rect(i);
     let inner = Rect::new(r.x + 3, r.y + 3, r.w - 6, r.h - 6);
     let sel = g.selected == Some(i);
-    // Destaque leve para a linha, a coluna e o bloco da casa escolhida.
+    // Destaque leve para a linha, a coluna e o bloco da casa escolhida, e mais forte para o mesmo número.
     let related = g.selected.is_some_and(|s| s / 9 == i / 9 || s % 9 == i % 9 || (s / 27 == i / 27 && s % 9 / 3 == i % 9 / 3));
-    let bg = if sel { INK } else if related { 0xE8 } else { PAPER };
+    let same = g.selected.is_some_and(|s| g.cells[s] != 0 && g.cells[s] == g.cells[i]);
+    let bg = if sel { INK } else if same { 0xC8 } else if related { 0xEA } else { PAPER };
     fb.fill(inner, bg);
     let v = g.cells[i];
+    let fg = |dark: u8| if sel { PAPER } else { dark };
     if v != 0 {
         let s = v.to_string();
-        let (face, ink) = if g.given[i] { (Face::Display, if sel { PAPER } else { INK }) } else { (Face::Body, if sel { PAPER } else { 0x33 }) };
+        let (face, ink) = if g.given[i] { (Face::Display, fg(INK)) } else { (Face::Body, fg(0x33)) };
         let w = f.measure(face, 62.0, &s);
         f.draw(fb, face, 62.0, r.x + (r.w - w) / 2, r.y + 71, ink, &s);
-    }
-    if g.wrong[i] {
-        // Erro marcado com um traço embaixo do número.
-        fb.fill(Rect::new(r.x + 26, r.y + r.h - 18, r.w - 52, 6), if sel { PAPER } else { INK });
+        if g.wrong(i) {
+            // Erro marcado na hora com um traço embaixo do número.
+            fb.fill(Rect::new(r.x + 26, r.y + r.h - 16, r.w - 52, 6), fg(INK));
+        }
+    } else if g.notes[i] != 0 {
+        for n in 1..=9u8 {
+            if g.notes[i] & (1 << (n - 1)) != 0 {
+                let (cx, cy) = (r.x + 18 + ((n - 1) % 3) as i32 * 30, r.y + 30 + ((n - 1) / 3) as i32 * 30);
+                let s = n.to_string();
+                let w = f.measure(Face::Strong, 24.0, &s);
+                f.draw(fb, Face::Strong, 24.0, cx - w / 2 + 12, cy, fg(0x44), &s);
+            }
+        }
     }
 }
 
@@ -311,12 +514,39 @@ pub fn draw_grid_lines(fb: &mut Framebuffer) {
     }
 }
 
-pub fn grid_rect() -> Rect {
-    Rect::new(GRID_X - 4, GRID_Y - 4, 9 * CELL + 8, 9 * CELL + 8)
+/// Vitória: tempo, erros, dicas e recorde do nível.
+pub fn draw_won(fb: &mut Framebuffer, f: &Fonts, g: &Game, secs: u64, new_record: bool) {
+    fb.fill(fb.screen(), PAPER);
+    ui::draw_back(fb, f, false);
+    f.draw(fb, Face::Display, 150.0, MARGIN - 6, 360, INK, "Resolvido!");
+    f.draw(fb, Face::Strong, 40.0, MARGIN, 440, MUTED, &format!("Sudoku {}", g.level.name()));
+    let rows = [
+        ("TEMPO", mmss(secs)),
+        ("ERROS", g.mistakes.to_string()),
+        ("DICAS", g.hints.to_string()),
+        (
+            "RECORDE",
+            if new_record {
+                "este é o novo!".to_string()
+            } else if g.hints > 0 {
+                "não vale com dicas".to_string()
+            } else {
+                record(g.level).map(mmss).unwrap_or_default()
+            },
+        ),
+    ];
+    for (k, (label, value)) in rows.iter().enumerate() {
+        let y = 540 + k as i32 * 110;
+        fb.fill(Rect::new(MARGIN, y, W - 2 * MARGIN, 3), INK);
+        f.draw(fb, Face::Strong, 30.0, MARGIN, y + 66, MUTED, label);
+        let vw = f.measure(Face::Display, 56.0, value);
+        f.draw(fb, Face::Display, 56.0, W - MARGIN - vw, y + 74, INK, value);
+    }
+    pill(fb, f, won_new_rect(), "Jogo novo", true);
 }
 
-pub fn note_rect() -> Rect {
-    Rect::new(0, GRID_Y - 90, W, 70)
+pub fn won_new_rect() -> Rect {
+    Rect::new(MARGIN, 1150, W - 2 * MARGIN, 120)
 }
 
 #[cfg(test)]
@@ -333,5 +563,26 @@ mod tests {
             }
         }
         assert!(81 - g.filled() >= 40);
+    }
+
+    #[test]
+    fn anotar_errar_desfazer_e_dica() {
+        let mut g = Game::new(Level::Easy);
+        let i = (0..81).find(|&i| !g.given[i]).unwrap();
+        let right = g.solution[i];
+        let wrong = right % 9 + 1;
+        g.selected = Some(i);
+        g.notes_mode = true;
+        g.press(right);
+        assert_eq!(g.notes[i], 1 << (right - 1));
+        g.notes_mode = false;
+        g.press(wrong);
+        assert_eq!((g.cells[i], g.mistakes), (wrong, 1));
+        assert!(g.undo());
+        assert_eq!((g.cells[i], g.notes[i]), (0, 1 << (right - 1)));
+        g.hint();
+        assert_eq!((g.cells[i], g.hints, g.mistakes), (right, 1, 1));
+        // Dois jogos seguidos não são iguais.
+        assert_ne!(Game::new(Level::Easy).cells, Game::new(Level::Easy).cells);
     }
 }
