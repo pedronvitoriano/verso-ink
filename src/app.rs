@@ -18,6 +18,8 @@ pub enum Screen {
     Focus,
     Settings,
     LowBattery,
+    Today,
+    Reminder,
     Sleep,
 }
 
@@ -39,6 +41,7 @@ pub enum Target {
     Wifi,
     Reboot,
     PowerOff,
+    Item(usize),
 }
 
 /// Código de saída que pede ao `session.sh` para abrir um livro no KOReader e voltar.
@@ -59,6 +62,11 @@ pub struct App {
     confirm: Option<(u8, Instant)>,
     pub last_minute: u32,
     low_warned: bool,
+    items: Vec<crate::day::Item>,
+    today_hits: Vec<(usize, Rect)>,
+    reminder: Option<crate::day::Item>,
+    /// Tela para onde voltar depois de um lembrete.
+    before_reminder: Screen,
     /// Quando definido, o laço principal sai com este código.
     pub exit_code: Option<i32>,
 }
@@ -82,6 +90,7 @@ fn round_radius(t: Target, r: Rect) -> i32 {
     match t {
         Target::Tile(_) => 40,
         Target::Row(_) | Target::Bar | Target::Header => 0,
+        Target::Item(_) => 0,
         Target::Night | Target::OpenSettings | Target::Wifi => 32,
         _ => r.h.min(r.w) / 2,
     }
@@ -103,6 +112,10 @@ impl App {
             confirm: None,
             last_minute: 99,
             low_warned: false,
+            items: Vec::new(),
+            today_hits: Vec::new(),
+            reminder: None,
+            before_reminder: Screen::Home,
             exit_code: None,
         }
     }
@@ -120,6 +133,15 @@ impl App {
             Screen::Focus => apps::draw_focus(fb, f, self.pomo, data::focus_today(st.offset_min), st),
             Screen::Settings => apps::draw_settings(fb, f, &self.sys, st, self.confirm.map(|c| c.0)),
             Screen::LowBattery => ui::draw_low_battery(fb, f, st),
+            Screen::Today => {
+                let done = crate::day::checked(data::today(st.offset_min));
+                self.today_hits = crate::today_ui::draw_today(fb, f, &self.items, &done, st, data::focus_today(st.offset_min));
+            }
+            Screen::Reminder => {
+                if let Some(it) = &self.reminder {
+                    crate::today_ui::draw_reminder(fb, f, it);
+                }
+            }
             Screen::Sleep => ui::draw_sleep(fb, f, st, data::last_book().as_ref()),
         }
         self.fb.present(Wave::Quality, flash);
@@ -168,6 +190,12 @@ impl App {
                 (PowerOff, apps::set_off_rect()),
             ],
             Screen::LowBattery => vec![(Primary, ui::low_battery_ok_rect())],
+            Screen::Today => {
+                let mut v = vec![(Back, ui::back_rect()), (Primary, crate::today_ui::pomodoro_rect())];
+                v.extend(self.today_hits.iter().map(|(i, r)| (Item(*i), *r)));
+                v
+            }
+            Screen::Reminder => vec![(Primary, crate::today_ui::reminder_ok_rect())],
             Screen::Sleep => vec![],
         }
     }
@@ -215,6 +243,7 @@ impl App {
                 self.sys = SysInfo::read();
                 self.confirm = None;
             }
+            Screen::Today => self.items = crate::day::load_items(),
             _ => {}
         }
         self.screen = screen;
@@ -237,7 +266,11 @@ impl App {
     }
 
     fn start_pomodoro(&mut self, kind: Kind) {
-        let ends = SystemTime::now() + Duration::from_secs(kind.minutes() * 60);
+        // settings/dev_pomodoro_secs encurta a duração (teste do fim do Pomodoro).
+        let secs = crate::sys::read_trim(home_dir().join("settings/dev_pomodoro_secs").to_str().unwrap_or(""))
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(kind.minutes() * 60);
+        let ends = SystemTime::now() + Duration::from_secs(secs);
         self.pomo = Pomodoro::Running { kind, ends };
         keep_awake(true);
         log(&format!("pomodoro {kind:?} por {} min", kind.minutes()));
@@ -251,7 +284,7 @@ impl App {
             (Screen::Home, Header) => self.go(Screen::Light),
             (Screen::Home, Tile(i)) => match Module::ALL[i] {
                 Module::Ler => self.go(Screen::Library),
-                Module::Foco => self.go(Screen::Focus),
+                Module::Foco => self.go(Screen::Today),
                 m => self.go(Screen::Module(m)),
             },
             (Screen::Light, Minus) => self.set_light(self.light.level - 1),
@@ -333,6 +366,21 @@ impl App {
                 let _ = std::process::Command::new(if reboot { "reboot" } else { "poweroff" }).status();
             }
             (Screen::LowBattery, Primary) => self.go(Screen::Home),
+            (Screen::Today, Primary) => self.go(Screen::Focus),
+            (Screen::Today, Item(i)) => {
+                if let Some(it) = self.items.get(i) {
+                    let on = crate::day::toggle(data::today(self.status.offset_min), &it.key());
+                    log(&format!("{} {}", if on { "marcado" } else { "desmarcado" }, it.key()));
+                    self.render(false);
+                }
+            }
+            (Screen::Reminder, Primary) => {
+                if let Some(it) = self.reminder.take() {
+                    crate::day::toggle(data::today(self.status.offset_min), &it.key());
+                }
+                let back = self.before_reminder;
+                self.go(back);
+            }
             _ => {}
         }
     }
@@ -409,6 +457,16 @@ impl App {
         }
         self.last_minute = now.minute;
         self.status = read_status();
+        // Lembretes: na hora (ou ao acordar, se passou), em tela cheia.
+        if !matches!(self.screen, Screen::Reminder | Screen::Sleep) && now.plausible() {
+            let items = crate::day::load_items();
+            if let Some(it) = crate::day::due_reminder(&items, self.status.offset_min, now.hour * 60 + now.minute) {
+                log(&format!("lembrete: {}", it.text));
+                self.before_reminder = if matches!(self.screen, Screen::LowBattery) { Screen::Home } else { self.screen };
+                self.reminder = Some(it);
+                return self.go(Screen::Reminder);
+            }
+        }
         // Aviso de bateria fraca: uma vez por descarga, só fora do carregador.
         match self.status.battery {
             Some(p) if p <= 10 && !self.status.charging && !self.low_warned && self.screen != Screen::Sleep => {

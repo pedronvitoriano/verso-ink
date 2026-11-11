@@ -188,7 +188,10 @@ pub fn inject_drag(x: i32, y0: i32, y1: i32, hold_ms: u64, width: i32, height: i
     };
     put(EV_ABS, ABS_MT_SLOT, 0)?;
     put(EV_ABS, ABS_MT_TRACKING_ID, 4242)?;
+    // O kernel descarta um valor igual ao último: passamos por um vizinho para garantir a entrega.
+    put(EV_ABS, ABS_MT_POSITION_X, sx + 1)?;
     put(EV_ABS, ABS_MT_POSITION_X, sx)?;
+    put(EV_ABS, ABS_MT_POSITION_Y, sy + 1)?;
     put(EV_ABS, ABS_MT_POSITION_Y, sy)?;
     put(EV_KEY, BTN_TOUCH, 1)?;
     put(EV_SYN, SYN_REPORT, 0)?;

@@ -14,6 +14,9 @@ mod apps;
 mod clock;
 mod covers;
 mod data;
+mod day;
+mod today_ui;
+mod weather;
 mod fb;
 mod input;
 mod sys;
@@ -107,10 +110,11 @@ fn run() -> i32 {
     input::spawn_power(tx);
     set_wifi(true);
     sync_clock_async();
+    weather::spawn();
 
     let mut app = App::new(fb);
     // Voltando do KOReader, reabre a biblioteca, onde a pessoa estava.
-    if std::env::var_os("VERSO_INK_RETURN").is_some() {
+    if std::env::var("VERSO_INK_RETURN").is_ok_and(|v| !v.is_empty()) {
         app.go(Screen::Library);
     }
     let t0 = Instant::now();
@@ -134,6 +138,10 @@ fn run() -> i32 {
             }
             Some("library") => {
                 app.go(Screen::Library);
+                continue;
+            }
+            Some("today") => {
+                app.go(Screen::Today);
                 continue;
             }
             Some("refresh") => {

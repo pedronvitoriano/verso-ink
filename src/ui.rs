@@ -81,7 +81,7 @@ pub fn date_rect() -> Rect {
     Rect::new(MARGIN, 96, 1072 - 2 * MARGIN - 220, 60)
 }
 pub fn clock_rect() -> Rect {
-    Rect::new(MARGIN - 8, 170, 760, 230)
+    Rect::new(MARGIN - 8, 170, 1072 - 2 * MARGIN + 16, 250)
 }
 /// Bloco 0 (Ler) ocupa a largura toda; os outros formam uma grade 2x2 abaixo.
 pub fn tile_rect(i: usize) -> Rect {
@@ -281,6 +281,12 @@ pub fn draw_clock(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     fb.fill(r, PAPER);
     let t = if now.plausible() { now.time() } else { "--:--".into() };
     f.draw(fb, Face::Display, 236.0, MARGIN - 10, r.y + 200, INK, &t);
+    draw_weather(fb, f);
+    // Resumo do dia (próximo lembrete, sequências, leitura, focos): redesenhado a cada minuto.
+    if let Some(line) = crate::data::summary(st.offset_min).line {
+        let line = crate::apps::fit(f, Face::Strong, 28.0, &line, 1072 - 2 * MARGIN);
+        f.draw(fb, Face::Strong, 28.0, MARGIN, 414, INK, &line);
+    }
 }
 
 pub fn draw_tile(fb: &mut Framebuffer, f: &Fonts, i: usize, pressed: bool) {
@@ -319,10 +325,7 @@ pub fn draw_home(fb: &mut Framebuffer, f: &Fonts, st: &Status, sum: &crate::data
     fb.fill(fb.screen(), PAPER);
     draw_header(fb, f, st);
     draw_clock(fb, f, st);
-    if let Some(line) = &sum.line {
-        let w = f.measure(Face::Strong, 30.0, line);
-        f.draw(fb, Face::Strong, 30.0, 1072 - MARGIN - w, 404, INK, line);
-    }
+    let _ = sum; // o resumo é desenhado junto com o relógio (draw_clock)
     fb.fill(Rect::new(MARGIN, 432, 1072 - 2 * MARGIN, 4), INK);
     for i in 0..Module::ALL.len() {
         draw_tile(fb, f, i, false);
@@ -575,4 +578,33 @@ pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status) {
     line(fb, ((cx - 14) as f32, (cy - 22) as f32), (cx as f32, cy as f32), 6.0, INK);
     line(fb, (cx as f32, cy as f32), ((cx - 14) as f32, (cy + 22) as f32), 6.0, INK);
     draw_footer(fb, f, st);
+}
+
+/// Traço com pontas arredondadas (para ícones fora deste módulo).
+pub fn stroke(fb: &mut Framebuffer, a: (f32, f32), b: (f32, f32), t: f32, v: u8) {
+    line(fb, a, b, t, v);
+}
+
+/// Sino de lembrete com topo em (cx, top).
+pub fn bell(fb: &mut Framebuffer, cx: f32, top: f32) {
+    disc(fb, cx, top + 70.0, 62.0, INK);
+    fb.fill(Rect::new((cx - 62.0) as i32, (top + 70.0) as i32, 124, 60), INK);
+    fb.round_rect(Rect::new((cx - 86.0) as i32, (top + 122.0) as i32, 172, 26), 13, INK);
+    disc(fb, cx, top + 166.0, 20.0, INK);
+    disc(fb, cx, top + 4.0, 12.0, INK);
+}
+
+fn draw_weather(fb: &mut Framebuffer, f: &Fonts) {
+    let Some(w) = crate::weather::load() else { return };
+    let right = 1072 - MARGIN;
+    let temp = format!("{}°", w.temp);
+    let tw = f.measure(Face::Display, 92.0, &temp);
+    f.draw(fb, Face::Display, 92.0, right - tw, 290, INK, &temp);
+    let desc = w.describe();
+    let line1 = format!("{}° / {}°", w.max, w.min);
+    let l1w = f.measure(Face::Strong, 28.0, &line1);
+    f.draw(fb, Face::Strong, 28.0, right - l1w, 334, INK, &line1);
+    let line2 = if w.rain_pct >= 30 { format!("chuva {}%", w.rain_pct) } else { desc.to_lowercase() };
+    let l2w = f.measure(Face::Body, 26.0, &line2);
+    f.draw(fb, Face::Body, 26.0, right - l2w, 370, MUTED, &line2);
 }

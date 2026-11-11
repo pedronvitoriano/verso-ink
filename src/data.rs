@@ -100,6 +100,20 @@ pub struct Summary {
 
 pub fn summary(offset_min: i64) -> Summary {
     let mut parts = Vec::new();
+    let items = crate::day::load_items();
+    let now = crate::clock::now(offset_min);
+    let now_min = now.hour * 60 + now.minute;
+    if let Some(r) = crate::day::next_reminder(&items, offset_min, now_min) {
+        parts.push(format!("{} {}", r.time_label(), r.text));
+    }
+    let streak = crate::day::todo_streak(&items, offset_min);
+    if streak > 1 {
+        parts.push(format!("{streak} dias completos"));
+    }
+    let rs = crate::day::reading_streak(offset_min);
+    if rs > 1 {
+        parts.push(format!("{rs} dias lendo"));
+    }
     let read = reading_minutes_today(offset_min);
     if read > 0 {
         parts.push(format!("{read} min de leitura hoje"));
