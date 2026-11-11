@@ -23,6 +23,21 @@ if [ ! -x /home/versoink/.local/bin/claude ]; then
     su - versoink -c 'curl -fsSL https://claude.ai/install.sh | bash' >/tmp/verso-ink-claude-install.log 2>&1
 fi
 
+# Leitura dos arquivos do Kindle pelo túnel (só leitura: o Kindle força o script claude-ler.sh).
+install -d -m 700 -o versoink -g versoink /home/versoink/.ssh
+if [ ! -f /home/versoink/.ssh/kindle_leitura ]; then
+    su - versoink -c 'ssh-keygen -q -t ed25519 -N "" -C kindle-leitura -f ~/.ssh/kindle_leitura'
+fi
+cat >/usr/local/bin/kindle <<'KINDLE'
+#!/bin/sh
+# Lê arquivos do Kindle pelo túnel SSH reverso (porta 22230 só no servidor).
+# Manda um argumento por linha: o Kindle não interpreta nada como comando de shell.
+[ $# -ge 1 ] || { echo "uso: kindle <ls|cat|head|tail|wc|stat|du|grep|find> ..." >&2; exit 2; }
+exec ssh -q -T -i "$HOME/.ssh/kindle_leitura" -p 22230 -o BatchMode=yes -o ConnectTimeout=8 \
+    -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$HOME/.ssh/known_hosts_kindle" \
+    root@127.0.0.1 "$(printf '%s\n' "$@")"
+KINDLE
+chmod 755 /usr/local/bin/kindle
 cat >/etc/systemd/system/verso-ink-claude.service <<'EOF'
 [Unit]
 Description=Verso Ink: ponte do Kindle para o Claude Code
@@ -66,4 +81,5 @@ if ! nginx -t; then
     exit 1
 fi
 systemctl reload nginx
+echo "chave de leitura do Kindle: $(cat /home/versoink/.ssh/kindle_leitura.pub)"
 echo "ok"
