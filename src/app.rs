@@ -24,8 +24,13 @@ pub enum Screen {
     SudokuMenu,
     Sudoku,
     SudokuWon,
-    ChessResume,
+    ChessHub,
+    Coaches,
     Chess,
+    ChessEnd,
+    ChessGames,
+    ChessReview,
+    ChessInsights,
     Clips,
     ClipBook,
     Compose,
@@ -95,6 +100,16 @@ pub struct App {
     sudoku_won: (u64, bool),
     chess: Option<crate::chess::Game>,
     sprites: Option<crate::chess::Sprites>,
+    engine: Option<crate::engine::Engine>,
+    coach_msg: String,
+    pre_eval: Option<(crate::engine::Score, String)>,
+    records: Vec<crate::coach::Record>,
+    coach_page: usize,
+    end_info: (String, String, Option<(u32, u32)>, Option<String>),
+    saved_games: Vec<crate::coach::Saved>,
+    games_page: usize,
+    review_k: usize,
+    rng: crate::sudoku::Rng,
     clips: Vec<crate::clippings::BookClips>,
     clip_page: usize,
     clip_book: usize,
@@ -169,6 +184,16 @@ impl App {
             sudoku_won: (0, false),
             chess: None,
             sprites: None,
+            engine: None,
+            coach_msg: String::new(),
+            pre_eval: None,
+            records: Vec::new(),
+            coach_page: 0,
+            end_info: (String::new(), String::new(), None, None),
+            saved_games: Vec::new(),
+            games_page: 0,
+            review_k: 0,
+            rng: crate::sudoku::Rng::new(),
             clips: Vec::new(),
             clip_page: 0,
             clip_book: 0,
@@ -197,6 +222,7 @@ impl App {
         self.status = read_status();
         // O repouso fica sempre claro, mesmo no modo noturno (escuro parecia aparelho apagado).
         self.fb.invert = self.light.night && self.screen != Screen::Sleep;
+        self.fb.rot180 = self.screen == Screen::Chess && self.local_rotated();
         let (fb, f, st) = (&mut self.fb, &self.fonts, &self.status);
         match self.screen {
             Screen::Home => ui::draw_home(fb, f, st, &data::summary(st.offset_min)),
@@ -231,14 +257,40 @@ impl App {
                     crate::sudoku::draw_won(fb, f, g, self.sudoku_won.0, self.sudoku_won.1);
                 }
             }
-            Screen::ChessResume => {
-                if let Some(g) = &self.chess {
-                    crate::chess::draw_resume(fb, f, g);
-                }
+            Screen::ChessHub => {
+                let resume = crate::chess::Game::load().filter(|g| g.in_progress()).map(|g| match g.mode {
+                    crate::chess::Mode::Coach { level, .. } => {
+                        let c = crate::coach::coach(level);
+                        format!("Contra {} ({}) · {} lances", c.name, c.rating, g.history.len())
+                    }
+                    crate::chess::Mode::Local => format!("Duas pessoas · {} lances", g.history.len()),
+                });
+                crate::chess_ui::draw_hub(fb, f, resume);
             }
+            Screen::Coaches => crate::chess_ui::draw_coaches(fb, f, self.coach_page),
             Screen::Chess => {
                 if let (Some(g), Some(sp)) = (&self.chess, &self.sprites) {
                     crate::chess::draw(fb, f, g, sp);
+                    if let crate::chess::Mode::Coach { level, .. } = g.mode {
+                        let c = crate::coach::coach(level);
+                        crate::chess_ui::draw_coach_line(fb, f, &format!("{} ({})", c.name, c.rating), &self.coach_msg);
+                    }
+                }
+            }
+            Screen::ChessEnd => {
+                let (t, d, r, u) = &self.end_info;
+                crate::chess_ui::draw_end(fb, f, t, d, *r, u.clone());
+            }
+            Screen::ChessGames => crate::chess_ui::draw_games(fb, f, &self.saved_games, self.games_page, st.offset_min),
+            Screen::ChessReview => {
+                if let (Some(g), Some(sp)) = (self.saved_games.first(), &self.sprites) {
+                    crate::chess_ui::draw_review(fb, f, sp, g, self.review_k);
+                }
+            }
+            Screen::ChessInsights => {
+                if let Some(g) = self.saved_games.first() {
+                    let lines = crate::coach::insights(g, &self.saved_games[1..]);
+                    crate::chess_ui::draw_insights(fb, f, g, &lines);
                 }
             }
             Screen::Clips => crate::clippings::draw_books(fb, f, &self.clips, self.clip_page),
@@ -363,16 +415,65 @@ impl App {
                 v
             }
             Screen::SudokuWon => vec![(Back, ui::back_rect()), (NewGame, crate::sudoku::won_new_rect())],
-            Screen::ChessResume => vec![(Back, ui::back_rect()), (Continue, crate::chess::resume_continue_rect()), (NewGame, crate::chess::resume_new_rect())],
-            Screen::Chess => {
-                let mut v = vec![(Back, ui::back_rect()), (Undo, crate::chess::undo_rect()), (NewGame, crate::chess::new_rect())];
-                if self.chess.as_ref().is_some_and(|g| g.pending_promo.is_some()) {
-                    v.extend((0..4).map(|k| (Level(k), crate::chess::promo_rect(k))));
-                } else {
-                    v.extend((0..64).map(|i| (Cell(i), crate::chess::square_rect(i))));
+            Screen::ChessHub => {
+                let has_resume = crate::chess::Game::load().is_some_and(|g| g.in_progress());
+                let n = if has_resume { 4 } else { 3 };
+                let mut v = vec![(Back, ui::back_rect())];
+                v.extend((0..n).map(|k| (Game(k + if has_resume { 0 } else { 1 }), crate::chess_ui::hub_row(k))));
+                v
+            }
+            Screen::Coaches => {
+                let mut v = vec![(Back, ui::back_rect())];
+                for k in 0..crate::chess_ui::PER_PAGE {
+                    let i = self.coach_page * crate::chess_ui::PER_PAGE + k;
+                    if i < crate::coach::LADDER && i <= crate::coach::unlocked() {
+                        v.push((Row(i), crate::chess_ui::coach_row(k)));
+                    }
+                }
+                if self.coach_page > 0 {
+                    v.push((Prev, crate::chess_ui::prev_rect()));
+                }
+                if (self.coach_page + 1) * crate::chess_ui::PER_PAGE < crate::coach::LADDER {
+                    v.push((Next, crate::chess_ui::next_rect()));
                 }
                 v
             }
+            Screen::Chess => {
+                let mut v = vec![(Back, ui::back_rect()), (Undo, crate::chess::undo_rect()), (NewGame, crate::chess::new_rect())];
+                if self.coach_level().is_none() {
+                    v.push((Check, crate::chess::rotate_rect()));
+                }
+                let flip = self.chess.as_ref().is_some_and(|g| g.flipped());
+                if self.chess.as_ref().is_some_and(|g| g.pending_promo.is_some()) {
+                    v.extend((0..4).map(|k| (Level(k), crate::chess::promo_rect(k))));
+                } else {
+                    v.extend((0..64).map(|i| (Cell(i), crate::chess::square_rect(i, flip))));
+                }
+                v
+            }
+            Screen::ChessEnd => {
+                let mut v = vec![(Back, ui::back_rect())];
+                v.extend((0..3).map(|k| (Game(k), crate::chess_ui::end_row(k))));
+                v
+            }
+            Screen::ChessGames => {
+                let mut v = vec![(Back, ui::back_rect())];
+                let n = self.saved_games.len().saturating_sub(self.games_page * crate::chess_ui::PER_PAGE).min(crate::chess_ui::PER_PAGE);
+                v.extend((0..n).map(|k| (Row(k), crate::chess_ui::game_row(k))));
+                if self.games_page > 0 {
+                    v.push((Prev, crate::chess_ui::prev_rect()));
+                }
+                if (self.games_page + 1) * crate::chess_ui::PER_PAGE < self.saved_games.len() {
+                    v.push((Next, crate::chess_ui::next_rect()));
+                }
+                v
+            }
+            Screen::ChessReview => {
+                let mut v = vec![(Back, ui::back_rect())];
+                v.extend((0..3).map(|k| (Game(k), crate::chess_ui::review_btn(k))));
+                v
+            }
+            Screen::ChessInsights => vec![(Back, ui::back_rect())],
             Screen::Clips => {
                 let mut v = vec![(Back, ui::back_rect())];
                 let n = self.clips.len().saturating_sub(self.clip_page * crate::clippings::BOOKS_PER_PAGE).min(crate::clippings::BOOKS_PER_PAGE);
@@ -589,12 +690,247 @@ impl App {
         self.go(Screen::Sudoku);
     }
 
+    /// Jogo local com "Girar" ligado e vez das pretas: tela de cabeça para baixo.
+    fn local_rotated(&self) -> bool {
+        self.coach_level().is_none() && crate::chess::rotate_enabled() && self.chess.as_ref().is_some_and(|g| !g.pos.white_to_move)
+    }
+
+    fn coach_level(&self) -> Option<usize> {
+        match self.chess.as_ref().map(|g| g.mode) {
+            Some(crate::chess::Mode::Coach { level, .. }) => Some(level),
+            _ => None,
+        }
+    }
+
+    fn ensure_engine(&mut self) -> bool {
+        if self.engine.is_none() {
+            self.engine = crate::engine::Engine::start();
+            if self.engine.is_none() {
+                self.coach_msg = "Não consegui abrir o motor de xadrez.".into();
+                log("stockfish não iniciou");
+            }
+        }
+        self.engine.is_some()
+    }
+
+    /// Fala do treinador com a tela atualizada na hora (antes de cálculos demorados).
+    fn say(&mut self, text: &str) {
+        self.coach_msg = text.to_string();
+        if let Some(level) = self.coach_level() {
+            let c = crate::coach::coach(level);
+            crate::chess_ui::draw_coach_line(&mut self.fb, &self.fonts, &format!("{} ({})", c.name, c.rating), text);
+            self.fb.refresh(crate::chess_ui::coach_line_rect(), Wave::Quality, false);
+        }
+    }
+
+    fn start_coach_game(&mut self, level: usize) {
+        let (_, played) = crate::coach::rating();
+        let user_white = played % 2 == 0;
+        let g = crate::chess::Game::new_coach(level, user_white);
+        g.save();
+        self.chess = Some(g);
+        self.records.clear();
+        crate::coach::clear_current();
+        self.pre_eval = None;
+        let c = crate::coach::coach(level);
+        self.coach_msg = format!("Olá, sou {}. {}. Você joga de {}.", c.name, c.style, if user_white { "brancas" } else { "pretas" });
+        self.go(Screen::Chess);
+        if !self.ensure_engine() {
+            return self.render(false);
+        }
+        if self.chess.as_ref().is_some_and(|g| g.engine_turn()) {
+            self.engine_reply();
+        } else {
+            self.analyse_pre();
+        }
+    }
+
+    fn resume_chess(&mut self) {
+        let Some(g) = crate::chess::Game::load() else { return };
+        let coach = matches!(g.mode, crate::chess::Mode::Coach { .. });
+        self.chess = Some(g);
+        self.records = if coach { crate::coach::load_current() } else { Vec::new() };
+        self.coach_msg = "Partida retomada. Sua vez.".into();
+        self.go(Screen::Chess);
+        if coach && self.ensure_engine() {
+            if self.chess.as_ref().is_some_and(|g| g.engine_turn()) {
+                self.engine_reply();
+            } else {
+                self.analyse_pre();
+            }
+        }
+    }
+
+    /// Avaliação da posição na sua vez (base para medir o seu próximo lance).
+    fn analyse_pre(&mut self) {
+        let moves = self.chess.as_ref().map(|g| g.moves.clone()).unwrap_or_default();
+        self.pre_eval = self.engine.as_mut().and_then(|e| e.analyse(&moves, 600)).map(|a| (a.score, a.best));
+    }
+
+    /// Mede o lance que você acabou de fazer, comenta e passa a vez ao treinador.
+    fn after_user_move(&mut self) {
+        let Some(level) = self.coach_level() else { return };
+        let Some(g) = self.chess.as_ref() else { return };
+        let Some(before) = g.history.last().cloned() else { return };
+        let (Some(last), Some(uci)) = (g.last, g.moves.last().cloned()) else { return };
+        let user_white = before.white_to_move;
+        let ply = g.moves.len() - 1;
+        let promo = chess_promo(&uci);
+        let san = crate::chess::san(&before, last, promo);
+        let moves = g.moves.clone();
+        let rating = crate::coach::coach(level).rating;
+        if let Some((pre, best)) = self.pre_eval.take() {
+            self.say("Analisando o seu lance…");
+            let after = self.engine.as_mut().and_then(|e| e.analyse(&moves, 600)).map(|a| a.score.neg()).unwrap_or(pre);
+            let loss = (pre.cp() - after.cp()).max(0);
+            let class = crate::coach::Class::from_loss(loss, uci == best);
+            let best_san = crate::coach::best_san(&before, &best);
+            let why = if class as u8 >= crate::coach::Class::Inaccuracy as u8 { crate::coach::explain(&before, last, &best, user_white, pre) } else { String::new() };
+            log(&format!("lance {san}: {} (perda {loss})", class.name()));
+            self.records.push(crate::coach::Record { ply, san: san.clone(), class, loss, best_uci: best, best_san, why: why.clone() });
+            crate::coach::save_current(&self.records);
+            self.coach_msg = if crate::coach::should_comment(rating, class) {
+                format!("{}: {why}", class.name())
+            } else {
+                crate::coach::praise(rating, class).map(str::to_string).unwrap_or_else(|| format!("{san}. Agora é minha vez."))
+            };
+        }
+        if self.chess.as_ref().is_some_and(|g| g.result().is_some()) {
+            return self.finish_coach_game(None);
+        }
+        self.engine_reply();
+    }
+
+    /// Lance do treinador, na força dele (abaixo de 1400 mistura lances aleatórios).
+    fn engine_reply(&mut self) {
+        let Some(level) = self.coach_level() else { return };
+        let rating = crate::coach::coach(level).rating;
+        let comment = self.coach_msg.clone();
+        self.say(&format!("{comment} Pensando…"));
+        let (moves, pos) = match &self.chess {
+            Some(g) => (g.moves.clone(), g.pos.clone()),
+            None => return,
+        };
+        let random = (self.rng.next() % 1000) as f32 / 1000.0 < crate::coach::random_move_chance(rating);
+        let mv = if random {
+            crate::coach::random_legal(&pos, &mut self.rng)
+        } else {
+            self.engine.as_mut().and_then(|e| {
+                e.set_strength(rating);
+                e.play(&moves, crate::coach::think_millis(rating))
+            })
+        };
+        let san = mv.and_then(|m| self.chess.as_mut().and_then(|g| g.play_uci(&m)));
+        self.coach_msg = match san {
+            Some(s) => format!("{comment} Joguei {s}.").trim().to_string(),
+            None => "Não consegui jogar.".into(),
+        };
+        if let Some(g) = &self.chess {
+            g.save();
+        }
+        self.redraw_chess();
+        if self.chess.as_ref().is_some_and(|g| g.result().is_some()) {
+            return self.finish_coach_game(None);
+        }
+        self.analyse_pre();
+        self.say(&self.coach_msg.clone());
+    }
+
+    fn undo_chess(&mut self) {
+        let coach = self.coach_level().is_some();
+        if let Some(g) = &mut self.chess {
+            g.undo();
+            // Contra o treinador, desfaz também o lance dele, para voltar à sua vez.
+            if coach && g.engine_turn() {
+                g.undo();
+            }
+        }
+        if coach {
+            let ply = self.chess.as_ref().map(|g| g.moves.len()).unwrap_or(0);
+            self.records.retain(|r| r.ply < ply);
+            crate::coach::save_current(&self.records);
+            self.coach_msg = "Lance desfeito. Sua vez.".into();
+            self.redraw_chess();
+            self.say(&self.coach_msg.clone());
+            self.analyse_pre();
+        } else if crate::chess::rotate_enabled() {
+            self.render(true);
+        } else {
+            self.redraw_chess();
+        }
+    }
+
+    /// Fim da partida contra o treinador: rating, escada, partida salva e tela de resultado.
+    /// `forced`: placar imposto (desistência = 0).
+    fn finish_coach_game(&mut self, forced: Option<f32>) {
+        let Some(level) = self.coach_level() else { return };
+        let Some(g) = self.chess.as_ref() else { return };
+        let Some(user_white) = (match g.mode {
+            crate::chess::Mode::Coach { user_white, .. } => Some(user_white),
+            _ => None,
+        }) else {
+            return;
+        };
+        let result = g.result();
+        let score = forced.unwrap_or_else(|| {
+            let mate = !g.pos.has_moves() && g.pos.in_check(g.pos.white_to_move);
+            if mate {
+                // Quem está na vez levou mate.
+                if g.pos.white_to_move == user_white { 0.0 } else { 1.0 }
+            } else {
+                0.5
+            }
+        });
+        let c = crate::coach::coach(level);
+        let ratings = crate::coach::update_rating(c.rating, score);
+        let label = if score >= 1.0 { "vitória" } else if score <= 0.0 { "derrota" } else { "empate" };
+        crate::coach::save_game(level, user_white, label, ratings, &g.moves, &self.records);
+        crate::coach::clear_current();
+        let mut unlocked = None;
+        if score >= 1.0 {
+            let before = crate::coach::unlocked();
+            crate::coach::unlock_after_win(level);
+            if crate::coach::unlocked() > before {
+                let n = crate::coach::coach(crate::coach::unlocked());
+                unlocked = Some(format!("Liberado: {} ({}).", n.name, n.rating));
+            }
+        }
+        let title = match label {
+            "vitória" => "Vitória!",
+            "derrota" => "Derrota",
+            _ => "Empate",
+        };
+        let detail = match (forced, result) {
+            (Some(_), _) => format!("Você desistiu contra {}.", c.name),
+            (_, Some(r)) => format!("{r} Contra {} ({}).", c.name, c.rating),
+            _ => String::new(),
+        };
+        log(&format!("partida contra {} terminou: {label}, rating {} → {}", c.name, ratings.0, ratings.1));
+        let _ = std::fs::remove_file(home_dir().join("data/xadrez.txt"));
+        self.engine = None;
+        self.end_info = (title.into(), detail, Some(ratings), unlocked);
+        self.go(Screen::ChessEnd);
+    }
+
+    fn open_review(&mut self) {
+        // Começa no primeiro deslize real; se não houver, no primeiro lance.
+        self.review_k = self.saved_games.first().and_then(|g| g.records.iter().position(|r| r.class as u8 >= crate::coach::Class::Mistake as u8)).unwrap_or(0);
+        self.go(Screen::ChessReview);
+    }
+
     fn redraw_chess(&mut self) {
         let (Some(g), Some(sp)) = (&self.chess, &self.sprites) else { return };
         for i in 0..64 {
             crate::chess::draw_square(&mut self.fb, g, sp, i);
         }
         crate::chess::draw_status(&mut self.fb, &self.fonts, g, sp);
+        if self.coach_level().is_some() {
+            let msg = self.coach_msg.clone();
+            if let Some(level) = self.coach_level() {
+                let c = crate::coach::coach(level);
+                crate::chess_ui::draw_coach_line(&mut self.fb, &self.fonts, &format!("{} ({})", c.name, c.rating), &msg);
+            }
+        }
         let b = crate::chess::board_rect();
         let s = crate::chess::status_rect();
         self.fb.refresh(Rect::new(0, b.y, 1072, s.y + s.h - b.y), Wave::Quality, false);
@@ -618,13 +954,13 @@ impl App {
                 self.clips = crate::clippings::load();
                 self.clip_page = 0;
             }
-            Screen::Chess => {
+            Screen::Chess | Screen::ChessReview => {
                 if self.sprites.is_none() {
                     let t = Instant::now();
                     self.sprites = Some(crate::chess::Sprites::new());
                     log(&format!("peças desenhadas em {} ms", t.elapsed().as_millis()));
                 }
-                if self.chess.is_none() {
+                if screen == Screen::Chess && self.chess.is_none() {
                     self.chess = Some(crate::chess::Game::new());
                 }
             }
@@ -680,7 +1016,14 @@ impl App {
                 }
                 self.go(Screen::Games);
             }
-            (Screen::SudokuMenu | Screen::SudokuWon | Screen::ChessResume | Screen::Chess, Back) => self.go(Screen::Games),
+            (Screen::SudokuMenu | Screen::SudokuWon | Screen::ChessHub, Back) => self.go(Screen::Games),
+            (Screen::Chess, Back) => {
+                self.engine = None; // fecha o Stockfish; a partida fica salva para continuar
+                self.go(Screen::ChessHub);
+            }
+            (Screen::Coaches | Screen::ChessEnd | Screen::ChessGames, Back) => self.go(Screen::ChessHub),
+            (Screen::ChessReview, Back) => self.go(Screen::ChessGames),
+            (Screen::ChessInsights, Back) => self.go(Screen::ChessReview),
             (Screen::Clips, Back) => self.go(Screen::Library),
             (Screen::ClipBook, Back) => self.go(Screen::Clips),
             (Screen::Compose, Back) => self.go(Screen::Today),
@@ -772,20 +1115,7 @@ impl App {
                     self.start_sudoku(crate::sudoku::last_level());
                 }
             }
-            (Screen::Games, Game(_)) => {
-                match crate::chess::Game::load().filter(|g| g.in_progress()) {
-                    Some(g) => {
-                        self.chess = Some(g);
-                        self.go(Screen::ChessResume);
-                    }
-                    None => {
-                        let g = crate::chess::Game::new();
-                        g.save();
-                        self.chess = Some(g);
-                        self.go(Screen::Chess);
-                    }
-                }
-            }
+            (Screen::Games, Game(_)) => self.go(Screen::ChessHub),
             (Screen::SudokuMenu, Level(k)) => self.start_sudoku(crate::sudoku::LEVELS[k.min(2)]),
             (Screen::SudokuMenu, Continue) => {
                 self.sudoku = crate::sudoku::Game::load();
@@ -842,30 +1172,114 @@ impl App {
                 let lv = self.sudoku.as_ref().map(|g| g.level).unwrap_or_else(crate::sudoku::last_level);
                 self.start_sudoku(lv);
             }
-            (Screen::ChessResume, Continue) => self.go(Screen::Chess),
-            (Screen::ChessResume, NewGame) | (Screen::Chess, NewGame) => {
+            // Central do xadrez: 0 continuar, 1 treinadores, 2 duas pessoas, 3 partidas anteriores.
+            (Screen::ChessHub, Game(0)) => self.resume_chess(),
+            (Screen::ChessHub, Game(1)) => {
+                self.coach_page = crate::coach::unlocked() / crate::chess_ui::PER_PAGE;
+                self.go(Screen::Coaches);
+            }
+            (Screen::ChessHub, Game(2)) => {
+                self.engine = None;
                 let g = crate::chess::Game::new();
                 g.save();
                 self.chess = Some(g);
                 self.go(Screen::Chess);
             }
+            (Screen::ChessHub, Game(_)) => {
+                self.saved_games = crate::coach::list_saved();
+                self.games_page = 0;
+                self.go(Screen::ChessGames);
+            }
+            (Screen::Coaches, Row(i)) => self.start_coach_game(i),
+            (Screen::Coaches, Prev) => {
+                self.coach_page = self.coach_page.saturating_sub(1);
+                self.render(true);
+            }
+            (Screen::Coaches, Next) => {
+                self.coach_page += 1;
+                self.render(true);
+            }
             (Screen::Chess, Cell(i)) => {
-                if let Some(g) = &mut self.chess {
-                    g.tap(i);
+                let busy = self.chess.as_ref().is_some_and(|g| g.engine_turn());
+                if busy {
+                    return;
+                }
+                let moved = self.chess.as_mut().is_some_and(|g| g.tap(i));
+                if moved && self.coach_level().is_none() && crate::chess::rotate_enabled() {
+                    // Jogo local girando: a tela inteira vira para o próximo jogador.
+                    return self.render(true);
                 }
                 self.redraw_chess();
+                if moved {
+                    self.after_user_move();
+                }
             }
             (Screen::Chess, Level(k)) => {
                 if let Some(g) = &mut self.chess {
                     g.promote(crate::chess::PROMO[k.min(3)]);
                 }
-                self.redraw_chess();
-            }
-            (Screen::Chess, Undo) => {
-                if let Some(g) = &mut self.chess {
-                    g.undo();
+                if self.coach_level().is_none() && crate::chess::rotate_enabled() {
+                    return self.render(true);
                 }
                 self.redraw_chess();
+                self.after_user_move();
+            }
+            (Screen::Chess, Undo) => self.undo_chess(),
+            (Screen::Chess, Check) => {
+                crate::chess::set_rotate(!crate::chess::rotate_enabled());
+                self.render(true);
+            }
+            (Screen::Chess, NewGame) => {
+                let coach = self.chess.as_ref().is_some_and(|g| matches!(g.mode, crate::chess::Mode::Coach { .. }));
+                if coach {
+                    self.finish_coach_game(Some(0.0)); // desistir conta como derrota
+                } else {
+                    let g = crate::chess::Game::new();
+                    g.save();
+                    self.chess = Some(g);
+                    self.render(true);
+                }
+            }
+            (Screen::ChessEnd, Game(0)) => {
+                self.saved_games = crate::coach::list_saved();
+                self.open_review();
+            }
+            (Screen::ChessEnd, Game(1)) => {
+                let lv = self.saved_games.first().map(|g| g.level).or(match self.chess.as_ref().map(|g| g.mode) {
+                    Some(crate::chess::Mode::Coach { level, .. }) => Some(level),
+                    _ => None,
+                });
+                self.start_coach_game(lv.unwrap_or(0));
+            }
+            (Screen::ChessEnd, Game(_)) => {
+                self.coach_page = crate::coach::unlocked() / crate::chess_ui::PER_PAGE;
+                self.go(Screen::Coaches);
+            }
+            (Screen::ChessGames, Row(k)) => {
+                let idx = self.games_page * crate::chess_ui::PER_PAGE + k;
+                if idx < self.saved_games.len() {
+                    let g = self.saved_games.remove(idx);
+                    self.saved_games.insert(0, g);
+                    self.open_review();
+                }
+            }
+            (Screen::ChessGames, Prev) => {
+                self.games_page = self.games_page.saturating_sub(1);
+                self.render(true);
+            }
+            (Screen::ChessGames, Next) => {
+                self.games_page += 1;
+                self.render(true);
+            }
+            (Screen::ChessReview, Game(0)) => {
+                self.review_k = self.review_k.saturating_sub(1);
+                self.render(false);
+            }
+            (Screen::ChessReview, Game(1)) => self.go(Screen::ChessInsights),
+            (Screen::ChessReview, Game(_)) => {
+                let n = self.saved_games.first().map(|g| g.records.len()).unwrap_or(0);
+                self.review_k = (self.review_k + 1).min(n.saturating_sub(1));
+                self.render(false);
             }
             (Screen::Library, Prev) => {
                 self.lib.page = self.lib.page.saturating_sub(1);
@@ -970,6 +1384,17 @@ impl App {
     }
 
     pub fn on_touch(&mut self, t: Touch) {
+        // Tela girada: o toque também gira.
+        let t = if self.fb.rot180 {
+            let (w, h) = (self.fb.width - 1, self.fb.height - 1);
+            match t {
+                Touch::Down(x, y) => Touch::Down(w - x, h - y),
+                Touch::Move(x, y) => Touch::Move(w - x, h - y),
+                Touch::Up(x, y) => Touch::Up(w - x, h - y),
+            }
+        } else {
+            t
+        };
         match t {
             Touch::Down(x, y) => {
                 self.swipe_from = Some((x, y));
@@ -1105,4 +1530,8 @@ impl App {
             }
         }
     }
+}
+
+fn chess_promo(uci: &str) -> Option<crate::chess::Kind> {
+    crate::chess::parse_uci(uci).and_then(|(_, p)| p)
 }

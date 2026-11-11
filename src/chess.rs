@@ -300,7 +300,18 @@ impl Pos {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Mode {
+    /// Duas pessoas no mesmo Kindle.
+    Local,
+    /// Contra um treinador da escada (índice), com a cor de quem joga.
+    Coach { level: usize, user_white: bool },
+}
+
 pub struct Game {
+    pub mode: Mode,
+    /// Lances no formato do Stockfish (e2e4, e7e8q), para o motor e a revisão.
+    pub moves: Vec<String>,
     pub pos: Pos,
     pub history: Vec<Pos>,
     pub selected: Option<usize>,
@@ -314,24 +325,67 @@ pub const PROMO: [Kind; 4] = [Kind::Queen, Kind::Rook, Kind::Bishop, Kind::Knigh
 
 impl Game {
     pub fn new() -> Self {
-        Game { pos: Pos::start(), history: Vec::new(), selected: None, targets: Vec::new(), last: None, pending_promo: None }
+        Game { mode: Mode::Local, moves: Vec::new(), pos: Pos::start(), history: Vec::new(), selected: None, targets: Vec::new(), last: None, pending_promo: None }
     }
 
     fn path() -> std::path::PathBuf {
         crate::home_dir().join("data/xadrez.txt")
     }
 
+    pub fn new_coach(level: usize, user_white: bool) -> Self {
+        Game { mode: Mode::Coach { level, user_white }, ..Game::new() }
+    }
+
+    /// O tabuleiro aparece com as pretas embaixo quando você joga de pretas.
+    pub fn flipped(&self) -> bool {
+        matches!(self.mode, Mode::Coach { user_white: false, .. })
+    }
+
+    /// É a vez do computador?
+    pub fn engine_turn(&self) -> bool {
+        matches!(self.mode, Mode::Coach { user_white, .. } if user_white != self.pos.white_to_move) && self.result().is_none()
+    }
+
     pub fn save(&self) {
-        let mut s: Vec<String> = self.history.iter().map(Pos::encode).collect();
+        let mode = match self.mode {
+            Mode::Local => "M local".to_string(),
+            Mode::Coach { level, user_white } => format!("M coach {level} {}", if user_white { "w" } else { "b" }),
+        };
+        let mut s: Vec<String> = vec![mode, format!("U {}", self.moves.join(" "))];
+        s.extend(self.history.iter().map(Pos::encode));
         s.push(self.pos.encode());
         let _ = std::fs::write(Self::path(), s.join("\n"));
     }
 
     pub fn load() -> Option<Self> {
         let s = std::fs::read_to_string(Self::path()).ok()?;
+        let mut mode = Mode::Local;
+        let mut moves = Vec::new();
+        for l in s.lines() {
+            if let Some(m) = l.strip_prefix("M ") {
+                let w: Vec<&str> = m.split_whitespace().collect();
+                if w.first() == Some(&"coach") {
+                    mode = Mode::Coach { level: w.get(1).and_then(|x| x.parse().ok()).unwrap_or(0), user_white: w.get(2) != Some(&"b") };
+                }
+            } else if let Some(u) = l.strip_prefix("U") {
+                moves = u.split_whitespace().map(str::to_string).collect();
+            }
+        }
         let mut all: Vec<Pos> = s.lines().filter_map(Pos::decode).collect();
         let pos = all.pop()?;
-        Some(Game { pos, history: all, selected: None, targets: Vec::new(), last: None, pending_promo: None })
+        Some(Game { mode, moves, pos, history: all, selected: None, targets: Vec::new(), last: None, pending_promo: None })
+    }
+
+    /// Aplica um lance que veio do Stockfish (e2e4 / e7e8q). Devolve o lance em notação.
+    pub fn play_uci(&mut self, uci: &str) -> Option<String> {
+        let (m, promo) = parse_uci(uci)?;
+        if !self.pos.legal_from(m.from).iter().any(|x| *x == m) {
+            return None;
+        }
+        let san = san(&self.pos, m, promo);
+        let next = self.pos.apply_promo(m, promo.unwrap_or(Kind::Queen));
+        self.commit(next, m, promo);
+        Some(san)
     }
 
     /// Partida terminada? Devolve o texto do resultado.
@@ -365,7 +419,8 @@ impl Game {
         !self.history.is_empty() && self.result().is_none()
     }
 
-    fn commit(&mut self, next: Pos, m: Move) {
+    fn commit(&mut self, next: Pos, m: Move, promo: Option<Kind>) {
+        self.moves.push(uci(m, promo));
         self.history.push(self.pos.clone());
         self.pos = next;
         self.last = Some(m);
@@ -379,7 +434,7 @@ impl Game {
     pub fn promote(&mut self, k: Kind) {
         if let Some(m) = self.pending_promo {
             let next = self.pos.apply_promo(m, k);
-            self.commit(next, m);
+            self.commit(next, m, Some(k));
         }
     }
 
@@ -394,7 +449,7 @@ impl Game {
                 return false;
             }
             let next = self.pos.apply(m);
-            self.commit(next, m);
+            self.commit(next, m, None);
             return true;
         }
         let moves = self.pos.legal_from(sq);
@@ -413,6 +468,7 @@ impl Game {
             return;
         }
         if let Some(p) = self.history.pop() {
+            self.moves.pop();
             self.pos = p;
             self.selected = None;
             self.targets.clear();
@@ -422,14 +478,115 @@ impl Game {
     }
 }
 
+// ---------- Notação ----------
+
+pub fn square_name(i: usize) -> String {
+    format!("{}{}", (b'a' + (i % 8) as u8) as char, 8 - i / 8)
+}
+
+fn square_from(s: &str) -> Option<usize> {
+    let b = s.as_bytes();
+    let (f, r) = (b.first()?.checked_sub(b'a')? as usize, b.get(1)?.checked_sub(b'1')? as usize);
+    (f < 8 && r < 8).then_some((7 - r) * 8 + f)
+}
+
+pub fn uci(m: Move, promo: Option<Kind>) -> String {
+    let p = match promo {
+        Some(Kind::Queen) => "q",
+        Some(Kind::Rook) => "r",
+        Some(Kind::Bishop) => "b",
+        Some(Kind::Knight) => "n",
+        _ => "",
+    };
+    format!("{}{}{p}", square_name(m.from), square_name(m.to))
+}
+
+pub fn parse_uci(s: &str) -> Option<(Move, Option<Kind>)> {
+    let from = square_from(s.get(0..2)?)?;
+    let to = square_from(s.get(2..4)?)?;
+    let promo = match s.get(4..5) {
+        Some("q") => Some(Kind::Queen),
+        Some("r") => Some(Kind::Rook),
+        Some("b") => Some(Kind::Bishop),
+        Some("n") => Some(Kind::Knight),
+        _ => None,
+    };
+    Some((Move { from, to }, promo))
+}
+
+pub fn letter(k: Kind) -> &'static str {
+    match k {
+        Kind::King => "R",
+        Kind::Queen => "D",
+        Kind::Rook => "T",
+        Kind::Bishop => "B",
+        Kind::Knight => "C",
+        Kind::Pawn => "",
+    }
+}
+
+pub fn piece_name(k: Kind) -> &'static str {
+    match k {
+        Kind::King => "rei",
+        Kind::Queen => "dama",
+        Kind::Rook => "torre",
+        Kind::Bishop => "bispo",
+        Kind::Knight => "cavalo",
+        Kind::Pawn => "peão",
+    }
+}
+
+/// Notação algébrica em português (R, D, T, B, C), com x, =D, + e #.
+pub fn san(pos: &Pos, m: Move, promo: Option<Kind>) -> String {
+    let Some(p) = pos.board[m.from] else { return String::new() };
+    if p.kind == Kind::King && (m.from % 8).abs_diff(m.to % 8) == 2 {
+        return if m.to % 8 == 6 { "O-O".into() } else { "O-O-O".into() };
+    }
+    let capture = pos.board[m.to].is_some() || (p.kind == Kind::Pawn && m.from % 8 != m.to % 8);
+    let mut s = String::new();
+    if p.kind == Kind::Pawn {
+        if capture {
+            s.push((b'a' + (m.from % 8) as u8) as char);
+        }
+    } else {
+        s.push_str(letter(p.kind));
+        // Desambiguação: outra peça igual que também chega na casa.
+        let others: Vec<usize> = (0..64)
+            .filter(|&i| i != m.from && pos.board[i] == Some(p) && pos.legal_from(i).iter().any(|x| x.to == m.to))
+            .collect();
+        if !others.is_empty() {
+            if others.iter().all(|&i| i % 8 != m.from % 8) {
+                s.push((b'a' + (m.from % 8) as u8) as char);
+            } else {
+                s.push((b'0' + (8 - m.from / 8) as u8) as char);
+            }
+        }
+    }
+    if capture {
+        s.push('x');
+    }
+    s.push_str(&square_name(m.to));
+    if p.kind == Kind::Pawn && (m.to / 8 == 0 || m.to / 8 == 7) {
+        s.push('=');
+        s.push_str(letter(promo.unwrap_or(Kind::Queen)));
+    }
+    let next = pos.apply_promo(m, promo.unwrap_or(Kind::Queen));
+    if next.in_check(next.white_to_move) {
+        s.push(if next.has_moves() { '+' } else { '#' });
+    }
+    s
+}
+
 // ---------- Desenho ----------
 
 pub const SQ: i32 = 112;
 pub const BX: i32 = (1072 - 8 * SQ) / 2;
 pub const BY: i32 = 250;
 
-pub fn square_rect(i: usize) -> Rect {
-    Rect::new(BX + (i % 8) as i32 * SQ, BY + (i / 8) as i32 * SQ, SQ, SQ)
+/// Casa na tela; com `flip`, as pretas ficam embaixo.
+pub fn square_rect(i: usize, flip: bool) -> Rect {
+    let (r, c) = if flip { (7 - i / 8, 7 - i % 8) } else { (i / 8, i % 8) };
+    Rect::new(BX + c as i32 * SQ, BY + r as i32 * SQ, SQ, SQ)
 }
 pub fn board_rect() -> Rect {
     Rect::new(BX, BY, 8 * SQ, 8 * SQ)
@@ -565,7 +722,7 @@ impl Sprites {
 }
 
 pub fn draw_square(fb: &mut Framebuffer, g: &Game, sp: &Sprites, i: usize) {
-    let r = square_rect(i);
+    let r = square_rect(i, g.flipped());
     let dark = (i / 8 + i % 8) % 2 == 1;
     let last = g.last.is_some_and(|m| m.from == i || m.to == i);
     fb.fill(r, if dark { 0xB0 } else { 0xF2 });
@@ -594,18 +751,46 @@ pub fn draw_square(fb: &mut Framebuffer, g: &Game, sp: &Sprites, i: usize) {
 pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
-    let tw = f.measure(Face::Strong, 34.0, "Xadrez");
-    f.draw(fb, Face::Strong, 34.0, 1072 - 72 - tw, 128, INK, "Xadrez");
+    if g.mode == Mode::Local {
+        // Partida local: botão para girar a tela para quem joga.
+        let r = rotate_rect();
+        let label = if rotate_enabled() { "Girar: sim" } else { "Girar: não" };
+        fb.round_outline(r, r.h / 2, 4, INK, PAPER);
+        let w = f.measure(Face::Strong, 32.0, label);
+        f.draw(fb, Face::Strong, 32.0, r.x + (r.w - w) / 2, r.y + 54, INK, label);
+    } else {
+        let tw = f.measure(Face::Strong, 34.0, "Xadrez");
+        f.draw(fb, Face::Strong, 34.0, 1072 - 72 - tw, 128, INK, "Xadrez");
+    }
     draw_status(fb, f, g, sp);
     let b = board_rect();
     fb.round_outline(Rect::new(b.x - 6, b.y - 6, b.w + 12, b.h + 12), 8, 4, INK, PAPER);
     for i in 0..64 {
         draw_square(fb, g, sp, i);
     }
-    for (r, label) in [(undo_rect(), "Desfazer"), (new_rect(), "Novo jogo")] {
+    let second = if matches!(g.mode, Mode::Coach { .. }) { "Desistir" } else { "Novo jogo" };
+    for (r, label) in [(undo_rect(), "Desfazer"), (new_rect(), second)] {
         fb.round_outline(r, r.h / 2, 4, INK, PAPER);
         let w = f.measure(Face::Strong, 38.0, label);
         f.draw(fb, Face::Strong, 38.0, r.x + (r.w - w) / 2, r.y + 63, INK, label);
+    }
+}
+
+pub fn rotate_rect() -> Rect {
+    Rect::new(1072 - 72 - 270, 76, 270, 84)
+}
+
+/// Girar a tela na vez das pretas (jogo local, Kindle deitado entre os dois).
+pub fn rotate_enabled() -> bool {
+    crate::home_dir().join("settings/xadrez_girar").exists()
+}
+
+pub fn set_rotate(on: bool) {
+    let p = crate::home_dir().join("settings/xadrez_girar");
+    if on {
+        let _ = std::fs::write(p, "1");
+    } else {
+        let _ = std::fs::remove_file(p);
     }
 }
 
@@ -644,29 +829,6 @@ pub fn draw_status(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites) {
     let moves = if n == 0 { "início".to_string() } else { format!("{side}{n} {}", if n == 1 { "lance" } else { "lances" }) };
     let w = f.measure(Face::Body, 28.0, &moves);
     f.draw(fb, Face::Body, 28.0, 1072 - 72 - w, r.y + 60, MUTED, &moves);
-}
-
-pub fn draw_resume(fb: &mut Framebuffer, f: &Fonts, g: &Game) {
-    fb.fill(fb.screen(), PAPER);
-    ui::draw_back(fb, f, false);
-    f.draw(fb, Face::Display, 150.0, 66, 330, INK, "Xadrez");
-    f.draw(fb, Face::Strong, 34.0, 72, 420, MUTED, "Você tem uma partida pela metade");
-    let r = resume_continue_rect();
-    fb.round_rect(r, 50, INK);
-    f.draw(fb, Face::Display, 56.0, r.x + 44, r.y + 70, PAPER, "Continuar");
-    let side = if g.pos.white_to_move { "vez das brancas" } else { "vez das pretas" };
-    let n = g.history.len();
-    f.draw(fb, Face::Body, 30.0, r.x + 46, r.y + 116, 0xCC, &format!("{n} {} · {side}", if n == 1 { "lance" } else { "lances" }));
-    let n = resume_new_rect();
-    fb.round_outline(n, n.h / 2, 4, INK, PAPER);
-    let w = f.measure(Face::Strong, 40.0, "Partida nova");
-    f.draw(fb, Face::Strong, 40.0, n.x + (n.w - w) / 2, n.y + 72, INK, "Partida nova");
-}
-pub fn resume_continue_rect() -> Rect {
-    Rect::new(72, 520, 1072 - 144, 140)
-}
-pub fn resume_new_rect() -> Rect {
-    Rect::new(72, 700, 1072 - 144, 116)
 }
 
 #[cfg(test)]

@@ -12,9 +12,9 @@ log() { echo "[$(date -u '+%H:%M:%S')] [sh] $*" >>"$LOG"; }
 # Copia binários, chaves e scripts para /tmp (idempotente).
 stage() {
     mkdir -p "$RUN/settings/SSH"
-    cp "$H/bin/verso-ink" "$H/bin/dropbear" "$H/bin/"*.sh "$RUN/" 2>/dev/null
+    cp "$H/bin/verso-ink" "$H/bin/dropbear" "$H/bin/stockfish" "$H/bin/"*.sh "$RUN/" 2>/dev/null
     cp "$H/settings/SSH/"* "$RUN/settings/SSH/" 2>/dev/null
-    chmod +x "$RUN/verso-ink" "$RUN/dropbear" "$RUN/"*.sh
+    chmod +x "$RUN/verso-ink" "$RUN/dropbear" "$RUN/"*.sh "$RUN/stockfish" 2>/dev/null
 }
 
 # SSH próprio (porta 2223, só chave). É a linha de vida: sobe antes de tudo.

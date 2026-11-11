@@ -12,6 +12,9 @@
 mod app;
 mod apps;
 mod chess;
+mod chess_ui;
+mod coach;
+mod engine;
 mod clippings;
 mod claude_ui;
 mod clock;

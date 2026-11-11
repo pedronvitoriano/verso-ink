@@ -88,6 +88,8 @@ pub struct Framebuffer {
     marker: u32,
     /// Modo noturno: inverte os tons ao enviar para a tela (o desenho continua normal).
     pub invert: bool,
+    /// Tela de cabeça para baixo (xadrez local: vira para quem joga).
+    pub rot180: bool,
 }
 
 fn u32_at(b: &[u8], off: usize) -> u32 {
@@ -122,6 +124,7 @@ impl Framebuffer {
             buf: vec![0xFF; width as usize * height as usize],
             marker: 1,
             invert: false,
+            rot180: false,
         })
     }
 
@@ -218,19 +221,25 @@ impl Framebuffer {
         }
         let len = (x1 - x0) as usize;
         let mut row = vec![0u8; len];
+        // Com a tela girada, a região vai para o canto oposto e cada linha é espelhada.
+        let (dx0, dy0, dx1, dy1) = if self.rot180 { (self.width - x1, self.height - y1, self.width - x0, self.height - y0) } else { (x0, y0, x1, y1) };
         for y in y0..y1 {
             let src = (y * self.width + x0) as usize;
-            let off = (y as u64 + self.yoffset as u64) * self.stride as u64 + x0 as u64;
+            let dy = if self.rot180 { self.height - 1 - y } else { y };
+            let off = (dy as u64 + self.yoffset as u64) * self.stride as u64 + dx0 as u64;
             let data = &self.buf[src..src + len];
-            if self.invert {
-                for (d, s) in row.iter_mut().zip(data) {
-                    *d = 255 - *s;
-                }
-                let _ = self.file.write_all_at(&row, off);
-            } else {
-                let _ = self.file.write_all_at(data, off);
+            row.copy_from_slice(data);
+            if self.rot180 {
+                row.reverse();
             }
+            if self.invert {
+                for d in row.iter_mut() {
+                    *d = 255 - *d;
+                }
+            }
+            let _ = self.file.write_all_at(&row, off);
         }
+        let (x0, y0, x1, y1) = (dx0, dy0, dx1, dy1);
         self.marker = self.marker.wrapping_add(1).max(1);
         let mut upd = MxcfbUpdateData {
             update_region: MxcfbRect {
@@ -283,6 +292,7 @@ mod tests {
             buf: vec![0xFF; (w * h) as usize],
             marker: 1,
             invert: false,
+            rot180: false,
         }
     }
 
