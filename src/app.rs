@@ -116,6 +116,8 @@ pub struct App {
     review_k: usize,
     rng: crate::sudoku::Rng,
     mini: Option<Box<dyn crate::minigame::MiniGame>>,
+    /// Para onde o botão Início leva ao sair do minijogo/módulo.
+    mini_back: Screen,
     clips: Vec<crate::clippings::BookClips>,
     clip_page: usize,
     clip_book: usize,
@@ -205,6 +207,7 @@ impl App {
             review_k: 0,
             rng: crate::sudoku::Rng::new(),
             mini: None,
+            mini_back: Screen::Games,
             clips: Vec::new(),
             clip_page: 0,
             clip_book: 0,
@@ -366,6 +369,7 @@ impl App {
                 v.push((Header, ui::header_rect()));
                 v
             }
+            Screen::Module(Module::Mais) => vec![(Back, ui::back_rect()), (Row(0), ui::more_row(0))],
             Screen::Module(_) => vec![(Back, ui::back_rect())],
             Screen::Light => vec![
                 (Back, ui::back_rect()),
@@ -822,6 +826,10 @@ impl App {
         self.coach_level().is_none() && crate::chess::rotate_enabled() && self.chess.as_ref().is_some_and(|g| !g.pos.white_to_move)
     }
 
+    pub fn mini_awake(&self) -> bool {
+        self.screen == Screen::Mini && self.mini.as_ref().is_some_and(|g| g.keep_awake())
+    }
+
     /// Toque num minijogo: redesenha o que ele pedir e, se for a vez da CPU, joga por ela.
     fn mini_tap(&mut self, id: u32, x: i32) {
         let Some(g) = self.mini.as_mut() else { return };
@@ -1241,10 +1249,20 @@ impl App {
             (Screen::Wifi, Back) => self.go(Screen::Settings),
             (Screen::WifiPass, Back) => self.go(Screen::Wifi),
             (Screen::Mini, Back) => {
+                // Primeiro volta dentro do módulo (ex.: passo → receita → lista).
+                if self.mini.as_mut().is_some_and(|g| g.back()) {
+                    return self.render(true);
+                }
                 if let Some(g) = &self.mini {
                     g.save();
                 }
-                self.go(Screen::Games);
+                let back = self.mini_back;
+                self.go(back);
+            }
+            (Screen::Module(Module::Mais), Row(0)) => {
+                self.mini = Some(Box::new(crate::receitas::Receitas::new()));
+                self.mini_back = Screen::Module(Module::Mais);
+                self.go(Screen::Mini);
             }
             (_, Back) => self.go(Screen::Home),
             (Screen::Home, Header) => self.go(Screen::Light),
@@ -1330,6 +1348,7 @@ impl App {
                     _ => None,
                 };
                 if self.mini.is_some() {
+                    self.mini_back = Screen::Games;
                     self.go(Screen::Mini);
                 }
             }

@@ -29,6 +29,14 @@ pub trait MiniGame {
         false
     }
     fn cpu_move(&mut self) {}
+    /// A tela não deve apagar (ex.: receita aberta na cozinha).
+    fn keep_awake(&self) -> bool {
+        false
+    }
+    /// Voltar dentro do próprio módulo; `false` = sair para a tela anterior.
+    fn back(&mut self) -> bool {
+        false
+    }
 }
 
 // ---------- Desenho comum ----------

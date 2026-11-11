@@ -22,6 +22,7 @@ mod minas;
 mod nonograma;
 mod paciencia;
 mod palavra;
+mod receitas;
 mod sokoban;
 mod naval;
 mod coroas;
@@ -256,7 +257,7 @@ fn run() -> i32 {
             app.last_minute = 99;
         }
         // Repouso por inatividade (o powerd também não faz isso sem a interface da Amazon).
-        let busy = matches!(app.pomo, apps::Pomodoro::Running { .. }) || home_dir().join("settings/dev_keep_awake").exists();
+        let busy = matches!(app.pomo, apps::Pomodoro::Running { .. }) || app.mini_awake() || home_dir().join("settings/dev_keep_awake").exists();
         if app.screen != Screen::Sleep && !busy && last_touch.elapsed() >= idle_limit {
             log("inatividade: dormindo");
             go_to_sleep(&mut app, &tx);

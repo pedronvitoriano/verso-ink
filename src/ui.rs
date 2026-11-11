@@ -348,28 +348,37 @@ pub fn draw_back(fb: &mut Framebuffer, f: &Fonts, pressed: bool) {
 }
 
 /// Ideias de módulos futuros (da conversa de concepção); entram aqui conforme forem feitos.
-const COMING: [(&str, &str); 4] = [
-    ("Artigos", "Ler depois, sem distração"),
-    ("Terminal", "O Linux do Kindle na tela"),
-    ("Porta-retrato", "Fotos em tons de cinza"),
-    ("Receitas", "Aberta na cozinha, sem apagar"),
+/// Módulos do Mais: (nome, descrição, pronto?). Os prontos abrem ao toque.
+const COMING: [(&str, &str, bool); 4] = [
+    ("Receitas", "Aberta na cozinha, sem apagar", true),
+    ("Artigos", "Ler depois, sem distração", false),
+    ("Terminal", "O Linux do Kindle na tela", false),
+    ("Porta-retrato", "Fotos em tons de cinza", false),
 ];
+
+pub fn more_row(k: usize) -> Rect {
+    Rect::new(MARGIN - 16, 560 + k as i32 * 168, 1072 - 2 * MARGIN + 32, 164)
+}
 
 fn draw_more(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     fb.fill(fb.screen(), PAPER);
     draw_back(fb, f, false);
     f.draw(fb, Face::Display, 180.0, MARGIN - 6, 400, INK, "Mais");
-    f.draw(fb, Face::Strong, 40.0, MARGIN, 480, MUTED, "O que vem por aí");
-    let tag = "EM BREVE";
-    let tw = f.measure(Face::Strong, 24.0, tag);
-    for (k, (name, desc)) in COMING.iter().enumerate() {
+    f.draw(fb, Face::Strong, 40.0, MARGIN, 480, MUTED, "Módulos extras, e os que vêm por aí");
+    for (k, (name, desc, ready)) in COMING.iter().enumerate() {
+        let tag = if *ready { "ABRIR" } else { "EM BREVE" };
+        let tw = f.measure(Face::Strong, 24.0, tag);
         let y = 560 + k as i32 * 168;
         fb.fill(Rect::new(MARGIN, y, 1072 - 2 * MARGIN, 3), INK);
         f.draw(fb, Face::Display, 60.0, MARGIN, y + 86, INK, name);
         f.draw(fb, Face::Body, 32.0, MARGIN + 2, y + 136, MUTED, desc);
         let tr = Rect::new(1072 - MARGIN - tw - 44, y + 42, tw + 44, 52);
-        fb.round_outline(tr, 26, 3, INK, PAPER);
-        f.draw(fb, Face::Strong, 24.0, tr.x + 22, tr.y + 35, INK, tag);
+        if *ready {
+            fb.round_rect(tr, 26, INK);
+        } else {
+            fb.round_outline(tr, 26, 3, INK, PAPER);
+        }
+        f.draw(fb, Face::Strong, 24.0, tr.x + 22, tr.y + 35, if *ready { PAPER } else { INK }, tag);
     }
     fb.fill(Rect::new(MARGIN, 560 + 4 * 168, 1072 - 2 * MARGIN, 3), INK);
     draw_footer(fb, f, st);
