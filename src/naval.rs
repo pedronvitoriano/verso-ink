@@ -3,6 +3,7 @@
 //! Contra a CPU (caça e alvo) ou duas pessoas, passando o Kindle com uma tela de troca.
 
 use crate::fb::{Framebuffer, Rect};
+use crate::fases;
 use crate::minigame::{self, MiniGame, Redraw, Rng, MARGIN, W};
 use crate::text::{Face, Fonts};
 use crate::ui::{self, INK, MUTED, PAPER};
@@ -141,6 +142,15 @@ pub struct Naval {
     /// Posicionamento manual: próximo navio e orientação.
     placing: usize,
     horiz: bool,
+    /// Fase contra a CPU (0 = treino ou duas pessoas).
+    fase: u32,
+    practice: bool,
+    prog: fases::Progress,
+}
+
+/// Força da CPU na fase: caça em volta dos acertos (fase 4) e atira em xadrez (fase 10).
+pub fn cpu_level(k: u32) -> u8 {
+    crate::caixas::cpu_level(k)
 }
 
 const MENU: [&str; 4] = ["Contra a CPU · Fácil", "Contra a CPU · Médio", "Contra a CPU · Difícil", "Duas pessoas"];
@@ -149,7 +159,23 @@ impl Naval {
     pub fn new() -> Self {
         let mut rng = Rng::new();
         let seas = [Sea::random(&mut rng), Sea::random(&mut rng)];
-        Naval { mode: Mode::Menu, phase: Phase::Setup(0), seas, turn: 0, view_own: false, msg: String::new(), rng, placing: 0, horiz: true }
+        Naval { mode: Mode::Menu, phase: Phase::Setup(0), seas, turn: 0, view_own: false, msg: String::new(), rng, placing: 0, horiz: true, fase: 0, practice: false, prog: fases::Progress::load("naval") }
+    }
+
+    /// Começa uma partida nova mantendo o progresso das fases.
+    fn reset(&mut self, mode: Mode, fase: u32) {
+        let prog = std::mem::replace(&mut self.prog, fases::Progress::load_from(std::path::PathBuf::new()));
+        *self = Naval { mode, prog, ..Naval::new() };
+        self.fase = fase;
+        // Você posiciona a sua frota; a da CPU é sorteada.
+        self.seas[0] = Sea::empty();
+        if mode == Mode::Local {
+            self.seas[1] = Sea::empty();
+        }
+    }
+
+    fn title(&self) -> String {
+        if self.fase > 0 { fases::title(self.fase) } else { "Batalha naval".to_string() }
     }
 
     fn geom() -> (i32, i32, i32) {
@@ -188,6 +214,9 @@ impl Naval {
         };
         if sea.all_sunk() {
             self.phase = Phase::Over(p);
+            if p == 0 && self.fase > 0 {
+                self.prog.record_win(self.fase, fases::today());
+            }
         } else if k == 0 {
             self.turn = 1 - p;
             if self.mode == Mode::Local {
@@ -234,13 +263,18 @@ impl MiniGame for Naval {
     fn draw(&self, fb: &mut Framebuffer, f: &Fonts) {
         fb.fill(fb.screen(), PAPER);
         ui::draw_back(fb, f, false);
+        if self.mode == Mode::Menu && self.practice {
+            minigame::draw_menu(fb, f, "Treino", "Escolha a força da CPU. Não conta para as fases.", &MENU[..3]);
+            return;
+        }
         if self.mode == Mode::Menu {
-            minigame::draw_menu(fb, f, "Naval", "Afunde os 8 navios da frota adversária.", &MENU);
+            let main = format!("Fase {} · contra a CPU", self.prog.level);
+            fases::draw_menu(fb, f, "Naval", "Afunde os 8 navios da frota adversária.", &self.prog, &main, &["Treino contra a CPU", "Duas pessoas"]);
             return;
         }
         match self.phase {
             Phase::Handoff(p) => {
-                minigame::header(fb, f, "Batalha naval", "");
+                minigame::header(fb, f, &self.title(), "");
                 f.draw(fb, Face::Display, 90.0, MARGIN, 600, INK, &format!("Vez do {}", self.name(p)));
                 f.draw(fb, Face::Body, 38.0, MARGIN, 680, INK, "Passe o Kindle e toque em Pronto.");
                 f.draw(fb, Face::Body, 32.0, MARGIN, 740, MUTED, &self.msg);
@@ -248,7 +282,7 @@ impl MiniGame for Naval {
                 return;
             }
             Phase::SetupHandoff => {
-                minigame::header(fb, f, "Batalha naval", "");
+                minigame::header(fb, f, &self.title(), "");
                 f.draw(fb, Face::Display, 80.0, MARGIN, 600, INK, "Vez do Jogador 2");
                 f.draw(fb, Face::Body, 38.0, MARGIN, 680, INK, "Passe o Kindle para posicionar a frota.");
                 minigame::pill(fb, f, minigame::bottom_button(0, 1), "Pronto", true);
@@ -261,7 +295,7 @@ impl MiniGame for Naval {
                 } else {
                     format!("{who}{}", if who.is_empty() { "Frota pronta. Toque em Começar." } else { "frota pronta. Toque em Começar." })
                 };
-                minigame::header(fb, f, "Batalha naval", &text);
+                minigame::header(fb, f, &self.title(), &text);
             }
             _ => {
                 let status = match self.phase {
@@ -271,7 +305,7 @@ impl MiniGame for Naval {
                         format!("{} atira · {} navios inimigos", self.name(self.turn), left)
                     }
                 };
-                minigame::header(fb, f, "Batalha naval", &status);
+                minigame::header(fb, f, &self.title(), &status);
             }
         }
         let me = self.turn as usize;
@@ -284,6 +318,12 @@ impl MiniGame for Naval {
         self.draw_sea(fb, f, owner, reveal);
         let hint = if matches!(self.phase, Phase::Setup(_)) && self.placing < SHIPS.len() && self.msg.is_empty() { "Toque na casa da proa (topo ou ponta esquerda do navio)." } else { self.msg.as_str() };
         f.draw(fb, Face::Body, 28.0, MARGIN, 1250, MUTED, hint);
+        if let (Phase::Over(p), true) = (self.phase, self.fase > 0) {
+            if p == 0 {
+                return fases::draw_win(fb, f, &self.prog);
+            }
+            return fases::draw_retry(fb, f, self.fase);
+        }
         let buttons: Vec<&str> = match self.phase {
             Phase::Setup(_) => vec![if self.horiz { "Girar: deitado" } else { "Girar: em pé" }, "Sortear", "Desfazer", "Começar"],
             Phase::Over(_) => vec!["Novo jogo"],
@@ -296,8 +336,14 @@ impl MiniGame for Naval {
     }
 
     fn targets(&self) -> Vec<(u32, Rect)> {
+        if self.mode == Mode::Menu && self.practice {
+            return (0..3).map(|k| (910 + k as u32, minigame::menu_row(k))).collect();
+        }
         if self.mode == Mode::Menu {
-            return (0..MENU.len()).map(|k| (900 + k as u32, minigame::menu_row(k))).collect();
+            return (0..3).map(|k| (900 + k as u32, minigame::menu_row(k))).collect();
+        }
+        if matches!(self.phase, Phase::Over(_)) && self.fase > 0 {
+            return fases::win_targets();
         }
         match self.phase {
             Phase::Handoff(_) => vec![(810, minigame::bottom_button(0, 1))],
@@ -324,16 +370,36 @@ impl MiniGame for Naval {
         }
     }
 
+    fn back(&mut self) -> bool {
+        if self.mode == Mode::Menu && !self.practice {
+            return false;
+        }
+        self.mode = Mode::Menu;
+        self.practice = false;
+        true
+    }
+
     fn tap(&mut self, id: u32, _x: i32, _y: i32) -> Redraw {
         match id {
-            900..=903 => {
-                let mode = if id == 903 { Mode::Local } else { Mode::Cpu((id - 900) as u8) };
-                *self = Naval { mode, ..Naval::new() };
-                // Você posiciona a sua frota; a da CPU é sorteada.
-                self.seas[0] = Sea::empty();
-                if mode == Mode::Local {
-                    self.seas[1] = Sea::empty();
-                }
+            900 | fases::WIN_NEXT => {
+                let k = self.prog.level;
+                self.reset(Mode::Cpu(cpu_level(k)), k);
+                Redraw::Full
+            }
+            901 => {
+                self.practice = true;
+                Redraw::Full
+            }
+            902 => {
+                self.reset(Mode::Local, 0);
+                Redraw::Full
+            }
+            910..=912 => {
+                self.reset(Mode::Cpu((id - 910) as u8), 0);
+                Redraw::Full
+            }
+            fases::WIN_MENU => {
+                self.mode = Mode::Menu;
                 Redraw::Full
             }
             815 => {

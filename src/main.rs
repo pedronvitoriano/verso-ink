@@ -38,6 +38,7 @@ mod update;
 mod sudoku;
 mod covers;
 mod data;
+mod fases;
 mod day;
 mod today_ui;
 mod weather;

@@ -1,6 +1,7 @@
 //! Campo minado: primeiro toque sempre seguro, áreas vazias abrem sozinhas, modo bandeira.
 
 use crate::fb::{Framebuffer, Rect};
+use crate::fases;
 use crate::minigame::{self, MiniGame, Redraw, Rng, W};
 use crate::text::{Face, Fonts};
 use crate::ui::{self, INK, PAPER};
@@ -19,15 +20,71 @@ pub struct Minas {
     lost: Option<usize>,
     won: bool,
     started: std::time::Instant,
+    /// Fase em jogo (0 = treino livre).
+    fase: u32,
+    practice: bool,
+    prog: fases::Progress,
+}
+
+/// Tamanho e minas da fase: cresce devagar; difícil e desafio são maiores e mais densos.
+fn fase_params(k: u32) -> (usize, usize) {
+    let mut n = (8 + (k.saturating_sub(1) / 3) as usize).min(13);
+    let mut d = 0.12 + 0.04 * fases::ramp(k, 30);
+    match fases::kind(k) {
+        fases::Kind::Hard => {
+            n = (n + 1).min(14);
+            d += 0.025;
+        }
+        fases::Kind::Challenge => {
+            n = (n + 2).min(14);
+            d += 0.04;
+        }
+        fases::Kind::Normal => {}
+    }
+    (n, ((n * n) as f32 * d).round() as usize)
 }
 
 impl Minas {
     pub fn new() -> Self {
-        Minas { menu: true, n: 0, mines: 0, mine: vec![], open: vec![], flag: vec![], placed: false, flag_mode: false, lost: None, won: false, started: std::time::Instant::now() }
+        Minas {
+            menu: true,
+            n: 0,
+            mines: 0,
+            mine: vec![],
+            open: vec![],
+            flag: vec![],
+            placed: false,
+            flag_mode: false,
+            lost: None,
+            won: false,
+            started: std::time::Instant::now(),
+            fase: 0,
+            practice: false,
+            prog: fases::Progress::load("minas"),
+        }
     }
 
     fn start(&mut self, n: usize, mines: usize) {
-        *self = Minas { menu: false, n, mines, mine: vec![false; n * n], open: vec![false; n * n], flag: vec![false; n * n], placed: false, flag_mode: flag_pref(), lost: None, won: false, started: std::time::Instant::now() };
+        self.menu = false;
+        self.practice = false;
+        self.n = n;
+        self.mines = mines;
+        self.mine = vec![false; n * n];
+        self.open = vec![false; n * n];
+        self.flag = vec![false; n * n];
+        self.placed = false;
+        self.flag_mode = flag_pref();
+        self.lost = None;
+        self.won = false;
+        self.started = std::time::Instant::now();
+        self.fase = 0;
+    }
+
+    fn start_fase(&mut self) {
+        let k = self.prog.level;
+        let (n, m) = fase_params(k);
+        self.start(n, m);
+        self.fase = k;
     }
 
     fn neighbors(&self, i: usize) -> Vec<usize> {
@@ -115,6 +172,9 @@ impl Minas {
         }
         self.reveal(i);
         self.won = (0..self.n * self.n).all(|j| self.mine[j] || self.open[j]);
+        if self.won && self.fase > 0 {
+            self.prog.record_win(self.fase, fases::today());
+        }
         if self.won { Redraw::Full } else { Redraw::Part(Rect::new(0, 170, W, 1448 - 170)) }
     }
 }
@@ -123,9 +183,14 @@ impl MiniGame for Minas {
     fn draw(&self, fb: &mut Framebuffer, f: &Fonts) {
         fb.fill(fb.screen(), PAPER);
         ui::draw_back(fb, f, false);
-        if self.menu {
+        if self.menu && self.practice {
             let opts: Vec<&str> = LEVELS.iter().map(|l| l.2).collect();
-            minigame::draw_menu(fb, f, "Minas", "Abra tudo que não é mina. Números contam as vizinhas.", &opts);
+            minigame::draw_menu(fb, f, "Treino", "Escolha o tamanho. Não conta para as fases.", &opts);
+            return;
+        }
+        if self.menu {
+            let main = format!("Fase {}", self.prog.level);
+            fases::draw_menu(fb, f, "Minas", "Abra tudo que não é mina. Números contam as vizinhas.", &self.prog, &main, &["Treino livre"]);
             return;
         }
         let flags = self.flag.iter().filter(|&&x| x).count();
@@ -136,7 +201,8 @@ impl MiniGame for Minas {
         } else {
             format!("{} minas · {} bandeira{}", self.mines, flags, if flags == 1 { "" } else { "s" })
         };
-        minigame::header(fb, f, "Campo minado", &status);
+        let title = if self.fase > 0 { fases::title(self.fase) } else { "Campo minado".to_string() };
+        minigame::header(fb, f, &title, &status);
         let (_, _, s) = self.geom();
         let size = s as f32 * 0.6;
         for i in 0..self.n * self.n {
@@ -169,15 +235,27 @@ impl MiniGame for Minas {
                 }
             }
         }
+        if self.fase > 0 && self.won {
+            return fases::draw_win(fb, f, &self.prog);
+        }
+        if self.fase > 0 && self.lost.is_some() {
+            return fases::draw_retry(fb, f, self.fase);
+        }
         let mode = if self.flag_mode { "Toque: bandeira" } else { "Toque: abrir" };
         minigame::pill(fb, f, minigame::bottom_button(0, 2), mode, self.flag_mode);
-        minigame::pill(fb, f, minigame::bottom_button(1, 2), "Novo jogo", false);
+        minigame::pill(fb, f, minigame::bottom_button(1, 2), if self.fase > 0 { "Menu" } else { "Novo jogo" }, false);
         minigame::hint(fb, f, if self.flag_mode { "Segure uma casa para abrir." } else { "Segure uma casa para pôr ou tirar bandeira." });
     }
 
     fn targets(&self) -> Vec<(u32, Rect)> {
+        if self.menu && self.practice {
+            return (0..LEVELS.len()).map(|k| (910 + k as u32, minigame::menu_row(k))).collect();
+        }
         if self.menu {
-            return (0..LEVELS.len()).map(|k| (900 + k as u32, minigame::menu_row(k))).collect();
+            return vec![(900, minigame::menu_row(0)), (901, minigame::menu_row(1))];
+        }
+        if self.fase > 0 && (self.won || self.lost.is_some()) {
+            return fases::win_targets();
         }
         let mut v = vec![(800u32, minigame::bottom_button(0, 2)), (801, minigame::bottom_button(1, 2))];
         if self.lost.is_none() && !self.won {
@@ -187,6 +265,15 @@ impl MiniGame for Minas {
     }
 
     /// Segurar faz o contrário do toque: abre no modo bandeira, marca no modo abrir.
+    fn back(&mut self) -> bool {
+        if self.menu && !self.practice {
+            return false;
+        }
+        self.menu = true;
+        self.practice = false;
+        true
+    }
+
     fn hold(&mut self, id: u32) -> Option<Redraw> {
         let i = id as usize;
         if self.menu || self.lost.is_some() || self.won || i >= self.n * self.n {
@@ -198,8 +285,21 @@ impl MiniGame for Minas {
     fn tap(&mut self, id: u32, _x: i32, _y: i32) -> Redraw {
         let all = Rect::new(0, 170, W, 1448 - 170);
         match id {
-            900..=902 => {
-                let (n, m, _) = LEVELS[(id - 900) as usize];
+            900 | fases::WIN_NEXT => {
+                // Vitória já avançou a fase; derrota repete a mesma.
+                self.start_fase();
+                Redraw::Full
+            }
+            901 => {
+                self.practice = true;
+                Redraw::Full
+            }
+            fases::WIN_MENU => {
+                self.menu = true;
+                Redraw::Full
+            }
+            910..=912 => {
+                let (n, m, _) = LEVELS[(id - 910) as usize];
                 self.start(n, m);
                 Redraw::Full
             }
@@ -224,6 +324,26 @@ impl MiniGame for Minas {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn vencer_a_fase_avanca() {
+        let file = std::env::temp_dir().join(format!("minas-fase-{}.txt", std::process::id()));
+        let mut g = Minas { prog: fases::Progress::load_from(file.clone()), ..Minas::new() };
+        g.tap(900, 0, 0);
+        assert_eq!((g.fase, g.n), (1, fase_params(1).0));
+        g.tap(0, 0, 0);
+        for i in 0..g.n * g.n {
+            if !g.mine[i] && !g.open[i] {
+                g.tap(i as u32, 0, 0);
+            }
+        }
+        assert!(g.won);
+        assert_eq!(g.prog.level, 2);
+        assert_eq!(fases::Progress::load_from(file.clone()).level, 2);
+        assert_eq!(g.targets().len(), 2); // Menu e Fase 2
+        g.tap(fases::WIN_NEXT, 0, 0);
+        assert_eq!(g.fase, 2);
+        let _ = std::fs::remove_file(file);
+    }
     #[test]
     fn primeiro_toque_seguro_e_abre_vazio() {
         let mut g = Minas::new();

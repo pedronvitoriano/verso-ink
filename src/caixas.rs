@@ -2,6 +2,7 @@
 //! Contra a CPU (gulosa e cuidadosa com o terceiro lado) ou duas pessoas.
 
 use crate::fb::{Framebuffer, Rect};
+use crate::fases;
 use crate::minigame::{self, MiniGame, Redraw, Rng, MARGIN, W};
 use crate::text::{Face, Fonts};
 use crate::ui::{self, INK, PAPER};
@@ -24,6 +25,19 @@ pub struct Caixas {
     turn: u8,
     last: Option<usize>,
     rng: Rng,
+    /// Fase contra a CPU (0 = treino ou duas pessoas).
+    fase: u32,
+    practice: bool,
+    prog: fases::Progress,
+}
+
+/// Força da CPU na fase: aprende a não entregar caixas (fase 4) e a ceder o mínimo (fase 10).
+pub fn cpu_level(k: u32) -> u8 {
+    match fases::kind(k) {
+        fases::Kind::Normal if k <= 3 => 0,
+        fases::Kind::Normal if k <= 9 => 1,
+        _ => 2,
+    }
 }
 
 const MENU: [&str; 4] = ["Contra a CPU · Fácil", "Contra a CPU · Médio", "Contra a CPU · Difícil", "Duas pessoas"];
@@ -55,7 +69,22 @@ fn sides(edges: &[bool; E], r: usize, c: usize) -> usize {
 
 impl Caixas {
     pub fn new() -> Self {
-        Caixas { mode: Mode::Menu, edges: [false; E], owner: [0; N * N], turn: 1, last: None, rng: Rng::new() }
+        Caixas { mode: Mode::Menu, edges: [false; E], owner: [0; N * N], turn: 1, last: None, rng: Rng::new(), fase: 0, practice: false, prog: fases::Progress::load("caixas") }
+    }
+
+    fn reset(&mut self, mode: Mode, fase: u32) {
+        self.mode = mode;
+        self.edges = [false; E];
+        self.owner = [0; N * N];
+        self.last = None;
+        self.practice = false;
+        self.fase = fase;
+        // No desafio, a CPU começa.
+        self.turn = if fase > 0 && fases::kind(fase) == fases::Kind::Challenge { 2 } else { 1 };
+    }
+
+    fn won_fase(&self) -> bool {
+        self.fase > 0 && self.over() && self.score(1) > self.score(2)
     }
 
     fn geom() -> (i32, i32, i32) {
@@ -86,6 +115,14 @@ impl Caixas {
 
     /// Marca a linha; devolve quantas caixas fechou (e passa a vez se nenhuma).
     fn play(&mut self, e: usize) -> usize {
+        let closed = self.play_inner(e);
+        if self.won_fase() {
+            self.prog.record_win(self.fase, fases::today());
+        }
+        closed
+    }
+
+    fn play_inner(&mut self, e: usize) -> usize {
         if self.edges[e] {
             return 0;
         }
@@ -135,8 +172,13 @@ impl MiniGame for Caixas {
     fn draw(&self, fb: &mut Framebuffer, f: &Fonts) {
         fb.fill(fb.screen(), PAPER);
         ui::draw_back(fb, f, false);
+        if self.mode == Mode::Menu && self.practice {
+            minigame::draw_menu(fb, f, "Treino", "Escolha a força da CPU. Não conta para as fases.", &MENU[..3]);
+            return;
+        }
         if self.mode == Mode::Menu {
-            minigame::draw_menu(fb, f, "Caixas", "Feche o quarto lado e jogue de novo.", &MENU);
+            let main = format!("Fase {} · contra a CPU", self.prog.level);
+            fases::draw_menu(fb, f, "Caixas", "Feche o quarto lado e jogue de novo.", &self.prog, &main, &["Treino contra a CPU", "Duas pessoas"]);
             return;
         }
         let (a, b) = self.names();
@@ -151,7 +193,8 @@ impl MiniGame for Caixas {
             let who = if self.turn == 1 { a } else { b };
             format!("{a} {sa} × {sb} {b} · vez de: {who}")
         };
-        minigame::header(fb, f, "Pontos e caixas", &status);
+        let title = if self.fase > 0 { fases::title(self.fase) } else { "Pontos e caixas".to_string() };
+        minigame::header(fb, f, &title, &status);
         let (x0, y0, s) = Self::geom();
         // Caixas fechadas: jogador 1 em preto, jogador 2 em cinza.
         for r in 0..N {
@@ -184,13 +227,25 @@ impl MiniGame for Caixas {
                 fb.round_rect(Rect::new(x - 11, y - 11, 22, 22), 11, INK);
             }
         }
+        if self.won_fase() {
+            return fases::draw_win(fb, f, &self.prog);
+        }
+        if self.fase > 0 && self.over() {
+            return fases::draw_retry(fb, f, self.fase);
+        }
         minigame::hint(fb, f, "Toque entre dois pontos para traçar a linha.");
-        minigame::pill(fb, f, minigame::bottom_button(0, 1), "Novo jogo", false);
+        minigame::pill(fb, f, minigame::bottom_button(0, 1), if self.fase > 0 { "Menu" } else { "Novo jogo" }, false);
     }
 
     fn targets(&self) -> Vec<(u32, Rect)> {
+        if self.mode == Mode::Menu && self.practice {
+            return (0..3).map(|k| (910 + k as u32, minigame::menu_row(k))).collect();
+        }
         if self.mode == Mode::Menu {
-            return (0..MENU.len()).map(|k| (900 + k as u32, minigame::menu_row(k))).collect();
+            return (0..3).map(|k| (900 + k as u32, minigame::menu_row(k))).collect();
+        }
+        if self.fase > 0 && self.over() {
+            return fases::win_targets();
         }
         let mut v = vec![(800u32, minigame::bottom_button(0, 1))];
         let my_turn = !matches!(self.mode, Mode::Cpu(_)) || self.turn == 1;
@@ -202,12 +257,24 @@ impl MiniGame for Caixas {
 
     fn tap(&mut self, id: u32, _x: i32, _y: i32) -> Redraw {
         match id {
-            900..=903 => {
-                let mode = if id == 903 { Mode::Local } else { Mode::Cpu((id - 900) as u8) };
-                *self = Caixas { mode, ..Caixas::new() };
+            900 | fases::WIN_NEXT => {
+                let k = self.prog.level;
+                self.reset(Mode::Cpu(cpu_level(k)), k);
                 Redraw::Full
             }
-            800 => {
+            901 => {
+                self.practice = true;
+                Redraw::Full
+            }
+            902 => {
+                self.reset(Mode::Local, 0);
+                Redraw::Full
+            }
+            910..=912 => {
+                self.reset(Mode::Cpu((id - 910) as u8), 0);
+                Redraw::Full
+            }
+            800 | fases::WIN_MENU => {
                 self.mode = Mode::Menu;
                 Redraw::Full
             }
@@ -217,6 +284,15 @@ impl MiniGame for Caixas {
             }
             _ => Redraw::None,
         }
+    }
+
+    fn back(&mut self) -> bool {
+        if self.mode == Mode::Menu && !self.practice {
+            return false;
+        }
+        self.mode = Mode::Menu;
+        self.practice = false;
+        true
     }
 
     fn cpu_turn(&self) -> bool {

@@ -2,6 +2,7 @@
 //! puxando para trás), então toda fase tem solução. Controles: setas na tela.
 
 use crate::fb::{Framebuffer, Rect};
+use crate::fases;
 use crate::minigame::{self, MiniGame, Redraw, Rng, MARGIN, W};
 use crate::text::{Face, Fonts};
 use crate::ui::{self, INK, MUTED, PAPER};
@@ -24,6 +25,25 @@ pub struct Sokoban {
     history: Vec<State>,
     moves: usize,
     level: usize,
+    /// Fase em jogo (0 = treino livre).
+    fase: u32,
+    practice: bool,
+    prog: fases::Progress,
+}
+
+/// Caixas e quantos puxões para trás (mais puxões = caixas mais longe dos alvos).
+fn fase_params(k: u32) -> (usize, usize) {
+    let mut boxes = (2 + (k.saturating_sub(1) / 6) as usize).min(4);
+    let mut pulls = 16 + (44.0 * fases::ramp(k, 30)) as usize;
+    match fases::kind(k) {
+        fases::Kind::Hard => boxes = (boxes + 1).min(5),
+        fases::Kind::Challenge => {
+            boxes = (boxes + 1).min(5);
+            pulls = pulls * 3 / 2;
+        }
+        fases::Kind::Normal => {}
+    }
+    (boxes, pulls)
 }
 
 const DIRS: [(i32, i32); 4] = [(-1, 0), (1, 0), (0, -1), (0, 1)];
@@ -105,13 +125,44 @@ fn generate(boxes_n: usize, pulls: usize) -> (Vec<bool>, Vec<bool>, State) {
 
 impl Sokoban {
     pub fn new() -> Self {
-        Sokoban { menu: true, wall: vec![], goal: vec![], start: State { player: 0, boxes: vec![] }, s: State { player: 0, boxes: vec![] }, history: vec![], moves: 0, level: 0 }
+        Sokoban {
+            menu: true,
+            wall: vec![],
+            goal: vec![],
+            start: State { player: 0, boxes: vec![] },
+            s: State { player: 0, boxes: vec![] },
+            history: vec![],
+            moves: 0,
+            level: 0,
+            fase: 0,
+            practice: false,
+            prog: fases::Progress::load("sokoban"),
+        }
     }
 
     fn begin(&mut self, level: usize) {
         let (n, pulls, _) = LEVELS[level];
+        self.load(n, pulls);
+        self.level = level;
+        self.fase = 0;
+    }
+
+    fn start_fase(&mut self) {
+        let (n, pulls) = fase_params(self.prog.level);
+        self.load(n, pulls);
+        self.fase = self.prog.level;
+    }
+
+    fn load(&mut self, n: usize, pulls: usize) {
         let (wall, goal, s) = generate(n, pulls);
-        *self = Sokoban { menu: false, wall, goal, start: s.clone(), s, history: vec![], moves: 0, level };
+        self.menu = false;
+        self.practice = false;
+        self.wall = wall;
+        self.goal = goal;
+        self.start = s.clone();
+        self.s = s;
+        self.history.clear();
+        self.moves = 0;
     }
 
     fn won(&self) -> bool {
@@ -160,13 +211,19 @@ impl MiniGame for Sokoban {
     fn draw(&self, fb: &mut Framebuffer, f: &Fonts) {
         fb.fill(fb.screen(), PAPER);
         ui::draw_back(fb, f, false);
-        if self.menu {
+        if self.menu && self.practice {
             let opts: Vec<&str> = LEVELS.iter().map(|l| l.2).collect();
-            minigame::draw_menu(fb, f, "Sokoban", "Empurre cada caixa até um alvo. Só dá para empurrar.", &opts);
+            minigame::draw_menu(fb, f, "Treino", "Escolha quantas caixas. Não conta para as fases.", &opts);
+            return;
+        }
+        if self.menu {
+            let main = format!("Fase {}", self.prog.level);
+            fases::draw_menu(fb, f, "Sokoban", "Empurre cada caixa até um alvo. Só dá para empurrar.", &self.prog, &main, &["Treino livre"]);
             return;
         }
         let status = if self.won() { format!("Resolvido em {} passos!", self.moves) } else { format!("{} passos", self.moves) };
-        minigame::header(fb, f, "Sokoban", &status);
+        let title = if self.fase > 0 { fases::title(self.fase) } else { "Sokoban".to_string() };
+        minigame::header(fb, f, &title, &status);
         for i in 0..N * N {
             let r = Self::cell(i);
             if self.wall[i] {
@@ -201,6 +258,10 @@ impl MiniGame for Sokoban {
             ui::stroke(fb, tip, (tip.0 - dx * 18.0 - dy * 18.0, tip.1 - dy * 18.0 - dx * 18.0), 7.0, INK);
             ui::stroke(fb, tip, (tip.0 - dx * 18.0 + dy * 18.0, tip.1 - dy * 18.0 + dx * 18.0), 7.0, INK);
         }
+        if self.fase > 0 && self.won() {
+            // As setas ficam; o rodapé vira o da fase.
+            return fases::draw_win(fb, f, &self.prog);
+        }
         let labels = if self.won() { vec!["Próxima fase"] } else { vec!["Desfazer", "Recomeçar"] };
         for (k, l) in labels.iter().enumerate() {
             let r = Rect::new(if k == 0 { MARGIN - 30 } else { W - MARGIN - 230 }, 1340, 260, 90);
@@ -210,8 +271,14 @@ impl MiniGame for Sokoban {
     }
 
     fn targets(&self) -> Vec<(u32, Rect)> {
+        if self.menu && self.practice {
+            return (0..LEVELS.len()).map(|k| (910 + k as u32, minigame::menu_row(k))).collect();
+        }
         if self.menu {
-            return (0..LEVELS.len()).map(|k| (900 + k as u32, minigame::menu_row(k))).collect();
+            return vec![(900, minigame::menu_row(0)), (901, minigame::menu_row(1))];
+        }
+        if self.fase > 0 && self.won() {
+            return fases::win_targets();
         }
         let btn = |k: usize| Rect::new(if k == 0 { MARGIN - 30 } else { W - MARGIN - 230 }, 1340, 260, 90);
         if self.won() {
@@ -223,14 +290,38 @@ impl MiniGame for Sokoban {
         v
     }
 
+    fn back(&mut self) -> bool {
+        if self.menu && !self.practice {
+            return false;
+        }
+        self.menu = true;
+        self.practice = false;
+        true
+    }
+
     fn tap(&mut self, id: u32, _x: i32, _y: i32) -> Redraw {
         match id {
-            900..=902 => {
-                self.begin((id - 900) as usize);
+            900 | fases::WIN_NEXT => {
+                self.start_fase();
+                Redraw::Full
+            }
+            901 => {
+                self.practice = true;
+                Redraw::Full
+            }
+            fases::WIN_MENU => {
+                self.menu = true;
+                Redraw::Full
+            }
+            910..=912 => {
+                self.begin((id - 910) as usize);
                 Redraw::Full
             }
             810..=813 => {
                 if self.walk(DIRS[(id - 810) as usize]) {
+                    if self.won() && self.fase > 0 {
+                        self.prog.record_win(self.fase, fases::today());
+                    }
                     if self.won() { Redraw::Full } else { Redraw::Part(Rect::new(0, 170, W, 270 + 92 * N as i32 - 170)) }
                 } else {
                     Redraw::None
@@ -262,6 +353,16 @@ impl MiniGame for Sokoban {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn fases_geram_rapido() {
+        for k in [1, 10, 15, 20, 30, 40] {
+            let t = std::time::Instant::now();
+            let (n, p) = fase_params(k);
+            let (_, goal, _) = generate(n, p);
+            assert_eq!(goal.iter().filter(|&&g| g).count(), n);
+            eprintln!("fase {k}: {n} caixas, {p} puxões, {:?}", t.elapsed());
+        }
+    }
     #[test]
     fn fase_gerada_tem_caixas_fora_e_dentro_da_sala() {
         let (wall, goal, s) = generate(3, 30);

@@ -1,6 +1,7 @@
 //! Lig 4: quatro em linha numa grade 7×6. Contra a CPU (minimax com poda) ou duas pessoas.
 
 use crate::fb::{Framebuffer, Rect};
+use crate::fases;
 use crate::minigame::{self, MiniGame, Redraw, Rng, W};
 use crate::text::Fonts;
 use crate::ui::{self, INK, MUTED, PAPER};
@@ -23,6 +24,10 @@ pub struct Lig4 {
     moves: Vec<usize>,
     winner: Option<(u8, Vec<(usize, usize)>)>,
     rng: Rng,
+    /// Fase contra a CPU (0 = treino ou duas pessoas).
+    fase: u32,
+    practice: bool,
+    prog: fases::Progress,
 }
 
 const MENU: [&str; 4] = ["Contra a CPU · Fácil", "Contra a CPU · Médio", "Contra a CPU · Difícil", "Duas pessoas"];
@@ -107,7 +112,34 @@ fn negamax(b: &mut [[u8; COLS]; ROWS], depth: u8, mut a: i32, beta: i32, me: u8)
 
 impl Lig4 {
     pub fn new() -> Self {
-        Lig4 { mode: Mode::Menu, b: [[0; COLS]; ROWS], turn: 1, moves: Vec::new(), winner: None, rng: Rng::new() }
+        Lig4 { mode: Mode::Menu, b: [[0; COLS]; ROWS], turn: 1, moves: Vec::new(), winner: None, rng: Rng::new(), fase: 0, practice: false, prog: fases::Progress::load("lig4") }
+    }
+
+    fn reset(&mut self, mode: Mode, fase: u32) {
+        self.mode = mode;
+        self.b = [[0; COLS]; ROWS];
+        self.moves.clear();
+        self.winner = None;
+        self.practice = false;
+        self.fase = fase;
+        // No desafio, a CPU começa.
+        self.turn = if fase > 0 && fases::kind(fase) == fases::Kind::Challenge { 2 } else { 1 };
+    }
+
+    /// Profundidade da busca e chance (%) de jogar ao acaso.
+    fn strength(&self) -> (u8, u64) {
+        if self.fase == 0 {
+            let Mode::Cpu(level) = self.mode else { return (2, 0) };
+            return [(2, 33), (4, 0), (7, 0)][level as usize];
+        }
+        let k = self.fase;
+        let depth = (1 + k / 2).min(7) as u8;
+        let random = 40u64.saturating_sub(4 * k as u64);
+        match fases::kind(k) {
+            fases::Kind::Normal => (depth, random),
+            fases::Kind::Hard => ((depth + 1).min(8), 0),
+            fases::Kind::Challenge => (9, 0),
+        }
     }
 
     fn geom() -> (i32, i32, i32) {
@@ -124,6 +156,9 @@ impl Lig4 {
         self.b[r][c] = self.turn;
         self.moves.push(c);
         self.winner = winner(&self.b);
+        if self.fase > 0 && self.winner.as_ref().is_some_and(|w| w.0 == 1) {
+            self.prog.record_win(self.fase, fases::today());
+        }
         self.turn = 3 - self.turn;
         true
     }
@@ -158,11 +193,17 @@ impl MiniGame for Lig4 {
     fn draw(&self, fb: &mut Framebuffer, f: &Fonts) {
         fb.fill(fb.screen(), PAPER);
         ui::draw_back(fb, f, false);
-        if self.mode == Mode::Menu {
-            minigame::draw_menu(fb, f, "Lig 4", "Quatro em linha: deitado, em pé ou na diagonal.", &MENU);
+        if self.mode == Mode::Menu && self.practice {
+            minigame::draw_menu(fb, f, "Treino", "Escolha a força da CPU. Não conta para as fases.", &MENU[..3]);
             return;
         }
-        minigame::header(fb, f, "Lig 4", &self.status());
+        if self.mode == Mode::Menu {
+            let main = format!("Fase {} · contra a CPU", self.prog.level);
+            fases::draw_menu(fb, f, "Lig 4", "Quatro em linha: deitado, em pé ou na diagonal.", &self.prog, &main, &["Treino contra a CPU", "Duas pessoas"]);
+            return;
+        }
+        let title = if self.fase > 0 { fases::title(self.fase) } else { "Lig 4".to_string() };
+        minigame::header(fb, f, &title, &self.status());
         let (x0, y0, s) = Self::geom();
         let board = Rect::new(x0 - 10, y0 - 10, s * COLS as i32 + 20, s * ROWS as i32 + 20);
         fb.round_rect(board, 24, 0x99);
@@ -192,14 +233,29 @@ impl MiniGame for Lig4 {
             ui::stroke(fb, (cx - 16.0, y), (cx, y + 18.0), 5.0, MUTED);
             ui::stroke(fb, (cx + 16.0, y), (cx, y + 18.0), 5.0, MUTED);
         }
-        for (k, l) in ["Desfazer", "Novo jogo"].iter().enumerate() {
+        if self.fase > 0 && self.winner.as_ref().is_some_and(|w| w.0 == 1) {
+            return fases::draw_win(fb, f, &self.prog);
+        }
+        if self.fase > 0 && (self.winner.is_some() || self.full()) {
+            return fases::draw_retry(fb, f, self.fase);
+        }
+        // Na fase não há desfazer: o botão recomeça a partida.
+        let first = if self.fase > 0 { "Recomeçar" } else { "Desfazer" };
+        let second = if self.fase > 0 { "Menu" } else { "Novo jogo" };
+        for (k, l) in [first, second].iter().enumerate() {
             minigame::pill(fb, f, minigame::bottom_button(k, 2), l, false);
         }
     }
 
     fn targets(&self) -> Vec<(u32, Rect)> {
+        if self.mode == Mode::Menu && self.practice {
+            return (0..3).map(|k| (910 + k as u32, minigame::menu_row(k))).collect();
+        }
         if self.mode == Mode::Menu {
-            return (0..MENU.len()).map(|k| (900 + k as u32, minigame::menu_row(k))).collect();
+            return (0..3).map(|k| (900 + k as u32, minigame::menu_row(k))).collect();
+        }
+        if self.fase > 0 && (self.winner.is_some() || self.full()) {
+            return fases::win_targets();
         }
         let mut v: Vec<(u32, Rect)> = (0..2).map(|k| (800 + k as u32, minigame::bottom_button(k, 2))).collect();
         let my_turn = !matches!(self.mode, Mode::Cpu(_)) || self.turn == 1;
@@ -211,9 +267,30 @@ impl MiniGame for Lig4 {
 
     fn tap(&mut self, id: u32, _x: i32, _y: i32) -> Redraw {
         match id {
-            900..=903 => {
-                let mode = if id == 903 { Mode::Local } else { Mode::Cpu((id - 900) as u8) };
-                *self = Lig4 { mode, ..Lig4::new() };
+            900 | fases::WIN_NEXT => {
+                let k = self.prog.level;
+                self.reset(Mode::Cpu(1), k);
+                Redraw::Full
+            }
+            901 => {
+                self.practice = true;
+                Redraw::Full
+            }
+            902 => {
+                self.reset(Mode::Local, 0);
+                Redraw::Full
+            }
+            fases::WIN_MENU => {
+                self.mode = Mode::Menu;
+                Redraw::Full
+            }
+            910..=912 => {
+                self.reset(Mode::Cpu((id - 910) as u8), 0);
+                Redraw::Full
+            }
+            800 if self.fase > 0 => {
+                let k = self.fase;
+                self.reset(Mode::Cpu(1), k);
                 Redraw::Full
             }
             800 => {
@@ -245,15 +322,26 @@ impl MiniGame for Lig4 {
         }
     }
 
+    fn back(&mut self) -> bool {
+        if self.mode == Mode::Menu && !self.practice {
+            return false;
+        }
+        self.mode = Mode::Menu;
+        self.practice = false;
+        true
+    }
+
     fn cpu_turn(&self) -> bool {
         matches!(self.mode, Mode::Cpu(_)) && self.turn == 2 && self.winner.is_none() && !self.full()
     }
 
     fn cpu_move(&mut self) {
-        let Mode::Cpu(level) = self.mode else { return };
-        let depth = [2u8, 4, 7][level as usize];
-        // No fácil, às vezes joga ao acaso.
-        if level == 0 && self.rng.next() % 3 == 0 {
+        if !matches!(self.mode, Mode::Cpu(_)) {
+            return;
+        }
+        let (depth, random) = self.strength();
+        // Nas fases iniciais (e no treino fácil), às vezes joga ao acaso.
+        if random > 0 && self.rng.next() % 100 < random {
             let cols: Vec<usize> = (0..COLS).filter(|&c| drop_row(&self.b, c).is_some()).collect();
             let c = cols[(self.rng.next() % cols.len() as u64) as usize];
             self.play(c);
@@ -289,5 +377,22 @@ mod tests {
         g.turn = 2;
         g.cpu_move();
         assert_eq!(g.b[2][0], 2);
+    }
+}
+
+#[cfg(test)]
+mod tempo {
+    use super::*;
+    #[test]
+    #[ignore]
+    fn tempo_da_cpu_por_profundidade() {
+        for k in [1u32, 10, 15, 20] {
+            let mut g = Lig4::new();
+            g.reset(Mode::Cpu(1), k);
+            g.turn = 2;
+            let t = std::time::Instant::now();
+            g.cpu_move();
+            eprintln!("fase {k} {:?}: {:?}", g.strength(), t.elapsed());
+        }
     }
 }

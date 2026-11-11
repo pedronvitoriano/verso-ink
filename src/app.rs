@@ -121,6 +121,8 @@ pub struct App {
     sudoku: Option<crate::sudoku::Game>,
     sudoku_note: String,
     sudoku_won: (u64, bool),
+    sudoku_practice: bool,
+    sudoku_prog: crate::fases::Progress,
     chess: Option<crate::chess::Game>,
     sprites: Option<crate::chess::Sprites>,
     engine: Option<crate::engine::Engine>,
@@ -213,6 +215,8 @@ impl App {
             sudoku: None,
             sudoku_note: String::new(),
             sudoku_won: (0, false),
+            sudoku_practice: false,
+            sudoku_prog: crate::fases::Progress::load("sudoku"),
             chess: None,
             sprites: None,
             engine: None,
@@ -283,7 +287,7 @@ impl App {
                 let c = crate::chess::Game::load().filter(|g| !g.history.is_empty()).map(|g| format!("Partida em andamento · {} lances", g.history.len()));
                 apps::draw_games(fb, f, s, c);
             }
-            Screen::SudokuMenu => crate::sudoku::draw_resume(fb, f, crate::sudoku::Game::load().filter(|g| !g.solved()).as_ref()),
+            Screen::SudokuMenu => crate::sudoku::draw_resume(fb, f, crate::sudoku::Game::load().filter(|g| !g.solved()).as_ref(), &self.sudoku_prog, self.sudoku_practice),
             Screen::Sudoku => {
                 if let Some(g) = &self.sudoku {
                     crate::sudoku::draw_board(fb, f, g, &self.sudoku_note);
@@ -291,7 +295,7 @@ impl App {
             }
             Screen::SudokuWon => {
                 if let Some(g) = &self.sudoku {
-                    crate::sudoku::draw_won(fb, f, g, self.sudoku_won.0, self.sudoku_won.1);
+                    crate::sudoku::draw_won(fb, f, g, self.sudoku_won.0, self.sudoku_won.1, &self.sudoku_prog);
                 }
             }
             Screen::ChessHub => {
@@ -508,8 +512,10 @@ impl App {
             }
             Screen::SudokuMenu => {
                 let mut v = vec![(Back, ui::back_rect())];
-                v.extend((0..3).map(|k| (Level(k), crate::sudoku::resume_level_rect(k))));
-                if crate::sudoku::Game::load().is_some_and(|g| !g.solved()) {
+                let n = if self.sudoku_practice { 3 } else { 2 };
+                let saved = !self.sudoku_practice && crate::sudoku::Game::load().is_some_and(|g| !g.solved());
+                v.extend((0..n).map(|k| (Level(k), crate::sudoku::resume_level_rect(k, saved))));
+                if saved {
                     v.push((Continue, crate::sudoku::continue_rect()));
                 }
                 v
@@ -863,9 +869,12 @@ impl App {
         if !won {
             return self.redraw_sudoku_grid();
         }
-        let (lv, secs, hints) = self.sudoku.as_ref().map(|g| (g.level, g.seconds(), g.hints)).unwrap();
-        // Recorde só vale sem dicas.
-        let rec = hints == 0 && crate::sudoku::submit_record(lv, secs);
+        let (lv, secs, hints, fase) = self.sudoku.as_ref().map(|g| (g.level, g.seconds(), g.hints, g.fase)).unwrap();
+        if fase > 0 {
+            self.sudoku_prog.record_win(fase, crate::fases::today());
+        }
+        // Recorde (por nível) só vale no treino e sem dicas.
+        let rec = fase == 0 && hints == 0 && crate::sudoku::submit_record(lv, secs);
         crate::sudoku::Game::clear_saved();
         log(&format!("sudoku {} resolvido em {} s (recorde: {rec})", lv.name(), secs));
         self.sudoku_won = (secs, rec);
@@ -873,11 +882,18 @@ impl App {
     }
 
     fn start_sudoku(&mut self, lv: crate::sudoku::Level) {
-        let t = Instant::now();
-        let g = crate::sudoku::Game::new(lv);
-        log(&format!("sudoku {} gerado em {} ms", lv.name(), t.elapsed().as_millis()));
-        g.save();
         crate::sudoku::set_last_level(lv);
+        self.begin_sudoku(crate::sudoku::Game::new(lv));
+    }
+
+    fn start_sudoku_fase(&mut self) {
+        self.sudoku_prog = crate::fases::Progress::load("sudoku");
+        self.begin_sudoku(crate::sudoku::Game::new_fase(self.sudoku_prog.level));
+    }
+
+    fn begin_sudoku(&mut self, g: crate::sudoku::Game) {
+        log(&format!("sudoku {}: {} casas vazias", g.label(), 81 - g.filled()));
+        g.save();
         self.sudoku = Some(g);
         self.sudoku_note = "Toque numa casa e depois num número.".into();
         self.go(Screen::Sudoku);
@@ -1249,6 +1265,10 @@ impl App {
                 }
                 self.go(Screen::Games);
             }
+            (Screen::SudokuMenu, Back) if self.sudoku_practice => {
+                self.sudoku_practice = false;
+                self.render(true);
+            }
             (Screen::SudokuMenu | Screen::SudokuWon | Screen::ChessHub, Back) => self.go(Screen::Games),
             (Screen::Chess, Back) => {
                 self.engine = None; // fecha o Stockfish; a partida fica salva para continuar
@@ -1394,11 +1414,9 @@ impl App {
             }
             // Sudoku: com partida pela metade, pergunta; sem ela, já começa um jogo novo.
             (Screen::Games, Game(0)) => {
-                if crate::sudoku::Game::load().is_some_and(|g| !g.solved()) {
-                    self.go(Screen::SudokuMenu);
-                } else {
-                    self.start_sudoku(crate::sudoku::last_level());
-                }
+                self.sudoku_practice = false;
+                self.sudoku_prog = crate::fases::Progress::load("sudoku");
+                self.go(Screen::SudokuMenu);
             }
             (Screen::Games, Game(1)) => self.go(Screen::ChessHub),
             (Screen::Games, Game(i)) => {
@@ -1424,7 +1442,12 @@ impl App {
                 }
             }
             (Screen::Mini, Mini(id)) => self.mini_tap(id, x),
-            (Screen::SudokuMenu, Level(k)) => self.start_sudoku(crate::sudoku::LEVELS[k.min(2)]),
+            (Screen::SudokuMenu, Level(k)) if self.sudoku_practice => self.start_sudoku(crate::sudoku::LEVELS[k.min(2)]),
+            (Screen::SudokuMenu, Level(0)) => self.start_sudoku_fase(),
+            (Screen::SudokuMenu, Level(_)) => {
+                self.sudoku_practice = true;
+                self.render(true);
+            }
             (Screen::SudokuMenu, Continue) => {
                 self.sudoku = crate::sudoku::Game::load();
                 self.sudoku_note = "Partida retomada.".into();
@@ -1477,8 +1500,12 @@ impl App {
                 self.go(Screen::SudokuMenu);
             }
             (Screen::SudokuWon, NewGame) => {
-                let lv = self.sudoku.as_ref().map(|g| g.level).unwrap_or_else(crate::sudoku::last_level);
-                self.start_sudoku(lv);
+                if self.sudoku.as_ref().is_some_and(|g| g.fase > 0) {
+                    self.start_sudoku_fase();
+                } else {
+                    let lv = self.sudoku.as_ref().map(|g| g.level).unwrap_or_else(crate::sudoku::last_level);
+                    self.start_sudoku(lv);
+                }
             }
             // Central do xadrez: 0 continuar, 1 treinadores, 2 duas pessoas, 3 partidas anteriores.
             (Screen::ChessHub, Game(0)) => self.resume_chess(),

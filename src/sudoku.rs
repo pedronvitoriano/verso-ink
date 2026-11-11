@@ -132,14 +132,48 @@ pub struct Game {
     pub notes_mode: bool,
     pub mistakes: u32,
     pub hints: u32,
+    /// Fase (0 = treino livre).
+    pub fase: u32,
     /// Segundos jogados antes desta abertura; o relógio desta sessão soma por cima.
     pub played: u64,
     pub resumed: std::time::Instant,
     undo: Vec<Undo>,
 }
 
+/// Casas vazias da fase: de 34 (bem fácil) até 52; difícil +4; desafio no máximo que der.
+pub fn fase_holes(k: u32) -> usize {
+    let base = 34 + (18.0 * crate::fases::ramp(k, 30)) as usize;
+    match crate::fases::kind(k) {
+        crate::fases::Kind::Normal => base,
+        crate::fases::Kind::Hard => (base + 4).min(56),
+        crate::fases::Kind::Challenge => 60,
+    }
+}
+
+fn level_for_holes(h: usize) -> Level {
+    match h {
+        0..=40 => Level::Easy,
+        41..=50 => Level::Medium,
+        _ => Level::Hard,
+    }
+}
+
 impl Game {
     pub fn new(level: Level) -> Self {
+        Self::with_holes(level, level.holes(), 0)
+    }
+
+    pub fn new_fase(k: u32) -> Self {
+        let h = fase_holes(k);
+        Self::with_holes(level_for_holes(h), h, k)
+    }
+
+    /// Nome para mostrar: "Fase 12" ou o nível do treino.
+    pub fn label(&self) -> String {
+        if self.fase > 0 { crate::fases::title(self.fase) } else { self.level.name().to_string() }
+    }
+
+    fn with_holes(level: Level, holes: usize, fase: u32) -> Self {
         let mut rng = Rng::new();
         let mut sol = [0u8; 81];
         fill(&mut sol, &mut rng);
@@ -148,7 +182,7 @@ impl Game {
         rng.shuffle(&mut order);
         let mut removed = 0;
         for i in order {
-            if removed >= level.holes() {
+            if removed >= holes {
                 break;
             }
             let keep = puzzle[i];
@@ -171,6 +205,7 @@ impl Game {
             notes_mode: false,
             mistakes: 0,
             hints: 0,
+            fase,
             played: 0,
             resumed: std::time::Instant::now(),
             undo: Vec::new(),
@@ -269,7 +304,7 @@ impl Game {
         let notes: String = self.notes.iter().map(|n| format!("{n:03x}")).collect();
         let _ = std::fs::write(
             Self::path(),
-            format!("{}\n{}\n{}\n{}\n{}\n{} {} {}\n", self.level.name(), enc(&self.solution), given, enc(&self.cells), notes, self.seconds(), self.mistakes, self.hints),
+            format!("{}\n{}\n{}\n{}\n{}\n{} {} {}\nfase {}\n", self.level.name(), enc(&self.solution), given, enc(&self.cells), notes, self.seconds(), self.mistakes, self.hints, self.fase),
         );
     }
 
@@ -300,6 +335,7 @@ impl Game {
             notes_mode: false,
             mistakes: nums.get(1).copied().unwrap_or(0) as u32,
             hints: nums.get(2).copied().unwrap_or(0) as u32,
+            fase: l.get(6).and_then(|t| t.strip_prefix("fase ")).and_then(|n| n.trim().parse().ok()).unwrap_or(0),
             played: nums.first().copied().unwrap_or(0),
             resumed: std::time::Instant::now(),
             undo: Vec::new(),
@@ -391,33 +427,44 @@ fn pill(fb: &mut Framebuffer, f: &Fonts, r: Rect, label: &str, filled: bool) {
 }
 
 /// Abrir o Sudoku com uma partida pela metade: continuar ou começar outra.
-pub fn draw_resume(fb: &mut Framebuffer, f: &Fonts, saved: Option<&Game>) {
+pub fn draw_resume(fb: &mut Framebuffer, f: &Fonts, saved: Option<&Game>, prog: &crate::fases::Progress, practice: bool) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
-    f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Sudoku");
+    f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, if practice { "Treino" } else { "Sudoku" });
+    if practice {
+        f.draw(fb, Face::Strong, 34.0, MARGIN, 420, MUTED, "Escolha o nível. Não conta para as fases.");
+        for (k, lv) in LEVELS.iter().enumerate() {
+            let label = match record(*lv) {
+                Some(s) => format!("{} · recorde {}", lv.name(), mmss(s)),
+                None => lv.name().to_string(),
+            };
+            pill(fb, f, resume_level_rect(k, false), &label, false);
+        }
+        return;
+    }
     if let Some(g) = saved {
         f.draw(fb, Face::Strong, 34.0, MARGIN, 420, MUTED, "Você tem uma partida pela metade");
         let r = continue_rect();
         fb.round_rect(r, 50, INK);
         f.draw(fb, Face::Display, 56.0, r.x + 44, r.y + 70, PAPER, "Continuar");
-        let sub = format!("{} · {} de 81 · {}", g.level.name(), g.filled(), mmss(g.seconds()));
+        let sub = format!("{} · {} de 81 · {}", g.label(), g.filled(), mmss(g.seconds()));
         f.draw(fb, Face::Body, 30.0, r.x + 46, r.y + 116, 0xCC, &sub);
-        f.draw(fb, Face::Strong, 30.0, MARGIN, 740, MUTED, "OU COMECE UM JOGO NOVO");
+        f.draw(fb, Face::Strong, 30.0, MARGIN, 740, MUTED, "OU COMECE");
     } else {
-        f.draw(fb, Face::Strong, 34.0, MARGIN, 420, MUTED, "Escolha o nível do jogo novo");
+        f.draw(fb, Face::Strong, 34.0, MARGIN, 420, MUTED, "A dificuldade sobe a cada fase vencida");
     }
-    for (k, lv) in LEVELS.iter().enumerate() {
-        let rr = Rect::new(MARGIN, 780 + k as i32 * 140, W - 2 * MARGIN, 116);
-        let label = match record(*lv) {
-            Some(s) => format!("{} · recorde {}", lv.name(), mmss(s)),
-            None => lv.name().to_string(),
-        };
-        pill(fb, f, rr, &label, false);
-    }
+    let below = saved.is_some();
+    pill(fb, f, resume_level_rect(0, below), &format!("Fase {}", prog.level), !below);
+    pill(fb, f, resume_level_rect(1, below), "Treino livre", false);
+    let streak = prog.current_streak(crate::fases::today());
+    let y = resume_level_rect(1, below).y + 200;
+    f.draw(fb, Face::Display, 56.0, MARGIN, y, INK, &format!("Sequência: {streak} dia{}", if streak == 1 { "" } else { "s" }));
+    f.draw(fb, Face::Body, 30.0, MARGIN, y + 60, MUTED, &format!("Melhor: {} · Fases vencidas: {} · de 5 em 5, uma difícil", prog.best, prog.solved));
 }
 
-pub fn resume_level_rect(k: usize) -> Rect {
-    Rect::new(MARGIN, 780 + k as i32 * 140, W - 2 * MARGIN, 116)
+/// Botões do menu: abaixo do "Continuar" quando há partida salva; senão, logo no alto.
+pub fn resume_level_rect(k: usize, below_continue: bool) -> Rect {
+    Rect::new(MARGIN, if below_continue { 780 } else { 470 } + k as i32 * 140, W - 2 * MARGIN, 116)
 }
 
 pub fn draw_status(fb: &mut Framebuffer, f: &Fonts, g: &Game, note: &str) {
@@ -430,7 +477,7 @@ pub fn draw_status(fb: &mut Framebuffer, f: &Fonts, g: &Game, note: &str) {
         1 => "1 erro".to_string(),
         n => format!("{n} erros"),
     };
-    f.draw(fb, Face::Display, 48.0, GRID_X, 228, INK, &format!("{} · {time} · {errs}", g.level.name()));
+    f.draw(fb, Face::Display, 48.0, GRID_X, 228, INK, &format!("{} · {time} · {errs}", g.label()));
     f.draw(fb, Face::Body, 30.0, GRID_X, 272, MUTED, note);
 }
 
@@ -515,11 +562,17 @@ pub fn draw_grid_lines(fb: &mut Framebuffer) {
 }
 
 /// Vitória: tempo, erros, dicas e recorde do nível.
-pub fn draw_won(fb: &mut Framebuffer, f: &Fonts, g: &Game, secs: u64, new_record: bool) {
+pub fn draw_won(fb: &mut Framebuffer, f: &Fonts, g: &Game, secs: u64, new_record: bool, prog: &crate::fases::Progress) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
     f.draw(fb, Face::Display, 150.0, MARGIN - 6, 360, INK, "Resolvido!");
-    f.draw(fb, Face::Strong, 40.0, MARGIN, 440, MUTED, &format!("Sudoku {}", g.level.name()));
+    let sub = if g.fase > 0 {
+        let streak = prog.current_streak(crate::fases::today());
+        format!("{} · sequência de {streak} dia{}", g.label(), if streak == 1 { "" } else { "s" })
+    } else {
+        format!("Sudoku {}", g.level.name())
+    };
+    f.draw(fb, Face::Strong, 40.0, MARGIN, 440, MUTED, &sub);
     let rows = [
         ("TEMPO", mmss(secs)),
         ("ERROS", g.mistakes.to_string()),
@@ -542,7 +595,8 @@ pub fn draw_won(fb: &mut Framebuffer, f: &Fonts, g: &Game, secs: u64, new_record
         let vw = f.measure(Face::Display, 56.0, value);
         f.draw(fb, Face::Display, 56.0, W - MARGIN - vw, y + 74, INK, value);
     }
-    pill(fb, f, won_new_rect(), "Jogo novo", true);
+    let next = if g.fase > 0 { format!("Fase {}", prog.level) } else { "Jogo novo".to_string() };
+    pill(fb, f, won_new_rect(), &next, true);
 }
 
 pub fn won_new_rect() -> Rect {
