@@ -48,11 +48,11 @@ fn color_name(c: Color) -> &'static str {
 fn label(k: Kind) -> String {
     match k {
         Kind::Num(n) => n.to_string(),
-        Kind::Skip => "BLOQ".into(),
-        Kind::Reverse => "INV".into(),
+        Kind::Skip => "Bloqueio".into(),
+        Kind::Reverse => "Inverte".into(),
         Kind::Draw2 => "+2".into(),
         Kind::Draw4 => "+4".into(),
-        Kind::Wild => "COR".into(),
+        Kind::Wild => "Troca a cor".into(),
     }
 }
 
@@ -319,66 +319,282 @@ impl Uno {
 
     // ---------- Desenho ----------
 
-    fn card_rect(k: usize) -> Rect {
-        let (w, h, gap) = (122, 178, 10);
-        let col = (k % 7) as i32;
-        let row = (k / 7 % 2) as i32;
-        Rect::new(MARGIN - 20 + col * (w + gap), 860 + row * (h + 14), w, h)
+    /// Cartas da mão em leque: (índice na mão, retângulo, serve agora).
+    fn hand_layout(&self) -> Vec<(usize, Rect, bool)> {
+        let me = self.me();
+        let Some(hand) = self.hands.get(me) else { return vec![] };
+        let my_turn = self.turn == me && self.phase == Phase::Turn && !self.is_cpu(self.turn);
+        let shown: Vec<(usize, Card)> = hand.iter().copied().enumerate().skip(self.page * 14).take(14).collect();
+        let n = shown.len() as i32;
+        let (w, h) = (156, 230);
+        let span = W - 2 * MARGIN + 40;
+        let step = if n <= 1 { 0 } else { ((span - w) / (n - 1)).min(w + 12) };
+        let total = if n == 0 { 0 } else { w + step * (n - 1) };
+        let x0 = (W - total) / 2;
+        shown
+            .into_iter()
+            .enumerate()
+            .map(|(k, (i, c))| {
+                let ok = my_turn && self.playable(c) && self.drew.is_none_or(|d| d == i);
+                let y = if ok { 990 } else { 1030 };
+                (i, Rect::new(x0 + k as i32 * step, y, w, h), ok)
+            })
+            .collect()
     }
 
-    fn draw_card(fb: &mut Framebuffer, f: &Fonts, r: Rect, c: Card, big: bool, dim: bool) {
-        let rad = 16;
-        fb.round_rect(r, rad, INK);
-        let inner = Rect::new(r.x + 4, r.y + 4, r.w - 8, r.h - 8);
-        fb.round_rect(inner, rad - 4, PAPER);
-        // Padrão da cor.
-        let fg = match c.color {
-            Color::Red => {
-                fb.round_rect(inner, rad - 4, INK);
-                PAPER
-            }
-            Color::Black => {
-                fb.round_rect(inner, rad - 4, 0x55);
-                PAPER
-            }
+    /// Área de toque de cada carta: a faixa visível (a última inteira).
+    fn hand_hits(&self) -> Vec<(usize, Rect, bool)> {
+        let lay = self.hand_layout();
+        let mut v = Vec::new();
+        for (k, (i, r, ok)) in lay.iter().enumerate() {
+            let w = lay.get(k + 1).map(|n| n.1.x - r.x).unwrap_or(r.w);
+            v.push((*i, Rect::new(r.x, r.y, w, r.h), *ok));
+        }
+        v
+    }
+
+    fn deck_rect() -> Rect {
+        Rect::new(W / 2 - 40 - 210, 520, 210, 308)
+    }
+    fn top_rect() -> Rect {
+        Rect::new(W / 2 + 40, 500, 230, 338)
+    }
+    fn pick_rect(k: usize) -> Rect {
+        let (w, h, gap) = (200, 294, 24);
+        let x0 = (W - (4 * w + 3 * gap)) / 2;
+        Rect::new(x0 + k as i32 * (w + gap), 1000, w, h)
+    }
+
+    /// Tom do campo e cor do texto/desenho sobre ele.
+    fn field(c: Color) -> (u8, u8) {
+        match c {
+            Color::Red => (0x14, PAPER),
+            Color::Blue => (0x5C, PAPER),
+            Color::Green => (0x9C, INK),
+            Color::Yellow => (0xD6, INK),
+            Color::Black => (0x14, PAPER),
+        }
+    }
+
+    /// Símbolo da cor (para não depender só do tom): ● vermelho, ◆ azul, ▲ verde, ■ amarelo.
+    fn color_mark(fb: &mut Framebuffer, cx: i32, cy: i32, d: i32, c: Color, v: u8) {
+        match c {
+            Color::Red => fb.round_rect(Rect::new(cx - d, cy - d, 2 * d, 2 * d), d, v),
             Color::Blue => {
-                for y in (inner.y..inner.y + inner.h).step_by(14) {
-                    fb.fill(Rect::new(inner.x + 6, y, inner.w - 12, 5), 0x88);
+                for k in 0..=d {
+                    fb.fill(Rect::new(cx - k, cy - d + k, 2 * k + 1, 1), v);
+                    fb.fill(Rect::new(cx - k, cy + d - k, 2 * k + 1, 1), v);
                 }
-                INK
             }
             Color::Green => {
-                for y in (inner.y + 8..inner.y + inner.h - 4).step_by(16) {
-                    for x in (inner.x + 8..inner.x + inner.w - 4).step_by(16) {
-                        fb.round_rect(Rect::new(x, y, 6, 6), 3, 0x88);
+                for k in 0..=(2 * d) {
+                    let half = k / 2;
+                    fb.fill(Rect::new(cx - half, cy - d + k, 2 * half + 1, 1), v);
+                }
+            }
+            Color::Yellow => fb.fill(Rect::new(cx - d * 8 / 10, cy - d * 8 / 10, d * 16 / 10, d * 16 / 10), v),
+            Color::Black => {}
+        }
+    }
+
+    /// Padrão do campo de cada cor (além do tom): listras no azul, pontos no verde.
+    fn field_pattern(fb: &mut Framebuffer, r: Rect, c: Color) {
+        match c {
+            Color::Blue => {
+                for y in r.y..r.y + r.h {
+                    let mut x = r.x + (14 - (r.x + y).rem_euclid(14)) % 14;
+                    while x < r.x + r.w {
+                        fb.fill(Rect::new(x, y, 3.min(r.x + r.w - x), 1), 0x7C);
+                        x += 14;
                     }
                 }
-                INK
             }
-            Color::Yellow => {
-                fb.round_outline(Rect::new(inner.x + 8, inner.y + 8, inner.w - 16, inner.h - 16), 10, 6, INK, PAPER);
-                INK
+            Color::Green => {
+                let mut y = r.y + 8;
+                while y < r.y + r.h - 6 {
+                    let mut x = r.x + 8 + if (y / 14) % 2 == 0 { 0 } else { 7 };
+                    while x < r.x + r.w - 6 {
+                        fb.round_rect(Rect::new(x, y, 5, 5), 2, 0x80);
+                        x += 14;
+                    }
+                    y += 14;
+                }
             }
-        };
-        // Selo branco no meio para o símbolo ficar legível em qualquer padrão.
-        let seal = Rect::new(r.x + r.w / 2 - r.w * 36 / 100, r.y + r.h / 2 - r.w * 30 / 100, r.w * 72 / 100, r.w * 60 / 100);
-        if c.color != Color::Red && c.color != Color::Black {
-            fb.round_rect(seal, 12, PAPER);
+            _ => {}
         }
-        let t = label(c.kind);
-        let size = if big { 96.0 } else if t.len() > 2 { 28.0 } else { 56.0 };
-        let tw = f.measure(Face::Display, size, &t);
-        f.draw(fb, Face::Display, size, r.x + (r.w - tw) / 2, r.y + r.h / 2 + (size * 0.36) as i32, fg, &t);
-        let name = color_name(c.color);
-        let ns = if big { 30.0 } else { 18.0 };
-        let nw = f.measure(Face::Strong, ns, name);
-        f.draw(fb, Face::Strong, ns, r.x + (r.w - nw) / 2, r.y + r.h - 16, fg, name);
+    }
+
+    /// Oval branco inclinado, como no baralho de verdade.
+    fn oval(fb: &mut Framebuffer, r: Rect, v: u8) {
+        let (cx, cy) = (r.x as f32 + r.w as f32 / 2.0, r.y as f32 + r.h as f32 / 2.0);
+        let (a, b) = (r.w as f32 * 0.40, r.h as f32 * 0.36);
+        let (sn, cs) = (0.5f32, 0.866f32);
+        for y in r.y..r.y + r.h {
+            for x in r.x..r.x + r.w {
+                let (dx, dy) = (x as f32 - cx, y as f32 - cy);
+                let (u, w) = (dx * cs + dy * sn, -dx * sn + dy * cs);
+                if (u / b).powi(2) + (w / a).powi(2) <= 1.0 {
+                    fb.fill(Rect::new(x, y, 1, 1), v);
+                }
+            }
+        }
+    }
+
+    /// Símbolo da carta no meio do oval (tamanho `s`).
+    fn symbol(fb: &mut Framebuffer, f: &Fonts, cx: i32, cy: i32, s: i32, c: Card, ink: u8) {
+        let (x, y, sf) = (cx as f32, cy as f32, s as f32);
+        match c.kind {
+            Kind::Num(n) => {
+                let t = n.to_string();
+                let size = sf * 1.25;
+                let w = f.measure(Face::Display, size, &t);
+                f.draw(fb, Face::Display, size, cx - w / 2, cy + (size * 0.36) as i32, ink, &t);
+                if n == 6 || n == 9 {
+                    fb.fill(Rect::new(cx - w / 2, cy + (size * 0.46) as i32, w, (sf * 0.07).max(3.0) as i32), ink);
+                }
+            }
+            Kind::Draw2 | Kind::Draw4 => {
+                let t = if c.kind == Kind::Draw2 { "+2" } else { "+4" };
+                let size = sf * 1.05;
+                let w = f.measure(Face::Display, size, t);
+                f.draw(fb, Face::Display, size, cx - w / 2, cy + (size * 0.36) as i32, ink, t);
+            }
+            Kind::Skip => {
+                let rr = (sf * 0.42) as i32;
+                fb.round_outline(Rect::new(cx - rr, cy - rr, 2 * rr, 2 * rr), rr, (sf * 0.12) as i32, ink, PAPER);
+                ui::stroke(fb, (x - sf * 0.28, y + sf * 0.28), (x + sf * 0.28, y - sf * 0.28), sf * 0.12, ink);
+            }
+            Kind::Reverse => {
+                let d = sf * 0.34;
+                ui::stroke(fb, (x - d, y - d * 0.3), (x + d * 0.6, y - d * 0.3), sf * 0.11, ink);
+                ui::stroke(fb, (x + d * 0.6, y - d * 0.3), (x + d * 0.1, y - d * 0.8), sf * 0.11, ink);
+                ui::stroke(fb, (x + d, y + d * 0.3), (x - d * 0.6, y + d * 0.3), sf * 0.11, ink);
+                ui::stroke(fb, (x - d * 0.6, y + d * 0.3), (x - d * 0.1, y + d * 0.8), sf * 0.11, ink);
+            }
+            Kind::Wild => {
+                // Quatro quadrantes, um de cada cor.
+                let rr = (sf * 0.42) as i32;
+                fb.round_rect(Rect::new(cx - rr - 3, cy - rr - 3, 2 * rr + 6, 2 * rr + 6), 8, ink);
+                for (k, col) in COLORS.iter().enumerate() {
+                    let q = Rect::new(cx - rr + (k as i32 % 2) * rr, cy - rr + (k as i32 / 2) * rr, rr, rr);
+                    fb.fill(q, Self::field(*col).0);
+                    Self::field_pattern(fb, q, *col);
+                }
+                for (k, col) in COLORS.iter().enumerate() {
+                    let q = (cx - rr / 2 + (k as i32 % 2) * rr, cy - rr / 2 + (k as i32 / 2) * rr);
+                    Self::color_mark(fb, q.0, q.1, rr / 5, *col, Self::field(*col).1);
+                }
+            }
+        }
+    }
+
+    /// Canto: o mesmo símbolo pequeno e o símbolo da cor.
+    fn corner(fb: &mut Framebuffer, f: &Fonts, r: Rect, c: Card, ink: u8) {
+        let size = (r.w as f32 * 0.24).max(20.0);
+        let (x, y) = (r.x + r.w / 9, r.y + r.w / 9);
+        match c.kind {
+            Kind::Num(_) | Kind::Draw2 | Kind::Draw4 => {
+                let t = match c.kind {
+                    Kind::Num(n) => n.to_string(),
+                    Kind::Draw2 => "+2".into(),
+                    _ => "+4".into(),
+                };
+                f.draw(fb, Face::Display, size, x, y + size as i32, ink, &t);
+            }
+            _ => Self::symbol(fb, f, x + size as i32 / 2, y + size as i32 / 2 + 4, size as i32, c, ink),
+        }
+        if c.color != Color::Black {
+            let d = (r.w / 16).max(5);
+            Self::color_mark(fb, x + d, y + size as i32 + 12 + d, d, c.color, ink);
+            Self::color_mark(fb, r.x + r.w - r.w / 9 - d, r.y + r.h - r.w / 9 - d, d, c.color, ink);
+        }
+    }
+
+    fn draw_card(fb: &mut Framebuffer, f: &Fonts, r: Rect, c: Card, dim: bool) {
+        let rad = r.w / 9;
+        fb.round_rect(r, rad, INK);
+        let face = Rect::new(r.x + 3, r.y + 3, r.w - 6, r.h - 6);
+        fb.round_rect(face, rad - 2, PAPER);
+        let b = r.w / 14;
+        let field = Rect::new(r.x + b, r.y + b, r.w - 2 * b, r.h - 2 * b);
+        let (tone, ink) = Self::field(c.color);
+        fb.round_rect(field, rad - b / 2, tone);
+        Self::field_pattern(fb, field, c.color);
+        Self::oval(fb, field, PAPER);
+        Self::symbol(fb, f, r.x + r.w / 2, r.y + r.h / 2, r.w * 2 / 5, c, if c.color == Color::Black { INK } else { Self::field(c.color).0.min(0x40) });
+        Self::corner(fb, f, r, c, ink);
         if dim {
-            // Cartas que não servem agora ficam esmaecidas.
+            // Não serve agora: véu claro, ainda legível.
             for y in r.y..r.y + r.h {
                 for x in r.x..r.x + r.w {
-                    fb.blend(x, y, PAPER, 170);
+                    fb.blend(x, y, PAPER, 120);
                 }
+            }
+        }
+    }
+
+    /// Carta de escolher cor: só o campo da cor e o símbolo dela grande no oval.
+    fn draw_color_card(fb: &mut Framebuffer, r: Rect, c: Color) {
+        let rad = r.w / 9;
+        fb.round_rect(r, rad, INK);
+        fb.round_rect(Rect::new(r.x + 3, r.y + 3, r.w - 6, r.h - 6), rad - 2, PAPER);
+        let b = r.w / 14;
+        let field = Rect::new(r.x + b, r.y + b, r.w - 2 * b, r.h - 2 * b);
+        fb.round_rect(field, rad - b / 2, Self::field(c).0);
+        Self::field_pattern(fb, field, c);
+        Self::oval(fb, field, PAPER);
+        Self::color_mark(fb, r.x + r.w / 2, r.y + r.h / 2, r.w / 5, c, Self::field(c).0.min(0x40));
+    }
+
+    /// Verso da carta: preto com o oval branco e "UNO".
+    fn draw_back(fb: &mut Framebuffer, f: &Fonts, r: Rect) {
+        let rad = r.w / 9;
+        fb.round_rect(r, rad, INK);
+        let face = Rect::new(r.x + 3, r.y + 3, r.w - 6, r.h - 6);
+        fb.round_rect(face, rad - 2, PAPER);
+        let b = (r.w / 14).max(3);
+        let field = Rect::new(r.x + b, r.y + b, r.w - 2 * b, r.h - 2 * b);
+        fb.round_rect(field, rad - b / 2, INK);
+        if r.w >= 90 {
+            Self::oval(fb, field, PAPER);
+            let size = r.w as f32 * 0.26;
+            let w = f.measure(Face::Display, size, "UNO");
+            f.draw(fb, Face::Display, size, r.x + (r.w - w) / 2, r.y + r.h / 2 + (size * 0.36) as i32, INK, "UNO");
+        } else {
+            let o = Rect::new(field.x + field.w / 5, field.y + field.h / 4, field.w * 3 / 5, field.h / 2);
+            fb.round_rect(o, o.w / 2, 0x88);
+        }
+    }
+
+    /// Adversários no alto: leque de cartas viradas, nome e quantas cartas.
+    fn draw_opponents(&self, fb: &mut Framebuffer, f: &Fonts) {
+        let me = self.me();
+        let others: Vec<usize> = (0..self.players()).filter(|&p| p != me).collect();
+        let n = others.len().max(1) as i32;
+        let slot = (W - 2 * MARGIN) / n;
+        for (k, &p) in others.iter().enumerate() {
+            let cx = MARGIN + slot * k as i32 + slot / 2;
+            let cards = self.hands[p].len() as i32;
+            let shown = cards.min(9);
+            let (w, h) = (66, 98);
+            let step = if shown <= 1 { 0 } else { (slot - 60 - w).min(24 * (shown - 1)) / (shown - 1) };
+            let total = w + step * (shown - 1).max(0);
+            for i in 0..shown {
+                Self::draw_back(fb, f, Rect::new(cx - total / 2 + i * step, 272, w, h));
+            }
+            let label = format!("{} · {}", self.name(p), cards);
+            let turn = p == self.turn && matches!(self.phase, Phase::Turn);
+            let lw = f.measure(Face::Strong, 30.0, &label);
+            let y = 420;
+            if turn {
+                let pill = Rect::new(cx - lw / 2 - 20, y - 34, lw + 40, 48);
+                fb.round_rect(pill, 24, INK);
+                f.draw(fb, Face::Strong, 30.0, cx - lw / 2, y, PAPER, &label);
+            } else {
+                f.draw(fb, Face::Strong, 30.0, cx - lw / 2, y, INK, &label);
+            }
+            if cards == 1 {
+                f.draw(fb, Face::Display, 30.0, cx + lw / 2 + 14, y, INK, "UNO!");
             }
         }
     }
@@ -430,47 +646,83 @@ impl MiniGame for Uno {
         let status = match self.phase {
             Phase::Over(p) => if self.name(p) == "Você" { "Você venceu!".to_string() } else { format!("{} venceu.", self.name(p)) },
             Phase::PickColor => "Escolha a cor".into(),
-            Phase::Handoff => format!("Vez do {}", self.name(self.turn)),
+            Phase::Handoff => "Troca de jogador".to_string(),
             Phase::Turn => {
                 let who = self.name(self.turn);
                 if self.pending > 0 { format!("Vez de: {who} · acúmulo de +{}", self.pending) } else { format!("Vez de: {who}") }
             }
         };
         minigame::header(fb, f, "UNO", &status);
-        if self.phase == Phase::Handoff {
-            f.draw(fb, Face::Body, 38.0, MARGIN, 640, INK, "Passe o Kindle e toque em Pronto.");
-            f.draw(fb, Face::Body, 32.0, MARGIN, 700, MUTED, &self.msg);
-            minigame::pill(fb, f, Self::btn(0, 1), "Pronto", true);
-            return;
+        self.draw_opponents(fb, f);
+        // Mesa: monte (virado) e descarte com sombra de pilha.
+        let deck = Self::deck_rect();
+        for k in (1..3).rev() {
+            Self::draw_back(fb, f, Rect::new(deck.x - k * 5, deck.y + k * 5, deck.w, deck.h));
         }
-        // Mesa: descarte grande, cor atual e quantas cartas cada um tem.
-        let top = Rect::new(MARGIN, 290, 260, 380);
-        Self::draw_card(fb, f, top, Card { kind: self.top().kind, color: if self.top().color == Color::Black { self.color } else { self.top().color } }, true, false);
-        let x = MARGIN + 300;
-        f.draw(fb, Face::Strong, 28.0, x, 330, MUTED, "COR DA VEZ");
-        f.draw(fb, Face::Display, 56.0, x, 395, INK, color_name(self.color));
-        for p in 0..self.players() {
-            let line = format!("{}: {} {}", self.name(p), self.hands[p].len(), if self.hands[p].len() == 1 { "carta" } else { "cartas" });
-            let mark = if p == self.turn { "• " } else { "" };
-            f.draw(fb, if p == self.turn { Face::Strong } else { Face::Body }, 32.0, x, 470 + p as i32 * 48, INK, &format!("{mark}{line}"));
+        Self::draw_back(fb, f, deck);
+        let left = format!("Monte · {}", self.draw.len());
+        let lw = f.measure(Face::Body, 26.0, &left);
+        f.draw(fb, Face::Body, 26.0, deck.x + (deck.w - lw) / 2, deck.y + deck.h + 40, MUTED, &left);
+        let top = Self::top_rect();
+        for k in (1..3).rev() {
+            fb.round_rect(Rect::new(top.x + k * 6, top.y + k * 4, top.w, top.h), top.w / 9, if k == 1 { 0xBB } else { 0xDD });
         }
-        for (k, l) in wrap2(f, &self.msg, W - 2 * MARGIN).iter().enumerate() {
-            f.draw(fb, Face::Body, 30.0, MARGIN, 740 + k as i32 * 42, INK, l);
+        let shown_top = Card { kind: self.top().kind, color: if self.top().color == Color::Black { self.color } else { self.top().color } };
+        Self::draw_card(fb, f, top, shown_top, false);
+        // Cor da vez (importa depois de um coringa) e sentido do jogo.
+        let chip_y = top.y + top.h + 22;
+        let name = format!("Cor: {}", color_name(self.color));
+        let cw = f.measure(Face::Strong, 28.0, &name);
+        let chip = Rect::new(top.x + top.w / 2 - (cw + 70) / 2, chip_y, cw + 70, 46);
+        fb.round_outline(chip, 23, 3, INK, PAPER);
+        Self::color_mark(fb, chip.x + 30, chip.y + 23, 11, self.color, INK);
+        f.draw(fb, Face::Strong, 28.0, chip.x + 52, chip.y + 33, INK, &name);
+        if self.players() > 2 {
+            let t = if self.dir > 0 { "sentido horário" } else { "sentido anti-horário" };
+            f.draw(fb, Face::Body, 26.0, deck.x, deck.y - 16, MUTED, t);
         }
+        if self.pending > 0 {
+            let t = format!("+{} acumulado", self.pending);
+            let w = f.measure(Face::Display, 40.0, &t);
+            f.draw(fb, Face::Display, 40.0, top.x + top.w / 2 - w / 2, top.y - 18, INK, &t);
+        }
+        // Recado da última jogada.
+        let msg = crate::apps::fit(f, Face::Body, 30.0, &self.msg, W - 2 * MARGIN);
+        let mw = f.measure(Face::Body, 30.0, &msg);
+        f.draw(fb, Face::Body, 30.0, (W - mw) / 2, 940, INK, &msg);
         if self.phase == Phase::PickColor {
+            f.draw(fb, Face::Strong, 30.0, MARGIN, 980, MUTED, "ESCOLHA A COR");
             for (k, c) in COLORS.iter().enumerate() {
-                Self::draw_card(fb, f, Self::card_rect(k), Card { kind: Kind::Wild, color: *c }, false, false);
+                let r = Self::pick_rect(k);
+                Self::draw_color_card(fb, r, *c);
+                let n = color_name(*c);
+                let w = f.measure(Face::Strong, 28.0, n);
+                f.draw(fb, Face::Strong, 28.0, r.x + (r.w - w) / 2, r.y + r.h + 36, INK, n);
             }
             return;
         }
-        // Mão de quem joga (contra a CPU, sempre a sua).
-        let me = self.me();
+        if self.phase == Phase::Handoff {
+            // Troca de jogador: a mesa fica à vista, a mão só depois do Pronto.
+            let who = format!("Vez do {}", self.name(self.turn));
+            let w = f.measure(Face::Display, 64.0, &who);
+            f.draw(fb, Face::Display, 64.0, (W - w) / 2, 1080, INK, &who);
+            let n = self.hands[self.turn].len();
+            let sub = format!("Passe o Kindle. Você tem {n} carta{}; elas aparecem no Pronto.", if n == 1 { "" } else { "s" });
+            let sw = f.measure(Face::Body, 30.0, &sub);
+            f.draw(fb, Face::Body, 30.0, (W - sw) / 2, 1140, MUTED, &sub);
+            for i in 0..n.min(9) as i32 {
+                Self::draw_back(fb, f, Rect::new(W / 2 - 150 + i * 30 - (n.min(9) as i32 - 1) * 15 + 150 - 33, 1170, 66, 98));
+            }
+            minigame::pill(fb, f, Self::btn(0, 1), "Pronto", true);
+            return;
+        }
+        // Sua mão (contra a CPU, sempre a sua; local, a de quem joga).
         let show = !self.is_cpu(self.turn) || matches!(self.mode, Mode::Cpu(_));
         if show {
-            for (k, c) in self.hands[me].iter().enumerate().skip(self.page * 14).take(14) {
-                let my_turn = self.turn == me && self.phase == Phase::Turn;
-                let ok = my_turn && self.playable(*c) && self.drew.is_none_or(|d| d == k);
-                Self::draw_card(fb, f, Self::card_rect(k - self.page * 14), *c, false, my_turn && !ok);
+            let hand = &self.hands[self.me()];
+            for (i, r, ok) in self.hand_layout() {
+                let my_turn = self.turn == self.me() && self.phase == Phase::Turn;
+                Self::draw_card(fb, f, r, hand[i], my_turn && !ok);
             }
         }
         let b = self.buttons();
@@ -485,18 +737,21 @@ impl MiniGame for Uno {
         }
         match self.phase {
             Phase::Handoff => return vec![(805, Self::btn(0, 1))],
-            Phase::PickColor => return (0..4).map(|k| (700 + k as u32, Self::card_rect(k))).collect(),
+            Phase::PickColor => return (0..4).map(|k| (700 + k as u32, Self::pick_rect(k))).collect(),
             Phase::Over(_) => return vec![(803, Self::btn(0, 1))],
             Phase::Turn => {}
         }
         let b = self.buttons();
         let mut v: Vec<(u32, Rect)> = b.iter().enumerate().map(|(k, (id, _))| (*id, Self::btn(k, b.len()))).collect();
         if !self.is_cpu(self.turn) {
-            let me = self.me();
-            for (k, c) in self.hands[me].iter().enumerate().skip(self.page * 14).take(14) {
-                if self.playable(*c) && self.drew.is_none_or(|d| d == k) {
-                    v.push((k as u32, Self::card_rect(k - self.page * 14)));
+            // Cartas da direita por cima: procura primeiro a de cima.
+            for (i, r, ok) in self.hand_hits().into_iter().rev() {
+                if ok {
+                    v.insert(0, (i as u32, r));
                 }
+            }
+            if self.drew.is_none() {
+                v.push((800, Self::deck_rect()));
             }
         }
         v
@@ -572,19 +827,49 @@ impl MiniGame for Uno {
     }
 }
 
-fn wrap2(f: &Fonts, text: &str, max_w: i32) -> Vec<String> {
-    let mut lines = vec![String::new()];
-    for w in text.split_whitespace() {
-        let cur = lines.last().unwrap().clone();
-        let cand = if cur.is_empty() { w.to_string() } else { format!("{cur} {w}") };
-        if f.measure(Face::Body, 30.0, &cand) > max_w && !cur.is_empty() {
-            lines.push(w.to_string());
-        } else {
-            *lines.last_mut().unwrap() = cand;
+
+#[cfg(test)]
+mod render {
+    use super::*;
+    /// `VERSO_INK_SHOTS=pasta cargo test uno_em_imagem -- --ignored`
+    #[test]
+    #[ignore]
+    fn uno_em_imagem() {
+        let out = std::path::PathBuf::from(std::env::var("VERSO_INK_SHOTS").expect("VERSO_INK_SHOTS"));
+        let f = Fonts::new();
+        for (name, mode) in [("uno-1cpu", Mode::Cpu(1)), ("uno-3cpu", Mode::Cpu(3))] {
+            let mut g = Uno::new();
+            g.start(mode);
+            g.hands[0] = vec![
+                Card { kind: Kind::Num(7), color: Color::Red },
+                Card { kind: Kind::Num(3), color: Color::Blue },
+                Card { kind: Kind::Skip, color: Color::Green },
+                Card { kind: Kind::Reverse, color: Color::Yellow },
+                Card { kind: Kind::Draw2, color: Color::Red },
+                Card { kind: Kind::Num(9), color: Color::Green },
+                Card { kind: Kind::Wild, color: Color::Black },
+                Card { kind: Kind::Draw4, color: Color::Black },
+            ];
+            g.discard.push(Card { kind: Kind::Num(7), color: Color::Blue });
+            g.color = Color::Blue;
+            g.turn = 0;
+            let mut fb = crate::fb::Framebuffer::memory();
+            g.draw(&mut fb, &f);
+            fb.save_pgm(&out.join(format!("{name}.pgm")));
         }
+        let mut g = Uno::new();
+        g.start(Mode::Local(2));
+        g.msg = "Jogador 1 jogou 7 azul.".into();
+        let mut fb = crate::fb::Framebuffer::memory();
+        g.draw(&mut fb, &f);
+        fb.save_pgm(&out.join("uno-troca.pgm"));
+        let mut g = Uno::new();
+        g.start(Mode::Cpu(1));
+        g.phase = Phase::PickColor;
+        let mut fb = crate::fb::Framebuffer::memory();
+        g.draw(&mut fb, &f);
+        fb.save_pgm(&out.join("uno-cor.pgm"));
     }
-    lines.truncate(2);
-    lines
 }
 
 #[cfg(test)]
