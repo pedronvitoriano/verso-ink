@@ -257,7 +257,7 @@ pub fn clips_rect() -> Rect {
     Rect::new(W - MARGIN - 250, 76, 250, 84)
 }
 /// Jogos na tela Jogar (a ordem define o índice usado pelo app).
-pub const GAMES: [(&str, &str); 13] = [
+pub const GAMES: [(&str, &str); 14] = [
     ("Sudoku", "Três níveis, anotações e dicas"),
     ("Xadrez", "Treinadores, revisão e duas pessoas"),
     ("Coroas", "Uma por linha, coluna e reino"),
@@ -271,6 +271,7 @@ pub const GAMES: [(&str, &str); 13] = [
     ("Sokoban", "Empurre as caixas até os alvos"),
     ("Paciência", "Klondike, comprar 1 ou 3"),
     ("Masmorra", "Roguelike por turnos, 5 andares"),
+    ("Cripta", "Roguelike parado: decida cada luta"),
 ];
 
 /// Grade de blocos 2 colunas.

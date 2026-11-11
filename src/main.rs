@@ -26,6 +26,7 @@ mod receitas;
 mod sokoban;
 mod naval;
 mod coroas;
+mod cripta;
 mod minigame;
 mod engine;
 mod clippings;
