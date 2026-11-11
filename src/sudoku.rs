@@ -17,6 +17,10 @@ impl Rng {
         let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(1);
         Rng(t | 1)
     }
+    /// Sorteio que se repete (desafio do dia: a mesma partida para a mesma semente).
+    pub fn seeded(seed: u64) -> Self {
+        Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1)
+    }
     pub fn next(&mut self) -> u64 {
         self.0 ^= self.0 << 13;
         self.0 ^= self.0 >> 7;
