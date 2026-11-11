@@ -21,7 +21,10 @@ stage() {
 
 # SSH próprio (porta 2223, só chave). É a linha de vida: sobe antes de tudo.
 ssh_up() {
-    [ -f /tmp/dropbear_versoink.pid ] && kill -0 "$(cat /tmp/dropbear_versoink.pid)" 2>/dev/null && return 0
+    if [ -f /tmp/dropbear_versoink.pid ] && kill -0 "$(cat /tmp/dropbear_versoink.pid)" 2>/dev/null; then
+        tunel_up
+        return 0
+    fi
     (cd "$RUN" && ./dropbear -E -R -s -p "$SSH_PORT" -P /tmp/dropbear_versoink.pid 2>>"$LOG")
     # Preserva a chave do servidor entre boots.
     cp "$RUN/settings/SSH/dropbear_"*_host_key "$H/settings/SSH/" 2>/dev/null
