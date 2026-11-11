@@ -625,6 +625,19 @@ impl Coroas {
 }
 
 impl MiniGame for Coroas {
+    fn context(&self) -> String {
+        if self.menu || self.n == 0 {
+            return "No menu do Coroas.".into();
+        }
+        let n = self.n;
+        let reg: Vec<String> = (0..n).map(|r| (0..n).map(|c| (b'A' + self.region[r * n + c]) as char).collect()).collect();
+        let marks: Vec<String> = (0..n).map(|r| (0..n).map(|c| match self.marks[r * n + c] { Mark::Crown => 'C', Mark::X => 'x', Mark::Empty => '.' }).collect()).collect();
+        format!(
+            "Coroas {n}×{n} (uma coroa por linha, coluna e reino; coroas não se encostam nem na diagonal). Fase {}.\nReinos (letras):\n{}\nMarcas do Pedro (C coroa, x descartada, . vazia):\n{}\nAjude pelo raciocínio; não entregue a solução inteira se ele não pedir.",
+            self.level, reg.join("\n"), marks.join("\n")
+        )
+    }
+
     fn at_menu(&self) -> bool {
         self.menu
     }

@@ -264,6 +264,36 @@ impl Cripta {
 }
 
 impl MiniGame for Cripta {
+    fn context(&self) -> String {
+        if self.state == State::Menu {
+            return "No menu da Cripta.".into();
+        }
+        let grid: Vec<String> = (0..N)
+            .map(|r| {
+                (0..N)
+                    .map(|c| {
+                        let i = r * N + c;
+                        if !self.open[i] {
+                            return if self.reachable(i) { '?' } else { '#' };
+                        }
+                        match self.thing[i] {
+                            Thing::Empty => '.',
+                            Thing::Monster(k) => (b'0' + k) as char,
+                            Thing::Potion => 'p',
+                            Thing::Sword => 's',
+                            Thing::Gold => '$',
+                            Thing::Stairs => '>',
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        format!(
+            "Cripta, andar {}: vida {}/{}, força {}, nível {}, experiência {}/{}, ouro {}, poções {}. Monstro de nível k tem vida 2+3k+(andar-1) e força k+(andar-1)/2; o herói bate primeiro.\nMapa (# coberta, ? dá para descobrir, número = monstro, p poção, s espada, $ ouro, > escada):\n{}",
+            self.floor, self.hp, self.max_hp, self.atk, self.level, self.xp, self.level * 5, self.gold, self.potions, grid.join("\n")
+        )
+    }
+
     fn at_menu(&self) -> bool {
         self.state == State::Menu
     }

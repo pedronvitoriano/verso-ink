@@ -173,6 +173,14 @@ impl Palavra {
 }
 
 impl MiniGame for Palavra {
+    fn context(&self) -> String {
+        if self.menu {
+            return "No menu da Palavra do dia.".into();
+        }
+        // A resposta não vai junto: o Claude ajuda sem estragar o jogo.
+        format!("Palavra do dia (5 letras, 6 tentativas; acentos não contam). Tentativas até agora: {}. Digitando: {}. Não revele a palavra; dê dicas se ele pedir.", if self.guesses.is_empty() { "nenhuma".into() } else { self.guesses.join(", ") }, self.typing)
+    }
+
     fn at_menu(&self) -> bool {
         self.menu
     }

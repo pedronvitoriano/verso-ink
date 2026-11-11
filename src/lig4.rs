@@ -190,6 +190,14 @@ impl Lig4 {
 }
 
 impl MiniGame for Lig4 {
+    fn context(&self) -> String {
+        if self.mode == Mode::Menu {
+            return "No menu do Lig 4.".into();
+        }
+        let rows: Vec<String> = self.b.iter().map(|r| r.iter().map(|&v| match v { 1 => 'X', 2 => 'O', _ => '.' }).collect()).collect();
+        format!("Lig 4 (grade 7×6, colunas 1 a 7; X = Pedro, O = adversário; a linha de baixo é a última). Vez de: {}.\n{}", if self.turn == 1 { "Pedro" } else { "adversário" }, rows.join("\n"))
+    }
+
     fn at_menu(&self) -> bool {
         self.mode == Mode::Menu
     }

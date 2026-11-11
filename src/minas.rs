@@ -180,6 +180,33 @@ impl Minas {
 }
 
 impl MiniGame for Minas {
+    fn context(&self) -> String {
+        if self.menu {
+            return "No menu do Campo minado.".into();
+        }
+        let n = self.n;
+        let rows: Vec<String> = (0..n)
+            .map(|r| {
+                (0..n)
+                    .map(|c| {
+                        let i = r * n + c;
+                        if self.flag[i] {
+                            'F'
+                        } else if !self.open[i] {
+                            '#'
+                        } else {
+                            match self.count(i) {
+                                0 => '.',
+                                k => (b'0' + k as u8) as char,
+                            }
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        format!("Campo minado {n}×{n}, {} minas (# fechada, F bandeira, número = minas vizinhas).\n{}", self.mines, rows.join("\n"))
+    }
+
     fn at_menu(&self) -> bool {
         self.menu
     }

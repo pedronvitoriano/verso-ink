@@ -321,6 +321,14 @@ impl Historias {
 }
 
 impl MiniGame for Historias {
+    fn context(&self) -> String {
+        let Some(r) = &self.read else { return "Escolhendo uma história.".into() };
+        let (_, story) = &self.list[r.k];
+        let text = story.passages.get(&r.at).map(|p| p.paragraphs.join("\n\n")).unwrap_or_default();
+        let choices: Vec<String> = self.visible_choices().iter().map(|c| format!("- {}", c.text)).collect();
+        format!("Lendo a história interativa \"{}\". Trecho atual:\n{text}\nEscolhas na tela:\n{}", story.title, choices.join("\n"))
+    }
+
     fn at_menu(&self) -> bool {
         self.read.is_none()
     }

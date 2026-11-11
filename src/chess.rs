@@ -208,6 +208,61 @@ impl Pos {
         n
     }
 
+    /// Posição em FEN (para o Claude e para o contexto).
+    pub fn fen(&self, fullmove: usize) -> String {
+        let mut s = String::new();
+        for r in 0..8 {
+            let mut empty = 0;
+            for c in 0..8 {
+                match self.board[r * 8 + c] {
+                    None => empty += 1,
+                    Some(p) => {
+                        if empty > 0 {
+                            s.push_str(&empty.to_string());
+                            empty = 0;
+                        }
+                        let ch = match p.kind {
+                            Kind::Pawn => 'p',
+                            Kind::Knight => 'n',
+                            Kind::Bishop => 'b',
+                            Kind::Rook => 'r',
+                            Kind::Queen => 'q',
+                            Kind::King => 'k',
+                        };
+                        s.push(if p.white { ch.to_ascii_uppercase() } else { ch });
+                    }
+                }
+            }
+            if empty > 0 {
+                s.push_str(&empty.to_string());
+            }
+            if r < 7 {
+                s.push('/');
+            }
+        }
+        let castle: String = ['K', 'Q', 'k', 'q'].iter().zip(self.castle).filter(|(_, ok)| *ok).map(|(c, _)| *c).collect();
+        let ep = self.ep.map(|i| format!("{}{}", (b'a' + (i % 8) as u8) as char, 8 - i / 8)).unwrap_or_else(|| "-".into());
+        format!("{s} {} {} {ep} {} {fullmove}", if self.white_to_move { 'w' } else { 'b' }, if castle.is_empty() { "-".into() } else { castle }, self.halfmove)
+    }
+
+    /// Todos os lances legais em UCI (promoções com as quatro peças).
+    pub fn legal_uci(&self) -> Vec<String> {
+        let mut v = Vec::new();
+        for from in 0..64 {
+            for m in self.legal_from(from) {
+                let pawn = self.board[from].is_some_and(|p| p.kind == Kind::Pawn);
+                if pawn && (m.to / 8 == 0 || m.to / 8 == 7) {
+                    for k in [Kind::Queen, Kind::Rook, Kind::Bishop, Kind::Knight] {
+                        v.push(uci(m, Some(k)));
+                    }
+                } else {
+                    v.push(uci(m, None));
+                }
+            }
+        }
+        v
+    }
+
     pub fn legal_from(&self, from: usize) -> Vec<Move> {
         let mut v = Vec::new();
         if self.board[from].is_some_and(|p| p.white == self.white_to_move) {
@@ -834,6 +889,14 @@ pub fn draw_status(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fen_e_lances_legais() {
+        let p = Pos::start();
+        assert_eq!(p.fen(1), "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        assert_eq!(p.legal_uci().len(), 20);
+        assert!(p.legal_uci().contains(&"e2e4".to_string()));
+    }
     fn sq(s: &str) -> usize {
         let b = s.as_bytes();
         (7 - (b[1] - b'1') as usize) * 8 + (b[0] - b'a') as usize

@@ -43,6 +43,10 @@ pub trait MiniGame {
     fn drag(&mut self, _id: u32) -> Option<Redraw> {
         None
     }
+    /// O estado do jogo em texto, para o Claude entender a pergunta (vazio = só o nome do jogo).
+    fn context(&self) -> String {
+        String::new()
+    }
     /// Está no menu do jogo? Lá o app mostra o botão "Como jogar".
     fn at_menu(&self) -> bool {
         false

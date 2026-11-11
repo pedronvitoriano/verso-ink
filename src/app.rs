@@ -39,6 +39,8 @@ pub enum Screen {
     ClaudeLive,
     ClaudeChat,
     ClaudeCompose,
+    ClaudeFiles,
+    ClaudeDoc,
     Update,
     Wifi,
     WifiPass,
@@ -81,6 +83,7 @@ pub enum Target {
     Search,
     Sort,
     Help,
+    Ctx,
 }
 
 /// Código de saída que pede ao `session.sh` para abrir um livro no KOReader e voltar.
@@ -158,7 +161,13 @@ pub struct App {
     claude: Vec<crate::claude_ui::Session>,
     chats: Result<Vec<crate::chat::ChatInfo>, String>,
     cur_chat: Option<crate::chat::Chat>,
-    chat_pages: Vec<Vec<(String, bool, bool)>>,
+    chat_pages: Vec<Vec<crate::chat::Line>>,
+    /// Pergunta ao Claude a partir de uma tela: contexto que vai junto e para onde voltar.
+    claude_ctx: Option<String>,
+    claude_return: Option<Screen>,
+    /// Leitor de texto (arquivo do Claude, análise): título, páginas, página atual, aviso.
+    doc: (String, Vec<Vec<crate::chat::Line>>, usize),
+    files_note: String,
     chat_page: usize,
     claude_stamp: u64,
     claude_checked: Instant,
@@ -254,6 +263,10 @@ impl App {
             chats: Ok(Vec::new()),
             cur_chat: None,
             chat_pages: Vec::new(),
+            claude_ctx: None,
+            claude_return: None,
+            doc: (String::new(), Vec::new(), 0),
+            files_note: String::new(),
             chat_page: 0,
             claude_stamp: 0,
             claude_checked: Instant::now(),
@@ -359,13 +372,19 @@ impl App {
             }
             Screen::ClaudeCompose => {
                 let title = self.cur_chat.as_ref().map(|c| c.title.clone()).unwrap_or_else(|| "Nova conversa".into());
-                crate::chat::draw_compose_header(fb, f, &title);
+                crate::chat::draw_compose_header(fb, f, &title, self.claude_ctx.as_deref());
                 crate::today_ui::draw_field(fb, f, &self.compose_text, &self.compose_hint);
                 self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
                 crate::keyboard::draw(fb, f, &self.keys);
             }
             Screen::Wifi => crate::wifi::draw(fb, f, self.wifi_on, self.wifi_cur.as_deref(), &self.nets, &self.wifi_note),
             Screen::Calendar => crate::today_ui::draw_calendar(fb, f, st),
+            Screen::ClaudeFiles => {
+                if let Some(c) = &self.cur_chat {
+                    crate::chat::draw_files(fb, f, c, &self.files_note);
+                }
+            }
+            Screen::ClaudeDoc => crate::chat::draw_doc(fb, f, &self.doc.0, &self.doc.1, self.doc.2),
             Screen::LibSearch => {
                 ui::draw_field_header(fb, f, "BIBLIOTECA", "Buscar livro");
                 crate::today_ui::draw_field(fb, f, &self.compose_text, &self.compose_hint);
@@ -499,6 +518,9 @@ impl App {
             Screen::ClaudeLive => vec![(Back, ui::back_rect())],
             Screen::ClaudeChat => {
                 let mut v = vec![(Back, ui::back_rect()), (Primary, crate::chat::reply_rect())];
+                if self.cur_chat.as_ref().is_some_and(|c| !c.files.is_empty()) {
+                    v.push((Check, crate::chat::files_rect()));
+                }
                 if self.chat_page > 0 {
                     v.push((Prev, crate::chat::prev_rect()));
                 }
@@ -507,8 +529,27 @@ impl App {
                 }
                 v
             }
+            Screen::ClaudeFiles => {
+                let mut v = vec![(Back, ui::back_rect())];
+                let n = self.cur_chat.as_ref().map_or(0, |c| c.files.len().min(crate::chat::FILE_ROWS));
+                v.extend((0..n).map(|i| (Row(i), crate::chat::file_row(i))));
+                v
+            }
+            Screen::ClaudeDoc => {
+                let mut v = vec![(Back, ui::back_rect())];
+                if self.doc.2 > 0 {
+                    v.push((Prev, crate::chat::prev_rect()));
+                }
+                if self.doc.2 + 1 < self.doc.1.len() {
+                    v.push((Next, crate::chat::next_rect()));
+                }
+                v
+            }
             Screen::ClaudeCompose => {
                 let mut v = vec![(Back, ui::back_rect())];
+                if self.claude_ctx.is_some() {
+                    v.push((Ctx, crate::chat::context_rect()));
+                }
                 v.extend(self.keys.iter().enumerate().map(|(i, k)| (Key(i as u8), k.rect)));
                 v
             }
@@ -806,6 +847,107 @@ impl App {
         }
     }
 
+    /// Telas onde deslizar de cima para baixo chama o Claude (fora o Início, que abre a luz).
+    fn claude_swipe_ok(&self) -> bool {
+        !matches!(
+            self.screen,
+            Screen::Home
+                | Screen::Sleep
+                | Screen::Claude
+                | Screen::ClaudeLive
+                | Screen::ClaudeChat
+                | Screen::ClaudeCompose
+                | Screen::ClaudeFiles
+                | Screen::ClaudeDoc
+                | Screen::Compose
+                | Screen::WifiPass
+                | Screen::LibSearch
+                | Screen::Update
+                | Screen::Reminder
+                | Screen::Light
+        )
+    }
+
+    /// Pergunta ao Claude sobre o que está na tela agora (deslizar de cima para baixo).
+    fn ask_claude_here(&mut self) {
+        self.claude_ctx = Some(self.screen_context());
+        self.claude_return = Some(self.screen);
+        self.cur_chat = None;
+        self.start_claude_compose();
+    }
+
+    /// O que está na tela, em texto, para o Claude entender a pergunta.
+    fn screen_context(&self) -> String {
+        let mut parts: Vec<String> = Vec::new();
+        match self.screen {
+            Screen::Mini => {
+                let name = apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("jogo");
+                let name = if self.mini_back == Screen::Games { name } else { "Receitas" };
+                parts.push(format!("Pedro está em {name}, no Kindle."));
+                if let Some(g) = &self.mini {
+                    let c = g.context();
+                    if !c.is_empty() {
+                        parts.push(c);
+                    }
+                }
+            }
+            Screen::Sudoku | Screen::SudokuWon => {
+                if let Some(g) = &self.sudoku {
+                    let grid: Vec<String> = (0..9).map(|r| (0..9).map(|c| match g.cells[r * 9 + c] { 0 => '.', n => (b'0' + n) as char }).collect()).collect();
+                    parts.push(format!("Pedro está jogando Sudoku ({}), {} erros, {} dicas. Grade atual (. = vazio):\n{}", g.label(), g.mistakes, g.hints, grid.join("\n")));
+                }
+            }
+            Screen::Chess | Screen::ChessEnd | Screen::ChessReview => {
+                if let Some(g) = &self.chess {
+                    let who = match g.mode {
+                        crate::chess::Mode::Coach { level, user_white } => {
+                            let c = crate::coach::coach(level);
+                            format!("contra o treinador {} ({}), Pedro de {}", c.name, c.rating, if user_white { "brancas" } else { "pretas" })
+                        }
+                        crate::chess::Mode::Local => "duas pessoas no mesmo Kindle".into(),
+                    };
+                    parts.push(format!("Pedro está jogando xadrez {who}.\nPosição (FEN): {}\nLances (UCI): {}", g.pos.fen(g.moves.len() / 2 + 1), g.moves.join(" ")));
+                }
+            }
+            Screen::Today | Screen::Calendar => {
+                let plan = std::fs::read_to_string(home_dir().join("data/dia.txt")).unwrap_or_default();
+                parts.push(format!("Pedro está olhando o plano do dia no Kindle:\n{}", plan.trim()));
+            }
+            Screen::Library => parts.push("Pedro está na biblioteca de livros do Kindle.".into()),
+            _ => {}
+        }
+        if let Some(b) = data::last_book() {
+            let pct = b.progress.map(|p| format!(", {}% lido", (p * 100.0).round() as i32)).unwrap_or_default();
+            parts.push(format!("Livro em leitura: {}{pct} (arquivo {}).", b.title, b.path.display()));
+        }
+        parts.join("\n")
+    }
+
+    /// Baixa e abre um arquivo do Claude: livro/PDF no KOReader, texto aqui mesmo.
+    fn open_claude_file(&mut self, i: usize) {
+        let Some((id, name)) = self.cur_chat.as_ref().and_then(|c| c.files.get(i).map(|f| (c.id.clone(), f.0.clone()))) else { return };
+        self.files_note = format!("Baixando {name}…");
+        self.render(false);
+        self.fb.wait();
+        match crate::chat::download(&id, &name) {
+            Ok(path) if crate::chat::opens_in_reader(&name) => {
+                self.files_note.clear();
+                self.open_book(path, name);
+            }
+            Ok(path) => {
+                let text = std::fs::read(&path).map(|b| String::from_utf8_lossy(&b).to_string()).unwrap_or_default();
+                let lines = crate::chat::layout_text(&self.fonts, &text, false, 1072 - 144);
+                self.doc = (name, crate::chat::pages_of(lines), 0);
+                self.files_note.clear();
+                self.go(Screen::ClaudeDoc);
+            }
+            Err(e) => {
+                self.files_note = e;
+                self.render(false);
+            }
+        }
+    }
+
     fn start_claude_compose(&mut self) {
         self.compose_text.clear();
         self.compose_hint = "Escreva e toque em OK para enviar.".into();
@@ -841,9 +983,10 @@ impl App {
         self.screen = Screen::Update;
         self.render(true);
         self.fb.wait();
-        match crate::chat::send(id.as_deref(), &text) {
+        match crate::chat::send(id.as_deref(), &text, self.claude_ctx.as_deref()) {
             Ok(new_id) => {
                 self.compose_text.clear();
+                self.claude_ctx = None;
                 self.open_chat(&new_id);
             }
             Err(e) => {
@@ -1328,7 +1471,32 @@ impl App {
             (Screen::Clips, Back) => self.go(Screen::Library),
             (Screen::ClipBook, Back) => self.go(Screen::Clips),
             (Screen::Compose, Back) => self.go(Screen::Today),
+            (Screen::ClaudeChat | Screen::ClaudeCompose, Back) if self.claude_return.is_some() && (self.screen == Screen::ClaudeChat || self.cur_chat.is_none()) => {
+                // Veio de um jogo ou livro: volta para lá.
+                let back = self.claude_return.take().unwrap();
+                self.claude_ctx = None;
+                self.go(back);
+            }
             (Screen::ClaudeLive | Screen::ClaudeChat, Back) => self.go(Screen::Claude),
+            (Screen::ClaudeFiles, Back) => self.go(Screen::ClaudeChat),
+            (Screen::ClaudeDoc, Back) => self.go(Screen::ClaudeFiles),
+            (Screen::ClaudeCompose, Ctx) => {
+                self.claude_ctx = None;
+                self.render(false);
+            }
+            (Screen::ClaudeChat, Check) => {
+                self.files_note.clear();
+                self.go(Screen::ClaudeFiles);
+            }
+            (Screen::ClaudeFiles, Row(i)) => self.open_claude_file(i),
+            (Screen::ClaudeDoc, Prev) => {
+                self.doc.2 = self.doc.2.saturating_sub(1);
+                self.render(true);
+            }
+            (Screen::ClaudeDoc, Next) => {
+                self.doc.2 += 1;
+                self.render(true);
+            }
             (Screen::ClaudeCompose, Back) => {
                 if self.cur_chat.is_some() {
                     self.screen = Screen::ClaudeChat;
@@ -1883,7 +2051,14 @@ impl App {
                 self.gesture = None;
                 let from = self.swipe_from.take();
                 // Deslizar do topo para baixo na tela inicial abre Luz e tela.
-                if self.screen == Screen::Home && from.is_some_and(|(_, fy)| fy < 180 && y - fy > 250) {
+                let swipe_down = from.is_some_and(|(_, fy)| fy < 180 && y - fy > 250);
+                if swipe_down && self.claude_swipe_ok() {
+                    if let Some(h) = self.pressed.take() {
+                        self.flip(h, false);
+                    }
+                    return self.ask_claude_here();
+                }
+                if self.screen == Screen::Home && swipe_down {
                     if let Some(h) = self.pressed.take() {
                         self.flip(h, false);
                     }

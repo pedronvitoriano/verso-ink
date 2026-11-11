@@ -676,6 +676,24 @@ impl Uno {
 }
 
 impl MiniGame for Uno {
+    fn context(&self) -> String {
+        if self.mode == Mode::Menu {
+            return "No menu do UNO.".into();
+        }
+        let me = self.me();
+        let card = |c: &Card| format!("{} {}", label(c.kind), if c.color == Color::Black { String::new() } else { color_name(c.color).to_string() });
+        let others: Vec<String> = (0..self.players()).filter(|&p| p != me).map(|p| format!("{} tem {}", self.name(p), self.hands[p].len())).collect();
+        format!(
+            "UNO (regras do Pedro: +2 e +4 acumulam). Mesa: {} (cor da vez: {}). Acumulado: {}. Mão do Pedro: {}. {}. Último lance: {}",
+            card(&self.top()),
+            color_name(self.color),
+            self.pending,
+            self.hands.get(me).map(|h| h.iter().map(card).collect::<Vec<_>>().join(", ")).unwrap_or_default(),
+            others.join(", "),
+            self.msg
+        )
+    }
+
     fn at_menu(&self) -> bool {
         self.mode == Mode::Menu
     }
