@@ -1594,6 +1594,8 @@ impl App {
             if full {
                 // Perguntas do Claude para a revisão dos destaques (só os que ainda não têm).
                 crate::revisao::prepare();
+                // Currículos e as próximas lições dos tópicos do Aprender.
+                crate::estudo::prepare();
             }
             let _ = tx.send((s, ed, inbox));
         });
@@ -2658,7 +2660,7 @@ impl App {
                 Module::Jogar => self.go(Screen::Games),
                 Module::Claude => self.go(Screen::Claude),
                 Module::Violao => {
-                    self.mini = Some(self.mini_cache.remove(&101).unwrap_or_else(|| Box::new(crate::violao::Violao::new())));
+                    self.mini = Some(self.mini_cache.remove(&101).unwrap_or_else(|| Box::new(crate::estudo::Estudo::new())));
                     self.mini_back = Screen::Home;
                     self.go(Screen::Mini);
                 }
@@ -3608,6 +3610,37 @@ mod raio_x {
             for (c, name) in [(crate::aprender::Cel::Streak(5, false), "aprender-ofensiva"), (crate::aprender::Cel::Streak(7, true), "aprender-ofensiva-protetor"), (crate::aprender::Cel::Goal(30), "aprender-meta")] {
                 crate::aprender::draw_celebration(&mut app.fb, &app.fonts, c);
                 app.fb.save_pgm(&out.join(format!("zz-{name}.pgm")));
+            }
+        }
+        // Aprender: hub com os tópicos, um tópico com currículo e uma lição de exemplo.
+        {
+            let d = home.join("data/aprender/topicos/ingles");
+            std::fs::create_dir_all(d.join("licoes")).unwrap();
+            std::fs::write(d.join("tema.txt"), "Inglês para desenvolvedores").unwrap();
+            std::fs::write(d.join("curriculo.json"), r#"{"titulo": "Inglês para Devs", "unidades": [{"titulo": "Primeiros passos", "licoes": ["Cumprimentos no trabalho", "Apresentando-se", "Números e horários", "Perguntas simples", "Revisão da unidade"]}, {"titulo": "O vocabulário do código", "licoes": ["Bug, fix e issue", "Commits"]}]}"#).unwrap();
+            std::fs::write(d.join("feitas.txt"), "0-0").unwrap();
+            std::fs::write(d.join("licoes/0-1.json"), r#"{"cartoes": [{"titulo": "I am, I work", "texto": "Para se apresentar numa daily, use frases curtas: I am Pedro. I work on the frontend. I am a full-stack developer. Em inglês o sujeito nunca some: diga sempre I am, nunca só am."}], "exercicios": [{"pergunta": "Como dizer 'Eu trabalho no backend'?", "opcoes": ["I work on the backend", "Work on backend", "I working backend"], "certa": 0, "explicacao": "Sujeito + verbo: I work. Em inglês o sujeito não some."}, {"pergunta": "Complete: ___ a developer.", "opcoes": ["I am", "I is", "Am"], "certa": 0, "explicacao": "Com I, o verbo to be é am."}]}"#).unwrap();
+            std::fs::write(home.join("data/aprender.txt"), format!("{}|12|t:ingles\n{}|15|licao\n", crate::aprender::today() - 1, crate::aprender::today() - 1)).unwrap();
+            app.go(Screen::Home);
+            shot(&mut app, "aprender-inicio");
+            app.mini = Some(Box::new(crate::estudo::Estudo::new()));
+            app.mini_back = Screen::Home;
+            app.go(Screen::Mini);
+            shot(&mut app, "aprender-hub");
+            let mut e = crate::estudo::Estudo::new();
+            e.open_first_topic();
+            app.mini = Some(Box::new(e));
+            app.go(Screen::Mini);
+            shot(&mut app, "aprender-topico");
+            let mut e = crate::estudo::Estudo::new();
+            e.open_first_topic();
+            e.start_lesson(0, 1);
+            app.mini = Some(Box::new(e));
+            app.go(Screen::Mini);
+            shot(&mut app, "aprender-licao-cartao");
+            for (id, name) in [(730, "aprender-exercicio"), (741, "aprender-exercicio-errou"), (730, "aprender-exercicio-2"), (740, "aprender-exercicio-certo"), (730, "aprender-repete-erro"), (740, "aprender-repete-certo"), (730, "aprender-fim")] {
+                app.mini_tap(id, 0);
+                shot(&mut app, name);
             }
         }
         // Revisão dos destaques com cartões de exemplo (o arquivo do Kindle não existe no PC).

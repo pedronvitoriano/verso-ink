@@ -39,6 +39,7 @@ mod engine;
 mod clippings;
 mod revisao;
 mod aprender;
+mod estudo;
 mod claude_ui;
 mod clock;
 mod update;

@@ -101,6 +101,21 @@ pub fn reading_minutes_today(offset_min: i64) -> u32 {
     (secs / 60) as u32
 }
 
+/// Minutos lidos e pomodoros de foco num dia qualquer (para o fechamento da semana).
+pub fn day_stats(offset_min: i64, day: i64) -> (u32, u32) {
+    let secs: i64 = lines("reading.log")
+        .iter()
+        .filter_map(|l| {
+            let mut it = l.split_whitespace();
+            Some((it.next()?.parse::<i64>().ok()?, it.next()?.parse::<i64>().ok()?))
+        })
+        .filter(|(start, _)| day_of(*start, offset_min) == day)
+        .map(|(_, dur)| dur.max(0))
+        .sum();
+    let focus = lines("focus.log").iter().filter_map(|l| l.trim().parse::<i64>().ok()).filter(|&s| day_of(s, offset_min) == day).count() as u32;
+    ((secs / 60) as u32, focus)
+}
+
 /// Partida salva e não terminada, para o "Continuar" da tela inicial.
 /// Último jogo aberto (índice em apps::GAMES), para o "Continuar" da tela inicial.
 pub fn last_game() -> Option<usize> {

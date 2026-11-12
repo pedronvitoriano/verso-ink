@@ -110,6 +110,28 @@ pub struct Status {
     pub week: [(u32, bool); 7],
 }
 
+/// Ofensiva de um tópico: dias seguidos com XP de alguma das fontes (até hoje, ou até ontem se
+/// hoje ainda não). Devolve (dias, hoje feito).
+pub fn topic_streak(sources: &[&str]) -> (u32, bool) {
+    let lg = log();
+    let t = today();
+    let did = |d: i64| lg.iter().any(|(dd, x, s)| *dd == d && *x > 0 && sources.iter().any(|src| s == src));
+    let done = did(t);
+    let mut d = if done { t } else { t - 1 };
+    let mut n = 0;
+    while did(d) {
+        n += 1;
+        d -= 1;
+    }
+    (n, done)
+}
+
+/// XP por dia entre `from` e `to`.
+pub fn xp_days(from: i64, to: i64) -> Vec<u32> {
+    let lg = log();
+    (from..=to).map(|d| xp_on(&lg, d)).collect()
+}
+
 pub fn status() -> Status {
     let t = today();
     settle(t);

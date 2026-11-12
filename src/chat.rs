@@ -178,6 +178,12 @@ fn token() -> Option<String> {
 
 /// Chamada HTTP pela ponte. Devolve o JSON da resposta ou a mensagem de erro para a tela.
 pub fn call(method: &str, path: &str, body: Option<&str>, timeout: u32) -> Result<Json, String> {
+    let raw = call_raw(method, path, body, timeout)?;
+    parse(&raw).ok_or_else(|| "resposta inválida da ponte".into())
+}
+
+/// Como `call`, mas devolve o JSON da resposta em texto (para guardar como veio).
+pub fn call_raw(method: &str, path: &str, body: Option<&str>, timeout: u32) -> Result<String, String> {
     let (Some(base), Some(tok)) = (url(), token()) else { return Err("A ponte do Claude ainda não foi configurada.".into()) };
     let mut cmd = Command::new("curl");
     cmd.args(resolve_args());
@@ -197,7 +203,8 @@ pub fn call(method: &str, path: &str, body: Option<&str>, timeout: u32) -> Resul
     let code: u32 = code.trim().parse().unwrap_or(0);
     let parsed = parse(json);
     match code {
-        200 => parsed.ok_or_else(|| "resposta inválida da ponte".into()),
+        200 if parsed.is_some() => Ok(json.to_string()),
+        200 => Err("resposta inválida da ponte".into()),
         0 => Err("Sem conexão com a VPS. Confira o Wi-Fi.".into()),
         401 => Err("Token do Kindle recusado pela ponte.".into()),
         c => Err(parsed.as_ref().and_then(|j| j.get("error")).and_then(Json::str).map(str::to_string).unwrap_or(format!("Erro {c} da ponte."))),

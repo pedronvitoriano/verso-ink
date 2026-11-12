@@ -29,7 +29,7 @@ impl Module {
             Module::Jogar => "Jogar",
             Module::Foco => "Foco",
             Module::Claude => "Claude",
-            Module::Violao => "Violão",
+            Module::Violao => "Aprender",
             Module::Mais => "Mais",
         }
     }
@@ -39,7 +39,7 @@ impl Module {
             Module::Jogar => "Xadrez, sudoku e mais 14",
             Module::Foco => "Pomodoro e o seu dia",
             Module::Claude => "Conversa ao vivo",
-            Module::Violao => "Cifras, acordes e treino",
+            Module::Violao => "Violão, partitura e mais",
             Module::Mais => "Edição, artigos e mais",
         }
     }
@@ -517,7 +517,7 @@ fn module_icon(m: Module) -> &'static str {
         Module::Jogar => "jogar",
         Module::Foco => "foco",
         Module::Claude => "claude",
-        Module::Violao => "violao",
+        Module::Violao => if crate::sprites::exists("icone-aprender") { "aprender" } else { "violao" },
         Module::Mais => "mais",
     }
 }

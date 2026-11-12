@@ -359,6 +359,12 @@ pub fn streak() -> u32 {
     n
 }
 
+/// Dias com treino de trocas entre `from` e `to` (inclusive).
+pub fn practice_days(from: i64, to: i64) -> usize {
+    let days: std::collections::BTreeSet<i64> = log().iter().map(|(d, _, _)| *d).filter(|d| (from..=to).contains(d)).collect();
+    days.len()
+}
+
 pub fn practiced_today() -> bool {
     log().iter().any(|(d, _, _)| *d == today())
 }
@@ -405,6 +411,8 @@ pub struct Violao {
     module: usize,
     lesson: usize,
     answered: Option<usize>,
+    /// Aberto direto no curso (tópico Partitura): voltar do curso sai do módulo.
+    course_root: bool,
     quiz: Quiz,
     /// Comemoração por cima (ofensiva cresceu, meta batida).
     cel: Option<crate::aprender::Cel>,
@@ -441,7 +449,15 @@ impl Violao {
         let q = crate::partitura::Q::new(0, 0, &mut rng, None);
         let quiz = Quiz { mode: 0, level: 0, q, streak: 0, wrong: None, rng };
         let lesson = crate::partitura::next_lesson();
-        Violao { view: View::Hub, songs, song: 0, page: 0, shift: 0, list_page: 0, dict_root: 0, pair: suggested(), timer: Timer::Idle, shown_secs: 0, module: crate::partitura::locate(lesson).0, lesson, answered: None, quiz, cel: None }
+        Violao { view: View::Hub, songs, song: 0, page: 0, shift: 0, list_page: 0, dict_root: 0, pair: suggested(), timer: Timer::Idle, shown_secs: 0, module: crate::partitura::locate(lesson).0, lesson, answered: None, course_root: false, quiz, cel: None }
+    }
+
+    /// Abre direto no curso de partitura (para o tópico Partitura da seção Aprender).
+    pub fn course() -> Self {
+        let mut v = Self::new();
+        v.view = View::Course;
+        v.course_root = true;
+        v
     }
 
     fn hub_card(k: usize) -> Rect {
@@ -1251,7 +1267,7 @@ impl MiniGame for Violao {
         if self.cel.take().is_some() {
             return true;
         }
-        if self.view == View::Hub {
+        if self.view == View::Hub || (self.view == View::Course && self.course_root) {
             return false;
         }
         self.timer = Timer::Idle;
