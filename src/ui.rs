@@ -91,19 +91,35 @@ fn time_rect() -> Rect {
 fn chips_rect() -> Rect {
     Rect::new(MARGIN, 466, 1072 - 2 * MARGIN, 84)
 }
-/// Bloco 0 (Ler, com a capa) ocupa a largura toda; os outros formam uma grade 2x2 abaixo.
+/// Módulos numa grade igual de 2 colunas (o último sozinho ocupa a linha toda).
 pub fn tile_rect(i: usize) -> Rect {
-    let (top, gap, wide_h, bottom) = (590, 26, 300, 1300);
+    let (top, gap, bottom) = (CONT_Y + CONT_H + 36, 22, 1300);
+    let n = Module::ALL.len() as i32;
+    let rows = (n + 1) / 2;
     let full_w = 1072 - 2 * MARGIN;
-    if i == 0 {
-        return Rect::new(MARGIN, top, full_w, wide_h);
-    }
-    let grid_top = top + wide_h + gap + 4;
     let w = (full_w - gap) / 2;
-    let h = (bottom - grid_top - gap) / 2;
-    let k = (i - 1) as i32;
+    let h = (bottom - top - (rows - 1) * gap) / rows;
+    let k = i as i32;
     let (col, row) = (k % 2, k / 2);
-    Rect::new(MARGIN + col * (w + gap), grid_top + row * (h + gap), w, h)
+    if k == n - 1 && n % 2 == 1 {
+        return Rect::new(MARGIN, top + row * (h + gap), full_w, h);
+    }
+    Rect::new(MARGIN + col * (w + gap), top + row * (h + gap), w, h)
+}
+
+/// Faixa "Continuar": o último livro e o último jogo, lado a lado e do mesmo tamanho.
+const CONT_Y: i32 = 616;
+const CONT_H: i32 = 170;
+pub fn continue_book_rect(with_game: bool) -> Rect {
+    let w = if with_game { (1072 - 2 * MARGIN - 22) / 2 } else { 1072 - 2 * MARGIN };
+    Rect::new(MARGIN, CONT_Y, w, CONT_H)
+}
+pub fn continue_game_rect(with_book: bool) -> Rect {
+    if !with_book {
+        return Rect::new(MARGIN, CONT_Y, 1072 - 2 * MARGIN, CONT_H);
+    }
+    let w = (1072 - 2 * MARGIN - 22) / 2;
+    Rect::new(MARGIN + w + 22, CONT_Y, w, CONT_H)
 }
 /// Faixa do topo (data e bateria): tocar abre Luz e tela.
 pub fn header_rect() -> Rect {
@@ -377,18 +393,6 @@ fn draw_daily_art(fb: &mut Framebuffer, st: &Status) {
     crate::sprites::draw(fb, &format!("dia-{k:02}"), Rect::new(1072 - MARGIN - 360, 136, 372, 340));
 }
 
-/// Largura da capa no bloco Ler (proporção de livro, 2:3).
-fn cover_w(r: Rect) -> i32 {
-    (r.h - 50) * 2 / 3
-}
-
-/// Botão "Continuar" dentro do bloco Ler.
-pub fn continue_rect() -> Rect {
-    let r = tile_rect(0);
-    let x = r.x + 36 + cover_w(r) + 40;
-    Rect::new(x, r.y + r.h - 30 - 84, r.x + r.w - 36 - x, 84)
-}
-
 /// O que a tela inicial mostra além do fixo: livro em leitura e jogo em andamento.
 #[derive(Default)]
 pub struct HomeExtra {
@@ -448,64 +452,75 @@ fn split_title(full: &str) -> (&str, &str) {
     }
 }
 
-pub fn draw_tile(fb: &mut Framebuffer, f: &Fonts, i: usize, pressed: bool, extra: &HomeExtra) {
+/// Ícone ilustrado de cada módulo.
+fn module_icon(m: Module) -> &'static str {
+    match m {
+        Module::Ler => "ler",
+        Module::Jogar => "jogar",
+        Module::Foco => "foco",
+        Module::Claude => "claude",
+        Module::Mais => "mais",
+    }
+}
+
+pub fn draw_tile(fb: &mut Framebuffer, f: &Fonts, i: usize, pressed: bool, _extra: &HomeExtra) {
     let m = Module::ALL[i];
     let r0 = tile_rect(i);
-    card(fb, r0, 34, PAPER, pressed);
+    card(fb, r0, 30, PAPER, pressed);
     let r = if pressed { Rect::new(r0.x, r0.y + SH, r0.w, r0.h) } else { r0 };
-    if i == 0 {
-        // Ler: a capa é a protagonista; título, progresso e Continuar ao lado.
-        let cover = Rect::new(r.x + 36, r.y + 25, cover_w(r), r.h - 50);
-        draw_cover(fb, f, cover, extra.book.as_ref());
-        let x = r.x + 36 + cover_w(r) + 40;
-        let tag = "Ler";
-        let tw = f.measure(Face::Strong, 24.0, tag) + 28;
-        fb.round_rect(Rect::new(x, r.y + 26, tw, 38), 19, SURFACE);
-        f.draw(fb, Face::Strong, 24.0, x + 14, r.y + 53, INK, tag);
-        let Some(book) = extra.book.as_ref() else {
-            f.draw(fb, Face::Display, 46.0, x, r.y + 126, INK, "Biblioteca");
-            for (k, l) in crate::chat::wrap_words(f, Face::Body, 27.0, "Seus livros e o Verso One, sem distração.", r.x + r.w - 36 - x).iter().take(2).enumerate() {
-                f.draw(fb, Face::Body, 27.0, x, r.y + 170 + k as i32 * 36, MUTED, l);
-            }
-            return;
-        };
-        let (title, author) = split_title(&book.title);
-        let room = r.x + r.w - 36 - x;
-        // Título numa linha só (o bloco é baixo); o resto vai para a capa.
-        let n = 1;
-        f.draw(fb, Face::Display, 42.0, x, r.y + 114, INK, &crate::apps::fit(f, Face::Display, 42.0, title, room));
-        // Autor e progresso numa linha só, para o botão nunca cobrir nada.
-        let pct = book.progress.map(|p| format!("{}% lido", (p * 100.0).round() as i32)).unwrap_or_else(|| "ainda não começou".into());
+    let d = (r.h - 44).min(104);
+    let has = icon_disc(fb, r.x + 22, r.y + (r.h - d) / 2, d, module_icon(m));
+    if !has {
+        icon(fb, m, r.x + 36, r.y + (r.h - 66) / 2, 66, INK);
+    }
+    let x = r.x + 22 + d + 22;
+    fb.fill(Rect::new(x - 12, r.y + 26, 3, r.h - 52), 0xBB);
+    f.draw(fb, Face::Display, 50.0, x + 4, r.y + r.h / 2 + 4, INK, m.title());
+    let text = crate::apps::fit(f, Face::Body, 24.0, m.subtitle(), r.x + r.w - 16 - x);
+    f.draw(fb, Face::Body, 24.0, x + 6, r.y + r.h / 2 + 42, MUTED, &text);
+}
+
+/// Faixa "Continuar": cartões do último livro e do último jogo.
+fn draw_continue(fb: &mut Framebuffer, f: &Fonts, extra: &HomeExtra, game: Option<&(usize, String)>) {
+    let book = extra.book.as_ref();
+    if book.is_none() && game.is_none() {
+        return;
+    }
+    f.draw(fb, Face::Strong, 30.0, MARGIN, CONT_Y - 18, INK, "Continuar");
+    if let Some(b) = book {
+        let r = continue_book_rect(game.is_some());
+        card(fb, r, 28, PAPER, false);
+        let cover = Rect::new(r.x + 18, r.y + 16, (r.h - 32) * 2 / 3, r.h - 32);
+        draw_cover(fb, f, cover, Some(b));
+        let x = cover.x + cover.w + 22;
+        let room = r.x + r.w - 18 - x;
+        let (title, author) = split_title(&b.title);
+        let lines = crate::chat::wrap_words(f, Face::Display, 32.0, title, room);
+        for (k, l) in lines.iter().take(2).enumerate() {
+            let l = if k == 1 && lines.len() > 2 { crate::apps::fit(f, Face::Display, 32.0, &format!("{l}…"), room) } else { l.clone() };
+            f.draw(fb, Face::Display, 32.0, x, r.y + 50 + k as i32 * 38, INK, &l);
+        }
+        let pct = b.progress.map(|p| format!("{}% lido", (p * 100.0).round() as i32)).unwrap_or_else(|| "Começar".into());
         let meta = if author.is_empty() { pct } else { format!("{author} · {pct}") };
-        let py = r.y + 114 + n * 40;
-        f.draw(fb, Face::Body, 27.0, x, py, MUTED, &crate::apps::fit(f, Face::Body, 27.0, &meta, room));
-        if let Some(p) = book.progress {
-            let bar = Rect::new(x, py + 16, room, 14);
-            fb.round_rect(bar, 8, SURFACE);
-            fb.round_outline(bar, 8, 2, INK, SURFACE);
-            fb.round_rect(Rect::new(bar.x, bar.y, ((bar.w as f32 * p.clamp(0.0, 1.0)) as i32).max(16), bar.h), 8, 0x55);
+        f.draw(fb, Face::Body, 22.0, x, r.y + r.h - 34, MUTED, &crate::apps::fit(f, Face::Body, 22.0, &meta, room));
+        if let Some(p) = b.progress {
+            let bar = Rect::new(x, r.y + r.h - 24, room, 8);
+            fb.round_rect(bar, 4, SURFACE);
+            fb.round_rect(Rect::new(bar.x, bar.y, ((bar.w as f32 * p.clamp(0.0, 1.0)) as i32).max(8), bar.h), 4, 0x55);
         }
-        let c = continue_rect();
-        let c = if pressed { Rect::new(c.x, c.y + SH, c.w, c.h) } else { c };
-        button(fb, f, c, if book.progress.is_some_and(|p| p > 0.0) { "Continuar" } else { "Começar a ler" }, true);
-    } else {
-        let d = 100;
-        let has = icon_disc(fb, r.x + 22, r.y + (r.h - d) / 2, d, match m {
-            Module::Jogar => "jogar",
-            Module::Foco => "foco",
-            Module::Claude => "claude",
-            Module::Mais => "mais",
-            Module::Ler => "ler",
-        });
-        if !has {
-            icon(fb, m, r.x + 36, r.y + (r.h - 66) / 2, 66, INK);
+    }
+    if let Some((i, sum)) = game {
+        let r = continue_game_rect(book.is_some());
+        card(fb, r, 28, PAPER, false);
+        let (name, _) = crate::apps::GAMES[*i];
+        let d = 96;
+        let slug = crate::apps::fold(name).replace(' ', "");
+        let x = if icon_disc(fb, r.x + 18, r.y + (r.h - d) / 2, d, &slug) { r.x + 18 + d + 20 } else { r.x + 26 };
+        let room = r.x + r.w - 18 - x;
+        f.draw(fb, Face::Display, 40.0, x, r.y + 70, INK, &crate::apps::fit(f, Face::Display, 40.0, name, room));
+        for (k, l) in crate::chat::wrap_words(f, Face::Body, 23.0, sum, room).iter().take(2).enumerate() {
+            f.draw(fb, Face::Body, 23.0, x, r.y + 108 + k as i32 * 30, MUTED, l);
         }
-        let x = r.x + 22 + d + 22;
-        fb.fill(Rect::new(x - 12, r.y + 26, 3, r.h - 52), 0xBB);
-        f.draw(fb, Face::Display, 50.0, x + 4, r.y + r.h / 2 + 4, INK, m.title());
-        let text = if m == Module::Jogar { extra.game.unwrap_or(m.subtitle()) } else { m.subtitle() };
-        let text = crate::apps::fit(f, Face::Body, 24.0, text, r.x + r.w - 16 - x);
-        f.draw(fb, Face::Body, 24.0, x + 6, r.y + r.h / 2 + 42, if m == Module::Jogar && extra.game.is_some() { INK } else { MUTED }, &text);
     }
 }
 
@@ -532,13 +547,14 @@ pub fn draw_footer(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     f.draw(fb, Face::Strong, 26.0, tx, r.y + 41, if st.wifi { INK } else { MUTED }, wifi);
 }
 
-pub fn draw_home(fb: &mut Framebuffer, f: &Fonts, st: &Status, sum: &crate::data::Summary) {
+pub fn draw_home(fb: &mut Framebuffer, f: &Fonts, st: &Status, sum: &crate::data::Summary, game: Option<&(usize, String)>) {
     fb.fill(fb.screen(), PAPER);
     draw_header(fb, f, st);
     draw_daily_art(fb, st);
     draw_clock(fb, f, st);
     let _ = sum; // o resumo é desenhado nos cartões abaixo da hora (draw_chips)
     let extra = HomeExtra::load();
+    draw_continue(fb, f, &extra, game);
     for i in 0..Module::ALL.len() {
         draw_tile(fb, f, i, false, &extra);
     }

@@ -102,6 +102,15 @@ pub fn reading_minutes_today(offset_min: i64) -> u32 {
 }
 
 /// Partida salva e não terminada, para o "Continuar" da tela inicial.
+/// Último jogo aberto (índice em apps::GAMES), para o "Continuar" da tela inicial.
+pub fn last_game() -> Option<usize> {
+    std::fs::read_to_string(dir().join("ultimo_jogo")).ok()?.trim().parse().ok()
+}
+
+pub fn set_last_game(i: usize) {
+    let _ = std::fs::write(dir().join("ultimo_jogo"), i.to_string());
+}
+
 pub fn game_in_progress() -> Option<&'static str> {
     if crate::sudoku::Game::load().is_some_and(|g| !g.solved()) {
         return Some("Sudoku em andamento");

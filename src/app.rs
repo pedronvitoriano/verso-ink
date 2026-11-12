@@ -332,9 +332,10 @@ impl App {
         self.fb.rot180 = self.screen == Screen::Chess && self.local_rotated();
         let chess_btn = if self.screen == Screen::Chess { Some(self.chess_buttons()) } else { None };
         let live_games = if self.screen == Screen::Games { self.live_games() } else { Vec::new() };
+        let home_game = if self.screen == Screen::Home { self.home_game() } else { None };
         let (fb, f, st) = (&mut self.fb, &self.fonts, &self.status);
         match self.screen {
-            Screen::Home => ui::draw_home(fb, f, st, &data::summary(st.offset_min)),
+            Screen::Home => ui::draw_home(fb, f, st, &data::summary(st.offset_min), home_game.as_ref()),
             Screen::Module(m) => ui::draw_module(fb, f, m, st),
             Screen::Light => ui::draw_light(fb, f, &self.light, st),
             Screen::Library => apps::draw_library(fb, f, &self.lib, st),
@@ -536,8 +537,12 @@ impl App {
         match self.screen {
             Screen::Home => {
                 let mut v = Vec::new();
-                if data::last_book().is_some() {
-                    v.push((Continue, ui::continue_rect()));
+                let (book, game) = (data::last_book().is_some(), data::last_game());
+                if book {
+                    v.push((Continue, ui::continue_book_rect(game.is_some())));
+                }
+                if let Some(i) = game.filter(|&i| i < apps::GAMES.len()) {
+                    v.push((Game(i), ui::continue_game_rect(book)));
                 }
                 v.extend((0..Module::ALL.len()).map(|i| (Tile(i), ui::tile_rect(i))));
                 v.push((Header, ui::header_rect()));
@@ -694,8 +699,7 @@ impl App {
             Screen::Tutorial => vec![(Back, ui::back_rect()), (Prev, crate::tutorial::prev_rect()), (Next, crate::tutorial::next_rect())],
             Screen::Games => {
                 let mut v = vec![(Back, ui::back_rect())];
-                let live: Vec<bool> = self.live_games().iter().map(Option::is_some).collect();
-                v.extend(apps::games_layout(&live).0.into_iter().map(|(i, r)| (Game(i), r)));
+                v.extend(apps::games_layout().0.into_iter().map(|(i, r)| (Game(i), r)));
                 v
             }
             Screen::Mini => {
@@ -1331,6 +1335,13 @@ impl App {
         self.coach_level().is_none() && crate::chess::rotate_enabled() && self.chess.as_ref().is_some_and(|g| !g.pos.white_to_move)
     }
 
+    /// Último jogo aberto e o resumo da partida (se houver), para o "Continuar" da tela inicial.
+    fn home_game(&self) -> Option<(usize, String)> {
+        let i = data::last_game().filter(|&i| i < apps::GAMES.len())?;
+        let sum = self.live_games().get(i).cloned().flatten().unwrap_or_else(|| apps::GAMES[i].1.to_string());
+        Some((i, sum))
+    }
+
     /// Resumo da partida em andamento de cada jogo (None = sem partida).
     fn live_games(&self) -> Vec<Option<String>> {
         let mut live: Vec<Option<String>> = (0..apps::GAMES.len()).map(|i| self.mini_cache.get(&i).map(|g| g.summary()).filter(|t| !t.is_empty())).collect();
@@ -1804,6 +1815,9 @@ impl App {
 
     fn activate(&mut self, t: Target, x: i32) {
         use Target::*;
+        if let (Screen::Games, Game(i)) = (self.screen, t) {
+            data::set_last_game(i);
+        }
         match (self.screen, t) {
             (Screen::Sudoku, Back) => {
                 if let Some(g) = &self.sudoku {
@@ -2022,6 +2036,11 @@ impl App {
             (Screen::Calendar, Back) => self.go(Screen::Today),
             (_, Back) => self.go(Screen::Home),
             (Screen::Home, Header) => self.go(Screen::Light),
+            // "Continuar" do jogo na tela inicial: abre a partida direto.
+            (Screen::Home, Game(i)) => {
+                self.go(Screen::Games);
+                self.activate(Game(i), x);
+            }
             (Screen::Home, Continue) => {
                 let Some(b) = data::last_book() else { return };
                 if !b.path.exists() {
@@ -2748,6 +2767,9 @@ mod raio_x {
         for g in 0..apps::GAMES.len() {
             std::fs::write(home.join(format!("data/tutoriais/{g}.visto")), "1").unwrap();
         }
+        // Um livro e um jogo para o "Continuar" da tela inicial.
+        std::fs::write(home.join("data/last_book"), "/nao/existe.epub\nO nome do vento - Patrick Rothfuss\n").unwrap();
+        std::fs::write(home.join("data/ultimo_jogo"), "1").unwrap();
         // Relógio 5+3 nas partidas, para a tela da partida mostrar os dois mostradores.
         std::fs::write(home.join("data/xadrez_ritmo.txt"), "5").unwrap();
         std::fs::write(home.join("data/dia.txt"), "! Revisar o capítulo 3\n- Comprar pão\n@ 08:00 Remédio\n* Ler 20 min\n* {seg,qua,sex} Academia\n").unwrap();

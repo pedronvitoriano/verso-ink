@@ -276,64 +276,72 @@ pub const GAMES: [(&str, &str); 16] = [
     ("Damas", "Regras brasileiras, CPU ou local"),
 ];
 
-/// Grade de blocos 2 colunas.
-/// Disposição da tela Jogar: os jogos com partida em andamento vêm primeiro, em cartões
-/// maiores; depois todos os outros. Devolve (jogo, retângulo) e a altura de cada título de seção.
-pub fn games_layout(live: &[bool]) -> (Vec<(usize, Rect)>, Option<i32>, i32) {
-    let gap = 22;
+/// Seções da tela Jogar: (nome, índices em GAMES).
+pub const GAME_GROUPS: [(&str, &[usize]); 4] = [
+    ("Quebra-cabeças", &[0, 2, 6, 7, 9, 10]),
+    ("Tabuleiro", &[1, 15, 3, 5, 4]),
+    ("Cartas", &[8, 11]),
+    ("Aventura", &[12, 13, 14]),
+];
+
+/// Disposição da tela Jogar: quatro seções, cartões em duas colunas. Devolve (jogo, retângulo)
+/// e (título da seção, y da linha de base).
+pub fn games_layout() -> (Vec<(usize, Rect)>, Vec<(&'static str, usize, i32)>) {
+    let (gap, head, card_h, row_gap) = (20, 48, 76, 13);
     let w = (W - 2 * MARGIN - gap) / 2;
-    let on: Vec<usize> = (0..GAMES.len()).filter(|&i| live.get(i) == Some(&true)).collect();
-    let off: Vec<usize> = (0..GAMES.len()).filter(|&i| live.get(i) != Some(&true)).collect();
-    let mut out = Vec::new();
-    let mut y = 372;
-    let mut live_head = None;
-    if !on.is_empty() {
-        live_head = Some(y + 34);
-        y += 54;
-        let h = if on.len() <= 4 { 118 } else { 84 };
-        for (k, &i) in on.iter().enumerate() {
-            out.push((i, Rect::new(MARGIN + (k % 2) as i32 * (w + gap), y + (k / 2) as i32 * (h + 20), w, h)));
+    let mut cards = Vec::new();
+    let mut heads = Vec::new();
+    let mut y = 360;
+    for (name, games) in GAME_GROUPS {
+        heads.push((name, games.len(), y + 34));
+        y += head;
+        for (k, &i) in games.iter().enumerate() {
+            cards.push((i, Rect::new(MARGIN + (k % 2) as i32 * (w + gap), y + (k / 2) as i32 * (card_h + row_gap), w, card_h)));
         }
-        y += on.len().div_ceil(2) as i32 * (h + 20) + 4;
+        y += games.len().div_ceil(2) as i32 * (card_h + row_gap) + 2;
     }
-    let all_head = y + 34;
-    y += 54;
-    let rows = off.len().div_ceil(2).max(1) as i32;
-    // Os cartões ocupam o que sobra da tela, entre 72 e 96 de altura.
-    let h = ((1410 - y) / rows - 18).clamp(72, 96);
-    for (k, &i) in off.iter().enumerate() {
-        out.push((i, Rect::new(MARGIN + (k % 2) as i32 * (w + gap), y + (k / 2) as i32 * (h + 18), w, h)));
-    }
-    (out, live_head, all_head)
+    (cards, heads)
 }
 
 pub fn draw_games(fb: &mut Framebuffer, f: &Fonts, live_games: &[Option<String>]) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
-    let end = f.draw(fb, Face::Display, 120.0, MARGIN - 6, 300, INK, "Jogar");
-    f.draw(fb, Face::Strong, 28.0, end + 24, 300, MUTED, "Tudo funciona sem Wi-Fi");
-    let live: Vec<bool> = live_games.iter().map(Option::is_some).collect();
-    let (cards, live_head, all_head) = games_layout(&live);
-    if let Some(y) = live_head {
-        f.draw(fb, Face::Strong, 34.0, MARGIN, y, INK, "Em andamento");
+    // Cabeçalho: título, quantos jogos e quantos em andamento, e a ilustração da seção.
+    crate::sprites::draw(fb, "cab-jogar", Rect::new(W - MARGIN - 420, 40, 440, 330));
+    f.draw(fb, Face::Display, 130.0, MARGIN - 6, 290, INK, "Jogar");
+    let on = live_games.iter().filter(|g| g.is_some()).count();
+    let sub = match on {
+        0 => format!("{} jogos · tudo sem Wi-Fi", GAMES.len()),
+        1 => format!("{} jogos · 1 em andamento", GAMES.len()),
+        n => format!("{} jogos · {n} em andamento", GAMES.len()),
+    };
+    f.draw(fb, Face::Strong, 28.0, MARGIN, 340, MUTED, &sub);
+    let (cards, heads) = games_layout();
+    for (name, n, y) in heads {
+        let end = f.draw(fb, Face::Strong, 30.0, MARGIN, y, INK, name);
+        let c = format!("{n}");
+        let cw = f.measure(Face::Strong, 22.0, &c) + 22;
+        fb.round_rect(Rect::new(end + 14, y - 26, cw, 32), 16, ui::SURFACE);
+        let end = f.draw(fb, Face::Strong, 22.0, end + 25, y - 3, INK, &c);
+        fb.fill(Rect::new(end + 24, y - 11, W - MARGIN - end - 24, 2), 0xC8);
     }
-    f.draw(fb, Face::Strong, 34.0, MARGIN, all_head, INK, if live_head.is_some() { "Todos os jogos" } else { "Jogos" });
     for (i, r) in cards {
-        let (title, _) = GAMES[i];
-        let on = live_games.get(i).cloned().flatten();
-        ui::card(fb, r, 26, if on.is_some() { ui::SURFACE } else { PAPER }, false);
-        let d = r.h - 20;
+        let (title, desc) = GAMES[i];
+        let live = live_games.get(i).cloned().flatten();
+        ui::card(fb, r, 24, if live.is_some() { ui::SURFACE } else { PAPER }, false);
+        let d = r.h - 22;
         let name = fold(title).replace(' ', "");
-        let x = if ui::icon_disc(fb, r.x + 12, r.y + 10, d, &name) { r.x + 12 + d + 18 } else { r.x + 26 };
-        let room = r.x + r.w - 16 - x;
-        match on {
-            Some(sum) if r.h > 100 => {
-                f.draw(fb, Face::Display, 40.0, x, r.y + 54, INK, &fit(f, Face::Display, 40.0, title, room));
-                f.draw(fb, Face::Body, 23.0, x + 2, r.y + 90, INK, &fit(f, Face::Body, 23.0, &sum, room));
+        let x = if ui::icon_disc(fb, r.x + 11, r.y + 11, d, &name) { r.x + 11 + d + 14 } else { r.x + 22 };
+        let room = r.x + r.w - 14 - x;
+        f.draw(fb, Face::Display, 31.0, x, r.y + 35, INK, &fit(f, Face::Display, 31.0, title, room));
+        match live {
+            Some(sum) => {
+                // Em andamento: bolinha preta e o resumo da partida.
+                fb.round_rect(Rect::new(x + 1, r.y + 47, 12, 12), 6, INK);
+                f.draw(fb, Face::Strong, 20.0, x + 20, r.y + 59, INK, &fit(f, Face::Strong, 20.0, &sum, room - 20));
             }
-            _ => {
-                let size = 38.0;
-                f.draw(fb, Face::Display, size, x, r.y + r.h / 2 + (size * 0.36) as i32, INK, &fit(f, Face::Display, size, title, room));
+            None => {
+                f.draw(fb, Face::Body, 20.0, x + 1, r.y + 59, MUTED, &fit(f, Face::Body, 20.0, desc, room));
             }
         }
     }
