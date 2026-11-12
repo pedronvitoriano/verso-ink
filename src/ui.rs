@@ -144,6 +144,11 @@ pub fn night_rect() -> Rect {
 pub fn plane_rect() -> Rect {
     Rect::new(MARGIN - 16, 990, 1072 - 2 * MARGIN + 32, 116)
 }
+/// Atalho para a Início no painel Luz e tela (quando ele foi aberto de outra tela).
+pub fn light_home_rect() -> Rect {
+    Rect::new(MARGIN - 16 + 230 + 20, 72, 220, 88)
+}
+
 /// Botão do Claude no painel Luz e tela (pergunta sobre a tela de onde você veio).
 pub fn light_claude_rect() -> Rect {
     Rect::new(1072 - MARGIN - 420, 72, 420, 88)
@@ -1075,9 +1080,12 @@ fn toggle_row(fb: &mut Framebuffer, f: &Fonts, r: Rect, title: &str, sub: &str, 
     }
 }
 
-pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status, claude: bool, plane: bool) {
+pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status, claude: bool, plane: bool, home: bool) {
     fb.fill(fb.screen(), PAPER);
     draw_back(fb, f, false);
+    if home {
+        button(fb, f, light_home_rect(), "Início", false);
+    }
     if claude {
         let r = light_claude_rect();
         card(fb, r, r.h / 2, INK, false);
@@ -1090,7 +1098,15 @@ pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status, claud
         }
         f.draw(fb, Face::Strong, size, tx, r.y + r.h / 2 + (size * 0.36) as i32, PAPER, t);
     }
-    f.draw(fb, Face::Display, 120.0, MARGIN - 4, 360, INK, "Luz e tela");
+    f.draw(fb, Face::Display, 120.0, MARGIN - 4, 330, INK, "Luz e tela");
+    // Bateria e rede, à vista sem voltar para a Início.
+    let bat = match (st.battery, st.charging) {
+        (Some(b), true) => format!("Bateria {b}% · carregando"),
+        (Some(b), false) => format!("Bateria {b}%"),
+        (None, _) => "Bateria: sem leitura".to_string(),
+    };
+    let net = if plane { "modo avião" } else if st.wifi { "Wi-Fi conectado" } else { "sem Wi-Fi" };
+    f.draw(fb, Face::Strong, 30.0, MARGIN, 392, MUTED, &format!("{bat} · {net}"));
     draw_light_level(fb, f, l);
     draw_light_minus(fb, false);
     draw_light_plus(fb, false);

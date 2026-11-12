@@ -516,11 +516,12 @@ impl App {
         let home_game = if self.screen == Screen::Home { self.home_game() } else { None };
         let vs_claude = self.screen == Screen::ChessEnd && self.coach_level() == Some(crate::coach::CLAUDE);
         let light_claude = self.light_claude_ok();
+        let light_home = self.light_return.is_some_and(|s| s != Screen::Home);
         let (fb, f, st) = (&mut self.fb, &self.fonts, &self.status);
         match self.screen {
             Screen::Home => ui::draw_home(fb, f, st, &data::summary(st.offset_min), home_game.as_ref()),
             Screen::Module(m) => ui::draw_module(fb, f, m, st),
-            Screen::Light => ui::draw_light(fb, f, &self.light, st, light_claude, !self.wifi_on),
+            Screen::Light => ui::draw_light(fb, f, &self.light, st, light_claude, !self.wifi_on, light_home),
             Screen::Library => apps::draw_library(fb, f, &self.lib, st),
             Screen::Focus => apps::draw_focus(fb, f, self.pomo, data::focus_today(st.offset_min), st),
             Screen::Settings => apps::draw_settings(fb, f, &self.sys, st, self.confirm.map(|c| c.0)),
@@ -780,6 +781,7 @@ impl App {
             ]
             .into_iter()
             .chain(self.light_claude_ok().then_some((Ctx, ui::light_claude_rect())))
+            .chain(self.light_return.is_some_and(|s| s != Screen::Home).then_some((Primary, ui::light_home_rect())))
             .collect(),
             Screen::Library => {
                 let mut v = vec![(Back, ui::back_rect()), (Clips, apps::clips_rect())];
@@ -2998,6 +3000,10 @@ impl App {
                 self.render(true);
             }
             (Screen::Light, OpenSettings) => self.go(Screen::Settings),
+            (Screen::Light, Primary) if self.light_return.is_some_and(|s| s != Screen::Home) => {
+                self.light_return = None;
+                self.go(Screen::Home);
+            }
             (Screen::Light, Plane) => {
                 // Modo avião = rádio desligado (o Kindle só tem Wi-Fi).
                 set_wifi(!self.wifi_on);
@@ -3521,6 +3527,14 @@ impl App {
                     }
                     self.light_return = Some(self.screen);
                     return self.go(Screen::Light);
+                }
+                // No painel Luz e tela, arrastar para cima fecha (o mesmo gesto, ao contrário).
+                if self.screen == Screen::Light && from.is_some_and(|(_, fy)| fy - y > 250) {
+                    if let Some(h) = self.pressed.take() {
+                        self.flip(h, false);
+                    }
+                    let back = self.light_return.take().unwrap_or(Screen::Home);
+                    return self.go(back);
                 }
                 // Deslizar de baixo para cima: Luz e tela (luz, modo escuro, Wi-Fi, ajustes) de qualquer lugar.
                 let swipe_up = from.is_some_and(|(_, fy)| fy > 1290 && fy - y > 250);
