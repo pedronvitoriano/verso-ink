@@ -1654,6 +1654,8 @@ impl App {
                 crate::revisao::prepare();
                 // Currículos e as próximas lições dos tópicos do Aprender.
                 crate::estudo::prepare();
+                // Dica do professor de violão para a Aula do dia.
+                crate::violao::prepare_tip();
             }
             let _ = tx.send((s, ed, inbox));
         });
@@ -3802,6 +3804,17 @@ mod raio_x {
             app.cur_chat = Some(c);
             app.go(Screen::ClaudeChat);
             shot(&mut app, "claude-conversa");
+        }
+        // Aula do dia do violão (dica escrita à mão; no Kindle vem do Claude).
+        {
+            std::fs::create_dir_all(home.join("data/violao")).unwrap();
+            let t = crate::data::today(crate::offset_min());
+            std::fs::write(home.join("data/violao/dica.txt"), format!("{t}\nSua troca Em ↔ G está em 18 por minuto: hoje, deixe o dedo 2 parado como pivô e faça 10 trocas lentas antes do cronômetro. Na leitura, o ritmo é o ponto fraco: 3 rodadas do treino de ritmo.")).unwrap();
+            app.mini = Some(Box::new(crate::violao::Violao::new()));
+            app.mini_back = Screen::Home;
+            app.go(Screen::Mini);
+            app.mini_tap(700, 0);
+            shot(&mut app, "violao-aula");
         }
         // Fechamento da semana com dados de exemplo.
         {

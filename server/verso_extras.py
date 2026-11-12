@@ -626,6 +626,18 @@ Português do Brasil (exemplos em outra língua quando o tema pedir)."""
             return None, "lição incompleta"
         return {"cartoes": cards, "exercicios": exs}, None
 
+    # ---------- Professor de violão ----------
+
+    def guitar_tip(self, req):
+        dados = json.dumps(req, ensure_ascii=False)[:3000]
+        prompt = f"""Você é o professor de violão do Pedro (iniciante; lê cifra, está aprendendo partitura no Kindle). Números dele (JSON): {dados}
+Escreva a dica do dia para a aula de hoje: 2 ou 3 frases (até 300 caracteres no total), concretas, baseadas nos números (a troca mais fraca, o treino de leitura com pior recorde, a sequência), com um exercício específico para hoje. Tom de professor próximo, sem emoji.
+Responda SÓ com JSON válido, sem cercas: {{"dica": "..."}}"""
+        data, err = self._claude_json(prompt, timeout=150)
+        if err or not isinstance(data, dict) or not data.get("dica"):
+            return None, err or "resposta inválida"
+        return {"dica": str(data["dica"]).strip()[:400]}, None
+
     # ---------- Fechamento da semana ----------
 
     def week_id(self):

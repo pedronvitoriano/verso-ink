@@ -385,6 +385,8 @@ enum View {
     Practice,
     Course,
     Module,
+    /// Aula do dia: três passos montados pelos seus números.
+    Aula,
     Lesson,
     Check,
     Quiz,
@@ -416,6 +418,86 @@ pub struct Violao {
     quiz: Quiz,
     /// Comemoração por cima (ofensiva cresceu, meta batida).
     cel: Option<crate::aprender::Cel>,
+    /// O passo aberto veio da Aula do dia: voltar leva de volta a ela.
+    from_aula: bool,
+}
+
+/// O que um passo da aula abre.
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Step {
+    Practice(usize),
+    Lesson(usize),
+    Quiz(usize, usize),
+    Song(usize),
+    Dict,
+}
+
+fn aula_path() -> PathBuf {
+    let d = crate::home_dir().join("data/violao");
+    let _ = std::fs::create_dir_all(&d);
+    d.join("aula.txt")
+}
+
+/// Marcas da aula de hoje ("musica", "bonus").
+fn aula_marks() -> Vec<String> {
+    let t = today().to_string();
+    std::fs::read_to_string(aula_path()).unwrap_or_default().lines().filter_map(|l| l.split_once('|')).filter(|(d, _)| *d == t).map(|(_, m)| m.to_string()).collect()
+}
+
+fn aula_mark(m: &str) {
+    if !aula_marks().iter().any(|x| x == m) {
+        let mut s = std::fs::read_to_string(aula_path()).unwrap_or_default();
+        s.push_str(&format!("{}|{m}\n", today()));
+        let _ = std::fs::write(aula_path(), s);
+    }
+}
+
+/// Fez lição ou treino de partitura hoje?
+fn read_today() -> bool {
+    let t = crate::aprender::today();
+    crate::aprender::xp_by_source(t, t).iter().any(|(s, x)| (s == "licao" || s == "treino") && *x > 0)
+}
+
+/// O treino de leitura em que você vai pior: (modo, nível, recorde).
+fn weakest_quiz() -> (usize, usize, u32) {
+    let mut opts: Vec<(usize, usize, u32)> = (0..4).map(|l| (0, l, crate::partitura::best(l))).collect();
+    for m in 1..4 {
+        opts.push((m, 0, crate::partitura::best(10 * m)));
+    }
+    opts.into_iter().min_by_key(|o| o.2).unwrap_or((0, 0, 0))
+}
+
+/// Dica do professor (o Claude), preparada uma vez por dia na sincronização.
+pub fn tip() -> Option<String> {
+    let s = std::fs::read_to_string(crate::home_dir().join("data/violao/dica.txt")).ok()?;
+    let (day, text) = s.split_once('\n')?;
+    (day.trim() == today().to_string()).then(|| text.trim().to_string()).filter(|t| !t.is_empty())
+}
+
+/// Pede a dica do dia à ponte com os números do violão (roda em segundo plano).
+pub fn prepare_tip() {
+    if !crate::chat::configured() || tip().is_some() {
+        return;
+    }
+    let pairs: Vec<String> = PAIRS.iter().enumerate().map(|(k, (a, b))| format!("{a}-{b}: {}", best(k).map(|n| n.to_string()).unwrap_or("nunca".into()))).collect();
+    let quiz = ["linhas", "espaços", "pauta", "suplementares"].iter().enumerate().map(|(k, n)| format!("notas {n}: {}", crate::partitura::best(k))).chain([("ritmo", 10), ("armaduras", 20), ("intervalos", 30)].iter().map(|(n, k)| format!("{n}: {}", crate::partitura::best(*k)))).collect::<Vec<_>>();
+    let songs: Vec<String> = songs().iter().take(10).map(|s| s.title.clone()).collect();
+    let t = today();
+    let body = format!(
+        "{{\"trocas_recorde_por_minuto\": {}, \"dias_de_treino_na_semana\": {}, \"sequencia\": {}, \"partitura_licoes_vistas\": {}, \"partitura_total\": {}, \"treinos_recorde\": {}, \"musicas\": {}}}",
+        crate::chat::json_str(&pairs.join(", ")),
+        practice_days(t - 6, t),
+        streak(),
+        crate::partitura::done().len(),
+        crate::partitura::total(),
+        crate::chat::json_str(&quiz.join(", ")),
+        crate::chat::json_str(&songs.join(", "))
+    );
+    if let Ok(j) = crate::chat::call("POST", "/violao/dica", Some(&body), 200) {
+        if let Some(d) = j.get("dica").and_then(crate::chat::Json::str) {
+            let _ = std::fs::write(crate::home_dir().join("data/violao/dica.txt"), format!("{t}\n{d}"));
+        }
+    }
 }
 
 /// Treinos de leitura: modo (notas, ritmo, armaduras, intervalos), nível, pergunta, acertos
@@ -449,7 +531,7 @@ impl Violao {
         let q = crate::partitura::Q::new(0, 0, &mut rng, None);
         let quiz = Quiz { mode: 0, level: 0, q, streak: 0, wrong: None, rng };
         let lesson = crate::partitura::next_lesson();
-        Violao { view: View::Hub, songs, song: 0, page: 0, shift: 0, list_page: 0, dict_root: 0, pair: suggested(), timer: Timer::Idle, shown_secs: 0, module: crate::partitura::locate(lesson).0, lesson, answered: None, course_root: false, quiz, cel: None }
+        Violao { view: View::Hub, songs, song: 0, page: 0, shift: 0, list_page: 0, dict_root: 0, pair: suggested(), timer: Timer::Idle, shown_secs: 0, module: crate::partitura::locate(lesson).0, lesson, answered: None, course_root: false, quiz, cel: None, from_aula: false }
     }
 
     /// Abre direto no curso de partitura (para o tópico Partitura da seção Aprender).
@@ -458,6 +540,78 @@ impl Violao {
         v.view = View::Course;
         v.course_root = true;
         v
+    }
+
+    /// Os três passos de hoje: (título, explicação, feito, o que abre).
+    fn aula(&self) -> [(String, String, bool, Step); 3] {
+        let p = suggested();
+        let (a, b) = PAIRS[p];
+        let rec = best(p).map(|n| format!("recorde {n} trocas")).unwrap_or("ainda sem recorde".into());
+        let warm = (format!("Aquecer: {a} ↔ {b}"), format!("Um minuto de trocas, a dupla em que você está pior ({rec})."), practiced_today(), Step::Practice(p));
+        let next = crate::partitura::next_lesson();
+        let lesson_done = crate::partitura::done().len() >= crate::partitura::total();
+        let read = if !lesson_done && !read_today() {
+            (format!("Ler: {}", crate::partitura::lesson(next).title), format!("Próxima lição de partitura (módulo {}).", crate::partitura::locate(next).0 + 1), false, Step::Lesson(next))
+        } else {
+            let (m, l, r) = weakest_quiz();
+            let name = if m == 0 { format!("notas · {}", crate::partitura::LEVELS[l].0.to_lowercase()) } else { crate::partitura::MODES[m].to_lowercase() };
+            (format!("Ler: treino de {name}"), format!("O treino em que você vai pior (recorde {r} seguidos)."), read_today(), Step::Quiz(m, l))
+        };
+        // Música: uma cifra sua com os acordes do aquecimento; sem cifra, o dicionário.
+        let song = self.songs.iter().position(|s| s.chords().iter().any(|c| c.name() == a || c.name() == b)).or(if self.songs.is_empty() { None } else { Some(0) });
+        let music_done = aula_marks().iter().any(|m| m == "musica");
+        let play = match song {
+            Some(i) => (format!("Tocar: {}", self.songs[i].title), format!("Use {a} e {b} numa música de verdade, devagar."), music_done, Step::Song(i)),
+            None => ("Tocar: um acorde novo".to_string(), "Mande uma cifra pelo celular; hoje, aprenda um acorde no dicionário.".to_string(), music_done, Step::Dict),
+        };
+        [warm, read, play]
+    }
+
+    fn aula_rect(k: usize) -> Rect {
+        Rect::new(MARGIN, 640 + k as i32 * 200, W - 2 * MARGIN, 180)
+    }
+
+    fn draw_aula(&self, fb: &mut Framebuffer, f: &Fonts) {
+        f.draw(fb, Face::Display, 96.0, MARGIN - 4, 290, INK, "Aula do dia");
+        // A dica do professor (o Claude), quando houver.
+        let tip = tip().unwrap_or_else(|| "Dez minutos bem feitos valem mais que uma hora distraída. Faça os três passos em ordem.".to_string());
+        let r = Rect::new(MARGIN, 330, W - 2 * MARGIN, 270);
+        fb.round_rect(r, 28, ui::SURFACE);
+        let d = 56;
+        let tx = if ui::icon_disc(fb, r.x + 22, r.y + 22, d, "claude") { r.x + 22 + d + 16 } else { r.x + 28 };
+        f.draw(fb, Face::Strong, 24.0, tx, r.y + 58, MUTED, "DICA DO PROFESSOR");
+        for (k, l) in crate::chat::wrap_words(f, Face::Body, 30.0, &tip, r.w - 56).iter().take(4).enumerate() {
+            f.draw(fb, Face::Body, 30.0, r.x + 28, r.y + 124 + k as i32 * 40, INK, l);
+        }
+        let steps = self.aula();
+        let next = steps.iter().position(|s| !s.2);
+        for (k, (t, sub, done, _)) in steps.iter().enumerate() {
+            let r = Self::aula_rect(k);
+            let is_next = next == Some(k);
+            ui::card(fb, r, 30, if is_next { INK } else if *done { ui::SURFACE } else { PAPER }, false);
+            let fg = if is_next { PAPER } else { INK };
+            // Número ou ✓ num disco.
+            let dr = Rect::new(r.x + 26, r.y + (r.h - 76) / 2, 76, 76);
+            fb.round_rect(dr, 38, if is_next { PAPER } else { INK });
+            if *done {
+                let (cx, cy) = (dr.x + 38, dr.y + 38);
+                ui::stroke(fb, ((cx - 17) as f32, (cy + 1) as f32), ((cx - 4) as f32, (cy + 14) as f32), 7.0, PAPER);
+                ui::stroke(fb, ((cx - 4) as f32, (cy + 14) as f32), ((cx + 19) as f32, (cy - 12) as f32), 7.0, PAPER);
+            } else {
+                let n = (k + 1).to_string();
+                let w = f.measure(Face::Display, 40.0, &n);
+                f.draw(fb, Face::Display, 40.0, dr.x + (76 - w) / 2, dr.y + 53, if is_next { INK } else { PAPER }, &n);
+            }
+            let tx = r.x + 26 + 76 + 24;
+            f.draw(fb, Face::Display, 38.0, tx, r.y + 70, fg, &crate::apps::fit(f, Face::Display, 38.0, t, r.x + r.w - 24 - tx));
+            for (i, l) in crate::chat::wrap_words(f, Face::Body, 26.0, sub, r.x + r.w - 24 - tx).iter().take(2).enumerate() {
+                f.draw(fb, Face::Body, 26.0, tx, r.y + 112 + i as i32 * 34, if is_next { 0xCC } else { MUTED }, l);
+            }
+        }
+        let all = steps.iter().all(|s| s.2);
+        let msg = if all { "Aula completa. +10 XP de bônus. Até amanhã!" } else { "Termine os três para ganhar +10 XP de bônus." };
+        let w = f.measure(Face::Strong, 28.0, msg);
+        f.draw(fb, Face::Strong, 28.0, (W - w) / 2, 1290, MUTED, msg);
     }
 
     fn hub_card(k: usize) -> Rect {
@@ -477,9 +631,10 @@ impl Violao {
             f.draw(fb, Face::Strong, 28.0, MARGIN, 350 + k as i32 * 36, MUTED, l);
         }
         let (a, b) = PAIRS[self.pair];
-        let practice_sub = if practiced_today() { format!("Feito hoje. Quer mais um? {a} ↔ {b}") } else { format!("Hoje: {a} ↔ {b}, um minuto") };
+        let done = self.aula().iter().filter(|s| s.2).count();
+        let practice_sub = if done == 3 { "Aula de hoje completa. Volte amanhã!".to_string() } else { format!("3 passos · {done} feito{} · começa com {a} ↔ {b}", if done == 1 { "" } else { "s" }) };
         let cards = [
-            ("Treino do dia", practice_sub, true),
+            ("Aula do dia", practice_sub, true),
             ("Músicas", format!("{} cifra{} · mande pelo celular", self.songs.len(), if self.songs.len() == 1 { "" } else { "s" }), false),
             ("Acordes", "Diagramas de todos os tons".to_string(), false),
             ("Aprender partitura", {
@@ -1053,6 +1208,7 @@ impl MiniGame for Violao {
             View::Song => self.draw_song(fb, f),
             View::Dict => self.draw_dict(fb, f),
             View::Practice => self.draw_practice(fb, f),
+            View::Aula => self.draw_aula(fb, f),
             View::Course => self.draw_course(fb, f),
             View::Module => self.draw_module(fb, f),
             View::Lesson => self.draw_lesson(fb, f),
@@ -1067,6 +1223,7 @@ impl MiniGame for Violao {
         }
         match self.view {
             View::Hub => (0..4).map(|k| (700 + k as u32, Self::hub_card(k))).collect(),
+            View::Aula => (0..3).map(|k| (770 + k as u32, Self::aula_rect(k))).collect(),
             View::Course => {
                 let mut v: Vec<(u32, Rect)> = (0..crate::partitura::MODULES.len()).map(|k| (810 + k as u32, Self::module_row(k))).collect();
                 v.push((790, Self::course_btn()));
@@ -1126,9 +1283,42 @@ impl MiniGame for Violao {
             return Redraw::None;
         }
         match (self.view, id) {
-            (View::Hub, 700) => {
-                self.pair = suggested();
-                self.view = View::Practice;
+            (View::Hub, 700) => self.view = View::Aula,
+            (View::Aula, k @ 770..=772) => {
+                let step = self.aula()[(k - 770) as usize].3;
+                self.from_aula = true;
+                match step {
+                    Step::Practice(p) => {
+                        self.pair = p;
+                        self.timer = Timer::Idle;
+                        self.view = View::Practice;
+                    }
+                    Step::Lesson(g) => {
+                        self.lesson = g;
+                        self.module = crate::partitura::locate(g).0;
+                        crate::partitura::mark_done(g);
+                        self.view = View::Lesson;
+                    }
+                    Step::Quiz(m, l) => {
+                        self.quiz.mode = m;
+                        self.quiz.level = l;
+                        self.quiz.streak = 0;
+                        self.quiz.wrong = None;
+                        self.quiz.next();
+                        self.view = View::Quiz;
+                    }
+                    Step::Song(i) => {
+                        aula_mark("musica");
+                        self.song = i;
+                        self.page = 0;
+                        self.shift = 0;
+                        self.view = View::Song;
+                    }
+                    Step::Dict => {
+                        aula_mark("musica");
+                        self.view = View::Dict;
+                    }
+                }
             }
             (View::Hub, 701) => {
                 self.songs = songs();
@@ -1271,6 +1461,17 @@ impl MiniGame for Violao {
             return false;
         }
         self.timer = Timer::Idle;
+        // Passo aberto pela aula: volta para a aula (e confere o bônus de aula completa).
+        if self.from_aula && !matches!(self.view, View::Aula | View::Check) {
+            self.from_aula = false;
+            self.view = View::Aula;
+            if self.aula().iter().all(|s| s.2) && !aula_marks().iter().any(|m| m == "bonus") {
+                aula_mark("bonus");
+                // Bônus da aula completa (a comemoração aparece se a chama crescer ou a meta bater).
+                self.cel = crate::aprender::add(10, "violao");
+            }
+            return true;
+        }
         self.view = match self.view {
             View::Song => View::List,
             View::Lesson | View::Check => View::Module,
