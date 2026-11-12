@@ -311,7 +311,7 @@ pub const MODULES: [Module; 6] = [
                     "Um ponto depois da nota soma metade do valor dela. Mínima pontuada: 2 + 1 = 3 tempos. Semínima pontuada: 1 + ½ = 1 tempo e meio.",
                     "Semínima pontuada seguida de colcheia é um par muito comum: segure por um tempo e meio, e a colcheia cai no \"e\" do tempo seguinte.",
                 ],
-                demo: sc(0, T44, &[n(-2, SM, "1"), n(-2, SM, "2"), n(-1, SM, "3"), n(0, SM, "4"), Bar, d(0, SM, "1 ."), n(-1, CO, "e"), n(-1, MI, "3"), End]),
+                demo: sc(0, T44, &[n(-2, SM, "1"), n(-2, SM, "2"), n(-1, SM, "3"), n(0, SM, "4"), Bar, d(0, SM, "1 (2)"), n(-1, CO, "e"), n(-1, MI, "3"), End]),
                 check: ck("Quanto vale uma mínima pontuada?", &["2 tempos", "2 tempos e meio", "3 tempos"], 2, "Mínima vale 2; o ponto soma a metade, 1. Total: 3."),
             },
             Lesson {
@@ -344,7 +344,7 @@ pub const MODULES: [Module; 6] = [
                     "Síncopa é a nota que começa no tempo fraco e atravessa o forte. É o tempero do samba, do baião e do pop.",
                     "Padrão clássico: colcheia, semínima, colcheia. Conte \"1 e 2 e\" em voz alta e deixe o 2 passar por dentro da nota longa.",
                 ],
-                demo: sc(0, T24, &[n(2, CO, "1"), n(4, SM, "e"), n(2, CO, "e"), Bar, n(3, CO, "1"), n(5, SM, "e"), n(3, CO, "e"), Bar, n(2, MI, "1"), End]),
+                demo: sc(0, T24, &[n(2, CO, "1"), n(4, SM, "e (2)"), n(2, CO, "e"), Bar, n(3, CO, "1"), n(5, SM, "e (2)"), n(3, CO, "e"), Bar, n(2, MI, "1"), End]),
                 check: ck("Na síncopa, a nota longa começa…", &["no tempo forte", "no contratempo (o \"e\")", "depois da barra"], 1, "Ela nasce no \"e\" e atravessa o tempo seguinte: daí o balanço."),
             },
             Lesson {
@@ -428,7 +428,7 @@ pub const MODULES: [Module; 6] = [
             Lesson {
                 title: "Escalas menores",
                 text: &[
-                    "A menor natural usa a armadura do relativo maior: Lá Si Dó Ré Mi Fá Sol Lá.",
+                    "A menor natural usa a armadura do relativo maior: Lá Si Dó Ré Mi Fá Sol Lá. Abaixo, a versão harmônica.",
                     "A harmônica sobe o 7º grau (Sol#) e ganha um sabor quase árabe. A melódica sobe o 6º e o 7º na subida e volta ao natural na descida.",
                 ],
                 demo: sc(0, None, &[n(3, SM, "Lá"), n(4, SM, ""), n(5, SM, ""), n(6, SM, ""), n(7, SM, ""), n(8, SM, ""), sh(9, SM, "Sol#"), n(10, SM, "Lá")]),
@@ -461,10 +461,10 @@ pub const MODULES: [Module; 6] = [
             Lesson {
                 title: "Campo harmônico",
                 text: &[
-                    "Empilhe um acorde sobre cada nota da escala de Dó maior: saem C, Dm, Em, F, G, Am e Bº. São os acordes que moram no tom de Dó.",
+                    "Empilhe um acorde sobre cada nota da escala de Dó maior: saem C, Dm, Em, F, G, Am e B°. São os acordes que moram no tom de Dó.",
                     "Por isso tantas músicas em C usam G, Am e F: todos são do mesmo campo. O mesmo vale para qualquer tom.",
                 ],
-                demo: sc(0, None, &[Chord(&[-2, 0, 2], SB, "C"), Chord(&[-1, 1, 3], SB, "Dm"), Chord(&[0, 2, 4], SB, "Em"), Chord(&[1, 3, 5], SB, "F"), Chord(&[2, 4, 6], SB, "G"), Chord(&[3, 5, 7], SB, "Am"), Chord(&[4, 6, 8], SB, "Bº")]),
+                demo: sc(0, None, &[Chord(&[-2, 0, 2], SB, "C"), Chord(&[-1, 1, 3], SB, "Dm"), Chord(&[0, 2, 4], SB, "Em"), Chord(&[1, 3, 5], SB, "F"), Chord(&[2, 4, 6], SB, "G"), Chord(&[3, 5, 7], SB, "Am"), Chord(&[4, 6, 8], SB, "B°")]),
                 check: ck("No campo harmônico de Dó maior, o acorde de Ré é…", &["D", "Dm", "D7"], 1, "Ré–Fá–Lá, só com notas naturais: Dm."),
             },
         ],
@@ -1014,7 +1014,7 @@ fn item_steps(it: &It) -> Vec<i32> {
 /// Posições x dos elementos da partitura e o x final (onde a pauta termina).
 fn layout(f_gap: i32, x_start: i32, x_end: i32, key: i8, time: bool, items: &[It]) -> (Vec<i32>, i32) {
     let gap = f_gap;
-    let mut x = x_start + gap * 4 + key_width(gap, key) + if time { gap * 2 + gap / 2 } else { gap / 2 };
+    let mut x = x_start + gap * 9 / 2 + key_width(gap, key) + if time { gap * 2 + gap / 2 } else { gap / 2 };
     let notes = items.iter().filter(|i| is_note(i)).count().max(1) as i32;
     let fixed: i32 = items
         .iter()
@@ -1057,6 +1057,84 @@ fn layout(f_gap: i32, x_start: i32, x_end: i32, key: i8, time: bool, items: &[It
 }
 
 /// Partitura de exemplo dentro de `r`: tamanho e posição se ajustam às notas.
+fn beats(fig: Fig, dot: bool) -> f32 {
+    let b = match fig {
+        Fig::Whole => 4.0,
+        Fig::Half => 2.0,
+        Fig::Quarter => 1.0,
+        Fig::Eighth => 0.5,
+        Fig::Sixteenth => 0.25,
+    };
+    if dot { b * 1.5 } else { b }
+}
+
+/// Grupos de colcheias e semicolcheias unidas por barra, como na partitura impressa: por tempo
+/// (de 2 em 2 colcheias no 2/4 e 4/4), de 3 em 3 no 6/8, pelos acentos no 7/8, e a tercina inteira.
+fn beam_groups(items: &[It], time: Option<(u8, u8)>) -> Vec<Vec<usize>> {
+    let unit = match time {
+        Some((6, 8)) => 1.5,
+        Some((_, 8)) => 100.0, // compassos ímpares: os acentos dizem onde começa cada grupo
+        _ => 1.0,
+    };
+    let (mut groups, mut cur): (Vec<Vec<usize>>, Vec<usize>) = (Vec::new(), Vec::new());
+    let (mut pos, mut cur_beat, mut trip, mut accent) = (0.0f32, -1i32, 0u8, false);
+    let flush = |cur: &mut Vec<usize>, groups: &mut Vec<Vec<usize>>| {
+        if cur.len() >= 2 {
+            groups.push(std::mem::take(cur));
+        } else {
+            cur.clear();
+        }
+    };
+    for (i, it) in items.iter().enumerate() {
+        match it {
+            Bar | Double | End | RepL | RepR => {
+                flush(&mut cur, &mut groups);
+                pos = 0.0;
+            }
+            Above(t) if *t == "3" => {
+                flush(&mut cur, &mut groups);
+                trip = 3;
+            }
+            Accent => accent = true,
+            N(_, fig, _, dot, _, _) => {
+                let mut dur = beats(*fig, *dot);
+                if trip > 0 {
+                    dur = 1.0 / 3.0;
+                }
+                if matches!(fig, Fig::Eighth | Fig::Sixteenth) {
+                    let beat = ((pos + 1e-3) / unit).floor() as i32;
+                    if trip == 0 && (beat != cur_beat || accent) {
+                        flush(&mut cur, &mut groups);
+                    }
+                    cur_beat = beat;
+                    cur.push(i);
+                } else {
+                    flush(&mut cur, &mut groups);
+                }
+                accent = false;
+                pos += dur;
+                if trip > 0 {
+                    trip -= 1;
+                    if trip == 0 {
+                        flush(&mut cur, &mut groups);
+                    }
+                }
+            }
+            R(fig, dot, _) => {
+                flush(&mut cur, &mut groups);
+                pos += beats(*fig, *dot);
+            }
+            Chord(_, fig, _) | Two(_, fig, _, _, _) => {
+                flush(&mut cur, &mut groups);
+                pos += beats(*fig, false);
+            }
+            _ => {}
+        }
+    }
+    flush(&mut cur, &mut groups);
+    groups
+}
+
 pub fn draw_score(fb: &mut Framebuffer, f: &Fonts, r: Rect, s: &Score) {
     draw_items(fb, f, r, s.clef, s.key, s.time, s.items, true);
 }
@@ -1077,7 +1155,7 @@ fn draw_items(fb: &mut Framebuffer, f: &Fonts, r: Rect, clef: Clef, key: i8, tim
     let (xs, end) = layout(gap, r.x, r.x + r.w - 8, key, time.is_some(), items);
     staff_lines(fb, r.x, end - r.x, bottom, gap);
     draw_clef(fb, r.x, bottom, gap, clef);
-    let mut x = r.x + gap * 4;
+    let mut x = r.x + gap * 9 / 2;
     x += draw_key(fb, x, bottom, gap, clef, key);
     if let Some(t) = time {
         draw_time(fb, f, x + gap / 2, bottom, gap, t);
@@ -1092,8 +1170,21 @@ fn draw_items(fb: &mut Framebuffer, f: &Fonts, r: Rect, clef: Clef, key: i8, tim
     let mut last: Option<(i32, i32, bool)> = None;
     let mut slur: Option<(i32, i32, bool, u8)> = None;
     let mut slur_pending = 0u8;
+    // Slide: a "ligadura" vira uma linha reta entre as cabeças.
+    let mut slide = false;
     let mut hair: Option<(bool, i32, u8)> = None;
     let mut hair_pending: Option<(bool, u8)> = None;
+    // Barras: quem está em grupo, e a direção de haste comum do grupo (pela altura média).
+    let groups = beam_groups(items, time);
+    let mut in_group: Vec<Option<(usize, bool)>> = vec![None; items.len()];
+    for (gi, g) in groups.iter().enumerate() {
+        let ss: Vec<i32> = g.iter().filter_map(|&i| if let N(s, ..) = items[i] { Some(s) } else { None }).collect();
+        let up = ss.iter().sum::<i32>() < 4 * ss.len() as i32;
+        for &i in g {
+            in_group[i] = Some((gi, up));
+        }
+    }
+    let mut heads: Vec<Option<(Rect, bool, Fig)>> = vec![None; items.len()];
     for (i, it) in items.iter().enumerate() {
         let x = xs[i];
         match it {
@@ -1131,9 +1222,14 @@ fn draw_items(fb: &mut Framebuffer, f: &Fonts, r: Rect, clef: Clef, key: i8, tim
                 // Elemento com som (ou pausa): desenha e aplica os modificadores.
                 let (head, up, top_y, label_default): (Rect, bool, i32, String) = match it {
                     N(s, fig, acc, dot, stem, _) => {
-                        let (h, up) = note(fb, x, bottom, gap, *s, *fig, *dot, *stem);
+                        // Em grupo com barra: sem bandeirola, haste na direção do grupo.
+                        let (h, up) = match in_group[i] {
+                            Some((_, gup)) => note(fb, x, bottom, gap, *s, Fig::Quarter, *dot, if gup { Stem::Up } else { Stem::Down }),
+                            None => note(fb, x, bottom, gap, *s, *fig, *dot, *stem),
+                        };
+                        heads[i] = Some((h, up, *fig));
                         if *acc != Acc::No {
-                            draw_acc(fb, h.x - gap * 3 / 4, h.y + h.h / 2, gap, *acc);
+                            draw_acc(fb, h.x - gap, h.y + h.h / 2, gap, *acc);
                         }
                         let top = if up && *fig != Fig::Whole { h.y + h.h / 2 - gap * 7 / 2 } else { h.y };
                         (h, up, top, name_in(*s, clef).to_string())
@@ -1185,8 +1281,23 @@ fn draw_items(fb: &mut Framebuffer, f: &Fonts, r: Rect, clef: Clef, key: i8, tim
                 let above_y = top_y.min(top_line) - gap / 2;
                 if let Some(t) = above.take() {
                     let size = gap as f32 * 1.1;
-                    let w = f.measure(Face::Strong, size, t);
-                    f.draw(fb, Face::Strong, size, cx - w / 2, above_y, INK, t);
+                    if t == "1." || t == "2." {
+                        // Casa 1 e casa 2: colchete sobre o trecho, até o ritornello (ou o fim).
+                        let stop = items[i..].iter().position(|x| matches!(x, RepR | End)).map(|k| xs[i + k]).unwrap_or(r.x + r.w);
+                        let (bx, by) = (cx - gap, (bottom - 4 * gap).min(above_y) - gap);
+                        fb.fill(Rect::new(bx, by, (stop - gap / 2 - bx).max(gap), 3), INK);
+                        fb.fill(Rect::new(bx, by, 3, gap), INK);
+                        if t == "1." {
+                            fb.fill(Rect::new(stop - gap / 2, by, 3, gap), INK);
+                        }
+                        f.draw(fb, Face::Strong, size, bx + 10, by + (size * 0.95) as i32, INK, t);
+                    } else {
+                        let w = f.measure(Face::Strong, size, t);
+                        f.draw(fb, Face::Strong, size, cx - w / 2, above_y, INK, t);
+                    }
+                    if t == "sl." {
+                        slide = true;
+                    }
                 }
                 if accent {
                     let (ax, ay) = (cx as f32, (above_y - gap / 2) as f32);
@@ -1227,7 +1338,10 @@ fn draw_items(fb: &mut Framebuffer, f: &Fonts, r: Rect, clef: Clef, key: i8, tim
                     if left <= 1 {
                         let off = if sup { gap * 3 / 4 } else { -gap * 3 / 4 };
                         let b = if sup { gap * 2 / 3 } else { -gap * 2 / 3 };
-                        if cx != sx {
+                        if slide {
+                            line(fb, ((sx + gap * 2 / 3) as f32, sy as f32), ((cx - gap * 2 / 3) as f32, cy as f32), 3.0);
+                            slide = false;
+                        } else if cx != sx {
                             arc(fb, (sx, sy + off), (cx, cy + off), b, 3.0);
                         }
                         slur = None;
@@ -1257,6 +1371,7 @@ fn draw_items(fb: &mut Framebuffer, f: &Fonts, r: Rect, clef: Clef, key: i8, tim
                     }
                 }
                 last = Some((cx, cy, up));
+                let _ = &heads;
                 if labels {
                     let label = match it {
                         N(.., l) | R(_, _, l) | Chord(_, _, l) | Two(.., l) => *l,
@@ -1272,6 +1387,67 @@ fn draw_items(fb: &mut Framebuffer, f: &Fonts, r: Rect, clef: Clef, key: i8, tim
                         f.draw(fb, Face::Strong, size, x - w / 2 + gap / 6, r.y + r.h - 8, INK, lab);
                     }
                 }
+            }
+        }
+    }
+    // As barras: uma linha grossa ligando as pontas das hastes; semicolcheias ganham a segunda.
+    for g in &groups {
+        let pts: Vec<(i32, i32, bool, Fig)> = g
+            .iter()
+            .filter_map(|&i| {
+                let (h, up, fig) = heads[i]?;
+                let sx = if up { h.x + h.w - 3 } else { h.x };
+                Some((sx, h.y + h.h / 2, up, fig))
+            })
+            .collect();
+        if pts.len() < 2 {
+            continue;
+        }
+        let up = pts[0].2;
+        let len = gap * 7 / 2;
+        let tip = |p: &(i32, i32, bool, Fig)| if up { p.1 - len } else { p.1 + len };
+        let (x0, x1) = (pts[0].0, pts[pts.len() - 1].0);
+        let (y0, y1) = (tip(&pts[0]), tip(&pts[pts.len() - 1]));
+        // Inclinação suave (no máximo meio espaço) e nenhuma haste mais curta que o normal.
+        let slope = ((y1 - y0) as f32 / (x1 - x0).max(1) as f32).clamp(-(gap as f32) / 2.0 / (x1 - x0).max(1) as f32 * 2.0, gap as f32 / 2.0 / (x1 - x0).max(1) as f32 * 2.0);
+        let mut base = y0 as f32;
+        for p in &pts {
+            let ly = base + slope * (p.0 - x0) as f32;
+            let need = tip(p) as f32;
+            if up && ly > need {
+                base -= ly - need;
+            } else if !up && ly < need {
+                base += need - ly;
+            }
+        }
+        let line_y = |x: i32| (base + slope * (x - x0) as f32).round() as i32;
+        let t = (gap / 2).max(5);
+        // Hastes até a barra.
+        for p in &pts {
+            let ly = line_y(p.0);
+            let (a, b) = if up { (ly, p.1) } else { (p.1, ly) };
+            fb.fill(Rect::new(p.0, a.min(b), 3, (b - a).abs()), INK);
+        }
+        let bar = |fb: &mut Framebuffer, xa: i32, xb: i32, off: i32| {
+            for x in xa..=xb + 2 {
+                let y = line_y(x) + if up { off } else { -off - t };
+                fb.fill(Rect::new(x, if up { y } else { y }, 1, t), INK);
+            }
+        };
+        bar(fb, x0, x1, 0);
+        // Segunda barra: entre semicolcheias vizinhas; sozinha, um toco em direção à vizinha.
+        let off = t + t * 2 / 3;
+        for (k, p) in pts.iter().enumerate() {
+            if p.3 != Fig::Sixteenth {
+                continue;
+            }
+            let next16 = pts.get(k + 1).is_some_and(|q| q.3 == Fig::Sixteenth);
+            let prev16 = k > 0 && pts[k - 1].3 == Fig::Sixteenth;
+            if next16 {
+                bar(fb, p.0, pts[k + 1].0, off);
+            } else if !prev16 {
+                let (xa, xb) = if k > 0 { (p.0 - gap, p.0) } else { (p.0, p.0 + gap) };
+                bar(fb, xa, xb, off);
             }
         }
     }
@@ -1309,7 +1485,7 @@ pub fn draw_demo(fb: &mut Framebuffer, f: &Fonts, r: Rect, demo: &Demo) {
                 let bottom = r.y + (r.h - 60) / 2 + 2 * gap;
                 staff_lines(fb, cx + 6, cw - 22, bottom, gap);
                 draw_clef(fb, cx + 6, bottom, gap, Clef::Sol);
-                draw_key(fb, cx + 6 + gap * 4, bottom, gap, Clef::Sol, *key);
+                draw_key(fb, cx + 6 + gap * 9 / 2, bottom, gap, Clef::Sol, *key);
                 let mut size = 26.0;
                 while f.measure(Face::Strong, size, name) > cw - 16 && size > 16.0 {
                     size -= 1.0;
@@ -1492,9 +1668,9 @@ impl Q {
                 }
             }
             2 => {
+                // A armadura logo depois da clave, como na partitura de verdade.
                 let key = KEY_SIG[self.a as usize];
-                let w = key_width(gap, key);
-                draw_key(fb, cx - w / 2, bottom, gap, Clef::Sol, key);
+                draw_key(fb, r.x + 30 + gap * 9 / 2, bottom, gap, Clef::Sol, key);
             }
             3 => {
                 note(fb, cx - 110, bottom, gap, self.a, Fig::Whole, false, Stem::Auto);
