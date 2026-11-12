@@ -785,6 +785,20 @@ pub fn paginate(fonts: &RFonts, blocks: &[Block], size: f32) -> Vec<Page> {
                         ws.push(w);
                         j += 1;
                     }
+                    // Sobrou buraco grande: parte a próxima palavra numa sílaba (com hífen), como nos
+                    // bons leitores, em vez de esticar os espaços.
+                    if j < words.len() && j > i && !head && avail - natural > space * 2.5 {
+                        let room = avail - natural - space;
+                        let st = words[j].1;
+                        if let Some((a, b)) = hyphenate(&words[j].0, |pre| fonts.measure(st, sz, pre) <= room) {
+                            let w = fonts.measure(st, sz, &a);
+                            words[j].0 = a;
+                            words.insert(j + 1, (b, st));
+                            natural += space + w;
+                            ws.push(w);
+                            j += 1;
+                        }
+                    }
                     if y + blh > BOTTOM {
                         new_page(&mut pages, &mut cur, &mut y, (bi, i));
                     }
@@ -818,6 +832,48 @@ pub fn paginate(fonts: &RFonts, blocks: &[Block], size: f32) -> Vec<Page> {
         pages.push(Page { lines: vec![], start: (0, 0) });
     }
     pages
+}
+
+/// Hifenização simples do português: devolve ("pre-", "fixo") com o maior pedaço que caiba
+/// (`fits` mede "pre-"). Separa vogal-consoante-vogal (ca-sa), consoantes duplas (car-ro, pas-so)
+/// e grupos (par-te), sem separar lh, nh, ch nem consoante + r/l (li-vro, ci-clo). Deixa ao menos
+/// 2 letras de cada lado; não mexe em palavras com números ou já hifenizadas.
+pub fn hyphenate(word: &str, fits: impl Fn(&str) -> bool) -> Option<(String, String)> {
+    let core: String = word.chars().take_while(|c| c.is_alphabetic()).collect();
+    let tail = &word[core.len()..];
+    if word.contains('-') || core.chars().count() < 5 || tail.chars().any(|c| c.is_alphanumeric()) {
+        return None;
+    }
+    let c: Vec<char> = core.chars().collect();
+    let low: Vec<char> = core.to_lowercase().chars().collect();
+    if low.len() != c.len() {
+        return None;
+    }
+    let vowel = |ch: char| "aeiouáéíóúâêôãõàüy".contains(ch);
+    let liquid = |a: char, b: char| "bcdfgkptv".contains(a) && (b == 'r' || b == 'l');
+    let mut best = None;
+    for k in 2..c.len() - 1 {
+        if c.len() - k < 2 {
+            break;
+        }
+        let (p, x, n) = (low[k - 1], low[k], low[k + 1]);
+        let ok = if vowel(p) && !vowel(x) {
+            // V-CV, V-CCV com grupo (li-vro) ou dígrafo (ca-lha, ba-nho, a-cho).
+            vowel(n) || liquid(x, n) || (n == 'h' && "lnc".contains(x))
+        } else if !vowel(p) && !vowel(x) && k >= 2 && vowel(low[k - 2]) {
+            // VC-CV: par-te, car-ro, pas-so (mas nunca no meio de lh, nh, ch ou de b+r, c+l…).
+            !(x == 'h' && "lnc".contains(p)) && !liquid(p, x) && (vowel(n) || liquid(x, n))
+        } else {
+            false
+        };
+        if ok {
+            let pre: String = c[..k].iter().collect::<String>() + "-";
+            if fits(&pre) {
+                best = Some((pre, c[k..].iter().collect::<String>() + tail));
+            }
+        }
+    }
+    best
 }
 
 /// Página que contém a posição (bloco, palavra).
@@ -1143,5 +1199,28 @@ mod render {
         let mut fb = Framebuffer::memory();
         draw_toc(&mut fb, &f, &r, 0);
         fb.save_pgm(&out.join("leitor-sumario.pgm"));
+    }
+}
+
+#[cfg(test)]
+mod hifen {
+    use super::hyphenate;
+
+    #[test]
+    fn silabas_do_portugues() {
+        let all = |w: &str| hyphenate(w, |_| true).map(|(a, b)| format!("{a}{b}"));
+        // O maior pedaço que cabe.
+        assert_eq!(all("paciência"), Some("paciên-cia".into()));
+        assert_eq!(hyphenate("livro", |p| p.len() <= 3), Some(("li-".into(), "vro".into())));
+        assert_eq!(hyphenate("carro", |p| p.len() <= 4), Some(("car-".into(), "ro".into())));
+        assert_eq!(hyphenate("trabalho", |p| p.len() <= 5), Some(("tra-".into(), "balho".into())));
+        assert_eq!(hyphenate("trabalho,", |p| p.chars().count() <= 6), Some(("traba-".into(), "lho,".into())));
+        // Não separa dígrafos nem grupos.
+        assert!(hyphenate("filho", |_| true).is_none_or(|(a, _)| a != "fil-"));
+        assert!(hyphenate("ciclo", |_| true).is_none_or(|(a, _)| a != "cic-"));
+        // Curtas, números e já hifenizadas ficam inteiras.
+        assert!(hyphenate("casa", |_| true).is_none());
+        assert!(hyphenate("guarda-chuva", |_| true).is_none());
+        assert!(hyphenate("2026abc", |_| true).is_none());
     }
 }

@@ -250,6 +250,8 @@ pub struct Estudo {
     error: Option<String>,
     want_text: bool,
     cel: Option<crate::aprender::Cel>,
+    /// Comemoração guardada para depois do resumo da lição (primeiro o resultado, depois a chama).
+    cel_after: Option<crate::aprender::Cel>,
     last_poll: std::time::Instant,
 }
 
@@ -259,7 +261,7 @@ const PER_PAGE: usize = 8;
 
 impl Estudo {
     pub fn new() -> Self {
-        Estudo { view: View::Hub, child: None, topics: topics(), page: 0, cur: 0, unit: 0, run: None, job: None, error: None, want_text: false, cel: None, last_poll: std::time::Instant::now() }
+        Estudo { view: View::Hub, child: None, topics: topics(), page: 0, cur: 0, unit: 0, run: None, job: None, error: None, want_text: false, cel: None, cel_after: None, last_poll: std::time::Instant::now() }
     }
 
     /// Quantos cartões no hub: embutidos + tópicos + "Novo tópico".
@@ -577,7 +579,7 @@ impl Estudo {
                     r.step = Step::Done;
                     r.xp = 10 + if r.first_try_ok == r.data.exs.len() { 5 } else { 0 };
                     r.topic.mark(r.unit, r.lesson);
-                    self.cel = crate::aprender::add(r.xp, &r.topic.source());
+                    self.cel_after = crate::aprender::add(r.xp, &r.topic.source());
                 } else {
                     r.step = Step::Ex(None);
                 }
@@ -587,6 +589,8 @@ impl Estudo {
                 self.run = None;
                 self.topics = topics();
                 self.view = View::Topic;
+                // Depois do resumo da lição, a comemoração (se a chama cresceu ou a meta bateu).
+                self.cel = self.cel_after.take();
             }
         }
     }
