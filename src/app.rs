@@ -146,6 +146,8 @@ pub struct App {
     attach_page: usize,
     /// Lugar do módulo aberto no cache de minijogos, quando não é o padrão da tela de volta.
     mini_slot: Option<usize>,
+    /// Tela aberta quando o Kindle dormiu (para voltar a ela ao acordar).
+    before_sleep: Option<Screen>,
     /// Página da lista de redes Wi-Fi.
     wifi_page: usize,
     /// Início da leitura em andamento no leitor próprio (segundos, para o reading.log).
@@ -384,6 +386,7 @@ impl App {
             attach_sel: Vec::new(),
             attach_page: 0,
             mini_slot: None,
+            before_sleep: None,
             wifi_page: 0,
             reading_since: None,
             achado_new: None,
@@ -2457,7 +2460,36 @@ impl App {
         self.fb.refresh(Rect::new(0, b.y, 1072, s.y + s.h - b.y), Wave::Quality, false);
     }
 
+    /// Para onde voltar ao acordar: a tela de antes de dormir (partida, livro, módulo); as de
+    /// passagem (teclado, atualização, pedido de permissão, tutorial) voltam para a Início.
+    pub fn wake_screen(&self) -> Screen {
+        match self.before_sleep {
+            Some(
+                Screen::Sleep
+                | Screen::Compose
+                | Screen::ClaudeCompose
+                | Screen::WifiPass
+                | Screen::LibSearch
+                | Screen::MiniText
+                | Screen::TermType
+                | Screen::MissaoText
+                | Screen::Update
+                | Screen::Aprovar
+                | Screen::Tutorial
+                | Screen::Reminder,
+            )
+            | None => Screen::Home,
+            Some(Screen::Mini) if self.mini.is_none() => Screen::Home,
+            Some(Screen::Chess) if self.chess.is_none() => Screen::Home,
+            Some(Screen::Reader | Screen::ReaderToc) if self.reader.is_none() => Screen::Home,
+            Some(s) => s,
+        }
+    }
+
     pub fn go(&mut self, screen: Screen) {
+        if screen == Screen::Sleep && self.screen != Screen::Sleep {
+            self.before_sleep = Some(self.screen);
+        }
         // Leitura no leitor próprio: começa ao entrar, registra ao sair (dormir também conta como sair).
         let reading = |s: Screen| matches!(s, Screen::Reader | Screen::ReaderToc);
         if reading(screen) && !reading(self.screen) {
@@ -3696,6 +3728,26 @@ mod raio_x {
     use super::*;
 
     /// Percorre as telas e salva cada uma (raio-x visual):
+    #[test]
+    fn acordar_volta_para_onde_estava() {
+        let mut app = App::new(Framebuffer::memory());
+        // No meio de um jogo: volta ao jogo.
+        app.mini = Some(Box::new(crate::velha::Velha::new()));
+        app.go(Screen::Mini);
+        app.go(Screen::Sleep);
+        assert_eq!(app.wake_screen(), Screen::Mini);
+        // Com o teclado aberto: volta para a Início.
+        app.go(Screen::Home);
+        app.go(Screen::ClaudeCompose);
+        app.go(Screen::Sleep);
+        assert_eq!(app.wake_screen(), Screen::Home);
+        // Sem a partida na memória (xadrez fechado): Início.
+        app.chess = None;
+        app.screen = Screen::Chess;
+        app.go(Screen::Sleep);
+        assert_eq!(app.wake_screen(), Screen::Home);
+    }
+
     /// Cada lição do curso de partitura, a pergunta dela respondida e os treinos:
     /// `VERSO_INK_SHOTS=pasta cargo test curso_de_partitura -- --ignored --test-threads=1`
     #[test]

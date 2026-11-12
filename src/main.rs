@@ -222,7 +222,8 @@ fn run() -> i32 {
                         woke_at = Instant::now();
                         set_wifi(true);
                         sync_clock_async();
-                        app.go(Screen::Home);
+                        let back = app.wake_screen();
+                        app.go(back);
                         last_touch = Instant::now();
                     }
                 } else {
@@ -247,7 +248,9 @@ fn run() -> i32 {
                 log("acordando");
                 set_wifi(true);
                 sync_clock_async();
-                app.go(Screen::Home);
+                // Volta para onde estava (a partida de xadrez, o livro, o jogo).
+                let back = app.wake_screen();
+                app.go(back);
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {}
             Err(mpsc::RecvTimeoutError::Disconnected) => {
