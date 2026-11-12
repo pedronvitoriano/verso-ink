@@ -488,36 +488,42 @@ impl Masmorra {
         Rect::new(MX + 90, MY + 370 + k as i32 * 125, VW as i32 * CELL - 180, 100)
     }
 
-    /// Canto da câmera (linha, coluna). Centraliza o que já foi explorado, para a pedra sobrar
-    /// igual dos dois lados; se o explorado não cabe, segue o herói. Pode passar da borda do
-    /// mapa (lá é pedra escura).
-    fn view(&self) -> (i32, i32) {
+    /// Câmera em pixels: (lado da casa, x e y da casa (0,0) na tela). O explorado (com uma
+    /// casa de parede em volta) estica para preencher a área do mapa; se não cabe nem com casas
+    /// pequenas, segue o herói. Fora do mapa e no inexplorado aparece pedra escura.
+    fn camera(&self) -> (i32, i32, i32) {
+        let (aw, ah) = (VW as i32 * CELL, VH as i32 * CELL);
         let (hr, hc) = ((self.pos / MW) as i32, (self.pos % MW) as i32);
-        let seen: Vec<usize> = (0..MW * MH).filter(|&i| self.seen.get(i) == Some(&true) && self.map[i] != Tile::Wall).collect();
-        let axis = |lo: i32, hi: i32, h: i32, span: i32| {
-            if hi - lo + 1 <= span {
-                (lo + hi + 1) / 2 - span / 2
-            } else {
-                // Não cabe: o herói no meio, sem esconder o explorado à toa.
-                (h - span / 2).clamp(lo, hi + 1 - span)
-            }
-        };
         let (mut r0, mut r1, mut c0, mut c1) = (hr, hr, hc, hc);
-        for &i in &seen {
+        for i in (0..MW * MH).filter(|&i| self.seen.get(i) == Some(&true) && self.map[i] != Tile::Wall) {
             let (r, c) = ((i / MW) as i32, (i % MW) as i32);
             r0 = r0.min(r);
             r1 = r1.max(r);
             c0 = c0.min(c);
             c1 = c1.max(c);
         }
-        (axis(r0, r1, hr, VH as i32), axis(c0, c1, hc, VW as i32))
+        let (r0, r1, c0, c1) = (r0 - 1, r1 + 1, c0 - 1, c1 + 1);
+        let cell = (aw / (c1 - c0 + 1)).min(ah / (r1 - r0 + 1)).clamp(80, 132);
+        // Um eixo: centraliza o trecho explorado; se não cabe, o herói no meio, sem mostrar vazio à toa.
+        let axis = |lo: i32, hi: i32, h: i32, start: i32, span: i32| {
+            let len = (hi - lo + 1) * cell;
+            if len <= span {
+                start + (span - len) / 2 - lo * cell
+            } else {
+                let o = start + span / 2 - h * cell - cell / 2;
+                o.clamp(start + span - (hi + 1) * cell, start - lo * cell)
+            }
+        };
+        (cell, axis(c0, c1, hc, MX, aw), axis(r0, r1, hr, MY, ah))
     }
 
-    /// Casa na tela, se estiver dentro da câmera.
+    /// Casa na tela (pode estar cortada pela borda da área; o desenho apara depois).
     fn cell(&self, i: usize) -> Option<Rect> {
-        let (r0, c0) = self.view();
-        let (r, c) = ((i / MW) as i32 - r0, (i % MW) as i32 - c0);
-        ((0..VH as i32).contains(&r) && (0..VW as i32).contains(&c)).then(|| Rect::new(MX + c * CELL, MY + r * CELL, CELL, CELL))
+        let (cell, ox, oy) = self.camera();
+        let (r, c) = ((i / MW) as i32, (i % MW) as i32);
+        let rect = Rect::new(ox + c * cell, oy + r * cell, cell, cell);
+        let (aw, ah) = (VW as i32 * CELL, VH as i32 * CELL);
+        (rect.x + cell > MX && rect.x < MX + aw && rect.y + cell > MY && rect.y < MY + ah).then_some(rect)
     }
 
     fn heart(fb: &mut Framebuffer, x: i32, y: i32, s: i32, v: u8) {
@@ -576,30 +582,33 @@ impl MiniGame for Masmorra {
         }
         let mode = if self.daily { " · desafio do dia" } else { "" };
         minigame::header(fb, f, "Masmorra", &format!("Andar {} de 5 · {} pontos{mode}", self.depth, self.score()));
-        // Fundo: rocha escura (fora do mapa e onde você ainda não esteve), na mesma pedra da parede.
-        fb.fill(Rect::new(MX, MY, VW as i32 * CELL, VH as i32 * CELL), 0x2A);
-        for k in 0..(VW * VH) as i32 {
-            let r = Rect::new(MX + (k % VW as i32) * CELL, MY + (k / VW as i32) * CELL, CELL, CELL);
-            if crate::sprites::draw(fb, "parede", r) {
-                for yy in r.y..r.y + r.h {
-                    for xx in r.x..r.x + r.w {
-                        fb.blend(xx, yy, 0x16, 175);
-                    }
+        let (aw, ah) = (VW as i32 * CELL, VH as i32 * CELL);
+        let (cell, ox, oy) = self.camera();
+        let dark = |fb: &mut Framebuffer, r: Rect| {
+            if !crate::sprites::draw(fb, "parede", r) {
+                fb.fill(r, 0x2A);
+                return;
+            }
+            for yy in r.y..r.y + r.h {
+                for xx in r.x..r.x + r.w {
+                    fb.blend(xx, yy, 0x16, 175);
+                }
+            }
+        };
+        // Pedra escura em todas as casas da área (inclusive fora do mapa e cortadas na borda).
+        let (cmin, cmax) = ((MX - ox).div_euclid(cell), (MX + aw - ox).div_euclid(cell));
+        let (rmin, rmax) = ((MY - oy).div_euclid(cell), (MY + ah - oy).div_euclid(cell));
+        for r in rmin..=rmax {
+            for c in cmin..=cmax {
+                let inside = (0..MH as i32).contains(&r) && (0..MW as i32).contains(&c);
+                if !inside || !self.seen[r as usize * MW + c as usize] {
+                    dark(fb, Rect::new(ox + c * cell, oy + r * cell, cell, cell));
                 }
             }
         }
         for i in 0..MW * MH {
             let Some(r) = self.cell(i) else { continue };
             if !self.seen[i] {
-                // Ainda não explorado: a mesma pedra, mergulhada no escuro (continua a masmorra,
-                // não vira um buraco liso na tela).
-                if crate::sprites::draw(fb, "parede", r) {
-                    for yy in r.y..r.y + r.h {
-                        for xx in r.x..r.x + r.w {
-                            fb.blend(xx, yy, 0x16, 175);
-                        }
-                    }
-                }
                 continue;
             }
             let vis = self.visible(i);
@@ -609,10 +618,10 @@ impl MiniGame for Masmorra {
                         // Parede de pedra: blocos desencontrados.
                         fb.fill(r, 0x5C);
                         for k in 0..4 {
-                            let y = r.y + k * CELL / 4;
-                            fb.fill(Rect::new(r.x, y, CELL, 3), 0x3A);
-                            let off = if k % 2 == 0 { CELL / 3 } else { CELL * 5 / 6 };
-                            fb.fill(Rect::new(r.x + off, y, 3, CELL / 4), 0x3A);
+                            let y = r.y + k * cell / 4;
+                            fb.fill(Rect::new(r.x, y, cell, 3), 0x3A);
+                            let off = if k % 2 == 0 { cell / 3 } else { cell * 5 / 6 };
+                            fb.fill(Rect::new(r.x + off, y, 3, cell / 4), 0x3A);
                         }
                     }
                 }
@@ -623,7 +632,7 @@ impl MiniGame for Masmorra {
                     }
                     if self.map[i] == Tile::Stairs && !crate::sprites::draw(fb, "escada", Rect::new(r.x + 6, r.y + 6, r.w - 12, r.h - 12)) {
                         for k in 0..3 {
-                            fb.fill(Rect::new(r.x + 14 + k * 20, r.y + 62 - k * 20, CELL - 28 - k * 20, 16), INK);
+                            fb.fill(Rect::new(r.x + 14 + k * 20, r.y + cell * 7 / 10 - k * 20, cell - 28 - k * 20, 16), INK);
                         }
                     }
                 }
@@ -676,8 +685,15 @@ impl MiniGame for Masmorra {
             }
         }
         sprite(fb, self.pos, &format!("heroi-{frame}"));
+        // Apara as casas cortadas: o que passou da área volta a ser papel; o cabeçalho vem depois.
+        let pad = 140;
+        for band in [Rect::new(0, MY - pad, W, pad), Rect::new(0, MY + ah, W, pad), Rect::new(0, MY, MX, ah), Rect::new(MX + aw, MY, W - MX - aw, ah)] {
+            fb.fill(band, PAPER);
+        }
+        ui::draw_back(fb, f, false);
+        minigame::header(fb, f, "Masmorra", &format!("Andar {} de 5 · {} pontos{mode}", self.depth, self.score()));
         // Moldura fina do mapa (quatro traços, sem pintar o miolo).
-        let (bw, bh) = (VW as i32 * CELL, VH as i32 * CELL);
+        let (bw, bh) = (aw, ah);
         for r in [Rect::new(MX - 4, MY - 4, bw + 8, 3), Rect::new(MX - 4, MY + bh + 1, bw + 8, 3), Rect::new(MX - 4, MY - 4, 3, bh + 8), Rect::new(MX + bw + 1, MY - 4, 3, bh + 8)] {
             fb.fill(r, INK);
         }
@@ -970,6 +986,9 @@ mod tests {
             g.state = State::Play;
         }
         shot(&g, "masmorra.pgm");
+        let mut ini = Masmorra::new();
+        ini.new_game(false, Rng::seeded(7));
+        shot(&ini, "masmorra-inicio.pgm");
         g.state = State::LevelUp;
         shot(&g, "masmorra-nivel.pgm");
         g.state = State::Menu;
