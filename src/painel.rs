@@ -119,6 +119,16 @@ pub fn set_away(on: bool) -> Result<bool, String> {
     chat::call("POST", "/longe", Some(&format!("{{\"on\": {on}}}")), 15).map(|j| j.get("on").and_then(Json::bool).unwrap_or(on))
 }
 
+/// O pedido já passou dos 10 minutos (a ponte nega sozinha).
+pub fn approval_expired(a: &Approval) -> bool {
+    now() - a.created >= 600
+}
+
+/// Botão único quando o prazo acabou.
+pub fn approve_close_rect() -> Rect {
+    Rect::new(MARGIN, 1250, W - 2 * MARGIN, 110)
+}
+
 pub fn approve_rect(allow: bool) -> Rect {
     let w = (W - 2 * MARGIN - 24) / 2;
     Rect::new(if allow { MARGIN + w + 24 } else { MARGIN }, 1250, w, 110)
@@ -156,8 +166,12 @@ pub fn draw_approval(fb: &mut Framebuffer, f: &Fonts, a: &Approval, more: usize)
     for (k, l) in chat::wrap_words(f, Face::Strong, 28.0, &t, W - 2 * MARGIN).iter().take(2).enumerate() {
         f.draw(fb, Face::Strong, 28.0, MARGIN, ty + k as i32 * 38, INK, l);
     }
-    ui::button(fb, f, approve_rect(false), "Negar", false);
-    ui::button(fb, f, approve_rect(true), "Permitir", true);
+    if approval_expired(a) {
+        ui::button(fb, f, approve_close_rect(), "Fechar", true);
+    } else {
+        ui::button(fb, f, approve_rect(false), "Negar", false);
+        ui::button(fb, f, approve_rect(true), "Permitir", true);
+    }
 }
 
 // ---------- Edição da manhã ----------
@@ -681,7 +695,7 @@ pub fn draw_photo(fb: &mut Framebuffer, f: &Fonts, list: &[PathBuf], k: usize) {
         f,
         420,
         "vazio-moldura",
-        &["No celular, abra a página do endereço abaixo.", "Escolha Foto e mande quantas quiser.", "Elas aparecem aqui; toque para passar, e trocam sozinhas a cada 15 minutos."],
+        &[if send_url().is_some() { "No celular, abra a página do endereço abaixo." } else { "No celular, abra a página Mandar para o Kindle (o endereço aparece aqui quando a ponte do Claude estiver ligada nos Ajustes)." }, "Escolha Foto e mande quantas quiser.", "Elas aparecem aqui; toque para passar, e trocam sozinhas a cada 15 minutos."],
         send_url(),
     );
 }
@@ -738,7 +752,7 @@ pub fn draw_articles(fb: &mut Framebuffer, f: &Fonts, list: &[(PathBuf, String, 
             f,
             450,
             "vazio-artigos",
-            &["No celular, abra a página do endereço abaixo.", "Cole o link de uma matéria ou post e toque em Mandar.", "O texto chega limpo, sem anúncio, para ler no leitor do Verso Ink."],
+            &[if send_url().is_some() { "No celular, abra a página do endereço abaixo." } else { "No celular, abra a página Mandar para o Kindle (o endereço aparece aqui quando a ponte do Claude estiver ligada nos Ajustes)." }, "Cole o link de uma matéria ou post e toque em Mandar.", "O texto chega limpo, sem anúncio, para ler no leitor do Verso Ink."],
             send_url(),
         );
         return;

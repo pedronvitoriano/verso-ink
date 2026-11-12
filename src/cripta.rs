@@ -866,6 +866,7 @@ impl MiniGame for Cripta {
             for (k, l) in rules.iter().enumerate() {
                 f.draw(fb, Face::Body, 30.0, minigame::MARGIN, top + k as i32 * 54, MUTED, l);
             }
+            minigame::menu_art(fb, "Cripta", top + rules.len() as i32 * 54 + 10);
             return;
         };
         let mode = if self.daily { " · desafio do dia" } else { "" };

@@ -574,10 +574,11 @@ impl MiniGame for Masmorra {
         fb.fill(fb.screen(), PAPER);
         ui::draw_back(fb, f, false);
         if self.state == State::Menu || self.map.is_empty() {
-            let sub = if self.best > 0 { format!("Cinco andares, um dragão. Recorde: {} pontos.", self.best) } else { "Cinco andares, um dragão. O mundo anda quando você anda.".into() };
+            let sub = if self.best > 0 { format!("Cinco andares, um dragão. Recorde: {} pontos.", self.best) } else { "Cinco andares e um dragão no fim.".into() };
             let cont = !self.map.is_empty() && self.state != State::Over;
             let opts: Vec<&str> = if cont { vec!["Continuar", "Nova aventura", "Desafio do dia"] } else { vec!["Nova aventura", "Desafio do dia"] };
             minigame::draw_menu(fb, f, "Masmorra", &sub, &opts);
+            minigame::menu_art(fb, "Masmorra", minigame::menu_row(opts.len()).y + 40);
             return;
         }
         let mode = if self.daily { " · desafio do dia" } else { "" };

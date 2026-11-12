@@ -940,6 +940,8 @@ impl App {
                 v.extend((0..crate::painel::COMMANDS.len()).map(|k| (Row(k), crate::painel::command_rect(k))));
                 v
             }
+            // Prazo vencido: a ponte já negou; só fechar.
+            Screen::Aprovar if self.approvals.first().is_some_and(crate::painel::approval_expired) => vec![(Level(0), crate::painel::approve_close_rect())],
             Screen::Aprovar => vec![(Level(0), crate::painel::approve_rect(false)), (Level(1), crate::painel::approve_rect(true))],
             Screen::WifiPass | Screen::LibSearch | Screen::MiniText | Screen::TermType | Screen::MissaoText => {
                 let mut v = vec![(Back, ui::back_rect())];

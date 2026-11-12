@@ -1595,7 +1595,7 @@ pub fn tip(mode: usize) -> &'static str {
         1 => "Cheia ou vazada, haste e bandeirolas; o ponto soma metade.",
         2 => "Sustenidos: último + meio tom. Bemóis: o penúltimo.",
         3 => "Conte as notas do caminho, incluindo as duas pontas.",
-        _ => "Olhe a linha ou o espaço e suba a partir do Sol.",
+        _ => "Conte linhas e espaços a partir do Sol (2ª linha), para cima ou para baixo.",
     }
 }
 

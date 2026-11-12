@@ -122,9 +122,9 @@ pub fn draw_menu(fb: &mut Framebuffer, f: &Fonts, title: &str, subtitle: &str, o
 
 /// A ilustração do jogo num cartão, ocupando o espaço livre do menu (de `top` até o rodapé).
 pub fn menu_art(fb: &mut Framebuffer, title: &str, top: i32) {
-    let bottom = 1400;
+    let bottom = 1390;
     let h = bottom - top;
-    if h < 220 {
+    if h < 200 {
         return;
     }
     let name = format!("icone-{}", crate::apps::fold(title).replace(' ', ""));
@@ -132,8 +132,8 @@ pub fn menu_art(fb: &mut Framebuffer, title: &str, top: i32) {
         return;
     }
     let r = Rect::new(MARGIN, top, W - 2 * MARGIN, h);
-    fb.round_rect(r, 32, crate::ui::SURFACE);
-    let d = (h - 60).min(300);
+    crate::ui::card(fb, r, 32, crate::ui::SURFACE, false);
+    let d = (h - 44).min(300);
     crate::sprites::draw(fb, &name, Rect::new(r.x + (r.w - d) / 2, r.y + (h - d) / 2, d, d));
 }
 

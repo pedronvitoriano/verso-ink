@@ -824,7 +824,8 @@ pub fn board_rect() -> Rect {
     Rect::new(BX, BY, 8 * SQ, 8 * SQ)
 }
 pub fn undo_rect() -> Rect {
-    Rect::new(72, 1368, (1072 - 144 - 24) / 2, 72)
+    // Com folga até a borda de baixo (antes a sombra encostava nela).
+    Rect::new(72, 1366, (1072 - 144 - 24) / 2, 62)
 }
 pub fn new_rect() -> Rect {
     let r = undo_rect();

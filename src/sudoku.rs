@@ -454,7 +454,8 @@ pub fn draw_resume(fb: &mut Framebuffer, f: &Fonts, saved: Option<&Game>, prog: 
     let streak = prog.current_streak(crate::fases::today());
     let y = resume_level_rect(1, below).y + 200;
     f.draw(fb, Face::Display, 56.0, MARGIN, y, INK, &format!("Sequência: {streak} dia{}", if streak == 1 { "" } else { "s" }));
-    f.draw(fb, Face::Body, 30.0, MARGIN, y + 60, MUTED, &format!("Melhor: {} · Fases vencidas: {} · de 5 em 5, uma difícil", prog.best, prog.solved));
+    f.draw(fb, Face::Body, 30.0, MARGIN, y + 60, MUTED, &format!("Melhor sequência: {} · Fases vencidas: {}", prog.best, prog.solved));
+    crate::minigame::menu_art(fb, "Sudoku", y + 110);
 }
 
 /// Botões do menu: abaixo do "Continuar" quando há partida salva; senão, logo no alto.
