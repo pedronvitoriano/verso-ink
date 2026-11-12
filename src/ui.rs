@@ -88,7 +88,7 @@ pub fn clock_rect() -> Rect {
 fn time_rect() -> Rect {
     Rect::new(MARGIN - 8, 150, 610, 300)
 }
-fn chips_rect() -> Rect {
+pub fn chips_rect() -> Rect {
     Rect::new(MARGIN, 466, 1072 - 2 * MARGIN, 84)
 }
 /// Módulos numa grade igual de 2 colunas (o último sozinho ocupa a linha toda).
@@ -375,8 +375,20 @@ fn draw_chips(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     }
     let x1 = if w0 > 0 { c.x + w0 + gap } else { c.x };
     let r = Rect::new(x1, c.y, c.x + c.w - x1, c.h);
+    // Aviso crítico de um agente (ex.: não desconectar): toma a faixa inteira, em preto.
+    if let Some(n) = crate::painel::notices().into_iter().find(|n| n.critical) {
+        fb.fill(Rect::new(c.x, c.y, c.w, c.h + SH), PAPER);
+        card(fb, c, 26, INK, false);
+        let t = crate::apps::fit(f, Face::Strong, 30.0, &format!("! {}", n.text.to_uppercase()), c.w - 48);
+        f.draw(fb, Face::Strong, 30.0, c.x + 24, c.y + 54, PAPER, &t);
+        return;
+    }
     card(fb, r, 26, PAPER, false);
-    let line = crate::data::summary(st.offset_min).line.unwrap_or_else(|| "Hora de ler um pouco".into());
+    let today = crate::painel::edition().filter(|e| e.day == crate::painel::today_iso(st.offset_min));
+    let line = match today {
+        Some(e) => format!("Edição de hoje: {}", e.headline),
+        None => crate::data::summary(st.offset_min).line.unwrap_or_else(|| "Hora de ler um pouco".into()),
+    };
     let tx = if crate::sprites::draw(fb, "icone-livro", Rect::new(r.x + 14, r.y + 10, 62, 62)) { r.x + 88 } else { r.x + 24 };
     let line = crate::apps::fit(f, Face::Strong, 27.0, &line, r.x + r.w - 20 - tx);
     f.draw(fb, Face::Strong, 27.0, tx, r.y + 52, INK, &line);
@@ -581,15 +593,16 @@ pub fn draw_back(fb: &mut Framebuffer, f: &Fonts, pressed: bool) {
 
 /// Ideias de módulos futuros (da conversa de concepção); entram aqui conforme forem feitos.
 /// Módulos do Mais: (nome, descrição, pronto?). Os prontos abrem ao toque.
-const COMING: [(&str, &str, bool); 4] = [
+pub const COMING: [(&str, &str, bool); 5] = [
+    ("Edição da manhã", "Os agentes da noite, avisos e notícias", true),
+    ("Artigos", "Links mandados do celular, para ler depois", true),
+    ("Porta-retrato", "Fotos do celular em tons de cinza", true),
     ("Receitas", "Aberta na cozinha, sem apagar", true),
-    ("Artigos", "Ler depois, sem distração", false),
-    ("Terminal", "O Linux do Kindle na tela", false),
-    ("Porta-retrato", "Fotos em tons de cinza", false),
+    ("Terminal", "Comandos de um toque no Linux do Kindle", true),
 ];
 
 pub fn more_row(k: usize) -> Rect {
-    Rect::new(MARGIN, 540 + k as i32 * 172, 1072 - 2 * MARGIN, 148)
+    Rect::new(MARGIN, 500 + k as i32 * 156, 1072 - 2 * MARGIN, 136)
 }
 
 fn draw_more(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
@@ -607,8 +620,8 @@ fn draw_more(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
             fb.round_rect(r, 30, SURFACE);
         }
         let ink = if *ready { INK } else { 0x55 };
-        f.draw(fb, Face::Display, 54.0, r.x + 34, r.y + 70, ink, name);
-        f.draw(fb, Face::Body, 30.0, r.x + 36, r.y + 116, MUTED, desc);
+        f.draw(fb, Face::Display, 50.0, r.x + 34, r.y + 64, ink, name);
+        f.draw(fb, Face::Body, 28.0, r.x + 36, r.y + 106, MUTED, desc);
         let tag = if *ready { "Abrir" } else { "Em breve" };
         let tw = f.measure(Face::Strong, 26.0, tag);
         let tr = Rect::new(r.x + r.w - tw - 48 - 28, r.y + (r.h - 56) / 2, tw + 48, 56);
@@ -653,12 +666,20 @@ pub struct SleepScene {
     pub quote: Option<String>,
     /// Miniatura da tela (jogo): largura, altura e pixels.
     pub shot: Option<(i32, i32, Vec<u8>)>,
+    /// Foto do porta-retrato (dorme mostrando a foto inteira).
+    pub photo: Option<std::path::PathBuf>,
 }
 
 /// Tela de repouso: continua o que estava aberto. Jogo: a partida em miniatura, como uma foto
 /// na mesa; livro: o trecho da página onde parou; outras telas: o personagem do dia.
 pub fn draw_sleep(fb: &mut Framebuffer, f: &Fonts, st: &Status, scene: Option<&SleepScene>) {
     fb.fill(fb.screen(), PAPER);
+    if let Some(img) = scene.and_then(|s| s.photo.as_ref()).and_then(|p| image::open(p).ok()) {
+        // Porta-retrato: a foto fica, a tela inteira.
+        let g = img.to_luma8();
+        fb.blit(0, 0, g.width() as i32, g.height() as i32, g.as_raw());
+        return;
+    }
     let now = clock::now(st.offset_min);
     // Topo: "Em repouso" e a hora em que dormiu; bateria à direita.
     icon_moon(fb, MARGIN, 70, 64);

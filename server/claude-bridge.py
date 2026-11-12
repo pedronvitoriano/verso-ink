@@ -12,6 +12,8 @@ O Kindle conversa com o Claude por aqui: cada mensagem vira um `claude -p` (com
     POST /xadrez/lance                JSON {"fen", "moves", "legal", "color", "level"} -> {"move", "comment"}
     POST /xadrez/revisao              JSON {"moves", "evals", "color", "result", "coach"} -> {"text"}
 
+Caixa de entrada, sessões, avisos, aprovações e Edição da manhã: ver verso_extras.py.
+
 Cada conversa tem uma pasta própria: o que o Claude cria nela aparece no Kindle. Para ler
 arquivos do Kindle, o Claude usa o comando `kindle` (só leitura, pelo túnel SSH).
 
@@ -22,10 +24,13 @@ import os
 import re
 import secrets
 import subprocess
+import threading
 import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+from verso_extras import ID_RE as XID_RE, SEND_PAGE, Extras
 
 TOKEN = Path(os.environ.get("VERSO_INK_TOKEN_FILE", "/etc/verso-ink/token")).read_text().strip()
 DATA = Path(os.environ.get("VERSO_INK_DATA", str(Path.home() / "chats")))
@@ -193,10 +198,48 @@ class Handler(BaseHTTPRequestHandler):
         n = min(int(self.headers.get("Content-Length", "0")), limit)
         return self.rfile.read(n).decode("utf-8", "replace")
 
+    def raw(self, limit):
+        n = int(self.headers.get("Content-Length", "0"))
+        if n > limit:
+            return None
+        return self.rfile.read(n)
+
+    def send_bytes(self, data, ctype):
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
     def do_GET(self):
+        parts = self.path_parts()
+        if parts == ["enviar"]:
+            # A página não traz dados: a chave fica só no navegador de quem usa.
+            return self.send_bytes(SEND_PAGE.encode(), "text/html; charset=utf-8")
         if not self.authorized():
             return
-        parts = self.path_parts()
+        if parts == ["inbox"]:
+            return self.reply(200, EXTRAS.inbox())
+        if len(parts) == 3 and parts[0] == "inbox" and XID_RE.match(parts[2]):
+            if parts[1] == "artigo" and (t := EXTRAS.article_text(parts[2])):
+                return self.send_bytes(t.encode(), "text/plain; charset=utf-8")
+            if parts[1] == "foto" and (p := EXTRAS.photo(parts[2])):
+                return self.send_bytes(p.read_bytes(), "application/octet-stream")
+            return self.reply(404, {"error": "não encontrado"})
+        if parts == ["sessoes"]:
+            return self.reply(200, EXTRAS.sessions())
+        if parts == ["avisos"]:
+            return self.reply(200, EXTRAS.notices())
+        if parts == ["longe"]:
+            return self.reply(200, {"on": EXTRAS.away()})
+        if parts == ["aprovacoes"]:
+            return self.reply(200, EXTRAS.pending())
+        if len(parts) == 2 and parts[0] == "aprovacoes" and XID_RE.match(parts[1]):
+            a = EXTRAS.approval(parts[1])
+            return self.reply(200, a) if a else self.reply(404, {"error": "não encontrado"})
+        if parts == ["edicao"]:
+            ed = EXTRAS.edition()
+            return self.reply(200, ed) if ed else self.reply(404, {"error": "ainda não há edição"})
         if parts == ["health"]:
             return self.reply(200, {"ok": True, "logged": logged_in(), "kindle": kindle_online()})
         if parts == ["chats"]:
@@ -226,10 +269,66 @@ class Handler(BaseHTTPRequestHandler):
             return
         self.reply(404, {"error": "caminho desconhecido"})
 
+    def do_DELETE(self):
+        if not self.authorized():
+            return
+        parts = self.path_parts()
+        if len(parts) == 3 and parts[0] == "inbox" and parts[1] in ("artigo", "foto") and XID_RE.match(parts[2]):
+            EXTRAS.delete(parts[1], parts[2])
+            return self.reply(200, {"ok": True})
+        if len(parts) == 2 and parts[0] == "avisos" and XID_RE.match(parts[1]):
+            EXTRAS.del_notice(parts[1])
+            return self.reply(200, {"ok": True})
+        self.reply(404, {"error": "caminho desconhecido"})
+
+    def json_body(self):
+        try:
+            return json.loads(self.body())
+        except json.JSONDecodeError:
+            return None
+
     def do_POST(self):
         if not self.authorized():
             return
         parts = self.path_parts()
+        if parts == ["inbox", "foto"]:
+            data = self.raw(12_000_000)
+            if data is None:
+                return self.reply(413, {"error": "imagem grande demais"})
+            out, err = EXTRAS.add_photo(data, self.headers.get("Content-Type", ""))
+            return self.reply(400, {"error": err}) if err else self.reply(200, out)
+        extras_routes = {("inbox", "link"), ("sessoes",), ("avisos",), ("longe",), ("aprovacoes",), ("brain",), ("edicao", "gerar")}
+        if tuple(parts) in extras_routes or (len(parts) == 2 and parts[0] == "aprovacoes"):
+            req = self.json_body() if tuple(parts) != ("edicao", "gerar") else {}
+            if req is None:
+                return self.reply(400, {"error": "JSON inválido"})
+            if parts == ["inbox", "link"]:
+                out, err = EXTRAS.add_link(str(req.get("url", "")).strip())
+                return self.reply(400, {"error": err}) if err else self.reply(200, out)
+            if parts == ["sessoes"]:
+                EXTRAS.session_event(req)
+                return self.reply(200, {"ok": True})
+            if parts == ["avisos"]:
+                n = EXTRAS.add_notice(req)
+                return self.reply(200, n) if n else self.reply(400, {"error": "aviso vazio"})
+            if parts == ["longe"]:
+                EXTRAS.set_away(req.get("on"))
+                return self.reply(200, {"on": EXTRAS.away()})
+            if parts == ["aprovacoes"]:
+                if not EXTRAS.away():
+                    return self.reply(200, {"id": None, "away": False})
+                return self.reply(200, EXTRAS.add_approval(req))
+            if parts[0] == "aprovacoes":
+                if not XID_RE.match(parts[1]):
+                    return self.reply(404, {"error": "não encontrado"})
+                a = EXTRAS.decide(parts[1], str(req.get("decision", "")))
+                return self.reply(200, a) if a else self.reply(404, {"error": "não encontrado"})
+            if parts == ["brain"]:
+                EXTRAS.set_brain(req.get("text", ""))
+                return self.reply(200, {"ok": True})
+            if parts == ["edicao", "gerar"]:
+                threading.Thread(target=EXTRAS.generate_edition, daemon=True).start()
+                return self.reply(202, {"ok": True})
         if parts in (["xadrez", "lance"], ["xadrez", "revisao"]):
             try:
                 req = json.loads(self.body())
@@ -267,6 +366,9 @@ class Handler(BaseHTTPRequestHandler):
         chat["updated"] = int(time.time())
         save(chat)
         self.reply(200, {"id": chat["id"], "reply": text, "files": files_of(chat["id"])})
+
+
+EXTRAS = Extras(DATA.parent / "verso-ink-estado", run_claude)
 
 
 if __name__ == "__main__":

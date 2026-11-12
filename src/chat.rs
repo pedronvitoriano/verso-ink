@@ -36,6 +36,9 @@ impl Json {
     pub fn num(&self) -> Option<f64> {
         if let Json::Num(n) = self { Some(*n) } else { None }
     }
+    pub fn bool(&self) -> Option<bool> {
+        if let Json::Bool(b) = self { Some(*b) } else { None }
+    }
     pub fn arr(&self) -> &[Json] {
         if let Json::Arr(a) = self { a } else { &[] }
     }
@@ -165,7 +168,7 @@ fn token() -> Option<String> {
 }
 
 /// Chamada HTTP pela ponte. Devolve o JSON da resposta ou a mensagem de erro para a tela.
-fn call(method: &str, path: &str, body: Option<&str>, timeout: u32) -> Result<Json, String> {
+pub fn call(method: &str, path: &str, body: Option<&str>, timeout: u32) -> Result<Json, String> {
     let (Some(base), Some(tok)) = (url(), token()) else { return Err("A ponte do Claude ainda não foi configurada.".into()) };
     let mut cmd = Command::new("curl");
     cmd.args(["-s", "-m", &timeout.to_string(), "-X", method, "-H", &format!("Authorization: Bearer {tok}"), "-w", "\n%{http_code}"]);
@@ -275,6 +278,27 @@ pub fn open(id: &str) -> Result<Chat, String> {
 
 fn files_of(j: &Json) -> Vec<(String, u64)> {
     j.get("files").map(|f| f.arr().iter().filter_map(|x| Some((x.get("name")?.str()?.to_string(), x.get("size")?.num()? as u64))).collect()).unwrap_or_default()
+}
+
+/// A ponte está configurada neste Kindle?
+pub fn configured() -> bool {
+    url().is_some() && token().is_some()
+}
+
+/// Baixa `path` da ponte para `dest` (arquivo temporário e troca no fim).
+pub fn fetch(path: &str, dest: &std::path::Path, timeout: u32) -> Result<(), String> {
+    let (Some(base), Some(tok)) = (url(), token()) else { return Err("A ponte do Claude ainda não foi configurada.".into()) };
+    let tmp = dest.with_extension("parcial");
+    let code = Command::new("curl")
+        .args(["-s", "-m", &timeout.to_string(), "-o", &tmp.to_string_lossy(), "-w", "%{http_code}", "-H", &format!("Authorization: Bearer {tok}")])
+        .arg(format!("{}{path}", base.trim_end_matches('/')))
+        .output()
+        .map_err(|_| "curl indisponível".to_string())?;
+    if String::from_utf8_lossy(&code.stdout).trim() != "200" {
+        let _ = std::fs::remove_file(&tmp);
+        return Err("não consegui baixar".into());
+    }
+    std::fs::rename(&tmp, dest).map_err(|e| e.to_string())
 }
 
 /// Pasta onde ficam os arquivos do Claude no Kindle (aparecem também na biblioteca).

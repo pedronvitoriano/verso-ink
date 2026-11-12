@@ -12,6 +12,7 @@ SRC="$(cd "$(dirname "$0")" && pwd)"
 id versoink >/dev/null 2>&1 || useradd -m -s /bin/bash versoink
 install -d -m 755 /opt/verso-ink
 install -m 755 "$SRC/claude-bridge.py" /opt/verso-ink/claude-bridge.py
+install -m 644 "$SRC/verso_extras.py" /opt/verso-ink/verso_extras.py
 install -d -m 750 -o root -g versoink /etc/verso-ink
 if [ ! -s /etc/verso-ink/token ]; then
     head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' >/etc/verso-ink/token
@@ -61,8 +62,9 @@ cat >/etc/nginx/snippets/verso-ink.conf <<'EOF'
 # Verso Ink: ponte do Kindle para o Claude (autenticação por token no próprio serviço)
 location /verso-ink/ {
     proxy_pass http://127.0.0.1:8790/;
-    proxy_read_timeout 300s;
-    client_max_body_size 64k;
+    proxy_read_timeout 600s;
+    # Fotos mandadas do celular (o navegador reduz antes; 15 MB é folga).
+    client_max_body_size 15m;
 }
 EOF
 BACKUP=""

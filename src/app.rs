@@ -51,6 +51,18 @@ pub enum Screen {
     LibSearch,
     /// Texto pedido por um minijogo (ex.: o rumo novo de uma história).
     MiniText,
+    /// Edição da manhã.
+    Edicao,
+    /// Artigos mandados do celular.
+    Artigos,
+    /// Porta-retrato (fotos mandadas do celular).
+    Retrato,
+    /// Terminal: comandos de um toque.
+    Terminal,
+    /// Terminal: digitar um comando.
+    TermType,
+    /// Pedido de permissão de um agente do Claude Code.
+    Aprovar,
     Calendar,
     Tutorial,
     Sleep,
@@ -161,6 +173,19 @@ pub struct App {
     clock_shown: String,
     /// Título do pedido de texto de um minijogo.
     mini_prompt: String,
+    /// Painel ligado à VPS: página da edição, dos artigos, foto atual, terminal, aprovações.
+    ed_page: usize,
+    art_page: usize,
+    photo_k: usize,
+    photo_at: Instant,
+    term: (String, String),
+    approvals: Vec<crate::painel::Approval>,
+    approve_back: Screen,
+    panel_note: String,
+    /// Sincronização em segundo plano com a VPS: última vez (rápida e completa) e o resultado.
+    sync_fast: Instant,
+    sync_full: Option<Instant>,
+    sync_rx: Option<std::sync::mpsc::Receiver<(Option<crate::painel::Sync>, bool, (usize, usize))>>,
     /// O que estava na tela quando o Kindle dormiu (para a tela de repouso).
     sleep_scene: Option<ui::SleepScene>,
     /// Para onde o botão Início leva ao sair do minijogo/módulo.
@@ -290,6 +315,17 @@ impl App {
             mini_confirm: None,
             clock_shown: String::new(),
             mini_prompt: String::new(),
+            ed_page: 0,
+            art_page: 0,
+            photo_k: 0,
+            photo_at: Instant::now(),
+            term: (String::new(), String::new()),
+            approvals: Vec::new(),
+            approve_back: Screen::Home,
+            panel_note: String::new(),
+            sync_fast: Instant::now(),
+            sync_full: None,
+            sync_rx: None,
             sleep_scene: None,
             mini_back: Screen::Games,
             mini_game: 0,
@@ -460,6 +496,21 @@ impl App {
                 }
             }
             Screen::ClaudeDoc => crate::chat::draw_doc(fb, f, &self.doc.0, &self.doc.1, self.doc.2),
+            Screen::Edicao => crate::painel::draw_edition(fb, f, crate::painel::edition().as_ref(), self.ed_page, &self.panel_note),
+            Screen::Artigos => crate::painel::draw_articles(fb, f, &crate::painel::articles(), self.art_page, &self.panel_note),
+            Screen::Retrato => crate::painel::draw_photo(fb, f, &crate::painel::photos(), self.photo_k),
+            Screen::Terminal => crate::painel::draw_terminal(fb, f, &self.term.0, &self.term.1),
+            Screen::TermType => {
+                ui::draw_field_header(fb, f, "TERMINAL", "Comando");
+                crate::today_ui::draw_field(fb, f, &self.compose_text, &self.compose_hint);
+                self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
+                crate::keyboard::draw(fb, f, &self.keys);
+            }
+            Screen::Aprovar => {
+                if let Some(a) = self.approvals.first() {
+                    crate::painel::draw_approval(fb, f, a, self.approvals.len() - 1);
+                }
+            }
             Screen::MiniText => {
                 let kicker = if self.mini_game == 14 { "HISTÓRIAS" } else { "JOGO" };
                 ui::draw_field_header(fb, f, kicker, &self.mini_prompt);
@@ -561,9 +612,15 @@ impl App {
                 }
                 v.extend((0..Module::ALL.len()).map(|i| (Tile(i), ui::tile_rect(i))));
                 v.push((Header, ui::header_rect()));
+                // Cartões abaixo da hora: abrem a Edição da manhã (e os avisos).
+                v.push((Row(0), ui::chips_rect()));
                 v
             }
-            Screen::Module(Module::Mais) => vec![(Back, ui::back_rect()), (Row(0), ui::more_row(0))],
+            Screen::Module(Module::Mais) => {
+                let mut v = vec![(Back, ui::back_rect())];
+                v.extend((0..ui::COMING.len()).map(|k| (Row(k), ui::more_row(k))));
+                v
+            }
             Screen::Module(_) => vec![(Back, ui::back_rect())],
             Screen::Light => vec![
                 (Back, ui::back_rect()),
@@ -685,7 +742,41 @@ impl App {
                 }
                 v
             }
-            Screen::WifiPass | Screen::LibSearch | Screen::MiniText => {
+            Screen::Edicao => {
+                let mut v = vec![(Back, ui::back_rect())];
+                if let Some(e) = crate::painel::edition() {
+                    let n = crate::painel::edition_pages(&self.fonts, &e).len();
+                    if self.ed_page > 0 {
+                        v.push((Prev, crate::painel::edition_nav(0)));
+                    }
+                    if self.ed_page + 1 < n {
+                        v.push((Next, crate::painel::edition_nav(1)));
+                    }
+                }
+                v
+            }
+            Screen::Artigos => {
+                let mut v = vec![(Back, ui::back_rect())];
+                let n = crate::painel::articles().len();
+                let k0 = self.art_page * crate::painel::ART_ROWS;
+                v.extend((0..n.saturating_sub(k0).min(crate::painel::ART_ROWS)).map(|k| (Row(k0 + k), crate::painel::article_row(k))));
+                if self.art_page > 0 {
+                    v.push((Prev, crate::painel::edition_nav(0)));
+                }
+                if k0 + crate::painel::ART_ROWS < n {
+                    v.push((Next, crate::painel::edition_nav(1)));
+                }
+                v
+            }
+            // Porta-retrato: a foto inteira é o alvo (passa); o canto de cima volta.
+            Screen::Retrato => vec![(Back, Rect::new(0, 0, 360, 200)), (Next, Rect::new(0, 200, 1072, 1248))],
+            Screen::Terminal => {
+                let mut v = vec![(Back, ui::back_rect()), (Continue, crate::painel::type_rect())];
+                v.extend((0..crate::painel::COMMANDS.len()).map(|k| (Row(k), crate::painel::command_rect(k))));
+                v
+            }
+            Screen::Aprovar => vec![(Level(0), crate::painel::approve_rect(false)), (Level(1), crate::painel::approve_rect(true))],
+            Screen::WifiPass | Screen::LibSearch | Screen::MiniText | Screen::TermType => {
                 let mut v = vec![(Back, ui::back_rect())];
                 v.extend(self.keys.iter().enumerate().map(|(i, k)| (Key(i as u8), k.rect)));
                 v
@@ -985,6 +1076,11 @@ impl App {
                 if self.screen == Screen::MiniText {
                     return self.mini_text_done();
                 }
+                if self.screen == Screen::TermType {
+                    let cmd = self.compose_text.trim().to_string();
+                    self.term = (cmd.clone(), crate::painel::run(&cmd));
+                    return self.go(Screen::Terminal);
+                }
                 if self.screen == Screen::WifiPass {
                     let (Some(n), psk) = (self.wifi_target.clone(), self.compose_text.clone()) else { return };
                     if psk.chars().count() < 8 {
@@ -1028,7 +1124,7 @@ impl App {
     fn light_swipe_ok(&self) -> bool {
         !matches!(
             self.screen,
-            Screen::Sleep | Screen::Light | Screen::Settings | Screen::Wifi | Screen::WifiPass | Screen::Compose | Screen::ClaudeCompose | Screen::LibSearch | Screen::MiniText | Screen::Update
+            Screen::Sleep | Screen::Light | Screen::Settings | Screen::Wifi | Screen::WifiPass | Screen::Compose | Screen::ClaudeCompose | Screen::LibSearch | Screen::MiniText | Screen::TermType | Screen::Aprovar | Screen::Retrato | Screen::Update
         )
     }
 
@@ -1048,6 +1144,8 @@ impl App {
                 | Screen::WifiPass
                 | Screen::LibSearch
                 | Screen::MiniText
+                | Screen::TermType
+                | Screen::Aprovar
                 | Screen::Update
                 | Screen::Reminder
                 | Screen::Light
@@ -1062,7 +1160,7 @@ impl App {
         match self.screen {
             Screen::Reader | Screen::ReaderToc => {
                 let r = self.reader.as_ref()?;
-                Some(ui::SleepScene { what, detail, quote: Some(r.page_text()), shot: None })
+                Some(ui::SleepScene { what, detail, quote: Some(r.page_text()), shot: None, photo: None })
             }
             Screen::Mini | Screen::Sudoku | Screen::SudokuWon | Screen::Chess => {
                 // Miniatura da tela (sem a faixa do botão Início), a 60%.
@@ -1071,7 +1169,12 @@ impl App {
                 let img = image::GrayImage::from_raw(w as u32, h as u32, self.fb.buf[(top * w) as usize..].to_vec())?;
                 let (tw, th) = (624u32, (624.0 * h as f32 / w as f32) as u32);
                 let small = image::imageops::resize(&img, tw, th, image::imageops::FilterType::Triangle);
-                Some(ui::SleepScene { what, detail, quote: None, shot: Some((tw as i32, th as i32, small.into_raw())) })
+                Some(ui::SleepScene { what, detail, quote: None, shot: Some((tw as i32, th as i32, small.into_raw())), photo: None })
+            }
+            Screen::Retrato => {
+                let list = crate::painel::photos();
+                let p = list.get(self.photo_k % list.len().max(1))?.clone();
+                Some(ui::SleepScene { what, detail, quote: None, shot: None, photo: Some(p) })
             }
             _ => None,
         }
@@ -1441,6 +1544,72 @@ impl App {
     }
 
     /// Toque num minijogo: redesenha o que ele pedir e, se for a vez da CPU, joga por ela.
+    /// Sincroniza com a VPS em segundo plano: avisos, modo longe e aprovações sempre; edição e
+    /// caixa de entrada quando `full`. O resultado chega pelo canal e é aplicado no tick.
+    fn background_sync(&mut self, full: bool) {
+        if self.sync_rx.is_some() || !self.status.wifi || !crate::chat::configured() {
+            return;
+        }
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.sync_rx = Some(rx);
+        self.sync_fast = Instant::now();
+        if full {
+            self.sync_full = Some(Instant::now());
+        }
+        std::thread::spawn(move || {
+            let s = crate::painel::sync();
+            let (ed, inbox) = if full { (crate::painel::fetch_edition(), crate::painel::sync_inbox()) } else { (false, (0, 0)) };
+            let _ = tx.send((s, ed, inbox));
+        });
+    }
+
+    /// Resultado da sincronização: abre o pedido de permissão por cima de tudo, e redesenha a
+    /// tela do painel se chegou coisa nova.
+    fn apply_sync(&mut self) {
+        let Some(rx) = &self.sync_rx else { return };
+        let Ok((s, ed, (na, nf))) = rx.try_recv() else { return };
+        self.sync_rx = None;
+        if let Some(s) = s {
+            self.approvals = s.approvals;
+        }
+        if na + nf > 0 {
+            self.panel_note = match (na, nf) {
+                (a, 0) => format!("{a} artigo{} novo{}", if a == 1 { "" } else { "s" }, if a == 1 { "" } else { "s" }),
+                (0, f) => format!("{f} foto{} nova{}", if f == 1 { "" } else { "s" }, if f == 1 { "" } else { "s" }),
+                (a, f) => format!("{a} artigos e {f} fotos novas"),
+            };
+        }
+        if !self.approvals.is_empty() && self.screen != Screen::Aprovar && self.screen != Screen::Sleep {
+            self.approve_back = self.screen;
+            return self.go(Screen::Aprovar);
+        }
+        let refresh = match self.screen {
+            Screen::Edicao => ed,
+            Screen::Artigos => na > 0,
+            Screen::Retrato => nf > 0,
+            Screen::Home => true,
+            _ => false,
+        };
+        if refresh {
+            self.render(false);
+        }
+    }
+
+    fn decide_approval(&mut self, allow: bool) {
+        if let Some(a) = self.approvals.first().cloned() {
+            if let Err(e) = crate::painel::decide(&a.id, allow) {
+                log(&format!("aprovação: {e}"));
+            }
+            self.approvals.remove(0);
+        }
+        if self.approvals.is_empty() {
+            let back = self.approve_back;
+            self.go(back);
+        } else {
+            self.render(true);
+        }
+    }
+
     /// Texto pronto para o minijogo: mostra que está trabalhando (pode levar um minuto, se
     /// for o Claude escrevendo) e devolve ao jogo.
     fn mini_text_done(&mut self) {
@@ -1997,7 +2166,7 @@ impl App {
                 }
                 self.render(false);
             }
-            (Screen::Compose | Screen::WifiPass | Screen::ClaudeCompose | Screen::LibSearch | Screen::MiniText, Key(i)) => self.press_key(i as usize),
+            (Screen::Compose | Screen::WifiPass | Screen::ClaudeCompose | Screen::LibSearch | Screen::MiniText | Screen::TermType, Key(i)) => self.press_key(i as usize),
             (Screen::MiniText, Back) => self.go(Screen::Mini),
             (Screen::Wifi, Back) => {
                 let back = self.wifi_back;
@@ -2023,7 +2192,66 @@ impl App {
                 let back = self.mini_back;
                 self.go(back);
             }
-            (Screen::Module(Module::Mais), Row(0)) => {
+            (Screen::Home, Row(0)) | (Screen::Module(Module::Mais), Row(0)) => {
+                self.ed_page = 0;
+                self.panel_note.clear();
+                self.go(Screen::Edicao);
+                self.background_sync(true);
+            }
+            (Screen::Module(Module::Mais), Row(1)) => {
+                self.art_page = 0;
+                self.panel_note.clear();
+                self.go(Screen::Artigos);
+                self.background_sync(true);
+            }
+            (Screen::Module(Module::Mais), Row(2)) => {
+                self.photo_k = 0;
+                self.photo_at = Instant::now();
+                self.go(Screen::Retrato);
+                self.background_sync(true);
+            }
+            (Screen::Module(Module::Mais), Row(4)) => self.go(Screen::Terminal),
+            (Screen::Edicao | Screen::Artigos | Screen::Retrato | Screen::Terminal, Back) => self.go(Screen::Module(Module::Mais)),
+            (Screen::Edicao, Prev) => {
+                self.ed_page = self.ed_page.saturating_sub(1);
+                self.render(false);
+            }
+            (Screen::Edicao, Next) => {
+                self.ed_page += 1;
+                self.render(false);
+            }
+            (Screen::Artigos, Prev) => {
+                self.art_page = self.art_page.saturating_sub(1);
+                self.render(false);
+            }
+            (Screen::Artigos, Next) => {
+                self.art_page += 1;
+                self.render(false);
+            }
+            (Screen::Artigos, Row(k)) => {
+                if let Some((path, title, _)) = crate::painel::articles().into_iter().nth(k) {
+                    self.open_reader(path, title);
+                }
+            }
+            (Screen::Retrato, Next) => {
+                self.photo_k += 1;
+                self.photo_at = Instant::now();
+                self.render(true);
+            }
+            (Screen::Terminal, Row(k)) => {
+                if let Some((label, cmd)) = crate::painel::COMMANDS.get(k) {
+                    self.term = (label.to_lowercase(), crate::painel::run(cmd));
+                    self.render(false);
+                }
+            }
+            (Screen::Terminal, Continue) => {
+                self.compose_text.clear();
+                self.compose_hint = "Digite o comando e toque em OK. Roda como root: cuidado.".into();
+                self.go(Screen::TermType);
+            }
+            (Screen::TermType, Back) => self.go(Screen::Terminal),
+            (Screen::Aprovar, Level(k)) => self.decide_approval(k == 1),
+            (Screen::Module(Module::Mais), Row(3)) => {
                 self.mini = Some(self.mini_cache.remove(&100).unwrap_or_else(|| Box::new(crate::receitas::Receitas::new())));
                 self.mini_back = Screen::Module(Module::Mais);
                 self.go(Screen::Mini);
@@ -2727,6 +2955,18 @@ impl App {
         if self.gesture.is_some() {
             self.check_hold();
         }
+        // VPS: avisos e aprovações a cada minuto; edição e caixa de entrada a cada 20 minutos.
+        self.apply_sync();
+        if self.screen != Screen::Sleep && self.sync_fast.elapsed() >= Duration::from_secs(60) {
+            let full = self.sync_full.is_none_or(|t| t.elapsed() >= Duration::from_secs(20 * 60));
+            self.background_sync(full);
+        }
+        // Porta-retrato: troca a foto a cada 15 minutos.
+        if self.screen == Screen::Retrato && self.photo_at.elapsed() >= Duration::from_secs(15 * 60) {
+            self.photo_k += 1;
+            self.photo_at = Instant::now();
+            self.render(true);
+        }
         self.chess_clock_tick();
         let now = clock::now(self.status.offset_min);
         let minute_changed = now.minute != self.last_minute;
@@ -2922,6 +3162,19 @@ mod raio_x {
                 shot(&mut app, "jogo-xadrez-treinador-partida");
             }
         }
+        // Painel: edição de exemplo, artigos e fotos vazios, terminal e um pedido de permissão.
+        std::fs::write(
+            home.join("data/edicao.json"),
+            r#"{"dia": "2026-11-12", "manchete": "Os agentes terminaram o raio-x; um ainda precisa de você.", "secoes": [{"titulo": "Avisos", "itens": ["NÃO DESCONECTAR O KINDLE ATÉ O FIM DA ATUALIZAÇÃO"]}, {"titulo": "Os agentes durante a noite", "itens": ["verso-ink: refez a Início e a Jogar; parou às 03:10 esperando a sua escolha de direção.", "aions-brain: atualizou duas notas de retomada e terminou."]}, {"titulo": "Na sua área", "itens": ["Nova versão do Rust estabiliza recursos de async em traits (blog do Rust).", "Pesquisa mostra uso crescente de agentes de código em equipes pequenas (InfoQ)."]}]}"#,
+        )
+        .unwrap();
+        for (s, name) in [(Screen::Edicao, "painel-edicao"), (Screen::Artigos, "painel-artigos"), (Screen::Retrato, "painel-retrato"), (Screen::Terminal, "painel-terminal")] {
+            app.go(s);
+            shot(&mut app, name);
+        }
+        app.approvals = vec![crate::painel::Approval { id: "abc".into(), project: "verso-ink".into(), tool: "Bash".into(), summary: "cargo build --release && tools/deploy.sh (envia o binário novo ao Kindle pelo túnel)".into(), created: 0 }];
+        app.go(Screen::Aprovar);
+        shot(&mut app, "painel-aprovar");
         let _ = std::fs::remove_dir_all(&home);
     }
 }

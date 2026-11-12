@@ -33,6 +33,13 @@ case "$event" in
 esac
 
 line="$(date +%s)|$project|$state|$detail"
+# Também para a VPS (vale fora de casa e alimenta a Edição da manhã). Uma vez por sessão, ao
+# abrir, manda também o resumo do Brain.
+(
+    . "$(dirname "$0")/ponte.sh"
+    ponte POST /sessoes "$(jq -nc --arg s "$session" --arg p "$project" --arg st "$state" --arg d "$detail" '{session: $s, project: $p, state: $st, detail: $d}')" 5 >/dev/null 2>&1
+    [ "$event" = "SessionStart" ] && "$(dirname "$0")/brain-resumo.sh" >/dev/null 2>&1
+) &
 (
     printf '%s\n' "$line" | ssh -i "$KEY" -p "$PORT" -o IdentitiesOnly=yes -o ConnectTimeout=2 -o BatchMode=yes "root@$IP" \
         "mkdir -p /mnt/us/verso-ink/data/claude && cat > /mnt/us/verso-ink/data/claude/$session.txt" >/dev/null 2>&1
