@@ -556,6 +556,76 @@ class Extras:
             self.write(self.base / "edicoes" / f"{day}.json", ed)
         return out, None
 
+    # ---------- Aprender: tópicos com lições geradas pelo Claude ----------
+
+    def _claude_json(self, prompt, timeout=240):
+        try:
+            text, _, err = self.run_claude(prompt, tools="", timeout=timeout)
+        except Exception as e:
+            return None, str(e)
+        if err:
+            return None, err
+        m = re.search(r"\{.*\}", text, re.S)
+        try:
+            return (json.loads(m.group(0)) if m else None), None
+        except json.JSONDecodeError:
+            return None, "resposta inválida"
+
+    def learn_curriculum(self, req):
+        tema = str(req.get("tema", "")).strip()[:80]
+        if len(tema) < 2:
+            return None, "tema vazio"
+        nivel = str(req.get("nivel", "do zero")).strip()[:60]
+        prompt = f"""Monte o currículo de um curso curto no estilo Duolingo sobre "{tema}" para o Pedro (brasileiro, dev full-stack, aprendendo violão; nível: {nivel}), estudado no Kindle em sessões de 5 minutos.
+Do zero ao avançado: 5 unidades, cada uma com 5 lições, em ordem de dificuldade crescente. Títulos curtos (até 40 caracteres), concretos e práticos.
+Responda SÓ com JSON válido, sem cercas: {{"titulo": "nome curto do curso (até 24 caracteres)", "descricao": "uma frase (até 80 caracteres)", "unidades": [{{"titulo": "...", "licoes": ["...", "..."]}}]}}
+Português do Brasil."""
+        data, err = self._claude_json(prompt)
+        if err or not isinstance(data, dict):
+            return None, err or "resposta inválida"
+        clip = lambda v, n: str(v or "").strip()[:n]
+        units = []
+        for u in data.get("unidades", [])[:6]:
+            ls = [clip(x, 60) for x in (u.get("licoes") or [])[:6] if str(x).strip()]
+            if isinstance(u, dict) and ls:
+                units.append({"titulo": clip(u.get("titulo"), 60), "licoes": ls})
+        if not units:
+            return None, "currículo vazio"
+        return {"titulo": clip(data.get("titulo"), 30) or tema[:30], "descricao": clip(data.get("descricao"), 100), "unidades": units}, None
+
+    def learn_lesson(self, req):
+        clip = lambda v, n: str(v or "").strip()[:n]
+        tema, unidade, licao = clip(req.get("tema"), 80), clip(req.get("unidade"), 60), clip(req.get("licao"), 60)
+        antes = [clip(x, 60) for x in req.get("anteriores", [])[-12:]]
+        erros = [clip(x, 160) for x in req.get("erros", [])[-6:]]
+        if not tema or not licao:
+            return None, "lição vazia"
+        prompt = f"""Escreva uma lição curta no estilo Duolingo do curso "{tema}", unidade "{unidade}", lição "{licao}", para ler e responder no Kindle (tela e-ink, toque, sem digitar).
+Lições já feitas: {", ".join(antes) or "nenhuma"}. Erros recentes do aluno, para reforçar: {"; ".join(erros) or "nenhum"}.
+Formato:
+- "cartoes": 2 ou 3 cartões de explicação, cada um com "titulo" (até 40 caracteres) e "texto" (até 380 caracteres), claros, com exemplo concreto.
+- "exercicios": 6 exercícios de múltipla escolha que testam a lição (e um dos erros recentes, se houver): "pergunta" (até 160 caracteres), "opcoes" (3 ou 4, até 60 caracteres cada), "certa" (índice da opção certa, varie a posição), "explicacao" (até 160 caracteres, por que a certa é certa).
+Responda SÓ com JSON válido, sem cercas: {{"cartoes": [...], "exercicios": [...]}}
+Português do Brasil (exemplos em outra língua quando o tema pedir)."""
+        data, err = self._claude_json(prompt)
+        if err or not isinstance(data, dict):
+            return None, err or "resposta inválida"
+        cards = [{"titulo": clip(c.get("titulo"), 60), "texto": clip(c.get("texto"), 500)} for c in data.get("cartoes", [])[:4] if isinstance(c, dict) and c.get("texto")]
+        exs = []
+        for e in data.get("exercicios", [])[:8]:
+            if not isinstance(e, dict):
+                continue
+            ops = [clip(o, 80) for o in (e.get("opcoes") or [])[:4] if str(o).strip()]
+            try:
+                ok = int(e.get("certa", -1))
+            except (TypeError, ValueError):
+                ok = -1
+            if len(ops) >= 2 and 0 <= ok < len(ops) and e.get("pergunta"):
+                exs.append({"pergunta": clip(e.get("pergunta"), 200), "opcoes": ops, "certa": ok, "explicacao": clip(e.get("explicacao"), 200)})
+        if not cards or len(exs) < 3:
+            return None, "lição incompleta"
+        return {"cartoes": cards, "exercicios": exs}, None
+
     # ---------- Revisão dos destaques ----------
 
     def highlight_questions(self, req):
