@@ -15,7 +15,6 @@ fn path(name: &str) -> std::path::PathBuf {
     crate::home_dir().join("sprites").join(format!("{name}.png"))
 }
 
-#[allow(dead_code)]
 pub fn exists(name: &str) -> bool {
     path(name).exists()
 }

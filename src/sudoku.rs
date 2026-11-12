@@ -418,17 +418,7 @@ pub fn continue_rect() -> Rect {
     Rect::new(MARGIN, 520, W - 2 * MARGIN, 140)
 }
 fn pill(fb: &mut Framebuffer, f: &Fonts, r: Rect, label: &str, filled: bool) {
-    fb.fill(r, PAPER);
-    let fg = if filled {
-        fb.round_rect(r, r.h / 2, INK);
-        PAPER
-    } else {
-        fb.round_outline(r, r.h / 2, 4, INK, PAPER);
-        INK
-    };
-    let size = if f.measure(Face::Strong, 38.0, label) > r.w - 30 { 30.0 } else { 38.0 };
-    let tw = f.measure(Face::Strong, size, label);
-    f.draw(fb, Face::Strong, size, r.x + (r.w - tw) / 2, r.y + r.h / 2 + (size * 0.36) as i32, fg, label);
+    crate::ui::button(fb, f, r, label, filled);
 }
 
 /// Abrir o Sudoku com uma partida pela metade: continuar ou começar outra.

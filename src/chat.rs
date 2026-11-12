@@ -344,7 +344,7 @@ pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, chats: &Result<Vec<ChatInfo>, S
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
     let r = new_rect();
-    fb.round_rect(r, r.h / 2, INK);
+    ui::card(fb, r, (r.h / 2).min(40), INK, false);
     let w = f.measure(Face::Strong, 32.0, "+ Nova conversa");
     f.draw(fb, Face::Strong, 32.0, r.x + (r.w - w) / 2, r.y + 54, PAPER, "+ Nova conversa");
     f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Claude");
@@ -372,7 +372,7 @@ pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, chats: &Result<Vec<ChatInfo>, S
         f.draw(fb, Face::Body, 26.0, MARGIN, 1180 + k as i32 * 34, MUTED, l);
     }
     let lr = live_rect();
-    fb.round_outline(lr, lr.h / 2, 4, INK, PAPER);
+    ui::card(fb, lr, (lr.h / 2).min(40), PAPER, false);
     let label = if live == 0 { "Sessões no PC ao vivo".to_string() } else { format!("Sessões no PC ao vivo · {live}") };
     let lw = f.measure(Face::Strong, 36.0, &label);
     f.draw(fb, Face::Strong, 36.0, lr.x + (lr.w - lw) / 2, lr.y + 68, INK, &label);
@@ -416,7 +416,7 @@ fn strip_bold(s: &str) -> String {
 }
 
 /// Quebra um parágrafo em linhas que cabem em `max_w` (medindo sem os marcadores de negrito).
-fn wrap_words(f: &Fonts, face: Face, size: f32, text: &str, max_w: i32) -> Vec<String> {
+pub fn wrap_words(f: &Fonts, face: Face, size: f32, text: &str, max_w: i32) -> Vec<String> {
     let mut out = Vec::new();
     let mut cur = String::new();
     // Se uma linha abre negrito e não fecha, a próxima continua em negrito.
@@ -607,14 +607,7 @@ pub fn files_rect() -> Rect {
 }
 
 fn pill(fb: &mut Framebuffer, f: &Fonts, r: Rect, label: &str, filled: bool) {
-    if filled {
-        fb.round_rect(r, r.h / 2, INK);
-    } else {
-        fb.round_outline(r, r.h / 2, 4, INK, PAPER);
-    }
-    let size = if r.h < 90 { 32.0 } else { 36.0 };
-    let w = f.measure(Face::Strong, size, label);
-    f.draw(fb, Face::Strong, size, r.x + (r.w - w) / 2, r.y + r.h / 2 + (size * 0.36) as i32, if filled { PAPER } else { INK }, label);
+    ui::button(fb, f, r, label, filled);
 }
 
 pub fn draw_chat(fb: &mut Framebuffer, f: &Fonts, chat: &Chat, pages: &[Vec<Line>], page: usize) {

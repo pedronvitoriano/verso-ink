@@ -184,12 +184,7 @@ pub fn help_rect() -> Rect {
 }
 
 pub fn draw_help_button(fb: &mut Framebuffer, f: &Fonts) {
-    let r = help_rect();
-    fb.fill(r, PAPER);
-    fb.round_outline(r, r.h / 2, 4, INK, PAPER);
-    let l = "Como jogar";
-    let w = f.measure(Face::Strong, 32.0, l);
-    f.draw(fb, Face::Strong, 32.0, r.x + (r.w - w) / 2, r.y + 54, INK, l);
+    ui::button(fb, f, help_rect(), "Como jogar", false);
 }
 
 pub fn prev_rect() -> Rect {

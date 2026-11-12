@@ -1099,9 +1099,7 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites, btn: &Butto
         // Partida local: botão para girar a tela para quem joga.
         let r = rotate_rect();
         let label = if rotate_enabled() { "Girar: sim" } else { "Girar: não" };
-        fb.round_outline(r, r.h / 2, 4, INK, PAPER);
-        let w = f.measure(Face::Strong, 32.0, label);
-        f.draw(fb, Face::Strong, 32.0, r.x + (r.w - w) / 2, r.y + 54, INK, label);
+        crate::ui::button(fb, f, r, label, rotate_enabled());
     } else {
         let tw = f.measure(Face::Strong, 34.0, "Xadrez");
         f.draw(fb, Face::Strong, 34.0, 1072 - 72 - tw, 128, INK, "Xadrez");
@@ -1135,17 +1133,9 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites, btn: &Butto
         f.draw(fb, Face::Display, 40.0, 72, r.y + 50, INK, &crate::apps::fit(f, Face::Display, 40.0, n, 1072 - 144));
     }
     for (r, (label, filled)) in [(undo_rect(), btn.left), (new_rect(), btn.right)] {
-        if label.is_empty() {
-            continue;
+        if !label.is_empty() {
+            crate::ui::button(fb, f, r, label, filled);
         }
-        if filled {
-            fb.round_rect(r, r.h / 2, INK);
-        } else {
-            fb.round_outline(r, r.h / 2, 4, INK, PAPER);
-        }
-        let size = if f.measure(Face::Strong, 38.0, label) > r.w - 40 { 30.0 } else { 38.0 };
-        let w = f.measure(Face::Strong, size, label);
-        f.draw(fb, Face::Strong, size, r.x + (r.w - w) / 2, r.y + r.h / 2 + (size * 0.36) as i32, if filled { PAPER } else { INK }, label);
     }
 }
 

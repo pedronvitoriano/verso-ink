@@ -38,11 +38,11 @@ pub fn draw_today(fb: &mut Framebuffer, f: &Fonts, items: &[Item], done: &HashSe
     f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Hoje");
     let streak = day::todo_streak(items, st.offset_min);
     let cal = calendar_rect();
-    fb.round_outline(cal, cal.h / 2, 4, INK, PAPER);
+    ui::card(fb, cal, (cal.h / 2).min(40), PAPER, false);
     let cw = f.measure(Face::Strong, 32.0, "Calendário");
     f.draw(fb, Face::Strong, 32.0, cal.x + (cal.w - cw) / 2, cal.y + 54, INK, "Calendário");
     let add = add_rect();
-    fb.round_outline(add, add.h / 2, 4, INK, PAPER);
+    ui::card(fb, add, (add.h / 2).min(40), PAPER, false);
     let aw = f.measure(Face::Strong, 32.0, "+ Adicionar");
     f.draw(fb, Face::Strong, 32.0, add.x + (add.w - aw) / 2, add.y + 54, INK, "+ Adicionar");
     if streak > 0 {
@@ -156,7 +156,7 @@ pub fn draw_today(fb: &mut Framebuffer, f: &Fonts, items: &[Item], done: &HashSe
     }
     // Pomodoro sempre à mão.
     let r = pomodoro_rect();
-    fb.round_rect(r, r.h / 2, INK);
+    ui::card(fb, r, (r.h / 2).min(40), INK, false);
     let label = match focus_today {
         0 => "Começar um foco de 25 min".to_string(),
         n => format!("Foco de 25 min · {n} hoje"),
@@ -341,7 +341,7 @@ pub fn draw_reminder(fb: &mut Framebuffer, f: &Fonts, it: &Item) {
         f.draw(fb, Face::Display, 96.0, MARGIN - 4, y, INK, &fit(f, Face::Display, 96.0, &line, W - 2 * MARGIN));
     }
     let r = reminder_ok_rect();
-    fb.round_rect(r, r.h / 2, INK);
+    ui::card(fb, r, (r.h / 2).min(40), INK, false);
     let tw = f.measure(Face::Strong, 44.0, "Feito");
     f.draw(fb, Face::Strong, 44.0, r.x + (r.w - tw) / 2, r.y + 76, PAPER, "Feito");
 }

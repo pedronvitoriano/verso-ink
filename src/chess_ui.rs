@@ -11,17 +11,7 @@ const MARGIN: i32 = 72;
 const W: i32 = 1072;
 
 fn pill(fb: &mut Framebuffer, f: &Fonts, r: Rect, label: &str, filled: bool) {
-    fb.fill(r, PAPER);
-    let fg = if filled {
-        fb.round_rect(r, r.h / 2, INK);
-        PAPER
-    } else {
-        fb.round_outline(r, r.h / 2, 4, INK, PAPER);
-        INK
-    };
-    let size = if f.measure(Face::Strong, 38.0, label) > r.w - 40 { 30.0 } else { 38.0 };
-    let tw = f.measure(Face::Strong, size, label);
-    f.draw(fb, Face::Strong, size, r.x + (r.w - tw) / 2, r.y + r.h / 2 + (size * 0.36) as i32, fg, label);
+    ui::button(fb, f, r, label, filled);
 }
 
 fn wrap(f: &Fonts, face: Face, size: f32, text: &str, max_w: i32) -> Vec<String> {
@@ -69,11 +59,7 @@ pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, resume: Option<String>) {
     for (k, (t, s, filled)) in rows.iter().enumerate() {
         let r = hub_row(k);
         let (fg, sub) = if *filled { (PAPER, 0xCC) } else { (INK, MUTED) };
-        if *filled {
-            fb.round_rect(r, 44, INK);
-        } else {
-            fb.round_outline(r, 44, 4, INK, PAPER);
-        }
+        ui::card(fb, r, 40, if *filled { INK } else { PAPER }, false);
         f.draw(fb, Face::Display, 50.0, r.x + 40, r.y + 66, fg, t);
         f.draw(fb, Face::Body, 28.0, r.x + 42, r.y + 108, sub, &fit(f, Face::Body, 28.0, s, r.w - 80));
     }

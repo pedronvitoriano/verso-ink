@@ -326,6 +326,7 @@ impl App {
         self.fb.invert = self.light.night && self.screen != Screen::Sleep;
         self.fb.rot180 = self.screen == Screen::Chess && self.local_rotated();
         let chess_btn = if self.screen == Screen::Chess { Some(self.chess_buttons()) } else { None };
+        let live_games = if self.screen == Screen::Games { self.live_games() } else { Vec::new() };
         let (fb, f, st) = (&mut self.fb, &self.fonts, &self.status);
         match self.screen {
             Screen::Home => ui::draw_home(fb, f, st, &data::summary(st.offset_min)),
@@ -345,13 +346,7 @@ impl App {
                 }
             }
             Screen::Games => {
-                let s = crate::sudoku::Game::load().filter(|g| !g.solved()).map(|g| format!("Jogo em andamento · {} · {}/81", g.level.name(), g.filled()));
-                let c = crate::chess::Game::load().filter(|g| !g.history.is_empty()).map(|g| format!("Partida em andamento · {} lances", g.history.len()));
-                // Minijogos guardados na memória com partida começada também ficam em destaque.
-                let mut live: Vec<Option<String>> = (0..apps::GAMES.len()).map(|i| self.mini_cache.get(&i).map(|g| g.summary()).filter(|t| !t.is_empty())).collect();
-                live[0] = s;
-                live[1] = c;
-                apps::draw_games(fb, f, &live);
+                apps::draw_games(fb, f, &live_games);
             }
             Screen::SudokuMenu => crate::sudoku::draw_resume(fb, f, crate::sudoku::Game::load().filter(|g| !g.solved()).as_ref(), &self.sudoku_prog, self.sudoku_practice),
             Screen::Sudoku => {
@@ -694,7 +689,8 @@ impl App {
             Screen::Tutorial => vec![(Back, ui::back_rect()), (Prev, crate::tutorial::prev_rect()), (Next, crate::tutorial::next_rect())],
             Screen::Games => {
                 let mut v = vec![(Back, ui::back_rect())];
-                v.extend((0..apps::GAMES.len()).map(|i| (Game(i), apps::games_row(i))));
+                let live: Vec<bool> = self.live_games().iter().map(Option::is_some).collect();
+                v.extend(apps::games_layout(&live).0.into_iter().map(|(i, r)| (Game(i), r)));
                 v
             }
             Screen::Mini => {
@@ -1328,6 +1324,17 @@ impl App {
     /// Jogo local com "Girar" ligado e vez das pretas: tela de cabeça para baixo.
     fn local_rotated(&self) -> bool {
         self.coach_level().is_none() && crate::chess::rotate_enabled() && self.chess.as_ref().is_some_and(|g| !g.pos.white_to_move)
+    }
+
+    /// Resumo da partida em andamento de cada jogo (None = sem partida).
+    fn live_games(&self) -> Vec<Option<String>> {
+        let mut live: Vec<Option<String>> = (0..apps::GAMES.len()).map(|i| self.mini_cache.get(&i).map(|g| g.summary()).filter(|t| !t.is_empty())).collect();
+        live[0] = crate::sudoku::Game::load().filter(|g| !g.solved()).map(|g| format!("{} · {}/81", g.level.name(), g.filled()));
+        live[1] = crate::chess::Game::load().filter(|g| g.in_progress()).map(|g| match g.mode {
+            crate::chess::Mode::Coach { level, .. } => format!("Contra {} · {} lances", crate::coach::coach(level).name, g.history.len()),
+            crate::chess::Mode::Local => format!("Duas pessoas · {} lances", g.history.len()),
+        });
+        live
     }
 
     pub fn mini_awake(&self) -> bool {

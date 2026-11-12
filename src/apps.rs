@@ -277,29 +277,65 @@ pub const GAMES: [(&str, &str); 16] = [
 ];
 
 /// Grade de blocos 2 colunas.
-pub fn games_row(i: usize) -> Rect {
-    let w = (W - 2 * MARGIN - 24) / 2;
-    Rect::new(MARGIN + (i % 2) as i32 * (w + 24), 420 + (i / 2) as i32 * 118, w, 106)
+/// Disposição da tela Jogar: os jogos com partida em andamento vêm primeiro, em cartões
+/// maiores; depois todos os outros. Devolve (jogo, retângulo) e a altura de cada título de seção.
+pub fn games_layout(live: &[bool]) -> (Vec<(usize, Rect)>, Option<i32>, i32) {
+    let gap = 22;
+    let w = (W - 2 * MARGIN - gap) / 2;
+    let on: Vec<usize> = (0..GAMES.len()).filter(|&i| live.get(i) == Some(&true)).collect();
+    let off: Vec<usize> = (0..GAMES.len()).filter(|&i| live.get(i) != Some(&true)).collect();
+    let mut out = Vec::new();
+    let mut y = 372;
+    let mut live_head = None;
+    if !on.is_empty() {
+        live_head = Some(y + 34);
+        y += 54;
+        let h = if on.len() <= 4 { 118 } else { 84 };
+        for (k, &i) in on.iter().enumerate() {
+            out.push((i, Rect::new(MARGIN + (k % 2) as i32 * (w + gap), y + (k / 2) as i32 * (h + 20), w, h)));
+        }
+        y += on.len().div_ceil(2) as i32 * (h + 20) + 4;
+    }
+    let all_head = y + 34;
+    y += 54;
+    let rows = off.len().div_ceil(2).max(1) as i32;
+    // Os cartões ocupam o que sobra da tela, entre 72 e 96 de altura.
+    let h = ((1410 - y) / rows - 18).clamp(72, 96);
+    for (k, &i) in off.iter().enumerate() {
+        out.push((i, Rect::new(MARGIN + (k % 2) as i32 * (w + gap), y + (k / 2) as i32 * (h + 18), w, h)));
+    }
+    (out, live_head, all_head)
 }
 
 pub fn draw_games(fb: &mut Framebuffer, f: &Fonts, live_games: &[Option<String>]) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
-    f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Jogar");
-    f.draw(fb, Face::Strong, 30.0, MARGIN, 395, MUTED, "Tudo funciona sem Wi-Fi");
-    for (i, (title, sub)) in GAMES.iter().enumerate() {
-        let r = games_row(i);
-        // Jogo com partida em andamento fica em destaque.
-        let live = live_games.get(i).cloned().flatten();
-        let (fg, sc) = if live.is_some() { (PAPER, 0xCC) } else { (INK, MUTED) };
-        if live.is_some() {
-            fb.round_rect(r, 32, INK);
-        } else {
-            fb.round_outline(r, 32, 4, INK, PAPER);
+    let end = f.draw(fb, Face::Display, 120.0, MARGIN - 6, 300, INK, "Jogar");
+    f.draw(fb, Face::Strong, 28.0, end + 24, 300, MUTED, "Tudo funciona sem Wi-Fi");
+    let live: Vec<bool> = live_games.iter().map(Option::is_some).collect();
+    let (cards, live_head, all_head) = games_layout(&live);
+    if let Some(y) = live_head {
+        f.draw(fb, Face::Strong, 34.0, MARGIN, y, INK, "Em andamento");
+    }
+    f.draw(fb, Face::Strong, 34.0, MARGIN, all_head, INK, if live_head.is_some() { "Todos os jogos" } else { "Jogos" });
+    for (i, r) in cards {
+        let (title, _) = GAMES[i];
+        let on = live_games.get(i).cloned().flatten();
+        ui::card(fb, r, 26, if on.is_some() { ui::SURFACE } else { PAPER }, false);
+        let d = r.h - 20;
+        let name = fold(title).replace(' ', "");
+        let x = if ui::icon_disc(fb, r.x + 12, r.y + 10, d, &name) { r.x + 12 + d + 18 } else { r.x + 26 };
+        let room = r.x + r.w - 16 - x;
+        match on {
+            Some(sum) if r.h > 100 => {
+                f.draw(fb, Face::Display, 40.0, x, r.y + 54, INK, &fit(f, Face::Display, 40.0, title, room));
+                f.draw(fb, Face::Body, 23.0, x + 2, r.y + 90, INK, &fit(f, Face::Body, 23.0, &sum, room));
+            }
+            _ => {
+                let size = 38.0;
+                f.draw(fb, Face::Display, size, x, r.y + r.h / 2 + (size * 0.36) as i32, INK, &fit(f, Face::Display, size, title, room));
+            }
         }
-        f.draw(fb, Face::Display, 44.0, r.x + 26, r.y + 50, fg, title);
-        let s = live.unwrap_or_else(|| sub.to_string());
-        f.draw(fb, Face::Body, 22.0, r.x + 28, r.y + 86, sc, &fit(f, Face::Body, 22.0, &s, r.w - 50));
     }
 }
 
@@ -330,17 +366,8 @@ pub fn fit(f: &Fonts, face: Face, size: f32, text: &str, max_w: i32) -> String {
     format!("{}…", s.trim_end())
 }
 
-fn pill(fb: &mut Framebuffer, f: &Fonts, r: Rect, label: &str, filled: bool, size: f32) {
-    fb.fill(r, PAPER);
-    let fg = if filled {
-        fb.round_rect(r, r.h / 2, INK);
-        PAPER
-    } else {
-        fb.round_outline(r, r.h / 2, 4, INK, PAPER);
-        INK
-    };
-    let tw = f.measure(Face::Strong, size, label);
-    f.draw(fb, Face::Strong, size, r.x + (r.w - tw) / 2, r.y + r.h / 2 + (size * 0.36) as i32, fg, label);
+fn pill(fb: &mut Framebuffer, f: &Fonts, r: Rect, label: &str, filled: bool, _size: f32) {
+    ui::button(fb, f, r, label, filled);
 }
 
 pub fn draw_library(fb: &mut Framebuffer, f: &Fonts, lib: &Library, st: &Status) {

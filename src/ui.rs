@@ -36,7 +36,7 @@ impl Module {
             Module::Ler => "Biblioteca e Verso One",
             Module::Jogar => "Xadrez, sudoku e mais 14",
             Module::Foco => "Pomodoro e o seu dia",
-            Module::Claude => "Conversa e janela ao vivo",
+            Module::Claude => "Conversa ao vivo",
             Module::Mais => "Novos módulos",
         }
     }
@@ -80,17 +80,25 @@ pub struct Status {
 pub fn date_rect() -> Rect {
     Rect::new(MARGIN, 96, 1072 - 2 * MARGIN - 220, 60)
 }
+/// Faixa que muda a cada minuto (hora, clima e resumo): o que é redesenhado e atualizado.
 pub fn clock_rect() -> Rect {
-    Rect::new(MARGIN - 8, 170, 1072 - 2 * MARGIN + 16, 250)
+    Rect::new(0, 150, 1072, chips_rect().y + chips_rect().h + SH - 150)
 }
-/// Bloco 0 (Ler) ocupa a largura toda; os outros formam uma grade 2x2 abaixo.
+/// Só a hora (à esquerda; à direita fica a ilustração do dia).
+fn time_rect() -> Rect {
+    Rect::new(MARGIN - 8, 150, 610, 300)
+}
+fn chips_rect() -> Rect {
+    Rect::new(MARGIN, 466, 1072 - 2 * MARGIN, 84)
+}
+/// Bloco 0 (Ler, com a capa) ocupa a largura toda; os outros formam uma grade 2x2 abaixo.
 pub fn tile_rect(i: usize) -> Rect {
-    let (top, gap, wide_h, bottom) = (480, 28, 270, 1290);
+    let (top, gap, wide_h, bottom) = (590, 26, 384, 1300);
     let full_w = 1072 - 2 * MARGIN;
     if i == 0 {
         return Rect::new(MARGIN, top, full_w, wide_h);
     }
-    let grid_top = top + wide_h + gap;
+    let grid_top = top + wide_h + gap + 4;
     let w = (full_w - gap) / 2;
     let h = (bottom - grid_top - gap) / 2;
     let k = (i - 1) as i32;
@@ -132,6 +140,47 @@ pub fn gate_corner() -> Rect {
 }
 
 // ---------- Primitivas ----------
+
+/// Sombra chapada embaixo de cartões e botões (o "3D" plano do sistema) e a sua altura.
+pub const SHADOW: u8 = 0x2E;
+pub const SH: i32 = 7;
+/// Superfície cinza clara (cartões em destaque, fundo dos ícones).
+pub const SURFACE: u8 = 0xE6;
+
+/// Cartão do sistema: contorno firme e sombra chapada embaixo. `pressed` afunda o cartão na
+/// sombra, como uma tecla.
+pub fn card(fb: &mut Framebuffer, r: Rect, radius: i32, fill: u8, pressed: bool) {
+    fb.fill(Rect::new(r.x, r.y, r.w, r.h + SH), PAPER);
+    let r = if pressed { Rect::new(r.x, r.y + SH, r.w, r.h) } else { r };
+    if !pressed {
+        fb.round_rect(Rect::new(r.x, r.y + SH, r.w, r.h), radius, SHADOW);
+    }
+    fb.round_rect(r, radius, INK);
+    fb.round_rect(Rect::new(r.x + 4, r.y + 4, r.w - 8, r.h - 8), (radius - 4).max(0), fill);
+}
+
+/// Botão do sistema: preto (principal) ou branco, com a sombra chapada.
+pub fn button(fb: &mut Framebuffer, f: &Fonts, r: Rect, label: &str, filled: bool) {
+    card(fb, r, (r.h / 2).min(40), if filled { INK } else { PAPER }, false);
+    let fg = if filled { PAPER } else { INK };
+    let mut size = 36.0f32.min(r.h as f32 * 0.42);
+    while f.measure(Face::Strong, size, label) > r.w - 36 && size > 22.0 {
+        size -= 2.0;
+    }
+    let tw = f.measure(Face::Strong, size, label);
+    f.draw(fb, Face::Strong, size, r.x + (r.w - tw) / 2, r.y + r.h / 2 + (size * 0.36) as i32, fg, label);
+}
+
+/// Disco com o ícone ilustrado (assets/sprites/icone-NOME.png). Devolve false sem o desenho.
+pub fn icon_disc(fb: &mut Framebuffer, x: i32, y: i32, d: i32, name: &str) -> bool {
+    let k = d * 17 / 100;
+    if !crate::sprites::exists(&format!("icone-{name}")) {
+        return false;
+    }
+    fb.round_rect(Rect::new(x, y, d, d), d / 2, INK);
+    fb.round_rect(Rect::new(x + 4, y + 4, d - 8, d - 8), d / 2 - 4, SURFACE);
+    crate::sprites::draw(fb, &format!("icone-{name}"), Rect::new(x + k, y + k, d - 2 * k, d - 2 * k))
+}
 
 /// Segmento grosso com borda suavizada (distância ao segmento).
 fn line(fb: &mut Framebuffer, (x0, y0): (f32, f32), (x1, y1): (f32, f32), t: f32, v: u8) {
@@ -281,22 +330,57 @@ pub fn draw_header(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
 
 pub fn draw_clock(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     let now = clock::now(st.offset_min);
-    let r = clock_rect();
+    let r = time_rect();
     fb.fill(r, PAPER);
     let t = if now.plausible() { now.time() } else { "--:--".into() };
-    f.draw(fb, Face::Display, 236.0, MARGIN - 10, r.y + 200, INK, &t);
-    draw_weather(fb, f);
-    // Resumo do dia (próximo lembrete, sequências, leitura, focos): redesenhado a cada minuto.
-    if let Some(line) = crate::data::summary(st.offset_min).line {
-        let line = crate::apps::fit(f, Face::Strong, 28.0, &line, 1072 - 2 * MARGIN);
-        f.draw(fb, Face::Strong, 28.0, MARGIN, 414, INK, &line);
+    let mut size = 230.0;
+    while f.measure(Face::Display, size, &t) > r.w && size > 150.0 {
+        size -= 6.0;
     }
+    f.draw(fb, Face::Display, size, MARGIN - 10, r.y + 236, INK, &t);
+    draw_chips(fb, f, st);
 }
 
-/// Botão "Continuar" dentro do bloco Ler (abre o último livro direto no KOReader).
+/// Dois cartões abaixo da hora: o clima e o resumo do dia (lembrete, leitura, focos).
+fn draw_chips(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
+    let c = chips_rect();
+    fb.fill(Rect::new(c.x, c.y, c.w, c.h + SH), PAPER);
+    let gap = 22;
+    let weather = crate::weather::load();
+    let w0 = if weather.is_some() { (c.w - gap) * 9 / 20 } else { 0 };
+    if let Some(w) = weather {
+        let r = Rect::new(c.x, c.y, w0, c.h);
+        card(fb, r, 26, PAPER, false);
+        let icon = if w.rain_pct >= 30 || matches!(w.code, 51..=99) { "chuva" } else { "sol" };
+        let tx = if crate::sprites::draw(fb, &format!("icone-{icon}"), Rect::new(r.x + 14, r.y + 10, 62, 62)) { r.x + 88 } else { r.x + 24 };
+        let line = if w.rain_pct >= 30 { format!("{}° · {}°/{}° · chuva {}%", w.temp, w.max, w.min, w.rain_pct) } else { format!("{}° · {}°/{}° · {}", w.temp, w.max, w.min, w.describe().to_lowercase()) };
+        let line = crate::apps::fit(f, Face::Strong, 27.0, &line, r.x + r.w - 20 - tx);
+        f.draw(fb, Face::Strong, 27.0, tx, r.y + 52, INK, &line);
+    }
+    let x1 = if w0 > 0 { c.x + w0 + gap } else { c.x };
+    let r = Rect::new(x1, c.y, c.x + c.w - x1, c.h);
+    card(fb, r, 26, PAPER, false);
+    let line = crate::data::summary(st.offset_min).line.unwrap_or_else(|| "Um bom momento para ler".into());
+    let tx = if crate::sprites::draw(fb, "icone-livro", Rect::new(r.x + 14, r.y + 10, 62, 62)) { r.x + 88 } else { r.x + 24 };
+    let line = crate::apps::fit(f, Face::Strong, 27.0, &line, r.x + r.w - 20 - tx);
+    f.draw(fb, Face::Strong, 27.0, tx, r.y + 52, INK, &line);
+}
+
+/// Ilustração do dia (muda à meia-noite): um personagem diferente a cada dia, ao lado da hora.
+fn draw_daily_art(fb: &mut Framebuffer, st: &Status) {
+    let day = crate::data::today(st.offset_min);
+    let n = (0..40).filter(|k| crate::sprites::exists(&format!("dia-{:02}", k + 1))).count() as i64;
+    if n == 0 {
+        return;
+    }
+    let k = day.rem_euclid(n) + 1;
+    crate::sprites::draw(fb, &format!("dia-{k:02}"), Rect::new(1072 - MARGIN - 360, 136, 372, 340));
+}
+
+/// Botão "Continuar" dentro do bloco Ler.
 pub fn continue_rect() -> Rect {
     let r = tile_rect(0);
-    Rect::new(r.x + r.w - 40 - 300, r.y + 40, 300, 100)
+    Rect::new(r.x + 330, r.y + r.h - 40 - 100, r.w - 330 - 36, 100)
 }
 
 /// O que a tela inicial mostra além do fixo: livro em leitura e jogo em andamento.
@@ -312,75 +396,119 @@ impl HomeExtra {
     }
 }
 
+/// Capa do livro (do EPUB) ou, sem ela, uma capa desenhada com o título.
+fn draw_cover(fb: &mut Framebuffer, f: &Fonts, r: Rect, book: Option<&crate::data::LastBook>) {
+    fb.round_rect(Rect::new(r.x + SH, r.y + SH, r.w, r.h), 14, SHADOW);
+    fb.round_rect(r, 14, INK);
+    let inner = Rect::new(r.x + 4, r.y + 4, r.w - 8, r.h - 8);
+    if let Some(img) = book.and_then(|b| crate::reader::cover(&b.path, inner.w as u32, inner.h as u32)) {
+        fb.blit(inner.x, inner.y, inner.w, inner.h, img.as_raw());
+        return;
+    }
+    // Capa desenhada: lombada, título e um ornamento.
+    fb.round_rect(inner, 10, 0xD4);
+    fb.fill(Rect::new(inner.x, inner.y, 22, inner.h), 0x88);
+    let title = book.map(|b| b.title.as_str()).unwrap_or("Biblioteca");
+    let lines = crate::chat::wrap_words(f, Face::Display, 38.0, title, inner.w - 60);
+    let n = lines.len().min(4) as i32;
+    let y0 = inner.y + inner.h / 2 - n * 22;
+    for (k, l) in lines.iter().take(4).enumerate() {
+        let w = f.measure(Face::Display, 38.0, l);
+        f.draw(fb, Face::Display, 38.0, inner.x + 22 + (inner.w - 22 - w) / 2, y0 + k as i32 * 46, INK, l);
+    }
+    let cx = inner.x + 11 + inner.w / 2;
+    fb.fill(Rect::new(cx - 50, inner.y + 46, 100, 4), INK);
+    fb.fill(Rect::new(cx - 50, inner.y + inner.h - 50, 100, 4), INK);
+}
+
 pub fn draw_tile(fb: &mut Framebuffer, f: &Fonts, i: usize, pressed: bool, extra: &HomeExtra) {
     let m = Module::ALL[i];
-    let r = tile_rect(i);
-    // "Ler" é o módulo principal: bloco cheio. Os outros, contorno.
-    let filled = (i == 0) ^ pressed;
-    let (fg, sub) = if filled { (PAPER, 0xCC) } else { (INK, MUTED) };
-    fb.fill(r, PAPER);
-    if filled {
-        fb.round_rect(r, 40, INK);
-    } else {
-        fb.round_outline(r, 40, 5, INK, PAPER);
-    }
+    let r0 = tile_rect(i);
+    card(fb, r0, 34, PAPER, pressed);
+    let r = if pressed { Rect::new(r0.x, r0.y + SH, r0.w, r0.h) } else { r0 };
     if i == 0 {
-        f.draw(fb, Face::Display, 104.0, r.x + 44, r.y + r.h - 100, fg, m.title());
+        // Ler: a capa é a protagonista; título, progresso e Continuar ao lado.
+        let cover = Rect::new(r.x + 36, r.y + 30, 252, r.h - 60);
+        draw_cover(fb, f, cover, extra.book.as_ref());
+        let x = r.x + 330;
+        let tag = "Ler";
+        let tw = f.measure(Face::Strong, 26.0, tag) + 32;
+        fb.round_rect(Rect::new(x, r.y + 36, tw, 42), 21, SURFACE);
+        f.draw(fb, Face::Strong, 26.0, x + 16, r.y + 66, INK, tag);
         let Some(book) = extra.book.as_ref() else {
-            icon(fb, m, r.x + r.w - 44 - 128, r.y + (r.h - 128) / 2, 128, fg);
-            f.draw(fb, Face::Body, 31.0, r.x + 48, r.y + r.h - 46, sub, m.subtitle());
+            f.draw(fb, Face::Display, 48.0, x, r.y + 150, INK, "Biblioteca");
+            for (k, l) in crate::chat::wrap_words(f, Face::Body, 28.0, "Seus livros e o Verso One, sem distração.", r.x + r.w - 36 - x).iter().take(2).enumerate() {
+                f.draw(fb, Face::Body, 28.0, x, r.y + 196 + k as i32 * 38, MUTED, l);
+            }
             return;
         };
-        // Livro em leitura: título à esquerda, botão Continuar e porcentagem à direita, barra no pé.
-        let c = continue_rect();
-        let (bg, ink) = if filled { (PAPER, INK) } else { (INK, PAPER) };
-        fb.round_rect(c, c.h / 2, bg);
-        let label = "Continuar";
-        let tw = f.measure(Face::Strong, 38.0, label);
-        f.draw(fb, Face::Strong, 38.0, c.x + (c.w - tw) / 2, c.y + c.h / 2 + 14, ink, label);
-        let pct = book.progress.map(|p| format!("{}% lido", (p * 100.0).round() as i32)).unwrap_or_else(|| "Começar".into());
-        let pw = f.measure(Face::Body, 31.0, &pct);
-        f.draw(fb, Face::Body, 31.0, c.x + c.w - pw, r.y + r.h - 46, sub, &pct);
-        let title = crate::apps::fit(f, Face::Body, 31.0, &book.title, c.x + c.w - pw - 40 - (r.x + 48));
-        f.draw(fb, Face::Body, 31.0, r.x + 48, r.y + r.h - 46, fg, &title);
+        let lines = crate::chat::wrap_words(f, Face::Display, 46.0, &book.title, r.x + r.w - 36 - x);
+        for (k, l) in lines.iter().take(2).enumerate() {
+            let l = if k == 1 && lines.len() > 2 { crate::apps::fit(f, Face::Display, 46.0, &format!("{l}…"), r.x + r.w - 36 - x) } else { l.clone() };
+            f.draw(fb, Face::Display, 46.0, x, r.y + 140 + k as i32 * 54, INK, &l);
+        }
+        let pct = book.progress.map(|p| format!("{}%", (p * 100.0).round() as i32)).unwrap_or_else(|| "Começar".into());
+        let py = r.y + 140 + lines.len().min(2) as i32 * 54 + 8;
+        f.draw(fb, Face::Body, 30.0, x, py, MUTED, &pct);
         if let Some(p) = book.progress {
-            let bar = Rect::new(r.x + 48, r.y + r.h - 24, r.w - 96, 6);
-            fb.fill(bar, if filled { 0x55 } else { 0xCC });
-            fb.fill(Rect::new(bar.x, bar.y, (bar.w as f32 * p.clamp(0.0, 1.0)) as i32, bar.h), fg);
+            let bar = Rect::new(x, py + 18, r.x + r.w - 36 - x, 16);
+            fb.round_rect(bar, 8, SURFACE);
+            fb.round_outline(bar, 8, 2, INK, SURFACE);
+            fb.round_rect(Rect::new(bar.x, bar.y, ((bar.w as f32 * p.clamp(0.0, 1.0)) as i32).max(16), bar.h), 8, 0x55);
         }
+        let c = continue_rect();
+        let c = if pressed { Rect::new(c.x, c.y + SH, c.w, c.h) } else { c };
+        button(fb, f, c, "Continuar", true);
     } else {
-        icon(fb, m, r.x + 36, r.y + 34, 66, fg);
-        f.draw(fb, Face::Display, 72.0, r.x + 34, r.y + r.h - 72, fg, m.title());
-        let text = if m == Module::Jogar { extra.game.unwrap_or(m.subtitle()) } else { m.subtitle() };
-        if m == Module::Jogar && extra.game.is_some() {
-            // Ponto indicando partida salva.
-            fb.round_rect(Rect::new(r.x + 37, r.y + r.h - 50, 14, 14), 7, fg);
-            f.draw(fb, Face::Body, 26.0, r.x + 61, r.y + r.h - 32, fg, text);
-        } else {
-            f.draw(fb, Face::Body, 26.0, r.x + 37, r.y + r.h - 32, sub, text);
+        let d = 100;
+        let has = icon_disc(fb, r.x + 22, r.y + (r.h - d) / 2, d, match m {
+            Module::Jogar => "jogar",
+            Module::Foco => "foco",
+            Module::Claude => "claude",
+            Module::Mais => "mais",
+            Module::Ler => "ler",
+        });
+        if !has {
+            icon(fb, m, r.x + 36, r.y + (r.h - 66) / 2, 66, INK);
         }
+        let x = r.x + 22 + d + 22;
+        fb.fill(Rect::new(x - 12, r.y + 26, 3, r.h - 52), 0xBB);
+        f.draw(fb, Face::Display, 50.0, x + 4, r.y + r.h / 2 + 4, INK, m.title());
+        let text = if m == Module::Jogar { extra.game.unwrap_or(m.subtitle()) } else { m.subtitle() };
+        let text = crate::apps::fit(f, Face::Body, 24.0, text, r.x + r.w - 16 - x);
+        f.draw(fb, Face::Body, 24.0, x + 6, r.y + r.h / 2 + 42, if m == Module::Jogar && extra.game.is_some() { INK } else { MUTED }, &text);
     }
 }
 
 pub fn draw_footer(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
-    let y = 1290 + 40;
+    let y = 1324;
     fb.fill(Rect::new(0, y, 1072, 1448 - y), PAPER);
-    let end = f.draw(fb, Face::Display, 34.0, MARGIN, 1384, INK, "Verso Ink");
+    let end = f.draw(fb, Face::Display, 34.0, MARGIN, 1394, INK, "Verso Ink");
     if let Some(v) = crate::backup::update_available() {
         // Versão nova encontrada: avisa aqui; instalar fica no Ajustes.
-        f.draw(fb, Face::Strong, 28.0, end + 20, 1384, INK, &format!("· versão {v} no Ajustes"));
+        f.draw(fb, Face::Strong, 28.0, end + 20, 1394, INK, &format!("· versão {v} no Ajustes"));
     }
     let wifi = if st.wifi { "Wi-Fi conectado" } else { "Sem Wi-Fi" };
-    let w = f.measure(Face::Body, 28.0, wifi);
-    f.draw(fb, Face::Body, 28.0, 1072 - MARGIN - w, 1384, MUTED, wifi);
+    let w = f.measure(Face::Strong, 26.0, wifi);
+    let has = crate::sprites::exists("icone-wifi");
+    let cw = w + 48 + if has { 46 } else { 0 };
+    let r = Rect::new(1072 - MARGIN - cw, 1350, cw, 62);
+    fb.round_rect(r, 31, INK);
+    fb.round_rect(Rect::new(r.x + 3, r.y + 3, r.w - 6, r.h - 6), 28, PAPER);
+    let mut tx = r.x + 24;
+    if has {
+        crate::sprites::draw(fb, "icone-wifi", Rect::new(r.x + 18, r.y + 12, 38, 38));
+        tx += 46;
+    }
+    f.draw(fb, Face::Strong, 26.0, tx, r.y + 41, if st.wifi { INK } else { MUTED }, wifi);
 }
 
 pub fn draw_home(fb: &mut Framebuffer, f: &Fonts, st: &Status, sum: &crate::data::Summary) {
     fb.fill(fb.screen(), PAPER);
     draw_header(fb, f, st);
+    draw_daily_art(fb, st);
     draw_clock(fb, f, st);
-    let _ = sum; // o resumo é desenhado junto com o relógio (draw_clock)
-    fb.fill(Rect::new(MARGIN, 432, 1072 - 2 * MARGIN, 4), INK);
+    let _ = sum; // o resumo é desenhado nos cartões abaixo da hora (draw_chips)
     let extra = HomeExtra::load();
     for i in 0..Module::ALL.len() {
         draw_tile(fb, f, i, false, &extra);
@@ -389,14 +517,10 @@ pub fn draw_home(fb: &mut Framebuffer, f: &Fonts, st: &Status, sum: &crate::data
 }
 
 pub fn draw_back(fb: &mut Framebuffer, f: &Fonts, pressed: bool) {
-    let r = back_rect();
-    fb.fill(r, PAPER);
-    let (bg, fg) = if pressed { (INK, PAPER) } else { (PAPER, INK) };
-    if pressed {
-        fb.round_rect(r, 44, bg);
-    } else {
-        fb.round_outline(r, 44, 4, INK, PAPER);
-    }
+    let r0 = back_rect();
+    card(fb, r0, r0.h / 2, if pressed { INK } else { PAPER }, pressed);
+    let fg = if pressed { PAPER } else { INK };
+    let r = if pressed { Rect::new(r0.x, r0.y + SH, r0.w, r0.h) } else { r0 };
     line(fb, (r.x as f32 + 54.0, r.y as f32 + 28.0), (r.x as f32 + 38.0, r.y as f32 + 44.0), 6.0, fg);
     line(fb, (r.x as f32 + 38.0, r.y as f32 + 44.0), (r.x as f32 + 54.0, r.y as f32 + 60.0), 6.0, fg);
     f.draw(fb, Face::Strong, 36.0, r.x + 76, r.y + 57, fg, "Início");
@@ -667,20 +791,6 @@ pub fn bell(fb: &mut Framebuffer, cx: f32, top: f32) {
     disc(fb, cx, top + 4.0, 12.0, INK);
 }
 
-fn draw_weather(fb: &mut Framebuffer, f: &Fonts) {
-    let Some(w) = crate::weather::load() else { return };
-    let right = 1072 - MARGIN;
-    let temp = format!("{}°", w.temp);
-    let tw = f.measure(Face::Display, 92.0, &temp);
-    f.draw(fb, Face::Display, 92.0, right - tw, 290, INK, &temp);
-    let desc = w.describe();
-    let line1 = format!("{}° / {}°", w.max, w.min);
-    let l1w = f.measure(Face::Strong, 28.0, &line1);
-    f.draw(fb, Face::Strong, 28.0, right - l1w, 334, INK, &line1);
-    let line2 = if w.rain_pct >= 30 { format!("chuva {}%", w.rain_pct) } else { desc.to_lowercase() };
-    let l2w = f.measure(Face::Body, 26.0, &line2);
-    f.draw(fb, Face::Body, 26.0, right - l2w, 370, MUTED, &line2);
-}
 
 /// Cabeçalho das telas de digitar: rótulo pequeno em cima e título grande.
 pub fn draw_field_header(fb: &mut Framebuffer, f: &Fonts, kicker: &str, title: &str) {

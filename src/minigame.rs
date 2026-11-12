@@ -72,20 +72,7 @@ pub trait MiniGame {
 // ---------- Desenho comum ----------
 
 pub fn pill(fb: &mut Framebuffer, f: &Fonts, r: Rect, label: &str, filled: bool) {
-    fb.fill(r, PAPER);
-    let fg = if filled {
-        fb.round_rect(r, r.h / 2, INK);
-        PAPER
-    } else {
-        fb.round_outline(r, r.h / 2, 4, INK, PAPER);
-        INK
-    };
-    let mut size = 36.0;
-    while f.measure(Face::Strong, size, label) > r.w - 30 && size > 22.0 {
-        size -= 2.0;
-    }
-    let tw = f.measure(Face::Strong, size, label);
-    f.draw(fb, Face::Strong, size, r.x + (r.w - tw) / 2, r.y + r.h / 2 + (size * 0.36) as i32, fg, label);
+    crate::ui::button(fb, f, r, label, filled);
 }
 
 /// Linha de botões na base da tela (até 4).
