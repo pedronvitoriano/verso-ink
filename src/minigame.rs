@@ -53,6 +53,10 @@ pub trait MiniGame {
     fn text_input(&mut self, _text: &str) -> Redraw {
         Redraw::None
     }
+    /// Quanto tempo segurar para valer como "segurar" (ms).
+    fn hold_ms(&self) -> u64 {
+        450
+    }
     /// Chamado de tempos em tempos (relógios, cronômetros). Devolve o que redesenhar.
     fn tick(&mut self) -> Redraw {
         Redraw::None

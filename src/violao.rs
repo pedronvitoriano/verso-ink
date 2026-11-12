@@ -377,6 +377,9 @@ enum View {
     Song,
     Dict,
     Practice,
+    Course,
+    Lesson,
+    Quiz,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -397,6 +400,30 @@ pub struct Violao {
     pair: usize,
     timer: Timer,
     shown_secs: u64,
+    lesson: usize,
+    quiz: Quiz,
+}
+
+/// Treino de leitura: nível, nota na tela, acertos seguidos e o último erro.
+struct Quiz {
+    level: usize,
+    step: i32,
+    streak: u32,
+    wrong: Option<&'static str>,
+    rng: crate::minigame::Rng,
+}
+
+impl Quiz {
+    fn next(&mut self) {
+        let steps = crate::partitura::LEVELS[self.level].1;
+        let mut s = steps[(self.rng.next() % steps.len() as u64) as usize];
+        if steps.len() > 1 {
+            while s == self.step {
+                s = steps[(self.rng.next() % steps.len() as u64) as usize];
+            }
+        }
+        self.step = s;
+    }
 }
 
 const SECS: u64 = 60;
@@ -409,11 +436,13 @@ impl Violao {
             let _ = std::fs::write(&p, EXEMPLO);
             songs = self::songs();
         }
-        Violao { view: View::Hub, songs, song: 0, page: 0, shift: 0, list_page: 0, dict_root: 0, pair: suggested(), timer: Timer::Idle, shown_secs: 0 }
+        let mut quiz = Quiz { level: 0, step: 99, streak: 0, wrong: None, rng: crate::minigame::Rng::new() };
+        quiz.next();
+        Violao { view: View::Hub, songs, song: 0, page: 0, shift: 0, list_page: 0, dict_root: 0, pair: suggested(), timer: Timer::Idle, shown_secs: 0, lesson: 0, quiz }
     }
 
     fn hub_card(k: usize) -> Rect {
-        Rect::new(MARGIN, 470 + k as i32 * 250, W - 2 * MARGIN, 220)
+        Rect::new(MARGIN, 450 + k as i32 * 218, W - 2 * MARGIN, 196)
     }
 
     fn draw_hub(&self, fb: &mut Framebuffer, f: &Fonts) {
@@ -434,17 +463,18 @@ impl Violao {
             ("Treino do dia", practice_sub, true),
             ("Músicas", format!("{} cifra{} · mande pelo celular", self.songs.len(), if self.songs.len() == 1 { "" } else { "s" }), false),
             ("Acordes", "Diagramas de todos os tons".to_string(), false),
+            ("Aprender partitura", format!("{} de {} lições · treino de leitura", crate::partitura::done().len(), crate::partitura::LESSONS.len()), false),
         ];
         for (k, (t, s, main)) in cards.iter().enumerate() {
             let r = Self::hub_card(k);
             ui::card(fb, r, 32, if *main { INK } else { PAPER }, false);
             let (fg, sub) = if *main { (PAPER, 0xCC) } else { (INK, MUTED) };
-            f.draw(fb, Face::Display, 64.0, r.x + 40, r.y + 100, fg, t);
-            f.draw(fb, Face::Body, 30.0, r.x + 42, r.y + 156, sub, &crate::apps::fit(f, Face::Body, 30.0, s, r.w - 340));
+            f.draw(fb, Face::Display, 58.0, r.x + 40, r.y + 92, fg, t);
+            f.draw(fb, Face::Body, 28.0, r.x + 42, r.y + 142, sub, &crate::apps::fit(f, Face::Body, 28.0, s, r.w - 340));
             // Os acordes do treino desenhados no cartão.
             if *main {
                 for (j, n) in [a, b].iter().enumerate() {
-                    let cr = Rect::new(r.x + r.w - 300 + j as i32 * 140, r.y + 20, 130, 180);
+                    let cr = Rect::new(r.x + r.w - 300 + j as i32 * 140, r.y + 12, 130, 172);
                     fb.round_rect(cr, 18, PAPER);
                     draw_chord(fb, f, Rect::new(cr.x + 6, cr.y + 4, cr.w - 12, cr.h - 10), &parse_chord(n).unwrap(), false);
                 }
@@ -660,6 +690,85 @@ impl Violao {
     }
 }
 
+impl Violao {
+    fn lesson_row(k: usize) -> Rect {
+        Rect::new(MARGIN, 300 + k as i32 * 92, W - 2 * MARGIN, 80)
+    }
+
+    fn draw_course(&self, fb: &mut Framebuffer, f: &Fonts) {
+        f.draw(fb, Face::Display, 80.0, MARGIN - 4, 236, INK, "Partitura");
+        let done = crate::partitura::done();
+        for (k, l) in crate::partitura::LESSONS.iter().enumerate() {
+            let r = Self::lesson_row(k);
+            let seen = done.contains(&k);
+            ui::card(fb, r, 22, if seen { ui::SURFACE } else { PAPER }, false);
+            f.draw(fb, Face::Strong, 30.0, r.x + 24, r.y + 51, INK, &format!("{}. {}", k + 1, l.title));
+            if seen {
+                let t = "vista";
+                let w = f.measure(Face::Strong, 22.0, t);
+                f.draw(fb, Face::Strong, 22.0, r.x + r.w - 24 - w, r.y + 48, MUTED, t);
+            }
+        }
+        let r = Rect::new(MARGIN, 1250, W - 2 * MARGIN, 110);
+        ui::button(fb, f, r, "Treino de leitura", true);
+    }
+
+    fn draw_lesson(&self, fb: &mut Framebuffer, f: &Fonts) {
+        let l = &crate::partitura::LESSONS[self.lesson];
+        f.draw(fb, Face::Strong, 26.0, MARGIN, 220, MUTED, &format!("LIÇÃO {} DE {}", self.lesson + 1, crate::partitura::LESSONS.len()));
+        f.draw(fb, Face::Display, 56.0, MARGIN, 290, INK, l.title);
+        let mut y = 350;
+        for p in l.text {
+            for line in crate::chat::wrap_words(f, Face::Body, 31.0, p, W - 2 * MARGIN) {
+                f.draw(fb, Face::Body, 31.0, MARGIN, y + 30, INK, &line);
+                y += 42;
+            }
+            y += 16;
+        }
+        let demo = Rect::new(MARGIN - 10, y + 20, W - 2 * MARGIN + 20, 360);
+        fb.round_rect(Rect::new(demo.x - 10, demo.y - 10, demo.w + 20, demo.h + 20), 24, ui::SURFACE);
+        crate::partitura::draw_demo(fb, f, demo, &l.demo);
+        if self.lesson > 0 {
+            ui::button(fb, f, Self::nav(0), "‹ Anterior", false);
+        }
+        let last = self.lesson + 1 == crate::partitura::LESSONS.len();
+        ui::button(fb, f, Self::nav(1), if last { "Treinar" } else { "Próxima ›" }, true);
+    }
+
+    fn answer_rect(k: usize) -> Rect {
+        let w = (W - 2 * MARGIN - 3 * 14) / 4;
+        Rect::new(MARGIN + (k % 4) as i32 * (w + 14), 1080 + (k / 4) as i32 * 118, w, 100)
+    }
+
+    fn level_rect(k: usize) -> Rect {
+        let w = (W - 2 * MARGIN - 3 * 12) / 4;
+        Rect::new(MARGIN + k as i32 * (w + 12), 250, w, 72)
+    }
+
+    fn draw_quiz(&self, fb: &mut Framebuffer, f: &Fonts) {
+        let q = &self.quiz;
+        f.draw(fb, Face::Strong, 26.0, MARGIN, 220, MUTED, "TREINO DE LEITURA · QUE NOTA É ESTA?");
+        for (k, (name, _)) in crate::partitura::LEVELS.iter().enumerate() {
+            ui::button(fb, f, Self::level_rect(k), name, k == q.level);
+        }
+        let r = Rect::new(MARGIN, 380, W - 2 * MARGIN, 520);
+        fb.round_rect(r, 30, ui::SURFACE);
+        let (bottom, gap) = crate::partitura::draw_staff(fb, Rect::new(r.x + 30, r.y + 40, r.w - 60, r.h - 80), 40);
+        crate::partitura::draw_note(fb, r.x + r.w / 2 + 40, bottom, gap, q.step, crate::partitura::Fig::Whole);
+        let msg = match q.wrong {
+            Some(picked) => format!("Era {}. Você tocou {picked}. Sem pressa: olhe a linha ou o espaço.", crate::partitura::note_name(q.step)),
+            None if q.streak > 0 => format!("{} acerto{} seguido{} · recorde {}", q.streak, if q.streak == 1 { "" } else { "s" }, if q.streak == 1 { "" } else { "s" }, crate::partitura::best(q.level).max(q.streak)),
+            None => format!("Recorde neste nível: {} seguidos", crate::partitura::best(q.level)),
+        };
+        for (k, l) in crate::chat::wrap_words(f, Face::Strong, 30.0, &msg, W - 2 * MARGIN).iter().take(2).enumerate() {
+            f.draw(fb, Face::Strong, 30.0, MARGIN, 960 + k as i32 * 40, if q.wrong.is_some() { INK } else { MUTED }, l);
+        }
+        for (k, a) in crate::partitura::ANSWERS.iter().enumerate() {
+            ui::button(fb, f, Self::answer_rect(k), a, false);
+        }
+    }
+}
+
 impl MiniGame for Violao {
     fn at_menu(&self) -> bool {
         self.view == View::Hub
@@ -701,12 +810,26 @@ impl MiniGame for Violao {
             View::Song => self.draw_song(fb, f),
             View::Dict => self.draw_dict(fb, f),
             View::Practice => self.draw_practice(fb, f),
+            View::Course => self.draw_course(fb, f),
+            View::Lesson => self.draw_lesson(fb, f),
+            View::Quiz => self.draw_quiz(fb, f),
         }
     }
 
     fn targets(&self) -> Vec<(u32, Rect)> {
         match self.view {
-            View::Hub => (0..3).map(|k| (700 + k as u32, Self::hub_card(k))).collect(),
+            View::Hub => (0..4).map(|k| (700 + k as u32, Self::hub_card(k))).collect(),
+            View::Course => {
+                let mut v: Vec<(u32, Rect)> = (0..crate::partitura::LESSONS.len()).map(|k| (800 + k as u32, Self::lesson_row(k))).collect();
+                v.push((790, Rect::new(MARGIN, 1250, W - 2 * MARGIN, 110)));
+                v
+            }
+            View::Lesson => vec![(720, Self::nav(0)), (721, Self::nav(1))],
+            View::Quiz => {
+                let mut v: Vec<(u32, Rect)> = (0..4).map(|k| (850 + k as u32, Self::level_rect(k))).collect();
+                v.extend((0..7).map(|k| (860 + k as u32, Self::answer_rect(k))));
+                v
+            }
             View::List => {
                 let mut v: Vec<(u32, Rect)> = (0..self.songs.len().saturating_sub(self.list_page * 7).min(7)).map(|k| (100 + (self.list_page * 7 + k) as u32, Self::list_row(k))).collect();
                 v.push((720, Self::nav(0)));
@@ -738,6 +861,43 @@ impl MiniGame for Violao {
                 self.view = View::List;
             }
             (View::Hub, 702) => self.view = View::Dict,
+            (View::Hub, 703) => self.view = View::Course,
+            (View::Course, k @ 800..=809) => {
+                self.lesson = (k - 800) as usize;
+                crate::partitura::mark_done(self.lesson);
+                self.view = View::Lesson;
+            }
+            (View::Course, 790) => self.view = View::Quiz,
+            (View::Lesson, 720) => self.lesson = self.lesson.saturating_sub(1),
+            (View::Lesson, 721) => {
+                if self.lesson + 1 < crate::partitura::LESSONS.len() {
+                    self.lesson += 1;
+                    crate::partitura::mark_done(self.lesson);
+                } else {
+                    self.view = View::Quiz;
+                }
+            }
+            (View::Quiz, k @ 850..=853) => {
+                self.quiz.level = (k - 850) as usize;
+                self.quiz.streak = 0;
+                self.quiz.wrong = None;
+                self.quiz.next();
+            }
+            (View::Quiz, k @ 860..=866) => {
+                let picked = crate::partitura::ANSWERS[(k - 860) as usize];
+                if picked == crate::partitura::note_name(self.quiz.step) {
+                    self.quiz.streak += 1;
+                    crate::partitura::save_best(self.quiz.level, self.quiz.streak);
+                    self.quiz.wrong = None;
+                    self.quiz.next();
+                } else {
+                    self.quiz.wrong = Some(picked);
+                    self.quiz.streak = 0;
+                    // A mesma nota fica na tela para olhar de novo.
+                    return Redraw::Part(Rect::new(0, 940, W, 110));
+                }
+                return Redraw::Part(Rect::new(0, 370, W, 680));
+            }
             (View::List, 720) => self.list_page = self.list_page.saturating_sub(1),
             (View::List, 721) if (self.list_page + 1) * 7 < self.songs.len() => self.list_page += 1,
             (View::List, k @ 100..=699) => {
@@ -805,6 +965,7 @@ impl MiniGame for Violao {
         self.timer = Timer::Idle;
         self.view = match self.view {
             View::Song => View::List,
+            View::Lesson | View::Quiz => View::Course,
             _ => View::Hub,
         };
         true

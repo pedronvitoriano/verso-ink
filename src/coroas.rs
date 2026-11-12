@@ -565,19 +565,38 @@ impl Coroas {
     }
 
     /// Pinta uma casa com o estilo do reino; padrões presos à tela para emendarem entre casas.
+    /// Cada reino com tom E textura próprios (no e-ink, tom sozinho confunde): liso, linhas
+    /// verticais, cinza, bolinhas, diagonais e quadriculado.
     fn fill_style(fb: &mut Framebuffer, r: Rect, style: u8) {
-        let base = [0xFF, 0xDC, 0xBE, 0xFF, 0xEC, 0xFF][style as usize % 6];
+        // Os primeiros estilos usados são os de textura mais diferente entre si.
+        let style = [1u8, 3, 0, 4, 5, 2][style as usize % 6];
+        let base = [0xFF, 0xE4, 0xBE, 0xFF, 0xEC, 0xFF][style as usize % 6];
         fb.fill(r, base);
-        match style {
+        let clip = |fb: &mut Framebuffer, x: i32, y: i32, w: i32, h: i32, v: u8| {
+            let (x0, y0) = (x.max(r.x), y.max(r.y));
+            let (x1, y1) = ((x + w).min(r.x + r.w), (y + h).min(r.y + r.h));
+            if x1 > x0 && y1 > y0 {
+                fb.fill(Rect::new(x0, y0, x1 - x0, y1 - y0), v);
+            }
+        };
+        match style % 6 {
+            1 => {
+                // Linhas verticais.
+                let mut x = r.x - r.x.rem_euclid(14) + 4;
+                while x < r.x + r.w {
+                    clip(fb, x, r.y, 3, r.h, 0x9A);
+                    x += 14;
+                }
+            }
             3 => {
-                // Pontos.
-                let step = 18;
+                // Bolinhas.
+                let step = 16;
                 let mut y = r.y - r.y.rem_euclid(step) + step / 2;
                 while y < r.y + r.h {
                     let mut x = r.x - r.x.rem_euclid(step) + step / 2;
                     while x < r.x + r.w {
-                        if x - 2 >= r.x && y - 2 >= r.y && x + 2 <= r.x + r.w && y + 2 <= r.y + r.h {
-                            fb.fill(Rect::new(x - 2, y - 2, 4, 4), 0x88);
+                        if x - 3 >= r.x && y - 3 >= r.y && x + 3 <= r.x + r.w && y + 3 <= r.y + r.h {
+                            fb.round_rect(Rect::new(x - 3, y - 3, 6, 6), 3, 0x70);
                         }
                         x += step;
                     }
@@ -585,22 +604,26 @@ impl Coroas {
                 }
             }
             4 => {
-                // Listras diagonais: em cada linha, trechos de 3 px a cada 16.
+                // Diagonais grossas.
                 for yy in r.y..r.y + r.h {
                     let mut xx = r.x + (16 - (r.x + yy).rem_euclid(16)) % 16;
                     while xx < r.x + r.w {
-                        let w = 3.min(r.x + r.w - xx);
-                        fb.fill(Rect::new(xx, yy, w, 1), 0xA8);
+                        clip(fb, xx, yy, 5, 1, 0x88);
                         xx += 16;
                     }
                 }
             }
             5 => {
-                // Listras horizontais.
-                let mut yy = r.y + (14 - r.y.rem_euclid(14)) % 14;
+                // Quadriculado.
+                let mut yy = r.y - r.y.rem_euclid(16) + 8;
                 while yy < r.y + r.h {
-                    fb.fill(Rect::new(r.x, yy, r.w, 2.min(r.y + r.h - yy)), 0xA8);
-                    yy += 14;
+                    clip(fb, r.x, yy, r.w, 2, 0xA0);
+                    yy += 16;
+                }
+                let mut xx = r.x - r.x.rem_euclid(16) + 8;
+                while xx < r.x + r.w {
+                    clip(fb, xx, r.y, 2, r.h, 0xA0);
+                    xx += 16;
                 }
             }
             _ => {}
@@ -722,9 +745,13 @@ impl MiniGame for Coroas {
             let inner = Rect::new(r.x + c / 8, r.y + c / 8, c - c / 4, c - c / 4);
             match self.marks[i] {
                 Mark::X => {
-                    let (cx, cy, d) = (r.x as f32 + c as f32 / 2.0, r.y as f32 + c as f32 / 2.0, c as f32 * 0.12);
-                    ui::stroke(fb, (cx - d, cy - d), (cx + d, cy + d), 3.0, MUTED);
-                    ui::stroke(fb, (cx + d, cy - d), (cx - d, cy + d), 3.0, MUTED);
+                    // X preto e grosso, num fundo claro para ler em qualquer textura.
+                    let (cx, cy, d) = (r.x as f32 + c as f32 / 2.0, r.y as f32 + c as f32 / 2.0, c as f32 * 0.17);
+                    let k = (c as f32 * 0.24) as i32;
+                    fb.round_rect(Rect::new(cx as i32 - k, cy as i32 - k, 2 * k, 2 * k), k / 3, 0xF6);
+                    let t = (c as f32 * 0.07).clamp(4.0, 8.0);
+                    ui::stroke(fb, (cx - d, cy - d), (cx + d, cy + d), t, INK);
+                    ui::stroke(fb, (cx + d, cy - d), (cx - d, cy + d), t, INK);
                 }
                 Mark::Crown => {
                     Self::draw_crown(fb, inner, INK);

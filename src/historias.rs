@@ -243,9 +243,16 @@ impl Historias {
             let r = Rect::new(MARGIN, 446 + k as i32 * 140, W - 2 * MARGIN, 120);
             ui::card(fb, r, 28, PAPER, false);
             let started = load_progress(path).is_some_and(|(at, _)| at != s.first);
-            f.draw(fb, Face::Display, 44.0, r.x + 32, r.y + 58, INK, &crate::apps::fit(f, Face::Display, 44.0, &s.title, r.w - 64));
+            f.draw(fb, Face::Display, 44.0, r.x + 32, r.y + 58, INK, &crate::apps::fit(f, Face::Display, 44.0, &s.title, r.w - 64 - 170));
             let sub = if started { "Continuar de onde parou".to_string() } else { s.blurb.clone() };
             f.draw(fb, Face::Body, 28.0, r.x + 34, r.y + 106, MUTED, &crate::apps::fit(f, Face::Body, 28.0, &sub, r.w - 68));
+            // Histórias criadas (não as que vêm com o Verso Ink) podem ser apagadas.
+            let bundled = EXAMPLES.iter().any(|(name, _)| path.file_name().is_some_and(|n| n == *name));
+            if !bundled {
+                let del = Rect::new(r.x + r.w - 168, r.y + (r.h - 60) / 2, 148, 60);
+                ui::button(fb, f, del, "Apagar", false);
+                hits.push((1900 + j as u32, del));
+            }
             hits.push((900 + j as u32, r));
         }
         if pages > 1 {
@@ -356,6 +363,10 @@ impl Historias {
 }
 
 impl MiniGame for Historias {
+    fn risky(&self, id: u32) -> bool {
+        (1900..=2899).contains(&id)
+    }
+
     fn summary(&self) -> String {
         self.read.as_ref().map(|r| self.list[r.k].1.title.clone()).unwrap_or_default()
     }
@@ -389,6 +400,16 @@ impl MiniGame for Historias {
         match id {
             720 | 721 => {
                 self.list_page = if id == 720 { self.list_page.saturating_sub(1) } else { self.list_page + 1 };
+                Redraw::Full
+            }
+            1900..=2899 => {
+                // Apaga a história criada e o ponto onde parou.
+                if let Some((path, _)) = self.list.get((id - 1900) as usize) {
+                    let _ = std::fs::remove_file(save_path(path));
+                    let _ = std::fs::remove_file(path);
+                }
+                self.list = load_all();
+                self.list_page = self.list_page.min(self.list.len().saturating_sub(1) / PER);
                 Redraw::Full
             }
             900..=1899 if ((id - 900) as usize) < self.list.len() => {

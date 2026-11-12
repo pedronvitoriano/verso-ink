@@ -180,6 +180,11 @@ impl Minas {
 }
 
 impl MiniGame for Minas {
+    /// Bandeira mais rápida: segurar só um instante já marca (toque rápido continua abrindo).
+    fn hold_ms(&self) -> u64 {
+        280
+    }
+
     fn risky(&self, id: u32) -> bool {
         id == 801 && self.fase == 0 && !self.won && self.lost.is_none() && self.placed
     }

@@ -50,7 +50,7 @@ class Extras:
     def __init__(self, base: Path, run_claude):
         self.base = base
         self.run_claude = run_claude
-        for d in ("artigos", "fotos", "cifras", "sessoes", "avisos", "aprovacoes", "edicoes"):
+        for d in ("artigos", "fotos", "cifras", "sessoes", "avisos", "aprovacoes", "edicoes", "missoes"):
             (base / d).mkdir(parents=True, exist_ok=True)
         self.lock = threading.Lock()
         threading.Thread(target=self.morning_loop, daemon=True).start()
@@ -278,6 +278,88 @@ class Extras:
         self.write(p, a)
         return a
 
+    # ---------- Missões (o Kindle manda, os agentes no PC trabalham) ----------
+
+    def missions(self):
+        recs = [self.read(p) for p in (self.base / "missoes").glob("*.json")]
+        recs = sorted((r for r in recs if r), key=lambda r: r["created"], reverse=True)
+        # Fila antiga (mais de 3 dias sem rodar) some.
+        return [r for r in recs if r["status"] != "na fila" or time.time() - r["created"] < 3 * 86400]
+
+    def missions_view(self):
+        projs = self.read(self.base / "projetos.json", {}).get("projects", [])
+        tpl = [{"id": k, "title": v[0], "desc": v[1], "project": v[2]} for k, v in MISSION_TEMPLATES.items()]
+        recent = [{k: r.get(k) for k in ("id", "title", "project", "status", "created", "started", "minutes", "article", "when")} for r in self.missions()[:15]]
+        pc = self.read(self.base / "projetos.json", {}).get("time", 0)
+        return {"templates": tpl, "projects": projs, "recent": recent, "pc_online": time.time() - pc < 1200}
+
+    def add_mission(self, req):
+        tid = str(req.get("template", ""))
+        if tid not in MISSION_TEMPLATES:
+            return None, "missão desconhecida"
+        title, _, needs_project, prompt = MISSION_TEMPLATES[tid]
+        project = str(req.get("project", ""))[:80]
+        if needs_project and not project:
+            return None, "escolha o projeto"
+        text = str(req.get("text", "")).strip()[:1500]
+        if tid == "livre":
+            if len(text) < 5:
+                return None, "escreva o que o agente deve fazer"
+            title, prompt = f"Missão livre: {text[:60]}", text
+        now = int(time.time())
+        night = req.get("when") == "noite"
+        not_before = now
+        if night:
+            # Próximas 2h de Manaus.
+            local = now + MANAUS
+            day_start = local - local % 86400
+            target = day_start + 2 * 3600
+            if target <= local:
+                target += 86400
+            not_before = target - MANAUS
+        mid = new_id()
+        rec = {"id": mid, "template": tid, "title": title + (f" · {project}" if project else ""), "prompt": prompt, "project": project, "status": "na fila", "created": now, "not_before": not_before, "when": "noite" if night else "agora"}
+        self.write(self.base / "missoes" / f"{mid}.json", rec)
+        return rec, None
+
+    def next_mission(self):
+        now = time.time()
+        for r in sorted(self.missions(), key=lambda r: r["created"]):
+            if r["status"] == "na fila" and r.get("not_before", 0) <= now:
+                r["status"] = "rodando"
+                r["started"] = int(now)
+                self.write(self.base / "missoes" / f"{r['id']}.json", r)
+                return {"id": r["id"], "title": r["title"], "prompt": r["prompt"], "project": r["project"]}
+        return {}
+
+    def finish_mission(self, mid, res):
+        p = self.base / "missoes" / f"{mid}.json"
+        r = self.read(p)
+        if not r:
+            return None
+        if res.get("status") == "limite":
+            # Limite de uso do Claude: de volta à fila, nova tentativa em 30 minutos.
+            r["status"] = "na fila"
+            r["not_before"] = int(time.time()) + 1800
+            r["note"] = "esperando o limite de uso do Claude"
+            self.write(p, r)
+            return r
+        r["status"] = "pronta" if res.get("status") == "pronta" else "falhou"
+        r["minutes"] = int(res.get("minutes", 0))
+        r["finished"] = int(time.time())
+        text = str(res.get("result", "")).strip()
+        # O relatório vira artigo para ler no Kindle.
+        aid = new_id()
+        paras = [x.strip() for x in text.split("\n\n") if x.strip()] or ["(sem relatório)"]
+        self.write(self.base / "artigos" / f"{aid}.json", {"id": aid, "title": f"Missão: {r['title']}", "url": "", "site": "agentes do PC", "created": int(time.time()), "paras": paras})
+        r["article"] = aid
+        r["summary"] = text[:400]
+        self.write(p, r)
+        return r
+
+    def set_projects(self, names):
+        self.write(self.base / "projetos.json", {"projects": [str(n)[:80] for n in names][:80], "time": int(time.time())})
+
     # ---------- Edição da manhã ----------
 
     def set_brain(self, text):
@@ -308,6 +390,9 @@ class Extras:
                 f"{time.strftime('%H:%M', time.gmtime(last['time'] + MANAUS))}, estado final \"{last['state']}\" "
                 f"({last['detail']}); últimas ações: {'; '.join(s['events'][-6:])}"
             )
+        for r in self.missions():
+            if r.get("finished", 0) >= since:
+                agents.append(f"- missão \"{r['title']}\" ({r['status']}, {r.get('minutes', 0)} min): {r.get('summary', '')[:300]}")
         notices = [f"- [{a['level']}] {a['text']}" for a in self.notices()]
         brain = self.read(self.base / "brain.json", {}).get("text", "")
         prompt = f"""Monte a Edição da manhã do Pedro para hoje ({day}), que ele lê no Kindle (e-ink) ao acordar e onde cada item vira um cartão com uma ação.
@@ -371,6 +456,22 @@ Cada "texto" tem no máximo 200 caracteres. Português do Brasil, direto, sem em
                 except Exception:
                     pass
             time.sleep(120)
+
+
+# Modelos de missão: id -> (título, descrição, precisa de projeto, instrução para o agente).
+MISSION_TEMPLATES = {
+    "raiox": ("Raio-x do projeto", "Testes, bugs e pontos fracos, com correções pequenas", True,
+              "Faça um raio-x deste projeto: rode os testes e o build, procure bugs e pontos fracos reais, corrija o que for pequeno e seguro (com commit local) e liste o resto em ordem de importância."),
+    "pendente": ("Revisar o que está pendente", "Mudanças sem commit e o último trabalho", True,
+                 "Revise as mudanças sem commit e os últimos commits deste repositório: aponte bugs, riscos e o que está pela metade. Não faça commit do trabalho dos outros; só relate."),
+    "post": ("Rascunho do post de amanhã", "LinkedIn, no seu tom, sem publicar", False,
+             "Use a skill de posts do Pedro para preparar o rascunho do post de amanhã no LinkedIn (sem publicar nada), seguindo o ciclo de melhoria dela. Mostre o rascunho completo no relatório."),
+    "vagas": ("Vagas da semana", "As que combinam com o seu currículo", False,
+              "Use a skill de vagas do Pedro para listar as melhores vagas abertas desta semana, em ordem de chance, sem se candidatar. Liste no relatório com o link de cada uma."),
+    "brain": ("Arrumar o Brain", "Retomadas, pendências e adequações", False,
+              "No Brain do Pedro (/home/pedro/dev/aions-brain), revise as retomadas em andamento e as adequações pendentes: diga o que está parado, o que dá para fechar e o que precisa dele. Não abra PR nem altere a parte compartilhada."),
+    "livre": ("Missão livre", "Você escreve o que o agente faz", False, ""),
+}
 
 
 SEND_PAGE = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">

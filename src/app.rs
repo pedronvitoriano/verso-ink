@@ -63,6 +63,10 @@ pub enum Screen {
     TermType,
     /// Pedido de permissão de um agente do Claude Code.
     Aprovar,
+    /// Missões para os agentes do PC.
+    Missoes,
+    /// Missão livre: digitar o pedido.
+    MissaoText,
     Calendar,
     Tutorial,
     Sleep,
@@ -183,6 +187,10 @@ pub struct App {
     approve_back: Screen,
     /// Alvos da página atual da Edição da manhã.
     ed_hits: Vec<(Rect, crate::painel::EdAction)>,
+    /// Missões: o que veio da VPS, a etapa da escolha e os alvos da tela.
+    missions: Option<crate::painel::Missions>,
+    mstage: crate::painel::MStage,
+    m_hits: Vec<(Rect, crate::painel::MAct)>,
     panel_note: String,
     /// Sincronização em segundo plano com a VPS: última vez (rápida e completa) e o resultado.
     sync_fast: Instant,
@@ -325,6 +333,9 @@ impl App {
             approvals: Vec::new(),
             approve_back: Screen::Home,
             ed_hits: Vec::new(),
+            missions: None,
+            mstage: Default::default(),
+            m_hits: Vec::new(),
             panel_note: String::new(),
             sync_fast: Instant::now(),
             sync_full: None,
@@ -500,6 +511,13 @@ impl App {
             }
             Screen::ClaudeDoc => crate::chat::draw_doc(fb, f, &self.doc.0, &self.doc.1, self.doc.2),
             Screen::Edicao => self.ed_hits = crate::painel::draw_edition(fb, f, crate::painel::edition().as_ref(), self.ed_page, &self.panel_note),
+            Screen::Missoes => self.m_hits = crate::painel::draw_missions(fb, f, self.missions.as_ref(), &self.mstage, &self.panel_note),
+            Screen::MissaoText => {
+                ui::draw_field_header(fb, f, "MISSÃO LIVRE", "O que o agente deve fazer?");
+                crate::today_ui::draw_field(fb, f, &self.compose_text, &self.compose_hint);
+                self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
+                crate::keyboard::draw(fb, f, &self.keys);
+            }
             Screen::Artigos => crate::painel::draw_articles(fb, f, &crate::painel::articles(), self.art_page, &self.panel_note),
             Screen::Retrato => crate::painel::draw_photo(fb, f, &crate::painel::photos(), self.photo_k),
             Screen::Terminal => crate::painel::draw_terminal(fb, f, &self.term.0, &self.term.1),
@@ -750,6 +768,11 @@ impl App {
                 v.extend(self.ed_hits.iter().enumerate().map(|(k, (r, _))| (Row(k), *r)));
                 v
             }
+            Screen::Missoes => {
+                let mut v = vec![(Back, ui::back_rect())];
+                v.extend(self.m_hits.iter().enumerate().map(|(k, (r, _))| (Row(k), *r)));
+                v
+            }
             Screen::Artigos => {
                 let mut v = vec![(Back, ui::back_rect())];
                 let n = crate::painel::articles().len();
@@ -771,7 +794,7 @@ impl App {
                 v
             }
             Screen::Aprovar => vec![(Level(0), crate::painel::approve_rect(false)), (Level(1), crate::painel::approve_rect(true))],
-            Screen::WifiPass | Screen::LibSearch | Screen::MiniText | Screen::TermType => {
+            Screen::WifiPass | Screen::LibSearch | Screen::MiniText | Screen::TermType | Screen::MissaoText => {
                 let mut v = vec![(Back, ui::back_rect())];
                 v.extend(self.keys.iter().enumerate().map(|(i, k)| (Key(i as u8), k.rect)));
                 v
@@ -1071,6 +1094,10 @@ impl App {
                 if self.screen == Screen::MiniText {
                     return self.mini_text_done();
                 }
+                if self.screen == Screen::MissaoText {
+                    self.mstage.text = self.compose_text.trim().to_string();
+                    return self.go(Screen::Missoes);
+                }
                 if self.screen == Screen::TermType {
                     let cmd = self.compose_text.trim().to_string();
                     self.term = (cmd.clone(), crate::painel::run(&cmd));
@@ -1119,7 +1146,7 @@ impl App {
     fn light_swipe_ok(&self) -> bool {
         !matches!(
             self.screen,
-            Screen::Sleep | Screen::Light | Screen::Settings | Screen::Wifi | Screen::WifiPass | Screen::Compose | Screen::ClaudeCompose | Screen::LibSearch | Screen::MiniText | Screen::TermType | Screen::Aprovar | Screen::Retrato | Screen::Update
+            Screen::Sleep | Screen::Light | Screen::Settings | Screen::Wifi | Screen::WifiPass | Screen::Compose | Screen::ClaudeCompose | Screen::LibSearch | Screen::MiniText | Screen::TermType | Screen::MissaoText | Screen::Aprovar | Screen::Retrato | Screen::Update
         )
     }
 
@@ -1140,6 +1167,7 @@ impl App {
                 | Screen::LibSearch
                 | Screen::MiniText
                 | Screen::TermType
+                | Screen::MissaoText
                 | Screen::Aprovar
                 | Screen::Update
                 | Screen::Reminder
@@ -1588,6 +1616,47 @@ impl App {
         if refresh {
             self.render(false);
         }
+    }
+
+    /// Ações da tela de Missões.
+    fn mission_action(&mut self, act: crate::painel::MAct) {
+        use crate::painel::MAct;
+        match act {
+            MAct::Pick(i) => {
+                self.mstage = crate::painel::MStage { template: Some(i), ..Default::default() };
+                let livre = self.missions.as_ref().and_then(|m| m.templates.get(i)).is_some_and(|t| t.id == "livre");
+                if livre {
+                    self.compose_text.clear();
+                    self.compose_hint = "Seja específico: projeto, o que fazer e o que não mexer.".into();
+                    return self.go(Screen::MissaoText);
+                }
+            }
+            MAct::Project(p) => self.mstage.project = Some(p),
+            MAct::Prev => self.mstage.page = self.mstage.page.saturating_sub(1),
+            MAct::Next => self.mstage.page += 1,
+            MAct::Cancel => self.mstage = Default::default(),
+            MAct::When(night) => {
+                let (Some(i), Some(m)) = (self.mstage.template, self.missions.as_ref()) else { return };
+                let tid = m.templates.get(i).map(|t| t.id.clone()).unwrap_or_default();
+                let project = self.mstage.project.clone().unwrap_or_default();
+                self.panel_note = match crate::painel::send_mission(&tid, &project, &self.mstage.text, night) {
+                    Ok(t) if night => format!("Combinado: \"{t}\" roda esta noite."),
+                    Ok(t) => format!("Mandada: \"{t}\". Os agentes já começam."),
+                    Err(e) => format!("Não deu para mandar: {e}"),
+                };
+                self.mstage = Default::default();
+                if let Ok(m) = crate::painel::missions() {
+                    self.missions = Some(m);
+                }
+            }
+            MAct::Open(article, title) => {
+                match crate::painel::mission_report(&article, &title) {
+                    Ok(path) => return self.open_reader(path, title),
+                    Err(e) => self.panel_note = format!("Não abriu o relatório: {e}"),
+                }
+            }
+        }
+        self.render(true);
     }
 
     /// Ações da Edição da manhã.
@@ -2243,7 +2312,7 @@ impl App {
                 }
                 self.render(false);
             }
-            (Screen::Compose | Screen::WifiPass | Screen::ClaudeCompose | Screen::LibSearch | Screen::MiniText | Screen::TermType, Key(i)) => self.press_key(i as usize),
+            (Screen::Compose | Screen::WifiPass | Screen::ClaudeCompose | Screen::LibSearch | Screen::MiniText | Screen::TermType | Screen::MissaoText, Key(i)) => self.press_key(i as usize),
             (Screen::MiniText, Back) => self.go(Screen::Mini),
             (Screen::Wifi, Back) => {
                 let back = self.wifi_back;
@@ -2280,18 +2349,41 @@ impl App {
                 self.background_sync(true);
             }
             (Screen::Module(Module::Mais), Row(1)) => {
+                self.mstage = Default::default();
+                self.panel_note.clear();
+                self.missions = crate::painel::missions().map_err(|e| self.panel_note = e).ok();
+                self.go(Screen::Missoes);
+            }
+            (Screen::Missoes, Back) => {
+                if self.mstage.template.is_some() {
+                    self.mstage = Default::default();
+                    self.render(false);
+                } else {
+                    self.go(Screen::Module(Module::Mais));
+                }
+            }
+            (Screen::MissaoText, Back) => {
+                self.mstage = Default::default();
+                self.go(Screen::Missoes);
+            }
+            (Screen::Missoes, Row(k)) => {
+                if let Some((_, act)) = self.m_hits.get(k).cloned() {
+                    self.mission_action(act);
+                }
+            }
+            (Screen::Module(Module::Mais), Row(2)) => {
                 self.art_page = 0;
                 self.panel_note.clear();
                 self.go(Screen::Artigos);
                 self.background_sync(true);
             }
-            (Screen::Module(Module::Mais), Row(2)) => {
+            (Screen::Module(Module::Mais), Row(3)) => {
                 self.photo_k = 0;
                 self.photo_at = Instant::now();
                 self.go(Screen::Retrato);
                 self.background_sync(true);
             }
-            (Screen::Module(Module::Mais), Row(4)) => self.go(Screen::Terminal),
+            (Screen::Module(Module::Mais), Row(5)) => self.go(Screen::Terminal),
             (Screen::Edicao | Screen::Artigos | Screen::Retrato | Screen::Terminal, Back) => self.go(Screen::Module(Module::Mais)),
             (Screen::Edicao, Row(k)) => {
                 if let Some((_, act)) = self.ed_hits.get(k).cloned() {
@@ -2329,7 +2421,7 @@ impl App {
             }
             (Screen::TermType, Back) => self.go(Screen::Terminal),
             (Screen::Aprovar, Level(k)) => self.decide_approval(k == 1),
-            (Screen::Module(Module::Mais), Row(3)) => {
+            (Screen::Module(Module::Mais), Row(4)) => {
                 self.mini = Some(self.mini_cache.remove(&100).unwrap_or_else(|| Box::new(crate::receitas::Receitas::new())));
                 self.mini_back = Screen::Module(Module::Mais);
                 self.go(Screen::Mini);
@@ -3018,8 +3110,9 @@ impl App {
 
     /// Segurou o dedo parado numa casa: `hold` do jogo.
     fn check_hold(&mut self) {
+        let hold = self.mini.as_ref().map(|m| Duration::from_millis(m.hold_ms())).unwrap_or(HOLD);
         let Some(g) = self.gesture.as_mut() else { return };
-        if g.dragging || g.held || g.at.elapsed() < HOLD {
+        if g.dragging || g.held || g.at.elapsed() < hold {
             return;
         }
         let id = g.start;
@@ -3223,6 +3316,12 @@ mod raio_x {
                 if let Some((id, _)) = app.mini.as_ref().and_then(|g| g.targets().into_iter().find(|(id, _)| *id == 900)) {
                     app.mini_tap(id, 0);
                     shot(&mut app, &format!("jogo-{name}-partida"));
+                    if name == "coroas" {
+                        for id in [0, 1, 7] {
+                            app.mini_tap(id, 0);
+                        }
+                        shot(&mut app, "jogo-coroas-marcas");
+                    }
                     if name == "masmorra" {
                         app.go(Screen::Sleep);
                         shot(&mut app, "repouso-jogo");
@@ -3281,6 +3380,15 @@ mod raio_x {
         app.mini = Some(Box::new(crate::violao::Violao::new()));
         app.mini_tap(702, 0);
         shot(&mut app, "violao-acordes");
+        app.mini = Some(Box::new(crate::violao::Violao::new()));
+        app.mini_tap(703, 0);
+        shot(&mut app, "violao-curso");
+        app.mini_tap(809, 0);
+        shot(&mut app, "violao-licao");
+        app.mini_tap(721, 0);
+        shot(&mut app, "violao-leitura");
+        app.mini_tap(863, 0);
+        shot(&mut app, "violao-leitura-resposta");
         app.approvals = vec![crate::painel::Approval { id: "abc".into(), project: "verso-ink".into(), tool: "Bash".into(), summary: "cargo build --release && tools/deploy.sh (envia o binário novo ao Kindle pelo túnel)".into(), created: 0 }];
         app.go(Screen::Aprovar);
         shot(&mut app, "painel-aprovar");

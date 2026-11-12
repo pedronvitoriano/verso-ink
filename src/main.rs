@@ -22,6 +22,7 @@ mod masmorra;
 mod minas;
 mod nonograma;
 mod paciencia;
+mod partitura;
 mod painel;
 mod palavra;
 mod reader;

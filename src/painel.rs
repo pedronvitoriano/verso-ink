@@ -724,3 +724,203 @@ pub fn draw_terminal(fb: &mut Framebuffer, f: &Fonts, last: &str, output: &str) 
     }
     ui::button(fb, f, type_rect(), "Digitar um comando", true);
 }
+
+// ---------- Missões: o Kindle manda, os agentes do PC trabalham ----------
+
+#[derive(Clone)]
+pub struct Template {
+    pub id: String,
+    pub title: String,
+    pub desc: String,
+    pub project: bool,
+}
+
+#[derive(Clone)]
+pub struct Mission {
+    pub title: String,
+    pub status: String,
+    pub when: String,
+    pub minutes: i64,
+    pub article: Option<String>,
+}
+
+#[derive(Default)]
+pub struct Missions {
+    pub templates: Vec<Template>,
+    pub projects: Vec<String>,
+    pub recent: Vec<Mission>,
+    pub pc_online: bool,
+}
+
+pub fn missions() -> Result<Missions, String> {
+    let j = chat::call("GET", "/missoes", None, 15)?;
+    let s = |v: &Json, k: &str| v.get(k).and_then(Json::str).unwrap_or("").to_string();
+    Ok(Missions {
+        templates: j.get("templates").map(Json::arr).unwrap_or(&[]).iter().map(|t| Template { id: s(t, "id"), title: s(t, "title"), desc: s(t, "desc"), project: t.get("project").and_then(Json::bool).unwrap_or(false) }).collect(),
+        projects: j.get("projects").map(Json::arr).unwrap_or(&[]).iter().filter_map(|p| p.str().map(str::to_string)).collect(),
+        recent: j
+            .get("recent")
+            .map(Json::arr)
+            .unwrap_or(&[])
+            .iter()
+            .map(|r| Mission { title: s(r, "title"), status: s(r, "status"), when: s(r, "when"), minutes: r.get("minutes").and_then(Json::num).unwrap_or(0.0) as i64, article: r.get("article").and_then(Json::str).map(str::to_string) })
+            .collect(),
+        pc_online: j.get("pc_online").and_then(Json::bool).unwrap_or(false),
+    })
+}
+
+pub fn send_mission(template: &str, project: &str, text: &str, night: bool) -> Result<String, String> {
+    let body = format!(
+        "{{\"template\": {}, \"project\": {}, \"text\": {}, \"when\": \"{}\"}}",
+        chat::json_str(template),
+        chat::json_str(project),
+        chat::json_str(text),
+        if night { "noite" } else { "agora" }
+    );
+    let j = chat::call("POST", "/missoes", Some(&body), 15)?;
+    Ok(j.get("title").and_then(Json::str).unwrap_or("Missão").to_string())
+}
+
+/// Baixa o relatório de uma missão (é um artigo) e devolve o arquivo.
+pub fn mission_report(article: &str, title: &str) -> Result<PathBuf, String> {
+    let _ = std::fs::create_dir_all(articles_dir());
+    let name: String = title.chars().filter(|c| !"/\\:*?\"<>|".contains(*c)).take(80).collect();
+    let dest = articles_dir().join(format!("Missão - {}.txt", name.trim().trim_start_matches("Missão: ")));
+    chat::fetch(&format!("/inbox/artigo/{article}"), &dest, 30)?;
+    let seen_path = data("caixa_vista.txt");
+    let _ = std::fs::write(&seen_path, format!("{}\n{article}", std::fs::read_to_string(&seen_path).unwrap_or_default()));
+    Ok(dest)
+}
+
+/// O que um toque na tela de missões faz.
+#[derive(Clone)]
+pub enum MAct {
+    Pick(usize),
+    Project(String),
+    When(bool),
+    Open(String, String),
+    Cancel,
+    Prev,
+    Next,
+}
+
+/// Etapa da tela: escolhendo o modelo, o projeto ou a hora.
+#[derive(Clone, Default)]
+pub struct MStage {
+    pub template: Option<usize>,
+    pub project: Option<String>,
+    pub text: String,
+    pub page: usize,
+}
+
+fn status_label(m: &Mission) -> String {
+    match m.status.as_str() {
+        "na fila" if m.when == "noite" => "esta noite".into(),
+        "na fila" => "na fila".into(),
+        "rodando" => "trabalhando…".into(),
+        "pronta" => format!("pronta · {} min", m.minutes),
+        "falhou" => "não deu certo".into(),
+        s => s.into(),
+    }
+}
+
+pub fn draw_missions(fb: &mut Framebuffer, f: &Fonts, m: Option<&Missions>, st: &MStage, note: &str) -> Vec<(Rect, MAct)> {
+    fb.fill(fb.screen(), PAPER);
+    ui::draw_back(fb, f, false);
+    let mut hits = Vec::new();
+    crate::sprites::draw(fb, "cab-claude", Rect::new(W - MARGIN - 290, 90, 300, 250));
+    f.draw(fb, Face::Display, 110.0, MARGIN - 4, 290, INK, "Missões");
+    let Some(m) = m else {
+        f.draw(fb, Face::Strong, 30.0, MARGIN, 360, MUTED, if note.is_empty() { "Sem conexão com a VPS." } else { note });
+        return hits;
+    };
+    let pc = if m.pc_online { "PC ligado: os agentes estão prontos" } else { "PC desligado: a missão espera ele ligar" };
+    let sub = if note.is_empty() { pc.to_string() } else { note.to_string() };
+    f.draw(fb, Face::Strong, 28.0, MARGIN, 350, MUTED, &crate::apps::fit(f, Face::Strong, 28.0, &sub, W - 2 * MARGIN - 300));
+    let half = (W - 2 * MARGIN - 20) / 2;
+    match (st.template, &st.project) {
+        // Escolher o projeto (repositórios do PC).
+        (Some(t), None) if m.templates.get(t).is_some_and(|t| t.project) => {
+            f.draw(fb, Face::Display, 44.0, MARGIN, 440, INK, "Em qual projeto?");
+            let per = 12;
+            for (k, p) in m.projects.iter().skip(st.page * per).take(per).enumerate() {
+                let r = Rect::new(MARGIN + (k % 2) as i32 * (half + 20), 480 + (k / 2) as i32 * 112, half, 94);
+                ui::button(fb, f, r, p, false);
+                hits.push((r, MAct::Project(p.clone())));
+            }
+            let pages = m.projects.len().div_ceil(per).max(1);
+            if st.page > 0 {
+                let r = edition_nav(0);
+                ui::button(fb, f, r, "‹ Anterior", false);
+                hits.push((r, MAct::Prev));
+            }
+            if st.page + 1 < pages {
+                let r = edition_nav(1);
+                ui::button(fb, f, r, "Próxima ›", false);
+                hits.push((r, MAct::Next));
+            }
+            let c = Rect::new((W - 240) / 2, 1322, 240, 88);
+            ui::button(fb, f, c, "Cancelar", false);
+            hits.push((c, MAct::Cancel));
+        }
+        // Agora ou esta noite.
+        (Some(t), _) => {
+            let tp = &m.templates[t];
+            let r = Rect::new(MARGIN, 420, W - 2 * MARGIN, 300);
+            ui::card(fb, r, 30, ui::SURFACE, false);
+            f.draw(fb, Face::Display, 52.0, r.x + 36, r.y + 86, INK, &tp.title);
+            let what = match &st.project {
+                Some(p) => format!("{} · projeto {p}", tp.desc),
+                None if !st.text.is_empty() => st.text.clone(),
+                None => tp.desc.clone(),
+            };
+            for (k, l) in chat::wrap_words(f, Face::Body, 30.0, &what, r.w - 72).iter().take(4).enumerate() {
+                f.draw(fb, Face::Body, 30.0, r.x + 38, r.y + 140 + k as i32 * 40, INK, l);
+            }
+            for (k, l) in chat::wrap_words(f, Face::Body, 28.0, "Os agentes leem, editam e fazem commit local. Nunca publicam, mandam mensagem ou fazem push. O relatório chega aqui e na Edição da manhã.", W - 2 * MARGIN).iter().enumerate() {
+                f.draw(fb, Face::Body, 28.0, MARGIN, 790 + k as i32 * 38, MUTED, l);
+            }
+            let now_r = Rect::new(MARGIN, 960, W - 2 * MARGIN, 110);
+            ui::button(fb, f, now_r, "Começar agora", true);
+            hits.push((now_r, MAct::When(false)));
+            let night_r = Rect::new(MARGIN, 1096, W - 2 * MARGIN, 110);
+            ui::button(fb, f, night_r, "Esta noite, enquanto você dorme", false);
+            hits.push((night_r, MAct::When(true)));
+            let c = Rect::new((W - 240) / 2, 1250, 240, 84);
+            ui::button(fb, f, c, "Cancelar", false);
+            hits.push((c, MAct::Cancel));
+        }
+        // Início: modelos e as últimas missões.
+        _ => {
+            for (k, t) in m.templates.iter().enumerate().take(6) {
+                let r = Rect::new(MARGIN + (k % 2) as i32 * (half + 20), 400 + (k / 2) as i32 * 158, half, 138);
+                ui::card(fb, r, 26, if k == 0 { INK } else { PAPER }, false);
+                let (fg, sub) = if k == 0 { (PAPER, 0xCC) } else { (INK, MUTED) };
+                f.draw(fb, Face::Display, 34.0, r.x + 24, r.y + 54, fg, &crate::apps::fit(f, Face::Display, 34.0, &t.title, r.w - 40));
+                for (n, l) in chat::wrap_words(f, Face::Body, 22.0, &t.desc, r.w - 44).iter().take(2).enumerate() {
+                    f.draw(fb, Face::Body, 22.0, r.x + 26, r.y + 92 + n as i32 * 28, sub, l);
+                }
+                hits.push((r, MAct::Pick(k)));
+            }
+            f.draw(fb, Face::Display, 38.0, MARGIN, 920, INK, "Últimas missões");
+            if m.recent.is_empty() {
+                f.draw(fb, Face::Body, 28.0, MARGIN, 976, MUTED, "Nenhuma ainda. Escolha uma acima.");
+            }
+            for (k, r0) in m.recent.iter().take(4).enumerate() {
+                let r = Rect::new(MARGIN, 950 + k as i32 * 92, W - 2 * MARGIN, 80);
+                ui::card(fb, r, 22, PAPER, false);
+                let lab = status_label(r0);
+                let lw = f.measure(Face::Strong, 22.0, &lab) + 28;
+                let lr = Rect::new(r.x + r.w - lw - 16, r.y + 20, lw, 40);
+                let done = r0.status == "pronta";
+                fb.round_rect(lr, 20, if done { INK } else { ui::SURFACE });
+                f.draw(fb, Face::Strong, 22.0, lr.x + 14, lr.y + 28, if done { PAPER } else { INK }, &lab);
+                f.draw(fb, Face::Strong, 26.0, r.x + 22, r.y + 50, INK, &crate::apps::fit(f, Face::Strong, 26.0, &r0.title, lr.x - r.x - 40));
+                if let Some(a) = &r0.article {
+                    hits.push((r, MAct::Open(a.clone(), r0.title.clone())));
+                }
+            }
+        }
+    }
+    hits
+}

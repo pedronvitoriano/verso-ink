@@ -239,6 +239,8 @@ class Handler(BaseHTTPRequestHandler):
         if len(parts) == 2 and parts[0] == "aprovacoes" and XID_RE.match(parts[1]):
             a = EXTRAS.approval(parts[1])
             return self.reply(200, a) if a else self.reply(404, {"error": "não encontrado"})
+        if parts == ["missoes"]:
+            return self.reply(200, EXTRAS.missions_view())
         if parts == ["edicao"]:
             ed = EXTRAS.edition()
             return self.reply(200, ed) if ed else self.reply(404, {"error": "ainda não há edição"})
@@ -299,11 +301,24 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(413, {"error": "imagem grande demais"})
             out, err = EXTRAS.add_photo(data, self.headers.get("Content-Type", ""))
             return self.reply(400, {"error": err}) if err else self.reply(200, out)
-        extras_routes = {("inbox", "link"), ("inbox", "cifra"), ("sessoes",), ("avisos",), ("longe",), ("aprovacoes",), ("brain",), ("edicao", "gerar")}
-        if tuple(parts) in extras_routes or (len(parts) == 2 and parts[0] == "aprovacoes"):
+        extras_routes = {("missoes",), ("missoes", "proxima"), ("missoes", "projetos"), ("inbox", "link"), ("inbox", "cifra"), ("sessoes",), ("avisos",), ("longe",), ("aprovacoes",), ("brain",), ("edicao", "gerar")}
+        if tuple(parts) in extras_routes or (len(parts) == 2 and parts[0] in ("aprovacoes", "missoes")):
             req = self.json_body() if tuple(parts) != ("edicao", "gerar") else {}
             if req is None:
                 return self.reply(400, {"error": "JSON inválido"})
+            if parts == ["missoes"]:
+                out, err = EXTRAS.add_mission(req)
+                return self.reply(400, {"error": err}) if err else self.reply(200, out)
+            if parts == ["missoes", "proxima"]:
+                return self.reply(200, EXTRAS.next_mission())
+            if parts == ["missoes", "projetos"]:
+                EXTRAS.set_projects(req.get("projects", []))
+                return self.reply(200, {"ok": True})
+            if parts[0] == "missoes":
+                if not XID_RE.match(parts[1]):
+                    return self.reply(404, {"error": "não encontrado"})
+                r = EXTRAS.finish_mission(parts[1], req)
+                return self.reply(200, {"ok": True}) if r else self.reply(404, {"error": "não encontrado"})
             if parts == ["inbox", "cifra"]:
                 out, err = EXTRAS.add_cifra(req.get("title", ""), req.get("text", ""))
                 return self.reply(400, {"error": err}) if err else self.reply(200, out)
