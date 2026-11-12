@@ -352,10 +352,38 @@ pub fn download(id: &str, name: &str) -> Result<std::path::PathBuf, String> {
 
 /// Envia uma mensagem (conversa nova se `id` for None), com o contexto do que você estava
 /// fazendo no Kindle, se houver. Devolve o id da conversa.
+/// Manda um arquivo do Kindle para a ponte (anexo de uma pergunta). Devolve o id do anexo.
+pub fn upload(path: &std::path::Path, name: &str) -> Result<String, String> {
+    let (Some(base), Some(tok)) = (url(), token()) else { return Err("A ponte do Claude ainda não foi configurada.".into()) };
+    let enc: String = name.bytes().map(|b| if b.is_ascii_alphanumeric() || b".-_ ".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect();
+    let out = Command::new("curl")
+        .args(resolve_args())
+        .args(["-s", "-m", "240", "-X", "POST", "-H", &format!("Authorization: Bearer {tok}"), "-H", "Content-Type: application/octet-stream", "-H", &format!("X-Nome: {enc}"), "-w", "\n%{http_code}", "--data-binary"])
+        .arg(format!("@{}", path.display()))
+        .arg(format!("{}/anexos", base.trim_end_matches('/')))
+        .stderr(Stdio::null())
+        .output()
+        .map_err(|_| "curl indisponível".to_string())?;
+    let text = String::from_utf8_lossy(&out.stdout).to_string();
+    let (json, code) = text.rsplit_once('\n').unwrap_or(("", "0"));
+    let j = parse(json);
+    match code.trim() {
+        "200" => j.as_ref().and_then(|j| j.get("id")).and_then(Json::str).map(str::to_string).ok_or_else(|| "resposta inválida da ponte".into()),
+        "0" => Err("Sem conexão com a VPS. Confira o Wi-Fi.".into()),
+        c => Err(j.as_ref().and_then(|j| j.get("error")).and_then(Json::str).map(str::to_string).unwrap_or(format!("Erro {c} ao mandar o anexo."))),
+    }
+}
+
 pub fn send(id: Option<&str>, message: &str, context: Option<&str>) -> Result<String, String> {
+    send_with(id, message, context, &[])
+}
+
+/// Pergunta com anexos já enviados (ids devolvidos por `upload`).
+pub fn send_with(id: Option<&str>, message: &str, context: Option<&str>, anexos: &[String]) -> Result<String, String> {
     let path = id.map(|i| format!("/chats/{i}")).unwrap_or_else(|| "/chats".into());
     let t0 = std::time::Instant::now();
-    let body = format!("{{\"text\": {}, \"context\": {}}}", json_str(message), json_str(context.unwrap_or("")));
+    let list: Vec<String> = anexos.iter().map(|a| json_str(a)).collect();
+    let body = format!("{{\"text\": {}, \"context\": {}, \"anexos\": [{}]}}", json_str(message), json_str(context.unwrap_or("")), list.join(","));
     let j = call("POST", &path, Some(&body), 330)?;
     log(&format!("claude respondeu em {} s", t0.elapsed().as_secs()));
     j.get("id").and_then(Json::str).map(str::to_string).ok_or_else(|| "resposta sem conversa".into())
@@ -741,6 +769,8 @@ pub fn draw_doc(fb: &mut Framebuffer, f: &Fonts, title: &str, pages: &[Vec<Line>
 
 /// O que a tela de pergunta mostra.
 pub struct Compose<'a> {
+    /// Nomes dos arquivos anexados.
+    pub attach: &'a [String],
     /// Conversa em andamento (título), ou None para conversa nova.
     pub chat_title: Option<&'a str>,
     /// Última resposta do Claude (quando continua uma conversa sem contexto novo).
@@ -826,9 +856,9 @@ pub fn draw_compose(fb: &mut Framebuffer, f: &Fonts, c: &Compose) {
     let title = if c.chat_title.is_some() { "Continue a conversa" } else { "Pergunte ao Claude" };
     f.draw(fb, Face::Display, 58.0, MARGIN + 80, 232, INK, title);
     if let Some(t) = c.chat_title {
-        let t = fit(f, Face::Body, 26.0, t, W - 2 * MARGIN - 300);
+        let t = fit(f, Face::Body, 26.0, t, W - 2 * MARGIN - 560);
         let w = f.measure(Face::Body, 26.0, &t);
-        f.draw(fb, Face::Body, 26.0, W - MARGIN - w, 130, MUTED, &t);
+        f.draw(fb, Face::Body, 26.0, W - MARGIN - 270 - w, 130, MUTED, &t);
     }
     let has_card = c.about.is_some() || c.last_reply.is_some();
     if let Some((what, detail)) = c.about {
@@ -865,10 +895,113 @@ pub fn draw_compose(fb: &mut Framebuffer, f: &Fonts, c: &Compose) {
     // Espaço sobrando: a dica de chamar o Claude de qualquer tela.
     let bottom = chips.iter().map(|r| r.y + r.h).max().unwrap_or(CARD_Y);
     if !has_card && compose_field_rect().y - bottom > 110 {
-        f.draw(fb, Face::Body, 28.0, MARGIN, bottom + 72, MUTED, "Em qualquer jogo ou tela, deslize de cima para baixo");
-        f.draw(fb, Face::Body, 28.0, MARGIN, bottom + 112, MUTED, "para perguntar sobre o que está nela.");
+        f.draw(fb, Face::Body, 28.0, MARGIN, bottom + 72, MUTED, "Em qualquer tela, puxe de cima para baixo: luz, Wi-Fi");
+        f.draw(fb, Face::Body, 28.0, MARGIN, bottom + 112, MUTED, "e o Claude sobre o que está nela.");
+    }
+    // Anexar: no alto, à direita; os escolhidos aparecem logo acima do campo.
+    let ar = attach_rect();
+    let label = if c.attach.is_empty() { "+ Anexar".to_string() } else { format!("Anexos · {}", c.attach.len()) };
+    ui::button(fb, f, ar, &label, !c.attach.is_empty());
+    if !c.attach.is_empty() {
+        let t = fit(f, Face::Strong, 26.0, &format!("Vai junto: {}", c.attach.join(" · ")), W - 2 * MARGIN);
+        let y = compose_field_rect().y - 22;
+        fb.fill(Rect::new(MARGIN - 8, y - 34, W - 2 * MARGIN + 16, 46), PAPER);
+        f.draw(fb, Face::Strong, 26.0, MARGIN, y, INK, &t);
     }
     draw_compose_field(fb, f, c.text, c.hint);
+}
+
+/// Botão "Anexar" da pergunta ao Claude.
+pub fn attach_rect() -> Rect {
+    Rect::new(W - MARGIN - 250, 76, 250, 84)
+}
+
+/// Anexos possíveis: livros e artigos (arquivo), destaques de um livro (texto), cifras e fotos.
+pub struct AttachItem {
+    pub label: String,
+    pub sub: String,
+    pub path: Option<std::path::PathBuf>,
+    /// Destaques de um livro: (título, texto) vira um .txt na hora de mandar.
+    pub text: Option<(String, String)>,
+}
+
+pub fn attach_items() -> Vec<AttachItem> {
+    let mut v = Vec::new();
+    let lib = crate::apps::Library::scan("");
+    for b in lib.books.iter().filter(|b| b.size <= 16_000_000).take(40) {
+        v.push(AttachItem { label: b.title.clone(), sub: format!("{} · {} KB", b.kind.to_uppercase(), b.size / 1024), path: Some(b.path.clone()), text: None });
+    }
+    for b in crate::clippings::load() {
+        let text: String = b.clips.iter().map(|c| if c.note { format!("[nota] {}", c.text) } else { c.text.clone() }).collect::<Vec<_>>().join("\n\n");
+        v.push(AttachItem { label: format!("Destaques: {}", b.title), sub: format!("{} trechos", b.clips.len()), path: None, text: Some((b.title.clone(), text)) });
+    }
+    for (dir, kind) in [(crate::home_dir().join("data/violao/cifras"), "Cifra"), (crate::home_dir().join("data/fotos"), "Foto")] {
+        let mut fs: Vec<_> = std::fs::read_dir(&dir).map(|it| it.flatten().map(|e| e.path()).filter(|p| p.is_file()).collect()).unwrap_or_default();
+        fs.sort();
+        for p in fs.into_iter().rev().take(20) {
+            let name = p.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+            v.push(AttachItem { label: format!("{kind}: {name}"), sub: kind.to_lowercase(), path: Some(p), text: None });
+        }
+    }
+    v
+}
+
+/// Arquivo pronto para mandar (os destaques viram .txt em data/anexos).
+pub fn attach_file(it: &AttachItem) -> Option<(std::path::PathBuf, String)> {
+    if let Some(p) = &it.path {
+        return Some((p.clone(), p.file_name()?.to_string_lossy().to_string()));
+    }
+    let (title, text) = it.text.as_ref()?;
+    let d = crate::home_dir().join("data/anexos");
+    let _ = std::fs::create_dir_all(&d);
+    let name: String = format!("Destaques - {}", title).chars().filter(|c| !"/\\:*?\"<>|".contains(*c)).take(80).collect::<String>() + ".txt";
+    let p = d.join(&name);
+    std::fs::write(&p, format!("Destaques do livro {title}\n\n{text}")).ok()?;
+    Some((p, name))
+}
+
+pub const ATTACH_ROWS: usize = 8;
+
+pub fn attach_row(k: usize) -> Rect {
+    Rect::new(MARGIN - 8, 300 + k as i32 * 112, W - 2 * MARGIN + 16, 100)
+}
+
+pub fn attach_done_rect() -> Rect {
+    Rect::new(MARGIN, 1300, W - 2 * MARGIN - 300, 96)
+}
+
+pub fn attach_nav(k: usize) -> Rect {
+    Rect::new(W - MARGIN - 280 + k as i32 * 145, 1300, 135, 96)
+}
+
+pub fn draw_attach(fb: &mut Framebuffer, f: &Fonts, items: &[AttachItem], sel: &[usize], page: usize) {
+    fb.fill(fb.screen(), PAPER);
+    ui::draw_back(fb, f, false);
+    f.draw(fb, Face::Display, 64.0, MARGIN, 250, INK, "Anexar");
+    if items.is_empty() {
+        f.draw(fb, Face::Body, 32.0, MARGIN, 360, MUTED, "Nada para anexar ainda: livros, artigos, destaques,");
+        f.draw(fb, Face::Body, 32.0, MARGIN, 404, MUTED, "cifras e fotos do Kindle aparecem aqui.");
+    }
+    for (k, (i, it)) in items.iter().enumerate().skip(page * ATTACH_ROWS).take(ATTACH_ROWS).enumerate() {
+        let r = attach_row(k);
+        let on = sel.contains(&i);
+        ui::card(fb, r, 24, if on { INK } else { PAPER }, false);
+        let fg = if on { PAPER } else { INK };
+        f.draw(fb, Face::Strong, 30.0, r.x + 26, r.y + 44, fg, &fit(f, Face::Strong, 30.0, &it.label, r.w - 170));
+        f.draw(fb, Face::Body, 24.0, r.x + 28, r.y + 80, if on { 0xCC } else { MUTED }, &fit(f, Face::Body, 24.0, &it.sub, r.w - 170));
+        let t = if on { "anexado" } else { "anexar" };
+        let w = f.measure(Face::Strong, 24.0, t);
+        f.draw(fb, Face::Strong, 24.0, r.x + r.w - 26 - w, r.y + 58, if on { PAPER } else { MUTED }, t);
+    }
+    let label = if sel.is_empty() { "Pronto".to_string() } else { format!("Pronto · {}", sel.len()) };
+    ui::button(fb, f, attach_done_rect(), &label, true);
+    let pages = items.len().div_ceil(ATTACH_ROWS);
+    if page > 0 {
+        ui::button(fb, f, attach_nav(0), "‹", false);
+    }
+    if page + 1 < pages {
+        ui::button(fb, f, attach_nav(1), "›", false);
+    }
 }
 
 #[cfg(test)]
@@ -894,9 +1027,9 @@ mod render {
         let f = Fonts::new();
         let s = |v: &[&str]| v.iter().map(|x| x.to_string()).collect::<Vec<_>>();
         let cases = [
-            ("pergunta-uno", Compose { chat_title: None, last_reply: None, about: Some(("UNO", "Mesa: 7 azul · sua mão: 8 cartas")), suggestions: &s(&["Qual a melhor jogada agora?", "Que cor eu escolho?", "Explique o acúmulo"]), text: "", hint: "Toque numa pergunta pronta, ou escreva e toque em OK." }),
-            ("pergunta-nova", Compose { chat_title: None, last_reply: None, about: None, suggestions: &s(&["Resuma o livro que estou lendo", "Organize meu dia", "Um desafio de lógica", "Me ensine algo em 2 minutos"]), text: "", hint: "Toque numa pergunta pronta, ou escreva e toque em OK." }),
-            ("pergunta-continua", Compose { chat_title: Some("Ola"), last_reply: Some("Olá, Pedro! Em que posso ajudar hoje? Posso ler seus livros e ajudar nos jogos."), about: None, suggestions: &s(&["Explique melhor", "Dê um exemplo", "Resuma em tópicos"]), text: "quero saber sobre o livro", hint: "Toque numa pergunta pronta, ou escreva e toque em OK." }),
+            ("pergunta-uno", Compose { attach: &[], chat_title: None, last_reply: None, about: Some(("UNO", "Mesa: 7 azul · sua mão: 8 cartas")), suggestions: &s(&["Qual a melhor jogada agora?", "Que cor eu escolho?", "Explique o acúmulo"]), text: "", hint: "Toque numa pergunta pronta, ou escreva e toque em OK." }),
+            ("pergunta-nova", Compose { attach: &[], chat_title: None, last_reply: None, about: None, suggestions: &s(&["Resuma o livro que estou lendo", "Organize meu dia", "Um desafio de lógica", "Me ensine algo em 2 minutos"]), text: "", hint: "Toque numa pergunta pronta, ou escreva e toque em OK." }),
+            ("pergunta-continua", Compose { attach: &[], chat_title: Some("Ola"), last_reply: Some("Olá, Pedro! Em que posso ajudar hoje? Posso ler seus livros e ajudar nos jogos."), about: None, suggestions: &s(&["Explique melhor", "Dê um exemplo", "Resuma em tópicos"]), text: "quero saber sobre o livro", hint: "Toque numa pergunta pronta, ou escreva e toque em OK." }),
         ];
         for (name, c) in cases {
             let mut fb = Framebuffer::memory();

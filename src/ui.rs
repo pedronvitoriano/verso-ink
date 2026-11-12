@@ -140,6 +140,10 @@ pub fn bar_rect() -> Rect {
 pub fn night_rect() -> Rect {
     Rect::new(MARGIN - 16, 900, 1072 - 2 * MARGIN + 32, 170)
 }
+/// Botão do Claude no painel Luz e tela (pergunta sobre a tela de onde você veio).
+pub fn light_claude_rect() -> Rect {
+    Rect::new(1072 - MARGIN - 420, 72, 420, 88)
+}
 pub fn settings_row_rect() -> Rect {
     Rect::new(MARGIN, 1220, 1072 - 2 * MARGIN, 84)
 }
@@ -921,9 +925,21 @@ pub fn draw_night(fb: &mut Framebuffer, f: &Fonts, l: &Light, pressed: bool) {
     }
 }
 
-pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status) {
+pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status, claude: bool) {
     fb.fill(fb.screen(), PAPER);
     draw_back(fb, f, false);
+    if claude {
+        let r = light_claude_rect();
+        card(fb, r, r.h / 2, INK, false);
+        let d = r.h - 20;
+        let tx = if icon_disc(fb, r.x + 10, r.y + 10, d, "claude") { r.x + 10 + d + 14 } else { r.x + 30 };
+        let t = "Perguntar ao Claude";
+        let mut size = 30.0;
+        while f.measure(Face::Strong, size, t) > r.x + r.w - 28 - tx && size > 20.0 {
+            size -= 1.0;
+        }
+        f.draw(fb, Face::Strong, size, tx, r.y + r.h / 2 + (size * 0.36) as i32, PAPER, t);
+    }
     f.draw(fb, Face::Display, 120.0, MARGIN - 4, 360, INK, "Luz e tela");
     draw_light_level(fb, f, l);
     draw_light_minus(fb, false);

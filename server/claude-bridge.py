@@ -68,6 +68,9 @@ def save(chat):
     tmp.replace(p)
 
 
+ATTACH = DATA / "_anexos"
+
+
 def workdir(cid):
     d = DATA / cid
     d.mkdir(exist_ok=True)
@@ -295,6 +298,21 @@ class Handler(BaseHTTPRequestHandler):
         if not self.authorized():
             return
         parts = self.path_parts()
+        if parts == ["anexos"]:
+            # Arquivo mandado do Kindle para uma pergunta ao Claude (livro, artigo, foto, destaques).
+            data = self.raw(16_000_000)
+            if data is None:
+                return self.reply(413, {"error": "arquivo grande demais (máx. 16 MB)"})
+            name = urllib.parse.unquote(self.headers.get("X-Nome", "anexo"))
+            name = re.sub(r"[^\w .,()-]", "_", name).strip(" .")[:100] or "anexo"
+            aid = secrets.token_hex(6)
+            ATTACH.mkdir(exist_ok=True)
+            (ATTACH / f"{aid}__{name}").write_bytes(data)
+            # Anexo esquecido some em um dia.
+            for old in ATTACH.iterdir():
+                if time.time() - old.stat().st_mtime > 86400:
+                    old.unlink(missing_ok=True)
+            return self.reply(200, {"id": f"{aid}__{name}"})
         if parts == ["inbox", "foto"]:
             data = self.raw(12_000_000)
             if data is None:
@@ -381,10 +399,12 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(404, {"error": "caminho desconhecido"})
         raw = self.body(20000).strip()
         context = ""
+        attach = []
         if raw.startswith("{"):
             try:
                 j = json.loads(raw)
                 raw, context = str(j.get("text", "")).strip(), str(j.get("context", "")).strip()
+                attach = [str(a) for a in j.get("anexos", []) if re.match(r"^[0-9a-f]{12}__[\w .,()-]{1,100}$", str(a))][:6]
             except json.JSONDecodeError:
                 pass
         message = raw
@@ -396,11 +416,23 @@ class Handler(BaseHTTPRequestHandler):
         else:
             chat = {"id": secrets.token_hex(8), "title": message[:60], "session": None, "messages": [], "updated": 0}
         prompt = f"[Contexto]\n{context}\n[/Contexto]\n\n{message}" if context else message
+        # Anexos: vão para a pasta da conversa, onde o Claude lê.
+        names = []
+        for a in attach:
+            src = ATTACH / a
+            if src.is_file():
+                name = a.split("__", 1)[1]
+                src.replace(workdir(chat["id"]) / name)
+                names.append(name)
+        if names:
+            prompt = f"[Anexos do Kindle, nesta pasta: {', '.join(names)}. Leia antes de responder.]\n\n{prompt}"
         text, session, err = run_claude(prompt, chat.get("session"), cwd=workdir(chat["id"]))
         if err:
             return self.reply(502, {"error": err})
         chat["session"] = session or chat.get("session")
         user = {"role": "user", "text": message}
+        if names:
+            user["anexos"] = names
         if context:
             user["context"] = context[:2000]
         chat["messages"] += [user, {"role": "claude", "text": text}]

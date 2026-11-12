@@ -42,6 +42,8 @@ pub enum Screen {
     ClaudeChat,
     ClaudeCompose,
     ClaudeFiles,
+    /// Escolher arquivos do Kindle para anexar à pergunta.
+    ClaudeAttach,
     Reader,
     ReaderToc,
     ClaudeDoc,
@@ -132,6 +134,10 @@ pub struct App {
     /// Dedo numa casa de minijogo: para segurar e arrastar.
     gesture: Option<Gesture>,
     swipe_from: Option<(i32, i32)>,
+    /// Anexos da pergunta ao Claude: o que dá para anexar, os escolhidos e a página.
+    attach_items: Vec<crate::chat::AttachItem>,
+    attach_sel: Vec<usize>,
+    attach_page: usize,
     pub status: Status,
     light: ui::Light,
     lib: Library,
@@ -292,6 +298,9 @@ impl App {
             pressed: None,
             gesture: None,
             swipe_from: None,
+            attach_items: Vec::new(),
+            attach_sel: Vec::new(),
+            attach_page: 0,
             status: read_status(),
             light: read_light(),
             lib: Library::empty(),
@@ -398,11 +407,12 @@ impl App {
         let live_games = if self.screen == Screen::Games { self.live_games() } else { Vec::new() };
         let home_game = if self.screen == Screen::Home { self.home_game() } else { None };
         let vs_claude = self.screen == Screen::ChessEnd && self.coach_level() == Some(crate::coach::CLAUDE);
+        let light_claude = self.light_claude_ok();
         let (fb, f, st) = (&mut self.fb, &self.fonts, &self.status);
         match self.screen {
             Screen::Home => ui::draw_home(fb, f, st, &data::summary(st.offset_min), home_game.as_ref()),
             Screen::Module(m) => ui::draw_module(fb, f, m, st),
-            Screen::Light => ui::draw_light(fb, f, &self.light, st),
+            Screen::Light => ui::draw_light(fb, f, &self.light, st, light_claude),
             Screen::Library => apps::draw_library(fb, f, &self.lib, st),
             Screen::Focus => apps::draw_focus(fb, f, self.pomo, data::focus_today(st.offset_min), st),
             Screen::Settings => apps::draw_settings(fb, f, &self.sys, st, self.confirm.map(|c| c.0)),
@@ -487,7 +497,9 @@ impl App {
             }
             Screen::ClaudeCompose => {
                 let last = if self.claude_about.is_none() { self.cur_chat.as_ref().and_then(|c| c.messages.iter().rev().find(|m| !m.user)).map(|m| m.text.as_str()) } else { None };
+                let names: Vec<String> = self.attach_sel.iter().filter_map(|i| self.attach_items.get(*i)).map(|a| a.label.chars().take(40).collect()).collect();
                 let c = crate::chat::Compose {
+                    attach: &names,
                     chat_title: self.cur_chat.as_ref().map(|c| c.title.as_str()),
                     last_reply: last,
                     about: self.claude_about.as_ref().map(|(a, b)| (a.as_str(), b.as_str())),
@@ -511,6 +523,7 @@ impl App {
                     crate::reader::draw_toc(fb, f, r, self.toc_page);
                 }
             }
+            Screen::ClaudeAttach => crate::chat::draw_attach(fb, f, &self.attach_items, &self.attach_sel, self.attach_page),
             Screen::ClaudeFiles => {
                 if let Some(c) = &self.cur_chat {
                     crate::chat::draw_files(fb, f, c, &self.files_note);
@@ -658,7 +671,10 @@ impl App {
                 (Night, ui::night_rect()),
                 (OpenSettings, ui::settings_row_rect()),
                 (Wifi, ui::wifi_row_rect()),
-            ],
+            ]
+            .into_iter()
+            .chain(self.light_claude_ok().then_some((Ctx, ui::light_claude_rect())))
+            .collect(),
             Screen::Library => {
                 let mut v = vec![(Back, ui::back_rect()), (Clips, apps::clips_rect())];
                 if !self.lib.books.is_empty() || !self.lib.query.is_empty() {
@@ -753,8 +769,20 @@ impl App {
                 }
                 v
             }
+            Screen::ClaudeAttach => {
+                let mut v = vec![(Back, ui::back_rect()), (Primary, crate::chat::attach_done_rect())];
+                let n = self.attach_items.len().saturating_sub(self.attach_page * crate::chat::ATTACH_ROWS).min(crate::chat::ATTACH_ROWS);
+                v.extend((0..n).map(|k| (Row(k), crate::chat::attach_row(k))));
+                if self.attach_page > 0 {
+                    v.push((Prev, crate::chat::attach_nav(0)));
+                }
+                if (self.attach_page + 1) * crate::chat::ATTACH_ROWS < self.attach_items.len() {
+                    v.push((Next, crate::chat::attach_nav(1)));
+                }
+                v
+            }
             Screen::ClaudeCompose => {
-                let mut v = vec![(Back, ui::back_rect())];
+                let mut v = vec![(Back, ui::back_rect()), (Secondary, crate::chat::attach_rect())];
                 if self.claude_about.is_some() {
                     v.push((Ctx, crate::chat::context_rect()));
                 }
@@ -1159,10 +1187,16 @@ impl App {
         )
     }
 
-    /// Telas onde deslizar de cima para baixo chama o Claude (fora o Início, que abre a luz).
-    fn claude_swipe_ok(&self) -> bool {
+    /// O painel Luz e tela mostra o botão do Claude: veio de uma tela que o Claude entende.
+    fn light_claude_ok(&self) -> bool {
+        // Da Início, o botão abre o Claude; de outra tela, pergunta sobre ela.
+        self.light_return.is_none_or(|s| s == Screen::Home || Self::claude_ok_for(s))
+    }
+
+    /// Telas sobre as quais dá para perguntar ao Claude (o botão no painel puxado de cima).
+    fn claude_ok_for(s: Screen) -> bool {
         !matches!(
-            self.screen,
+            s,
             Screen::Home
                 | Screen::Sleep
                 | Screen::Claude
@@ -1405,10 +1439,31 @@ impl App {
         self.screen = Screen::Update;
         self.render(true);
         self.fb.wait();
-        match crate::chat::send(id.as_deref(), &text, self.claude_ctx.as_deref()) {
+        // Anexos: sobem antes da pergunta (cada um vira um arquivo na pasta da conversa).
+        let mut ids = Vec::new();
+        for i in self.attach_sel.clone() {
+            let Some((path, name)) = self.attach_items.get(i).and_then(crate::chat::attach_file) else { continue };
+            self.update_msg = ("Claude".into(), vec![format!("Mandando {name}…"), "".into(), text.chars().take(80).collect()], None);
+            self.render(true);
+            match crate::chat::upload(&path, &name) {
+                Ok(id) => ids.push(id),
+                Err(e) => {
+                    self.compose_hint = format!("Anexo {name}: {e}");
+                    self.screen = Screen::ClaudeCompose;
+                    return self.render(true);
+                }
+            }
+        }
+        if !ids.is_empty() {
+            self.update_msg = ("Claude".into(), vec!["Lendo os anexos e pensando… pode levar até um minuto.".into(), "".into(), text.chars().take(80).collect()], None);
+            self.render(true);
+        }
+        match crate::chat::send_with(id.as_deref(), &text, self.claude_ctx.as_deref(), &ids) {
             Ok(new_id) => {
                 self.compose_text.clear();
                 self.claude_ctx = None;
+                self.attach_sel.clear();
+                self.attach_items.clear();
                 self.open_chat(&new_id);
             }
             Err(e) => {
@@ -2363,6 +2418,30 @@ impl App {
                 let back = std::mem::replace(&mut self.doc_back, Screen::ClaudeFiles);
                 self.go(back);
             }
+            (Screen::ClaudeCompose, Secondary) => {
+                self.attach_items = crate::chat::attach_items();
+                self.attach_sel.retain(|i| *i < self.attach_items.len());
+                self.attach_page = 0;
+                self.go(Screen::ClaudeAttach);
+            }
+            (Screen::ClaudeAttach, Row(k)) => {
+                let i = self.attach_page * crate::chat::ATTACH_ROWS + k;
+                if let Some(p) = self.attach_sel.iter().position(|x| *x == i) {
+                    self.attach_sel.remove(p);
+                } else if self.attach_sel.len() < 6 {
+                    self.attach_sel.push(i);
+                }
+                self.render(false);
+            }
+            (Screen::ClaudeAttach, Prev) => {
+                self.attach_page = self.attach_page.saturating_sub(1);
+                self.render(true);
+            }
+            (Screen::ClaudeAttach, Next) => {
+                self.attach_page += 1;
+                self.render(true);
+            }
+            (Screen::ClaudeAttach, Primary | Back) => self.go(Screen::ClaudeCompose),
             (Screen::ClaudeCompose, Ctx) => {
                 self.claude_ctx = None;
                 self.claude_about = None;
@@ -2680,6 +2759,15 @@ impl App {
                 self.render(true);
             }
             (Screen::Light, OpenSettings) => self.go(Screen::Settings),
+            (Screen::Light, Ctx) => {
+                // Volta à tela de onde veio (sem redesenhar) e pergunta ao Claude sobre ela.
+                let back = self.light_return.take().unwrap_or(Screen::Home);
+                if back == Screen::Home {
+                    return self.go(Screen::Claude);
+                }
+                self.screen = back;
+                self.ask_claude_here();
+            }
             (Screen::Light, Wifi) => {
                 self.wifi_back = Screen::Light;
                 self.wifi_note = "Toque numa rede para conectar.".into();
@@ -3167,13 +3255,15 @@ impl App {
             Touch::Up(x, y) => {
                 self.gesture = None;
                 let from = self.swipe_from.take();
-                // Deslizar do topo para baixo na tela inicial abre Luz e tela.
+                // Deslizar do topo para baixo, em qualquer tela: o painel Luz e tela (brilho, Wi-Fi,
+                // ajustes), com o botão que pergunta ao Claude sobre a tela de onde você veio.
                 let swipe_down = from.is_some_and(|(_, fy)| fy < 180 && y - fy > 250);
-                if swipe_down && self.claude_swipe_ok() {
+                if swipe_down && self.screen != Screen::Home && self.light_swipe_ok() {
                     if let Some(h) = self.pressed.take() {
                         self.flip(h, false);
                     }
-                    return self.ask_claude_here();
+                    self.light_return = Some(self.screen);
+                    return self.go(Screen::Light);
                 }
                 // Deslizar de baixo para cima: Luz e tela (luz, modo escuro, Wi-Fi, ajustes) de qualquer lugar.
                 let swipe_up = from.is_some_and(|(_, fy)| fy > 1290 && fy - y > 250);
@@ -3642,6 +3732,29 @@ mod raio_x {
                 app.mini_tap(id, 0);
                 shot(&mut app, name);
             }
+        }
+        // Puxar do topo num jogo: Luz e tela com o botão do Claude sobre o jogo.
+        app.light_return = Some(Screen::Mini);
+        app.go(Screen::Light);
+        shot(&mut app, "luz-de-um-jogo");
+        app.light_return = None;
+        // Anexar à pergunta ao Claude.
+        {
+            app.cur_chat = None;
+            app.claude_about = None;
+            app.start_claude_compose();
+            shot(&mut app, "claude-pergunta-anexar");
+            app.attach_items = ["Perfil de três reis", "Destaques: Perfil de três reis", "Cifra: Primeiros acordes", "Foto: praia"]
+                .iter()
+                .map(|l| crate::chat::AttachItem { label: l.to_string(), sub: "PDF · 812 KB".into(), path: None, text: Some(("x".into(), "y".into())) })
+                .collect();
+            app.attach_sel = vec![1];
+            app.go(Screen::ClaudeAttach);
+            shot(&mut app, "claude-anexar");
+            app.go(Screen::ClaudeCompose);
+            shot(&mut app, "claude-pergunta-com-anexo");
+            app.attach_sel.clear();
+            app.attach_items.clear();
         }
         // Revisão dos destaques com cartões de exemplo (o arquivo do Kindle não existe no PC).
         {
