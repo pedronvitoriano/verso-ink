@@ -478,8 +478,25 @@ pub fn phrase_rect(f: &Fonts, act: crate::saudacao::Act) -> Rect {
     Rect::new(MARGIN - 4, r.y + r.h - 66, w.min(r.w), 60)
 }
 
-/// Frase do momento (muda de hora em hora) a partir do que o Kindle sabe agora.
+/// Frase do momento, guardada por 5 minutos: montar o contexto lê vários arquivos (destaques,
+/// edição, ofensiva) e a frase é pedida a cada desenho da Início e a cada toque.
 pub fn home_phrase(st: &Status) -> crate::saudacao::Phrase {
+    use std::sync::Mutex;
+    static CACHE: Mutex<Option<((i64, u32, u32, usize), crate::saudacao::Phrase)>> = Mutex::new(None);
+    let now = clock::now(st.offset_min);
+    let key = (crate::data::today(st.offset_min), now.hour, now.minute / 5, crate::saudacao::collected().len());
+    let mut c = CACHE.lock().unwrap();
+    if let Some((k, p)) = c.as_ref() {
+        if *k == key {
+            return p.clone();
+        }
+    }
+    let p = home_phrase_fresh(st);
+    *c = Some((key, p.clone()));
+    p
+}
+
+fn home_phrase_fresh(st: &Status) -> crate::saudacao::Phrase {
     let now = clock::now(st.offset_min);
     let book = crate::data::last_book();
     let game = crate::data::last_game().and_then(|i| crate::apps::GAMES.get(i)).map(|g| g.0.to_string());

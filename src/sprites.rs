@@ -9,6 +9,8 @@ use std::collections::HashMap;
 
 thread_local! {
     static CACHE: RefCell<HashMap<(String, i32), Option<Vec<u8>>>> = Default::default();
+    /// Quais sprites existem (evita ir ao disco a cada desenho).
+    static EXISTS: RefCell<HashMap<String, bool>> = Default::default();
 }
 
 fn path(name: &str) -> std::path::PathBuf {
@@ -16,14 +18,19 @@ fn path(name: &str) -> std::path::PathBuf {
 }
 
 pub fn exists(name: &str) -> bool {
-    path(name).exists()
+    EXISTS.with(|e| *e.borrow_mut().entry(name.to_string()).or_insert_with(|| path(name).exists()))
 }
 
 /// Desenha o sprite `name` centrado em `r` (quadrado do lado menor). Devolve false se não houver.
 pub fn draw(fb: &mut Framebuffer, name: &str, r: Rect) -> bool {
     let side = r.w.min(r.h);
-    let px = CACHE.with(|c| {
-        c.borrow_mut()
+    if side <= 0 || !exists(name) {
+        return false;
+    }
+    // Desenha direto do cache, sem copiar os pixels a cada vez.
+    CACHE.with(|c| {
+        let mut c = c.borrow_mut();
+        let px = c
             .entry((name.to_string(), side))
             .or_insert_with(|| {
                 let img = image::open(path(name)).ok()?;
@@ -37,19 +44,25 @@ pub fn draw(fb: &mut Framebuffer, name: &str, r: Rect) -> bool {
                     out.extend([v, a]);
                 }
                 Some(out)
-            })
-            .clone()
-    });
-    let Some(px) = px else { return false };
-    let (x0, y0) = (r.x + (r.w - side) / 2, r.y + (r.h - side) / 2);
-    for y in 0..side {
-        for x in 0..side {
-            let k = 2 * (y * side + x) as usize;
-            let (v, a) = (px[k], px[k + 1]);
-            if a > 8 {
-                fb.blend(x0 + x, y0 + y, v, a);
+            });
+        let Some(px) = px.as_ref() else { return false };
+        let (x0, y0) = (r.x + (r.w - side) / 2, r.y + (r.h - side) / 2);
+        // Recorte calculado uma vez; depois, mistura direto no buffer (sem checar borda a cada ponto).
+        let (xa, xb) = ((-x0).max(0), (fb.width - x0).min(side));
+        let (ya, yb) = ((-y0).max(0), (fb.height - y0).min(side));
+        let w = fb.width as usize;
+        for y in ya..yb {
+            let src = 2 * (y * side) as usize;
+            let dst = (y0 + y) as usize * w + x0 as usize;
+            for x in xa..xb {
+                let k = src + 2 * x as usize;
+                let a = px[k + 1] as u32;
+                if a > 8 {
+                    let d = &mut fb.buf[dst + x as usize];
+                    *d = ((*d as u32 * (255 - a) + px[k] as u32 * a + 127) / 255) as u8;
+                }
             }
         }
-    }
-    true
+        true
+    })
 }

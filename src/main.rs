@@ -358,6 +358,10 @@ fn main() {
     let code = match args.get(1).map(String::as_str) {
         Some("run") => run(),
         Some("gate") => gate(),
+        Some("bench") => {
+            app::App::bench();
+            0
+        }
         Some("info") => info(),
         // Teste da instalação sem publicar no GitHub: verso-ink update-test URL URL_SHA256
         Some("update-test") => match (args.get(2), args.get(3)) {

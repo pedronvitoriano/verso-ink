@@ -129,9 +129,24 @@ pub fn today() -> i64 {
     crate::data::today(crate::offset_min())
 }
 
-/// Quantos cartões esperam hoje (para o botão da tela Destaques).
+/// Quantos cartões esperam hoje (para o botão da tela Destaques e a frase da Início). Guardado até
+/// o arquivo de destaques ou o progresso mudar, ou virar o dia: ler e separar 270 KB de destaques
+/// custa caro no Kindle.
 pub fn due_count() -> usize {
-    due(&cards(), &states(), today(), new_today(today())).len()
+    use std::sync::Mutex;
+    static CACHE: Mutex<Option<((i64, Option<std::time::SystemTime>, Option<std::time::SystemTime>), usize)>> = Mutex::new(None);
+    let mtime = |p: std::path::PathBuf| std::fs::metadata(p).and_then(|m| m.modified()).ok();
+    let clip = std::env::var("VERSO_INK_CLIPPINGS").unwrap_or_else(|_| "/mnt/us/documents/My Clippings.txt".into());
+    let key = (today(), mtime(clip.into()), mtime(data("revisao.txt")));
+    let mut c = CACHE.lock().unwrap();
+    if let Some((k, n)) = c.as_ref() {
+        if *k == key {
+            return *n;
+        }
+    }
+    let n = due(&cards(), &states(), today(), new_today(today())).len();
+    *c = Some((key, n));
+    n
 }
 
 /// Sem pergunta do Claude: esconde a palavra mais longa do trecho.

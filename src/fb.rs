@@ -254,9 +254,20 @@ impl Framebuffer {
 
     /// Retângulo arredondado preenchido, com borda suavizada.
     pub fn round_rect(&mut self, r: Rect, radius: i32, v: u8) {
-        let rad = radius.min(r.w / 2).min(r.h / 2) as f32;
-        for y in r.y..r.y + r.h {
-            for x in r.x..r.x + r.w {
+        let radi = radius.min(r.w / 2).min(r.h / 2).max(0);
+        let rad = radi as f32;
+        let (lx, rx) = (r.x + radi, r.x + r.w - radi);
+        for y in r.y.max(0)..(r.y + r.h).min(self.height) {
+            // Faixa do meio: a linha inteira está dentro da forma (preenche de uma vez).
+            if y >= r.y + radi && y < r.y + r.h - radi {
+                self.fill(Rect::new(r.x, y, r.w, 1), v);
+                continue;
+            }
+            // Linhas dos cantos: o meio é cheio; só as pontas pedem o cálculo da curva.
+            if rx > lx {
+                self.fill(Rect::new(lx, y, rx - lx, 1), v);
+            }
+            for x in (r.x..lx).chain(rx.max(lx)..r.x + r.w) {
                 let cx = (x as f32 + 0.5).clamp(r.x as f32 + rad, (r.x + r.w) as f32 - rad);
                 let cy = (y as f32 + 0.5).clamp(r.y as f32 + rad, (r.y + r.h) as f32 - rad);
                 let (dx, dy) = (x as f32 + 0.5 - cx, y as f32 + 0.5 - cy);
@@ -280,8 +291,14 @@ impl Framebuffer {
             let (dx, dy) = (x as f32 + 0.5 - cx, y as f32 + 0.5 - cy);
             (dx * dx + dy * dy).sqrt() - rad
         };
+        let radi = rad as i32;
+        // Nas linhas do meio só as faixas da borda mudam algo; o miolo é pulado.
+        let edge = radi.max(t) + 2;
         for y in r.y..r.y + r.h + sh {
-            for x in r.x..r.x + r.w {
+            let band = radi.max(t) + 1;
+            let middle = y >= r.y + band && y < r.y + r.h - band;
+            let xs: Vec<i32> = if middle && r.w > 2 * edge { (r.x..r.x + edge).chain(r.x + r.w - edge..r.x + r.w).collect() } else { (r.x..r.x + r.w).collect() };
+            for x in xs {
                 let d = sd(x, y, r.y);
                 if d > -0.5 {
                     // Fora da forma: sombra (se cair dentro da forma deslocada) ou papel.
@@ -415,5 +432,82 @@ mod tests {
             fb.invert_round(r, rad);
         }
         assert_eq!(fb.buf, before);
+    }
+}
+
+#[cfg(test)]
+impl Framebuffer {
+    fn round_frame_ref(&mut self, r: Rect, radius: i32, t: i32, v: u8, outside: u8, sh: i32, shadow: u8) {
+        let rad = radius.min(r.w / 2).min(r.h / 2) as f32;
+        let sd = |x: i32, y: i32, top: i32| {
+            let cx = (x as f32 + 0.5).clamp(r.x as f32 + rad, (r.x + r.w) as f32 - rad);
+            let cy = (y as f32 + 0.5).clamp(top as f32 + rad, (top + r.h) as f32 - rad);
+            let (dx, dy) = (x as f32 + 0.5 - cx, y as f32 + 0.5 - cy);
+            (dx * dx + dy * dy).sqrt() - rad
+        };
+        for y in r.y..r.y + r.h + sh {
+            for x in r.x..r.x + r.w {
+                let d = sd(x, y, r.y);
+                if d > -0.5 {
+                    // Fora da forma: sombra (se cair dentro da forma deslocada) ou papel.
+                    let ds = sd(x, y, r.y + sh);
+                    let base = if sh > 0 && ds < 0.5 { shadow } else { outside };
+                    if y < r.y + r.h {
+                        self.blend(x, y, base, 255);
+                    } else if ds < 0.5 {
+                        self.blend(x, y, shadow, 255);
+                    }
+                    let a = (0.5 - d).clamp(0.0, 1.0);
+                    if a > 0.0 && y < r.y + r.h {
+                        self.blend(x, y, v, (a * 255.0) as u8);
+                    }
+                } else if d > -(t as f32) - 0.5 {
+                    let a = (d + t as f32 + 0.5).clamp(0.0, 1.0);
+                    self.blend(x, y, v, (a * 255.0) as u8);
+                }
+            }
+        }
+    }
+    fn round_rect_ref(&mut self, r: Rect, radius: i32, v: u8) {
+        let rad = radius.min(r.w / 2).min(r.h / 2) as f32;
+        for y in r.y..r.y + r.h {
+            for x in r.x..r.x + r.w {
+                let cx = (x as f32 + 0.5).clamp(r.x as f32 + rad, (r.x + r.w) as f32 - rad);
+                let cy = (y as f32 + 0.5).clamp(r.y as f32 + rad, (r.y + r.h) as f32 - rad);
+                let (dx, dy) = (x as f32 + 0.5 - cx, y as f32 + 0.5 - cy);
+                let d = (dx * dx + dy * dy).sqrt() - rad;
+                let a = (0.5 - d).clamp(0.0, 1.0);
+                if a > 0.0 {
+                    self.blend(x, y, v, (a * 255.0) as u8);
+                }
+            }
+        }
+    }
+
+}
+
+#[cfg(test)]
+mod desenho_igual {
+    use super::*;
+
+    /// As versões rápidas da moldura e do retângulo arredondado desenham exatamente o mesmo que
+    /// as antigas (ponto a ponto), em vários tamanhos, raios e espessuras.
+    #[test]
+    fn rapido_igual_ao_antigo() {
+        for (w, h, rad, t, sh) in [(928, 110, 30, 4, 7), (300, 300, 40, 6, 0), (80, 80, 40, 3, 7), (500, 90, 45, 5, 7), (40, 400, 12, 8, 3), (1000, 200, 30, 5, 7), (900, 900, 30, 4, 7)] {
+            let r = Rect::new(37, 51, w, h);
+            let (mut a, mut b) = (Framebuffer::memory(), Framebuffer::memory());
+            for fb in [&mut a, &mut b] {
+                for (i, p) in fb.buf.iter_mut().enumerate() {
+                    *p = (i * 7 % 251) as u8;
+                }
+            }
+            a.round_rect_ref(r, rad, 0x30);
+            b.round_rect(r, rad, 0x30);
+            assert!(a.buf == b.buf, "round_rect {w}x{h} r{rad}");
+            a.round_frame_ref(r, rad, t, 0x10, 0xEE, sh, 0x2E);
+            b.round_frame(r, rad, t, 0x10, 0xEE, sh, 0x2E);
+            assert!(a.buf == b.buf, "round_frame {w}x{h} r{rad} t{t}");
+        }
     }
 }

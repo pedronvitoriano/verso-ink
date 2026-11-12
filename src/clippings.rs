@@ -55,7 +55,8 @@ pub fn parse(src: &str) -> Vec<BookClips> {
 }
 
 pub fn load() -> Vec<BookClips> {
-    std::fs::read_to_string("/mnt/us/documents/My Clippings.txt").map(|s| parse(&s)).unwrap_or_default()
+    let path = std::env::var("VERSO_INK_CLIPPINGS").unwrap_or_else(|_| "/mnt/us/documents/My Clippings.txt".into());
+    std::fs::read_to_string(path).map(|s| parse(&s)).unwrap_or_default()
 }
 
 pub const BOOKS_PER_PAGE: usize = 7;

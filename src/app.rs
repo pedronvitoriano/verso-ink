@@ -302,6 +302,74 @@ fn round_radius(t: Target, r: Rect) -> i32 {
 }
 
 impl App {
+    /// Medição de desempenho: desenha as telas principais na memória (sem tocar a tela de verdade)
+    /// e cronometra o desenho e a busca do alvo de um toque. `verso-ink bench` no Kindle.
+    pub fn bench() {
+        let mut app = App::new(Framebuffer::memory());
+        let t = Instant::now();
+        let _ = crate::revisao::due_count();
+        println!("{:<22} {:>6.1} ms", "destaques (contagem)", t.elapsed().as_secs_f64() * 1000.0);
+        let t = Instant::now();
+        let _ = crate::aprender::status();
+        println!("{:<22} {:>6.1} ms", "ofensiva (status)", t.elapsed().as_secs_f64() * 1000.0);
+        // Primitivas de desenho, para achar o gargalo.
+        {
+            let mut fb = Framebuffer::memory();
+            let f = &app.fonts;
+            let tm = |name: &str, n: u32, mut job: Box<dyn FnMut(&mut Framebuffer)>, fb: &mut Framebuffer| {
+                let t = Instant::now();
+                for _ in 0..n {
+                    job(fb);
+                }
+                println!("  · {name:<26} {:>7.3} ms", t.elapsed().as_secs_f64() * 1000.0 / n as f64);
+            };
+            tm("encher a tela", 20, Box::new(|fb| fb.fill(fb.screen(), 0xFF)), &mut fb);
+            tm("cartão 928×110", 50, Box::new(|fb| ui::card(fb, crate::fb::Rect::new(72, 500, 928, 110), 30, 0xFF, false)), &mut fb);
+            tm("disco arredondado 80", 200, Box::new(|fb| fb.round_rect(crate::fb::Rect::new(100, 100, 80, 80), 40, 0)), &mut fb);
+            tm("texto 30px (40 letras)", 50, Box::new(|fb| { f.draw(fb, crate::text::Face::Body, 30.0, 72, 300, 0, "Monte as quatro fundações de A até K por"); }), &mut fb);
+            tm("texto 130px (título)", 50, Box::new(|fb| { f.draw(fb, crate::text::Face::Display, 130.0, 72, 300, 0, "Paciência"); }), &mut fb);
+            tm("medir texto 30px", 200, Box::new(|_fb| { f.measure(crate::text::Face::Body, 30.0, "Monte as quatro fundações de A até K por"); }), &mut fb);
+            tm("traço (stroke) 100px", 200, Box::new(|fb| ui::stroke(fb, (100.0, 100.0), (200.0, 150.0), 6.0, 0)), &mut fb);
+            tm("ilustração 340", 50, Box::new(|fb| { crate::sprites::draw(fb, "cab-mais", crate::fb::Rect::new(600, 90, 340, 290)); }), &mut fb);
+            tm("ícone em disco 104", 50, Box::new(|fb| { ui::icon_disc(fb, 100, 100, 104, "ler"); }), &mut fb);
+        }
+        let screens: Vec<(&str, Screen)> = vec![
+            ("Início", Screen::Home),
+            ("Jogar", Screen::Games),
+            ("Ler", Screen::Library),
+            ("Hoje", Screen::Today),
+            ("Calendário", Screen::Calendar),
+            ("Mais", Screen::Module(Module::Mais)),
+            ("Luz e tela", Screen::Light),
+            ("Edição", Screen::Edicao),
+            ("Achados", Screen::Achados),
+        ];
+        for (name, s) in screens {
+            app.go(s);
+            let n = 5;
+            let t = Instant::now();
+            for _ in 0..n {
+                app.render(false);
+            }
+            let draw = t.elapsed().as_secs_f64() * 1000.0 / n as f64;
+            let t = Instant::now();
+            for k in 0..20 {
+                let _ = app.hit(100 + k * 40, 300 + k * 50);
+            }
+            let hit = t.elapsed().as_secs_f64() * 1000.0 / 20.0;
+            println!("{name:<22} desenho {draw:>6.1} ms · toque {hit:>5.1} ms");
+        }
+        // Aprender (hub dos tópicos).
+        app.mini = Some(Box::new(crate::estudo::Estudo::new()));
+        app.mini_back = Screen::Home;
+        app.go(Screen::Mini);
+        let t = Instant::now();
+        for _ in 0..5 {
+            app.render(false);
+        }
+        println!("{:<22} desenho {:>6.1} ms", "Aprender", t.elapsed().as_secs_f64() * 1000.0 / 5.0);
+    }
+
     pub fn new(fb: Framebuffer) -> Self {
         App {
             fb,

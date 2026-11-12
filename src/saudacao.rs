@@ -75,6 +75,7 @@ pub enum Rarity {
     Legendary,
 }
 
+#[derive(Clone)]
 pub struct Phrase {
     pub text: String,
     pub act: Act,
