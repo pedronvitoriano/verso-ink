@@ -338,7 +338,7 @@ impl Historias {
         let mut cy = layout_top(&options) + if p.end { 60 } else { 0 };
         for (id, text) in &options {
             let h = choice_h(text);
-            let rr = Rect::new(MARGIN - 16, cy, W - 2 * MARGIN + 32, h);
+            let rr = Rect::new(MARGIN, cy, W - 2 * MARGIN, h);
             let filled = *id == 700 || *id == 701;
             if *id == 710 {
                 // O rumo novo: cartão cinza, diferente das escolhas do roteiro.

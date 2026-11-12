@@ -337,7 +337,7 @@ impl MiniGame for Naval {
             return fases::draw_retry(fb, f, self.fase);
         }
         let buttons: Vec<&str> = match self.phase {
-            Phase::Setup(_) => vec![if self.horiz { "Girar: deitado" } else { "Girar: em pé" }, "Sortear", "Desfazer", "Começar"],
+            Phase::Setup(_) => vec![if self.horiz { "Deitado" } else { "Em pé" }, "Sortear", "Desfazer", "Começar"],
             Phase::Over(_) => vec!["Novo jogo"],
             _ => vec![if self.view_own { "Ver mar inimigo" } else { "Ver meu mar" }, "Novo jogo"],
         };

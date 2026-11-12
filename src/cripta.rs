@@ -799,8 +799,8 @@ fn wrap(f: &Fonts, text: &str, max_w: i32) -> Vec<String> {
 fn btn(k: usize, n: usize) -> Rect {
     let n = n as i32;
     let gap = 12;
-    let w = (W - 2 * minigame::MARGIN + 40 - (n - 1) * gap) / n;
-    Rect::new(minigame::MARGIN - 20 + k as i32 * (w + gap), 1330, w, 90)
+    let w = (W - 2 * minigame::MARGIN - (n - 1) * gap) / n;
+    Rect::new(minigame::MARGIN + k as i32 * (w + gap), 1330, w, 90)
 }
 
 impl MiniGame for Cripta {

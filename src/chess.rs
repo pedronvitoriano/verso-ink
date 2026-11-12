@@ -1098,7 +1098,7 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites, btn: &Butto
     if g.mode == Mode::Local {
         // Partida local: botão para girar a tela para quem joga.
         let r = rotate_rect();
-        let label = if rotate_enabled() { "Girar: sim" } else { "Girar: não" };
+        let label = if rotate_enabled() { "Virar a tela: sim" } else { "Virar a tela: não" };
         crate::ui::button(fb, f, r, label, rotate_enabled());
     } else {
         let tw = f.measure(Face::Strong, 34.0, "Xadrez");

@@ -371,7 +371,7 @@ impl Uno {
             _ => (116, 171),
         };
         let per_row = n.div_ceil(rows);
-        let span = W - 2 * MARGIN + 40;
+        let span = W - 2 * MARGIN;
         // Fileiras de cima mostram a parte de cima das cartas; a última aparece inteira.
         let row_gap = match rows {
             1 => 0,

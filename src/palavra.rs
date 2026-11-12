@@ -108,9 +108,10 @@ impl Palavra {
     }
 
     fn tile(r: usize, c: usize) -> Rect {
-        let s = 128;
+        // Grade com folga até o teclado (antes encostava na primeira fileira de teclas).
+        let s = 120;
         let x0 = (W - 5 * s - 4 * 12) / 2;
-        Rect::new(x0 + c as i32 * (s + 12), 270 + r as i32 * (s + 10), s, s)
+        Rect::new(x0 + c as i32 * (s + 12), 270 + r as i32 * (s + 8), s, s)
     }
 
     fn key(row: usize, k: usize) -> Rect {
@@ -121,11 +122,11 @@ impl Palavra {
     }
 
     fn enter_rect() -> Rect {
-        Rect::new(MARGIN - 50, 1100 + 2 * 106, 150, 96)
+        Rect::new(MARGIN, 1100 + 2 * 106, 124, 96)
     }
 
     fn back_rect() -> Rect {
-        Rect::new(W - MARGIN - 100, 1100 + 2 * 106, 150, 96)
+        Rect::new(W - MARGIN - 124, 1100 + 2 * 106, 124, 96)
     }
 
     /// Melhor informação conhecida de cada letra (para pintar o teclado).

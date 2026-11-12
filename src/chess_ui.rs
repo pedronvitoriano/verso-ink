@@ -146,9 +146,9 @@ pub const PER_PAGE: usize = 6;
 /// Cartões em grade de 2 colunas por 3 linhas.
 pub fn coach_row(i: usize) -> Rect {
     let gap = 24;
-    let w = (W - 2 * MARGIN + 32 - gap) / 2;
+    let w = (W - 2 * MARGIN - gap) / 2;
     let h = 270;
-    Rect::new(MARGIN - 16 + (i % 2) as i32 * (w + gap), 410 + (i / 2) as i32 * (h + 22), w, h)
+    Rect::new(MARGIN + (i % 2) as i32 * (w + gap), 410 + (i / 2) as i32 * (h + 22), w, h)
 }
 pub fn prev_rect() -> Rect {
     Rect::new(MARGIN, 1300, 260, 88)
@@ -205,11 +205,11 @@ pub fn draw_coaches(fb: &mut Framebuffer, f: &Fonts, page: usize) {
         let r = coach_row(k);
         let (locked, current, beaten) = (i > open, i == open, i < open);
         // Próximo desafio: cartão preto. Vencidos: contorno. Bloqueados: apagados.
-        let (fg, muted) = if current { (PAPER, 0xCC) } else if locked { (0xAA, 0xBB) } else { (INK, MUTED) };
+        let (fg, muted) = if current { (PAPER, 0xCC) } else if locked { (0x55, 0x70) } else { (INK, MUTED) };
         if current {
             fb.round_rect(r, 28, INK);
         } else {
-            fb.round_outline(r, 28, if locked { 2 } else { 4 }, if locked { 0xCC } else { INK }, PAPER);
+            fb.round_outline(r, 28, if locked { 3 } else { 4 }, if locked { 0x77 } else { INK }, PAPER);
         }
         let side = 150;
         if current {
@@ -320,7 +320,7 @@ pub fn draw_end(fb: &mut Framebuffer, f: &Fonts, title: &str, detail: &str, rati
 // ---------- Partidas anteriores ----------
 
 pub fn game_row(i: usize) -> Rect {
-    Rect::new(MARGIN - 16, 400 + i as i32 * 140, W - 2 * MARGIN + 32, 136)
+    Rect::new(MARGIN, 400 + i as i32 * 140, W - 2 * MARGIN, 136)
 }
 
 pub fn draw_games(fb: &mut Framebuffer, f: &Fonts, games: &[Saved], page: usize, offset_min: i64) {
@@ -425,7 +425,7 @@ pub fn key_moments(g: &Saved) -> Vec<usize> {
 }
 
 pub fn moment_rect(i: usize) -> Rect {
-    Rect::new(MARGIN - 16, 1010 + i as i32 * 96, W - 2 * MARGIN + 32, 92)
+    Rect::new(MARGIN, 1010 + i as i32 * 96, W - 2 * MARGIN, 92)
 }
 
 /// Insights em blocos: precisão, lances por tipo, fases, evolução e momentos-chave tocáveis.
