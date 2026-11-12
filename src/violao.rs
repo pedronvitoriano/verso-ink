@@ -753,17 +753,48 @@ impl Violao {
         let done = p::done();
         let base = p::first(self.module);
         let next = (0..m.lessons.len()).find(|k| !done.contains(&(base + k)));
-        for (k, l) in m.lessons.iter().enumerate() {
+        // Trilha: bolinhas em zigue-zague ligadas por um traço, o título ao lado.
+        let centers: Vec<(i32, i32)> = (0..m.lessons.len()).map(|k| {
             let r = Self::lesson_row(k);
+            const ZIG: [i32; 6] = [0, 44, 88, 110, 88, 44];
+            (r.x + 40 + ZIG[k % 6], r.y + r.h / 2)
+        }).collect();
+        for w in centers.windows(2) {
+            ui::stroke(fb, (w[0].0 as f32, w[0].1 as f32), (w[1].0 as f32, w[1].1 as f32), 6.0, 0xB8);
+        }
+        for (k, l) in m.lessons.iter().enumerate() {
+            let (cx, cy) = centers[k];
             let seen = done.contains(&(base + k));
             let is_next = next == Some(k);
-            ui::card(fb, r, 20, if is_next { INK } else if seen { ui::SURFACE } else { PAPER }, false);
-            let fg = if is_next { PAPER } else { INK };
-            f.draw(fb, Face::Strong, 28.0, r.x + 22, r.y + 44, fg, &crate::apps::fit(f, Face::Strong, 28.0, &format!("{}. {}", k + 1, l.title), r.w - 170));
-            let tag = if is_next { "começar" } else if seen { "vista" } else { "" };
-            if !tag.is_empty() {
-                let w = f.measure(Face::Strong, 22.0, tag);
-                f.draw(fb, Face::Strong, 22.0, r.x + r.w - 24 - w, r.y + 42, if is_next { 0xCC } else { MUTED }, tag);
+            let d = if is_next { 70 } else { 58 };
+            let nr = Rect::new(cx - d / 2, cy - d / 2, d, d);
+            if is_next {
+                fb.round_rect(Rect::new(nr.x - 8, nr.y - 8, nr.w + 16, nr.h + 16), d / 2 + 8, 0xC8);
+                fb.round_rect(nr, d / 2, INK);
+                let t = format!("{}", k + 1);
+                let tw = f.measure(Face::Display, 32.0, &t);
+                f.draw(fb, Face::Display, 32.0, cx - tw / 2, cy + 12, PAPER, &t);
+            } else if seen {
+                fb.round_rect(nr, d / 2, INK);
+                ui::stroke(fb, ((cx - 13) as f32, (cy + 1) as f32), ((cx - 3) as f32, (cy + 11) as f32), 6.0, PAPER);
+                ui::stroke(fb, ((cx - 3) as f32, (cy + 11) as f32), ((cx + 15) as f32, (cy - 10) as f32), 6.0, PAPER);
+            } else {
+                fb.round_outline(nr, d / 2, 4, 0x88, PAPER);
+                let t = format!("{}", k + 1);
+                let tw = f.measure(Face::Strong, 26.0, &t);
+                f.draw(fb, Face::Strong, 26.0, cx - tw / 2, cy + 10, MUTED, &t);
+            }
+            let tx = Self::lesson_row(0).x + 40 + 110 + 64;
+            let face = if is_next { Face::Display } else { Face::Strong };
+            let size = if is_next { 32.0 } else { 28.0 };
+            let title = crate::apps::fit(f, face, size, l.title, W - MARGIN - tx - if is_next { 150 } else { 0 });
+            f.draw(fb, face, size, tx, cy + 10, if seen || is_next { INK } else { MUTED }, &title);
+            if is_next {
+                let r = Rect::new(W - MARGIN - 140, cy - 26, 140, 52);
+                fb.round_rect(r, 26, INK);
+                let t = if seen { "rever" } else { "começar" };
+                let tw = f.measure(Face::Strong, 22.0, t);
+                f.draw(fb, Face::Strong, 22.0, r.x + (r.w - tw) / 2, r.y + 34, PAPER, t);
             }
         }
     }
