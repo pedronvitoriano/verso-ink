@@ -38,6 +38,7 @@ mod minigame;
 mod engine;
 mod clippings;
 mod revisao;
+mod aprender;
 mod claude_ui;
 mod clock;
 mod update;

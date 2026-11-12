@@ -3568,6 +3568,23 @@ mod raio_x {
             app.mini_tap(id, 0);
             shot(&mut app, name);
         }
+        // Aprender: ofensiva de 4 dias (hoje ainda não), um protetor, e as comemorações.
+        {
+            let t = crate::aprender::today();
+            std::fs::write(home.join("data/aprender.txt"), format!("{}|12|licao\n{}|15|licao\n{}|30|treino\n{}|10|licao\n", t - 4, t - 3, t - 2, t - 1)).unwrap();
+            std::fs::write(home.join("data/aprender_protetor.txt"), "1").unwrap();
+            app.go(Screen::Home);
+            shot(&mut app, "inicio-ofensiva");
+            app.mini = Some(Box::new(crate::violao::Violao::new()));
+            app.mini_back = Screen::Home;
+            app.go(Screen::Mini);
+            app.mini_tap(703, 0);
+            shot(&mut app, "aprender-curso");
+            for (c, name) in [(crate::aprender::Cel::Streak(5, false), "aprender-ofensiva"), (crate::aprender::Cel::Streak(7, true), "aprender-ofensiva-protetor"), (crate::aprender::Cel::Goal(30), "aprender-meta")] {
+                crate::aprender::draw_celebration(&mut app.fb, &app.fonts, c);
+                app.fb.save_pgm(&out.join(format!("zz-{name}.pgm")));
+            }
+        }
         // Revisão dos destaques com cartões de exemplo (o arquivo do Kindle não existe no PC).
         {
             let cards = vec![

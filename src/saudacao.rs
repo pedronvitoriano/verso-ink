@@ -16,6 +16,8 @@ pub struct Context {
     pub battery: Option<u8>,
     /// Já treinou violão hoje (e quantos dias seguidos).
     pub guitar: Option<(bool, u32)>,
+    /// Aprendizado: já fez a lição de hoje e a ofensiva em dias.
+    pub learn: Option<(bool, u32)>,
 }
 
 pub fn name() -> Option<String> {
@@ -37,7 +39,7 @@ fn fill(t: &str, c: &Context, nome: Option<&str>) -> String {
         }
     }
     let livro = c.book.as_ref().map(|(t, _)| short_title(t)).unwrap_or_default();
-    s.replace("{livro}", &livro).replace("{jogo}", c.game.as_deref().unwrap_or("")).replace("{min}", &c.read_today.to_string())
+    s.replace("{livro}", &livro).replace("{jogo}", c.game.as_deref().unwrap_or("")).replace("{min}", &c.read_today.to_string()).replace("{dias}", &c.learn.map(|(_, n)| n).unwrap_or(0).to_string())
 }
 
 fn short_title(t: &str) -> String {
@@ -109,6 +111,15 @@ fn candidates(c: &Context) -> Vec<&'static str> {
             }
         }
     }
+    if let Some((done, streak)) = c.learn {
+        if !done && streak >= 2 && c.hour >= 17 {
+            // Ofensiva em risco: vira prioridade da frase.
+            return vec!["Sua ofensiva de {dias} dias espera uma lição, {nome}.", "Não deixa a chama apagar: {dias} dias, {nome}!", "Uma lição rápida segura os {dias} dias, {nome}."];
+        }
+        if done && streak >= 3 {
+            v.push("{dias} dias seguidos aprendendo. Bonito, {nome}!");
+        }
+    }
     if c.read_today >= 20 {
         v.push("Já foram {min} minutos de leitura hoje. Bonito, {nome}!");
     }
@@ -132,7 +143,7 @@ mod tests {
     use super::*;
 
     fn ctx(hour: u32) -> Context {
-        Context { hour, weekday: 3, day: 20000, raining: false, book: Some(("Perfil de três reis - Gene Edwards PDF".into(), Some(0.4))), game: Some("Xadrez".into()), read_today: 5, edition: true, notice: false, battery: Some(80), guitar: Some((false, 3)) }
+        Context { hour, weekday: 3, day: 20000, raining: false, book: Some(("Perfil de três reis - Gene Edwards PDF".into(), Some(0.4))), game: Some("Xadrez".into()), read_today: 5, edition: true, notice: false, battery: Some(80), guitar: Some((false, 3)), learn: Some((false, 4)) }
     }
 
     #[test]

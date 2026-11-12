@@ -197,6 +197,7 @@ pub struct Revisao {
     total: usize,
     mastered: usize,
     questions: HashMap<String, (String, String)>,
+    cel: Option<crate::aprender::Cel>,
 }
 
 impl Revisao {
@@ -206,12 +207,12 @@ impl Revisao {
         let t = today();
         let session = due(&all, &st, t, new_today(t));
         let mastered = all.iter().filter(|c| st.get(&c.id).is_some_and(|(b, _)| *b >= 4)).count();
-        Revisao { view: View::Hub, session, pos: 0, remembered: 0, total: all.len(), mastered, questions: questions() }
+        Revisao { view: View::Hub, session, pos: 0, remembered: 0, total: all.len(), mastered, questions: questions(), cel: None }
     }
 
     #[cfg(test)]
     pub fn with(cards: Vec<Card>, q: HashMap<String, (String, String)>) -> Self {
-        Revisao { view: View::Hub, total: cards.len(), session: cards, pos: 0, remembered: 0, mastered: 0, questions: q }
+        Revisao { view: View::Hub, total: cards.len(), session: cards, pos: 0, remembered: 0, mastered: 0, questions: q, cel: None }
     }
 
     fn card(&self) -> Option<&Card> {
@@ -251,6 +252,8 @@ impl Revisao {
         if ok {
             self.remembered += 1;
         }
+        // 2 XP por cartão revisado (lembrando ou não: o esforço é o mesmo).
+        self.cel = crate::aprender::add(2, "revisao");
         self.pos += 1;
         self.view = if self.pos >= self.session.len() { View::Done } else { View::Front };
     }
@@ -287,6 +290,10 @@ impl Revisao {
 
 impl MiniGame for Revisao {
     fn draw(&self, fb: &mut Framebuffer, f: &Fonts) {
+        if let Some(c) = self.cel {
+            crate::aprender::draw_celebration(fb, f, c);
+            return;
+        }
         fb.fill(fb.screen(), PAPER);
         ui::draw_back(fb, f, false);
         match self.view {
@@ -370,13 +377,18 @@ impl MiniGame for Revisao {
                 f.draw(fb, Face::Display, 100.0, MARGIN - 4, 330, INK, "Feito");
                 let n = self.session.len();
                 let msg = format!("{} de {} lembrados hoje. Os que escaparam voltam amanhã; os outros, mais para frente.", self.remembered, n);
-                Self::draw_lines(fb, f, Face::Body, 34.0, MARGIN, 420, W - 2 * MARGIN, &msg, 4);
+                let y = Self::draw_lines(fb, f, Face::Body, 34.0, MARGIN, 420, W - 2 * MARGIN, &msg, 4);
+                crate::aprender::draw_panel(fb, f, Rect::new(MARGIN, y + 60, W - 2 * MARGIN, 180), &crate::aprender::status());
+                crate::aprender::week_row(fb, f, MARGIN, y + 300, W - 2 * MARGIN, &crate::aprender::status());
                 ui::button(fb, f, Self::wide(), "Voltar", true);
             }
         }
     }
 
     fn targets(&self) -> Vec<(u32, Rect)> {
+        if self.cel.is_some() {
+            return vec![(999, crate::aprender::cel_button())];
+        }
         match self.view {
             View::Hub if !self.session.is_empty() => vec![(1, Self::wide())],
             View::Front => vec![(2, Self::wide()), (2, Rect::new(0, 280, W, 960))],
@@ -387,6 +399,13 @@ impl MiniGame for Revisao {
     }
 
     fn tap(&mut self, id: u32, _x: i32, _y: i32) -> Redraw {
+        if self.cel.is_some() {
+            if id == 999 {
+                self.cel = None;
+                return Redraw::Full;
+            }
+            return Redraw::None;
+        }
         match (self.view, id) {
             (View::Hub, 1) => {
                 self.pos = 0;
@@ -409,6 +428,9 @@ impl MiniGame for Revisao {
     }
 
     fn back(&mut self) -> bool {
+        if self.cel.take().is_some() {
+            return true;
+        }
         if matches!(self.view, View::Front | View::Back) {
             self.view = View::Hub;
             return true;

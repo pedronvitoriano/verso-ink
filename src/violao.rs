@@ -406,6 +406,8 @@ pub struct Violao {
     lesson: usize,
     answered: Option<usize>,
     quiz: Quiz,
+    /// Comemoração por cima (ofensiva cresceu, meta batida).
+    cel: Option<crate::aprender::Cel>,
 }
 
 /// Treinos de leitura: modo (notas, ritmo, armaduras, intervalos), nível, pergunta, acertos
@@ -439,7 +441,7 @@ impl Violao {
         let q = crate::partitura::Q::new(0, 0, &mut rng, None);
         let quiz = Quiz { mode: 0, level: 0, q, streak: 0, wrong: None, rng };
         let lesson = crate::partitura::next_lesson();
-        Violao { view: View::Hub, songs, song: 0, page: 0, shift: 0, list_page: 0, dict_root: 0, pair: suggested(), timer: Timer::Idle, shown_secs: 0, module: crate::partitura::locate(lesson).0, lesson, answered: None, quiz }
+        Violao { view: View::Hub, songs, song: 0, page: 0, shift: 0, list_page: 0, dict_root: 0, pair: suggested(), timer: Timer::Idle, shown_secs: 0, module: crate::partitura::locate(lesson).0, lesson, answered: None, quiz, cel: None }
     }
 
     fn hub_card(k: usize) -> Rect {
@@ -464,7 +466,11 @@ impl Violao {
             ("Treino do dia", practice_sub, true),
             ("Músicas", format!("{} cifra{} · mande pelo celular", self.songs.len(), if self.songs.len() == 1 { "" } else { "s" }), false),
             ("Acordes", "Diagramas de todos os tons".to_string(), false),
-            ("Aprender partitura", format!("{} de {} lições · 4 treinos de leitura", crate::partitura::done().len().min(crate::partitura::total()), crate::partitura::total()), false),
+            ("Aprender partitura", {
+                let st = crate::aprender::status();
+                let fogo = if st.streak > 0 { format!("Ofensiva de {} dia{}{} · ", st.streak, if st.streak == 1 { "" } else { "s" }, if st.today_done { "" } else { ", falta hoje" }) } else { String::new() };
+                format!("{fogo}{} de {} lições", crate::partitura::done().len().min(crate::partitura::total()), crate::partitura::total())
+            }, false),
         ];
         for (k, (t, s, main)) in cards.iter().enumerate() {
             let r = Self::hub_card(k);
@@ -693,7 +699,7 @@ impl Violao {
 
 impl Violao {
     fn module_row(k: usize) -> Rect {
-        Rect::new(MARGIN, 290 + k as i32 * 150, W - 2 * MARGIN, 132)
+        Rect::new(MARGIN, 478 + k as i32 * 126, W - 2 * MARGIN, 112)
     }
 
     fn lesson_row(k: usize) -> Rect {
@@ -711,25 +717,26 @@ impl Violao {
         let t = format!("{seen} de {} lições", p::total());
         let w = f.measure(Face::Strong, 26.0, &t);
         f.draw(fb, Face::Strong, 26.0, W - MARGIN - w, 232, MUTED, &t);
+        crate::aprender::draw_panel(fb, f, Rect::new(MARGIN, 270, W - 2 * MARGIN, 180), &crate::aprender::status());
         for (k, m) in p::MODULES.iter().enumerate() {
             let r = Self::module_row(k);
             let (n, total) = (p::done_in(k), m.lessons.len());
             let complete = n == total;
             ui::card(fb, r, 28, if complete { ui::SURFACE } else { PAPER }, false);
             // Número do módulo num disco.
-            let d = 76;
-            fb.round_rect(Rect::new(r.x + 24, r.y + (r.h - d) / 2, d, d), d / 2, INK);
+            let d = 70;
+            fb.round_rect(Rect::new(r.x + 22, r.y + (r.h - d) / 2, d, d), d / 2, INK);
             let num = format!("{}", k + 1);
-            let nw = f.measure(Face::Display, 44.0, &num);
-            f.draw(fb, Face::Display, 44.0, r.x + 24 + (d - nw) / 2, r.y + r.h / 2 + 16, PAPER, &num);
-            let tx = r.x + 24 + d + 26;
-            f.draw(fb, Face::Display, 40.0, tx, r.y + 58, INK, m.title);
-            f.draw(fb, Face::Body, 24.0, tx, r.y + 98, MUTED, &crate::apps::fit(f, Face::Body, 24.0, m.sub, r.x + r.w - 150 - tx));
+            let nw = f.measure(Face::Display, 40.0, &num);
+            f.draw(fb, Face::Display, 40.0, r.x + 22 + (d - nw) / 2, r.y + r.h / 2 + 15, PAPER, &num);
+            let tx = r.x + 22 + d + 24;
+            f.draw(fb, Face::Display, 38.0, tx, r.y + 52, INK, m.title);
+            f.draw(fb, Face::Body, 24.0, tx, r.y + 88, MUTED, &crate::apps::fit(f, Face::Body, 24.0, m.sub, r.x + r.w - 150 - tx));
             // Progresso: número e barrinha.
             let prog = format!("{n}/{total}");
             let pw = f.measure(Face::Strong, 28.0, &prog);
-            f.draw(fb, Face::Strong, 28.0, r.x + r.w - 28 - pw, r.y + 58, INK, &prog);
-            let bar = Rect::new(r.x + r.w - 128, r.y + 82, 100, 12);
+            f.draw(fb, Face::Strong, 28.0, r.x + r.w - 28 - pw, r.y + 52, INK, &prog);
+            let bar = Rect::new(r.x + r.w - 128, r.y + 72, 100, 12);
             fb.round_rect(bar, 6, 0xC8);
             if n > 0 {
                 fb.round_rect(Rect::new(bar.x, bar.y, (bar.w * n as i32 / total as i32).max(12), bar.h), 6, INK);
@@ -987,6 +994,10 @@ impl MiniGame for Violao {
     }
 
     fn draw(&self, fb: &mut Framebuffer, f: &Fonts) {
+        if let Some(c) = self.cel {
+            crate::aprender::draw_celebration(fb, f, c);
+            return;
+        }
         fb.fill(fb.screen(), PAPER);
         ui::draw_back(fb, f, false);
         match self.view {
@@ -1004,6 +1015,9 @@ impl MiniGame for Violao {
     }
 
     fn targets(&self) -> Vec<(u32, Rect)> {
+        if self.cel.is_some() {
+            return vec![(999, crate::aprender::cel_button())];
+        }
         match self.view {
             View::Hub => (0..4).map(|k| (700 + k as u32, Self::hub_card(k))).collect(),
             View::Course => {
@@ -1057,6 +1071,13 @@ impl MiniGame for Violao {
     }
 
     fn tap(&mut self, id: u32, _x: i32, _y: i32) -> Redraw {
+        if self.cel.is_some() {
+            if id == 999 {
+                self.cel = None;
+                return Redraw::Full;
+            }
+            return Redraw::None;
+        }
         match (self.view, id) {
             (View::Hub, 700) => {
                 self.pair = suggested();
@@ -1091,7 +1112,12 @@ impl MiniGame for Violao {
                 self.answered = None;
                 self.view = View::Lesson;
             }
-            (View::Check, k @ 870..=873) => self.answered = Some((k - 870) as usize),
+            (View::Check, k @ 870..=873) => {
+                let k = (k - 870) as usize;
+                let ok = k == crate::partitura::lesson(self.lesson).check.ok;
+                self.answered = Some(k);
+                self.cel = crate::aprender::add(if ok { 10 } else { 5 }, "licao");
+            }
             (View::Check, 721) => self.advance(),
             (View::Quiz, k @ 840..=843) => {
                 self.quiz.mode = (k - 840) as usize;
@@ -1109,6 +1135,15 @@ impl MiniGame for Violao {
                 let picked = crate::partitura::answers(self.quiz.mode)[(k - 860) as usize];
                 if (k - 860) as usize == self.quiz.q.correct() {
                     self.quiz.streak += 1;
+                    // 1 XP por acerto e 5 de bônus a cada 10 seguidos.
+                    let bonus = if self.quiz.streak % 10 == 0 { 5 } else { 0 };
+                    if let Some(c) = crate::aprender::add(1 + bonus, "treino") {
+                        self.cel = Some(c);
+                        crate::partitura::save_best(self.quiz.q.record_key(), self.quiz.streak);
+                        self.quiz.wrong = None;
+                        self.quiz.next();
+                        return Redraw::Full;
+                    }
                     crate::partitura::save_best(self.quiz.q.record_key(), self.quiz.streak);
                     self.quiz.wrong = None;
                     self.quiz.next();
@@ -1143,6 +1178,7 @@ impl MiniGame for Violao {
                             use std::io::Write;
                             writeln!(f, "{}|{}|{n}", today(), self.pair)
                         });
+                        self.cel = crate::aprender::add(10, "violao");
                         Timer::Idle
                     }
                 };
@@ -1181,6 +1217,9 @@ impl MiniGame for Violao {
     }
 
     fn back(&mut self) -> bool {
+        if self.cel.take().is_some() {
+            return true;
+        }
         if self.view == View::Hub {
             return false;
         }

@@ -389,6 +389,7 @@ fn home_phrase(st: &Status) -> String {
         notice: !crate::painel::notices().is_empty(),
         battery: st.battery,
         guitar: Some((crate::violao::practiced_today(), crate::violao::streak())),
+        learn: { let st = crate::aprender::status(); (st.streak > 0 || st.today_done).then_some((st.today_done, st.streak)) },
     };
     let p = crate::saudacao::phrase(&ctx);
     if p.is_empty() { "O que vamos fazer hoje?".into() } else { p }
@@ -534,7 +535,22 @@ pub fn draw_tile(fb: &mut Framebuffer, f: &Fonts, i: usize, pressed: bool, _extr
     let x = r.x + 22 + d + 22;
     fb.fill(Rect::new(x - 12, r.y + 26, 3, r.h - 52), 0xBB);
     f.draw(fb, Face::Display, 50.0, x + 4, r.y + r.h / 2 + 4, INK, m.title());
-    let text = crate::apps::fit(f, Face::Body, 24.0, m.subtitle(), r.x + r.w - 16 - x);
+    // Violão: com ofensiva viva, o cartão mostra a chama (apagada se ainda falta hoje).
+    let mut x = x;
+    let sub = match m {
+        Module::Violao => {
+            let st = crate::aprender::status();
+            if st.streak > 0 {
+                crate::aprender::flame(fb, Rect::new(x + 4, r.y + r.h / 2 + 12, 36, 36), st.today_done);
+                x += 38;
+                if st.today_done { format!("{} dia{} de ofensiva", st.streak, if st.streak == 1 { "" } else { "s" }) } else { format!("{} dia{} · falta hoje", st.streak, if st.streak == 1 { "" } else { "s" }) }
+            } else {
+                m.subtitle().to_string()
+            }
+        }
+        _ => m.subtitle().to_string(),
+    };
+    let text = crate::apps::fit(f, Face::Body, 24.0, &sub, r.x + r.w - 16 - x);
     f.draw(fb, Face::Body, 24.0, x + 6, r.y + r.h / 2 + 42, MUTED, &text);
 }
 
