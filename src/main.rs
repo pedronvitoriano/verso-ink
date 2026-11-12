@@ -37,6 +37,7 @@ mod cripta;
 mod minigame;
 mod engine;
 mod clippings;
+mod revisao;
 mod claude_ui;
 mod clock;
 mod update;

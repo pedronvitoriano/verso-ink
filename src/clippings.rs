@@ -86,10 +86,19 @@ fn pager(fb: &mut Framebuffer, f: &Fonts, page: usize, pages: usize) {
     f.draw(fb, Face::Strong, 30.0, (W - pw) / 2, 1356, MUTED, &pg);
 }
 
-pub fn draw_books(fb: &mut Framebuffer, f: &Fonts, books: &[BookClips], page: usize) {
+/// Botão "Revisar" no alto da tela Destaques.
+pub fn review_rect() -> Rect {
+    Rect::new(W - MARGIN - 300, 236, 300, 90)
+}
+
+pub fn draw_books(fb: &mut Framebuffer, f: &Fonts, books: &[BookClips], page: usize, due: usize) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
     f.draw(fb, Face::Display, 130.0, MARGIN - 6, 310, INK, "Destaques");
+    if !books.is_empty() {
+        let label = if due > 0 { format!("Revisar · {due}") } else { "Revisar".to_string() };
+        ui::button(fb, f, review_rect(), &label, due > 0);
+    }
     let total: usize = books.iter().map(|b| b.clips.len()).sum();
     let sub = if books.is_empty() { "Nenhum destaque ainda. Os que você marcar no Kindle aparecem aqui.".to_string() } else { format!("{total} trechos em {} livros", books.len()) };
     f.draw(fb, Face::Strong, 30.0, MARGIN, 380, MUTED, &fit(f, Face::Strong, 30.0, &sub, W - 2 * MARGIN));

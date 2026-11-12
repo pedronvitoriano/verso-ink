@@ -476,6 +476,40 @@ class Extras:
             self.write(self.base / "edicoes" / f"{day}.json", ed)
         return out, None
 
+    # ---------- Revisão dos destaques ----------
+
+    def highlight_questions(self, req):
+        """Uma pergunta por destaque (a resposta é a ideia do trecho) e, quando houver, uma ligação
+        com um trecho de outro livro."""
+        clip = lambda v, n: str(v or "").strip()[:n]
+        items = [{"id": clip(i.get("id"), 20), "livro": clip(i.get("livro"), 120), "texto": clip(i.get("texto"), 800)} for i in req.get("itens", []) if isinstance(i, dict) and i.get("id")][:12]
+        others = [{"livro": clip(i.get("livro"), 120), "texto": clip(i.get("texto"), 260)} for i in req.get("outros", []) if isinstance(i, dict)][:40]
+        if not items:
+            return None, "nada para preparar"
+        prompt = f"""Você prepara cartões de revisão espaçada com os trechos que o Pedro destacou nos livros do Kindle.
+Para CADA trecho de "itens", escreva:
+- "pergunta": uma pergunta curta (até 140 caracteres) cuja resposta é a ideia central do trecho, para ele tentar lembrar antes de ver o trecho. Pergunte pela ideia, não por palavras exatas; não copie o trecho; não dê a resposta na pergunta.
+- "ligacao": se um trecho de OUTRO livro (em "outros" ou entre os itens) conversa de verdade com este, uma frase (até 160 caracteres) dizendo qual livro e como se ligam; se não houver ligação real, "".
+Responda SÓ com JSON válido, sem cercas: {{"cartoes": [{{"id": "...", "pergunta": "...", "ligacao": "..."}}]}}
+Português do Brasil (ou a língua do trecho, se não for português).
+
+itens: {json.dumps(items, ensure_ascii=False)}
+outros: {json.dumps(others, ensure_ascii=False)}"""
+        try:
+            text, _, err = self.run_claude(prompt, tools="", timeout=200)
+        except Exception as e:
+            return None, str(e)
+        if err:
+            return None, err
+        m = re.search(r"\{.*\}", text, re.S)
+        try:
+            data = json.loads(m.group(0)) if m else {}
+        except json.JSONDecodeError:
+            data = {}
+        ids = {i["id"] for i in items}
+        cards = [{"id": c["id"], "pergunta": clip(c.get("pergunta"), 200), "ligacao": clip(c.get("ligacao"), 220)} for c in data.get("cartoes", []) if isinstance(c, dict) and c.get("id") in ids and c.get("pergunta")]
+        return {"cartoes": cards}, None
+
     # ---------- Edição da manhã ----------
 
     def set_brain(self, text):

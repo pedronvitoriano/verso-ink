@@ -211,6 +211,8 @@ pub struct App {
     /// Tutorial: jogo, página, para onde voltar e se abre o jogo ao terminar.
     tut: (usize, usize, Screen, bool),
     clips: Vec<crate::clippings::BookClips>,
+    /// Destaques para revisar hoje.
+    clip_due: usize,
     clip_page: usize,
     clip_book: usize,
     clip_pages: Vec<Vec<(String, bool)>>,
@@ -350,6 +352,7 @@ impl App {
             wifi_back: Screen::Settings,
             tut: (0, 0, Screen::Games, false),
             clips: Vec::new(),
+            clip_due: 0,
             clip_page: 0,
             clip_book: 0,
             clip_pages: Vec::new(),
@@ -469,7 +472,7 @@ impl App {
                     crate::chess_ui::draw_insights(fb, f, g, &self.saved_games[1..], tip.as_deref());
                 }
             }
-            Screen::Clips => crate::clippings::draw_books(fb, f, &self.clips, self.clip_page),
+            Screen::Clips => crate::clippings::draw_books(fb, f, &self.clips, self.clip_page, self.clip_due),
             Screen::Mini => {
                 if let Some(g) = &self.mini {
                     g.draw(fb, f);
@@ -933,6 +936,9 @@ impl App {
             }
             Screen::Clips => {
                 let mut v = vec![(Back, ui::back_rect())];
+                if !self.clips.is_empty() {
+                    v.push((Clips, crate::clippings::review_rect()));
+                }
                 let n = self.clips.len().saturating_sub(self.clip_page * crate::clippings::BOOKS_PER_PAGE).min(crate::clippings::BOOKS_PER_PAGE);
                 v.extend((0..n).map(|i| (BookRow(i), crate::clippings::book_row(i))));
                 if self.clip_page > 0 {
@@ -1585,6 +1591,10 @@ impl App {
         std::thread::spawn(move || {
             let s = crate::painel::sync();
             let (ed, inbox) = if full { (crate::painel::fetch_edition(), crate::painel::sync_inbox()) } else { (false, (0, 0)) };
+            if full {
+                // Perguntas do Claude para a revisão dos destaques (só os que ainda não têm).
+                crate::revisao::prepare();
+            }
             let _ = tx.send((s, ed, inbox));
         });
     }
@@ -2246,6 +2256,7 @@ impl App {
             }
             Screen::Clips => {
                 self.clips = crate::clippings::load();
+                self.clip_due = crate::revisao::due_count();
                 self.clip_page = 0;
             }
             Screen::Chess | Screen::ChessReview => {
@@ -2672,6 +2683,11 @@ impl App {
                 }
             }
             (Screen::Library, Clips) => self.go(Screen::Clips),
+            (Screen::Clips, Clips) => {
+                self.mini = Some(Box::new(crate::revisao::Revisao::new()));
+                self.mini_back = Screen::Clips;
+                self.go(Screen::Mini);
+            }
             (Screen::Clips, BookRow(i)) => {
                 self.clip_book = self.clip_page * crate::clippings::BOOKS_PER_PAGE + i;
                 if let Some(b) = self.clips.get(self.clip_book) {
@@ -3551,6 +3567,24 @@ mod raio_x {
         for (id, name) in [(841, "violao-treino-ritmo"), (842, "violao-treino-armaduras"), (843, "violao-treino-intervalos")] {
             app.mini_tap(id, 0);
             shot(&mut app, name);
+        }
+        // Revisão dos destaques com cartões de exemplo (o arquivo do Kindle não existe no PC).
+        {
+            let cards = vec![
+                crate::revisao::Card { id: "c1".into(), book: "Perfil de três reis".into(), text: "Quem é quebrado por dentro aprende a não quebrar os outros; a autoridade verdadeira não precisa se defender.".into() },
+                crate::revisao::Card { id: "c2".into(), book: "Hábitos".into(), text: "Pequenas melhorias diárias, somadas ao longo de anos, produzem resultados que parecem impossíveis no começo.".into() },
+            ];
+            let mut q = std::collections::HashMap::new();
+            q.insert("c1".to_string(), ("Segundo o livro, o que mostra que uma autoridade é verdadeira?".to_string(), "Hábitos: a mesma paciência de quem melhora um pouco por dia, sem pressa de provar nada.".to_string()));
+            app.go(Screen::Home);
+            app.mini = Some(Box::new(crate::revisao::Revisao::with(cards, q)));
+            app.mini_back = Screen::Home;
+            app.go(Screen::Mini);
+            shot(&mut app, "revisao-inicio");
+            for (id, name) in [(1, "revisao-pergunta"), (2, "revisao-verso"), (4, "revisao-sem-pergunta"), (2, "revisao-sem-pergunta-verso")] {
+                app.mini_tap(id, 0);
+                shot(&mut app, name);
+            }
         }
         app.approvals = vec![crate::painel::Approval { id: "abc".into(), project: "verso-ink".into(), tool: "Bash".into(), summary: "cargo build --release && tools/deploy.sh (envia o binário novo ao Kindle pelo túnel)".into(), created: 0 }];
         app.go(Screen::Aprovar);
