@@ -390,7 +390,7 @@ fn draw_daily_art(fb: &mut Framebuffer, st: &Status) {
         return;
     }
     let k = day.rem_euclid(n) + 1;
-    crate::sprites::draw(fb, &format!("dia-{k:02}"), Rect::new(1072 - MARGIN - 360, 136, 372, 340));
+    crate::sprites::draw(fb, &format!("dia-{k:02}"), Rect::new(1072 - MARGIN - 330, 160, 344, 302));
 }
 
 /// O que a tela inicial mostra além do fixo: livro em leitura e jogo em andamento.
