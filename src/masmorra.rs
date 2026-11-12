@@ -692,11 +692,9 @@ impl MiniGame for Masmorra {
         }
         ui::draw_back(fb, f, false);
         minigame::header(fb, f, "Masmorra", &format!("Andar {} de 5 · {} pontos{mode}", self.depth, self.score()));
-        // Moldura fina do mapa (quatro traços, sem pintar o miolo).
+        // Moldura arredondada com sombra chapada, como os cartões do sistema.
         let (bw, bh) = (aw, ah);
-        for r in [Rect::new(MX - 4, MY - 4, bw + 8, 3), Rect::new(MX - 4, MY + bh + 1, bw + 8, 3), Rect::new(MX - 4, MY - 4, 3, bh + 8), Rect::new(MX + bw + 1, MY - 4, 3, bh + 8)] {
-            fb.fill(r, INK);
-        }
+        fb.round_frame(Rect::new(MX, MY, bw, bh), 30, 5, INK, PAPER, ui::SH, ui::SHADOW);
         // Painel: vida, força, defesa, nível.
         let y = MY + bh + 22;
         Self::heart(fb, MARGIN - 20, y + 4, 30, INK);
@@ -762,7 +760,7 @@ impl MiniGame for Masmorra {
         }
         for k in 0..4 {
             let r = Self::arrow_rect(k);
-            fb.round_outline(r, 22, 4, INK, PAPER);
+            ui::card(fb, r, 22, PAPER, false);
             let (cx, cy) = (r.x as f32 + r.w as f32 / 2.0, r.y as f32 + r.h as f32 / 2.0);
             let (dx, dy) = (DIRS[k].1 as f32, DIRS[k].0 as f32);
             let tip = (cx + dx * 24.0, cy + dy * 24.0);

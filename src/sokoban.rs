@@ -190,14 +190,14 @@ impl Sokoban {
     }
 
     fn cell(i: usize) -> Rect {
-        let s = 92;
+        let s = 88;
         let x0 = (W - s * N as i32) / 2;
         Rect::new(x0 + (i % N) as i32 * s, 270 + (i / N) as i32 * s, s, s)
     }
 
     fn arrow_rect(k: usize) -> Rect {
         // Cruz de setas: cima, baixo, esquerda, direita.
-        let (cx, cy, s) = (W / 2, 1222, 112);
+        let (cx, cy, s) = (W / 2, 1238, 108);
         match k {
             0 => Rect::new(cx - s / 2, cy - s - 6, s, s),
             1 => Rect::new(cx - s / 2, cy + 6 + 0, s, s),
@@ -261,9 +261,12 @@ impl MiniGame for Sokoban {
                 fb.round_rect(Rect::new(cx - 22, cy, 44, 32), 14, INK);
             }
         }
+        // Cantos arredondados e sombra chapada na área do mapa, como os cartões do sistema.
+        let (a, b) = (Self::cell(0), Self::cell(N * N - 1));
+        fb.round_frame(Rect::new(a.x, a.y, b.x + b.w - a.x, b.y + b.h - a.y), 30, 5, INK, PAPER, crate::ui::SH, crate::ui::SHADOW);
         for k in 0..4 {
             let r = Self::arrow_rect(k);
-            fb.round_outline(r, 24, 4, INK, PAPER);
+            crate::ui::card(fb, r, 24, PAPER, false);
             let (cx, cy) = (r.x as f32 + r.w as f32 / 2.0, r.y as f32 + r.h as f32 / 2.0);
             let (dx, dy) = (DIRS[k].1 as f32, DIRS[k].0 as f32);
             let tip = (cx + dx * 26.0, cy + dy * 26.0);

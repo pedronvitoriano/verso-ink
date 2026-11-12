@@ -260,6 +260,41 @@ impl Framebuffer {
         }
     }
 
+    /// Moldura arredondada por cima de algo já desenhado (um mapa de casas): os cantos de fora
+    /// viram `outside`, a borda de espessura `t` vira `v` e, embaixo, a sombra chapada de
+    /// altura `sh` em `shadow`.
+    pub fn round_frame(&mut self, r: Rect, radius: i32, t: i32, v: u8, outside: u8, sh: i32, shadow: u8) {
+        let rad = radius.min(r.w / 2).min(r.h / 2) as f32;
+        let sd = |x: i32, y: i32, top: i32| {
+            let cx = (x as f32 + 0.5).clamp(r.x as f32 + rad, (r.x + r.w) as f32 - rad);
+            let cy = (y as f32 + 0.5).clamp(top as f32 + rad, (top + r.h) as f32 - rad);
+            let (dx, dy) = (x as f32 + 0.5 - cx, y as f32 + 0.5 - cy);
+            (dx * dx + dy * dy).sqrt() - rad
+        };
+        for y in r.y..r.y + r.h + sh {
+            for x in r.x..r.x + r.w {
+                let d = sd(x, y, r.y);
+                if d > -0.5 {
+                    // Fora da forma: sombra (se cair dentro da forma deslocada) ou papel.
+                    let ds = sd(x, y, r.y + sh);
+                    let base = if sh > 0 && ds < 0.5 { shadow } else { outside };
+                    if y < r.y + r.h {
+                        self.blend(x, y, base, 255);
+                    } else if ds < 0.5 {
+                        self.blend(x, y, shadow, 255);
+                    }
+                    let a = (0.5 - d).clamp(0.0, 1.0);
+                    if a > 0.0 && y < r.y + r.h {
+                        self.blend(x, y, v, (a * 255.0) as u8);
+                    }
+                } else if d > -(t as f32) - 0.5 {
+                    let a = (d + t as f32 + 0.5).clamp(0.0, 1.0);
+                    self.blend(x, y, v, (a * 255.0) as u8);
+                }
+            }
+        }
+    }
+
     /// Contorno arredondado com espessura `t`.
     pub fn round_outline(&mut self, r: Rect, radius: i32, t: i32, v: u8, inner: u8) {
         self.round_rect(r, radius, v);
