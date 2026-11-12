@@ -282,7 +282,7 @@ pub fn games_row(i: usize) -> Rect {
     Rect::new(MARGIN + (i % 2) as i32 * (w + 24), 420 + (i / 2) as i32 * 118, w, 106)
 }
 
-pub fn draw_games(fb: &mut Framebuffer, f: &Fonts, sudoku: Option<String>, chess: Option<String>) {
+pub fn draw_games(fb: &mut Framebuffer, f: &Fonts, live_games: &[Option<String>]) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
     f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Jogar");
@@ -290,11 +290,7 @@ pub fn draw_games(fb: &mut Framebuffer, f: &Fonts, sudoku: Option<String>, chess
     for (i, (title, sub)) in GAMES.iter().enumerate() {
         let r = games_row(i);
         // Jogo com partida em andamento fica em destaque.
-        let live = match i {
-            0 => sudoku.clone(),
-            1 => chess.clone(),
-            _ => None,
-        };
+        let live = live_games.get(i).cloned().flatten();
         let (fg, sc) = if live.is_some() { (PAPER, 0xCC) } else { (INK, MUTED) };
         if live.is_some() {
             fb.round_rect(r, 32, INK);

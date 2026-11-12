@@ -342,7 +342,11 @@ impl App {
             Screen::Games => {
                 let s = crate::sudoku::Game::load().filter(|g| !g.solved()).map(|g| format!("Jogo em andamento · {} · {}/81", g.level.name(), g.filled()));
                 let c = crate::chess::Game::load().filter(|g| !g.history.is_empty()).map(|g| format!("Partida em andamento · {} lances", g.history.len()));
-                apps::draw_games(fb, f, s, c);
+                // Minijogos guardados na memória com partida começada também ficam em destaque.
+                let mut live: Vec<Option<String>> = (0..apps::GAMES.len()).map(|i| self.mini_cache.get(&i).map(|g| g.summary()).filter(|t| !t.is_empty())).collect();
+                live[0] = s;
+                live[1] = c;
+                apps::draw_games(fb, f, &live);
             }
             Screen::SudokuMenu => crate::sudoku::draw_resume(fb, f, crate::sudoku::Game::load().filter(|g| !g.solved()).as_ref(), &self.sudoku_prog, self.sudoku_practice),
             Screen::Sudoku => {
