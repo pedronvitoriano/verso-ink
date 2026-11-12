@@ -636,39 +636,76 @@ pub fn draw_module(fb: &mut Framebuffer, f: &Fonts, m: Module, st: &Status) {
 
 /// Tela de repouso: fica fixa enquanto o Kindle dorme (o e-ink não gasta energia para mantê-la).
 /// Clara de propósito: escura parecia aparelho apagado. Mostra o livro em andamento, se houver.
-pub fn draw_sleep(fb: &mut Framebuffer, f: &Fonts, st: &Status, book: Option<&crate::data::LastBook>) {
+/// O que estava na tela quando o Kindle dormiu.
+pub struct SleepScene {
+    pub what: String,
+    pub detail: String,
+    /// Trecho da página (livro).
+    pub quote: Option<String>,
+    /// Miniatura da tela (jogo): largura, altura e pixels.
+    pub shot: Option<(i32, i32, Vec<u8>)>,
+}
+
+/// Tela de repouso: continua o que estava aberto. Jogo: a partida em miniatura, como uma foto
+/// na mesa; livro: o trecho da página onde parou; outras telas: o personagem do dia.
+pub fn draw_sleep(fb: &mut Framebuffer, f: &Fonts, st: &Status, scene: Option<&SleepScene>) {
     fb.fill(fb.screen(), PAPER);
-    f.draw(fb, Face::Display, 40.0, MARGIN, 150, INK, "Verso Ink");
-    icon_moon(fb, MARGIN, 300, 130);
-    f.draw(fb, Face::Display, 150.0, MARGIN - 6, 600, INK, "Em repouso");
-    f.draw(fb, Face::Body, 42.0, MARGIN, 690, INK, "Aperte o botão de ligar para acordar.");
-    if let Some(b) = book {
-        fb.fill(Rect::new(MARGIN, 820, 1072 - 2 * MARGIN, 3), INK);
-        f.draw(fb, Face::Strong, 32.0, MARGIN, 900, MUTED, "LENDO");
-        let title = crate::apps::fit(f, Face::Display, 72.0, &b.title, 1072 - 2 * MARGIN);
-        f.draw(fb, Face::Display, 72.0, MARGIN - 4, 990, INK, &title);
-        if let Some(p) = b.progress {
-            let pct = (p * 100.0).round() as i32;
-            let bar = Rect::new(MARGIN, 1040, 1072 - 2 * MARGIN, 28);
-            fb.round_outline(bar, 14, 4, INK, PAPER);
-            let w = ((bar.w - 12) * pct.clamp(0, 100)) / 100;
-            if w > 16 {
-                fb.round_rect(Rect::new(bar.x + 6, bar.y + 6, w, bar.h - 12), 8, INK);
-            }
-            f.draw(fb, Face::Body, 34.0, MARGIN, 1120, INK, &format!("{pct}% lido"));
-        }
-    }
     let now = clock::now(st.offset_min);
-    let since = if now.plausible() { format!("Dormiu às {} · {}", now.time(), now.date()) } else { "Dormindo".into() };
-    fb.fill(Rect::new(MARGIN, 1280, 1072 - 2 * MARGIN, 3), INK);
-    f.draw(fb, Face::Strong, 30.0, MARGIN, 1350, MUTED, &since);
+    // Topo: "Em repouso" e a hora em que dormiu; bateria à direita.
+    icon_moon(fb, MARGIN, 70, 64);
+    let since = if now.plausible() { format!("Em repouso desde {}", now.time()) } else { "Em repouso".into() };
+    f.draw(fb, Face::Strong, 32.0, MARGIN + 84, 116, INK, &since);
     if let Some(p) = st.battery {
         let label = format!("{p}%");
         let lw = f.measure(Face::Strong, 30.0, &label);
         let gx = 1072 - MARGIN - 74;
-        f.draw(fb, Face::Strong, 30.0, gx - 16 - lw, 1350, INK, &label);
-        battery_glyph(fb, gx, 1324, p, st.charging);
+        f.draw(fb, Face::Strong, 30.0, gx - 16 - lw, 116, INK, &label);
+        battery_glyph(fb, gx, 90, p, st.charging);
     }
+    match scene {
+        Some(SleepScene { what, detail, shot: Some((w, h, px)), .. }) => {
+            // A partida congelada, num cartão com sombra, e o que ela era.
+            f.draw(fb, Face::Strong, 28.0, MARGIN, 214, MUTED, "PAUSADO EM");
+            f.draw(fb, Face::Display, 70.0, MARGIN - 4, 290, INK, &crate::apps::fit(f, Face::Display, 70.0, what, 1072 - 2 * MARGIN));
+            f.draw(fb, Face::Body, 30.0, MARGIN, 340, MUTED, &crate::apps::fit(f, Face::Body, 30.0, detail, 1072 - 2 * MARGIN));
+            let r = Rect::new((1072 - w - 24) / 2, 376, w + 24, (*h).min(1300 - 376 - 24) + 24);
+            card(fb, r, 30, PAPER, false);
+            let vis_h = r.h - 24;
+            fb.blit(r.x + 12, r.y + 12, *w, vis_h, &px[..(*w * vis_h) as usize]);
+            fb.round_frame(r, 30, 4, INK, PAPER, SH, SHADOW);
+        }
+        Some(SleepScene { what, detail, quote: Some(q), .. }) => {
+            // O livro: o trecho onde parou, grande e calmo, e de onde é.
+            f.draw(fb, Face::Strong, 28.0, MARGIN, 214, MUTED, "VOCÊ PAROU AQUI");
+            let text: String = q.split_whitespace().collect::<Vec<_>>().join(" ");
+            let lines = crate::chat::wrap_words(f, Face::Body, 44.0, &text, 1072 - 2 * MARGIN - 40);
+            fb.fill(Rect::new(MARGIN, 260, 8, 13 * 62 - 20), INK);
+            for (k, l) in lines.iter().take(13).enumerate() {
+                let l = if k == 12 && lines.len() > 13 { format!("{l}…") } else { l.clone() };
+                f.draw(fb, Face::Body, 44.0, MARGIN + 40, 300 + k as i32 * 62, INK, &l);
+            }
+            f.draw(fb, Face::Display, 50.0, MARGIN, 1180, INK, &crate::apps::fit(f, Face::Display, 50.0, what, 1072 - 2 * MARGIN));
+            f.draw(fb, Face::Body, 30.0, MARGIN, 1228, MUTED, &crate::apps::fit(f, Face::Body, 30.0, detail, 1072 - 2 * MARGIN));
+        }
+        _ => {
+            // Sem nada aberto: o personagem do dia, grande, e a data.
+            let day = crate::data::today(st.offset_min);
+            let n = (0..40).filter(|k| crate::sprites::exists(&format!("dia-{:02}", k + 1))).count() as i64;
+            if n > 0 {
+                let k = day.rem_euclid(n) + 1;
+                crate::sprites::draw(fb, &format!("dia-{k:02}"), Rect::new(96, 220, 880, 880));
+            }
+            if now.plausible() {
+                let d = now.date();
+                let w = f.measure(Face::Display, 56.0, &d);
+                f.draw(fb, Face::Display, 56.0, (1072 - w) / 2, 1200, INK, &d);
+            }
+        }
+    }
+    let hint = "Aperte o botão de ligar para continuar";
+    let w = f.measure(Face::Strong, 30.0, hint);
+    fb.fill(Rect::new(MARGIN, 1300, 1072 - 2 * MARGIN, 3), INK);
+    f.draw(fb, Face::Strong, 30.0, (1072 - w) / 2, 1370, INK, hint);
 }
 
 pub fn draw_low_battery(fb: &mut Framebuffer, f: &Fonts, st: &Status) {

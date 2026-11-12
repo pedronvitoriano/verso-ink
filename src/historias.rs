@@ -119,6 +119,9 @@ pub fn parse(src: &str) -> Story {
     st
 }
 
+/// Histórias por página da lista.
+const PER: usize = 6;
+
 fn dir() -> PathBuf {
     crate::home_dir().join("data/historias")
 }
@@ -166,6 +169,12 @@ struct Reading {
 }
 
 pub struct Historias {
+    /// Página da lista de histórias.
+    list_page: usize,
+    /// Pediu ao app o texto do rumo novo.
+    want_text: bool,
+    /// Recado na leitura (erro ao gerar, por exemplo).
+    note: Option<String>,
     list: Vec<(PathBuf, Story)>,
     read: Option<Reading>,
     /// Calculado ao desenhar (precisa das fontes): alvos de toque da tela atual.
@@ -188,7 +197,7 @@ fn wrap(f: &Fonts, face: Face, size: f32, text: &str, max_w: i32) -> Vec<String>
 
 impl Historias {
     pub fn new() -> Self {
-        Historias { list: load_all(), read: None, hits: RefCell::new(Vec::new()) }
+        Historias { list: load_all(), read: None, hits: RefCell::new(Vec::new()), want_text: false, note: None, list_page: 0 }
     }
 
     fn open(&mut self, k: usize) {
@@ -224,20 +233,37 @@ impl Historias {
 
     fn draw_list(&self, fb: &mut Framebuffer, f: &Fonts) {
         f.draw(fb, Face::Display, 130.0, MARGIN - 6, 330, INK, "Histórias");
-        f.draw(fb, Face::Strong, 30.0, MARGIN, 400, MUTED, "Ficção interativa: você escolhe o caminho.");
+        let n = self.list.len();
+        f.draw(fb, Face::Strong, 30.0, MARGIN, 400, MUTED, &format!("{n} {} · você escolhe o caminho ou cria outro", if n == 1 { "história" } else { "histórias" }));
         let mut hits = Vec::new();
-        for (k, (path, s)) in self.list.iter().enumerate().take(6) {
-            let r = Rect::new(MARGIN - 16, 450 + k as i32 * 150, W - 2 * MARGIN + 32, 136);
-            fb.round_outline(r, 28, 4, INK, PAPER);
+        let pages = n.div_ceil(PER).max(1);
+        let page = self.list_page.min(pages - 1);
+        for (j, (path, s)) in self.list.iter().enumerate().skip(page * PER).take(PER) {
+            let k = j - page * PER;
+            let r = Rect::new(MARGIN, 446 + k as i32 * 140, W - 2 * MARGIN, 120);
+            ui::card(fb, r, 28, PAPER, false);
             let started = load_progress(path).is_some_and(|(at, _)| at != s.first);
             f.draw(fb, Face::Display, 44.0, r.x + 32, r.y + 58, INK, &crate::apps::fit(f, Face::Display, 44.0, &s.title, r.w - 64));
             let sub = if started { "Continuar de onde parou".to_string() } else { s.blurb.clone() };
             f.draw(fb, Face::Body, 28.0, r.x + 34, r.y + 106, MUTED, &crate::apps::fit(f, Face::Body, 28.0, &sub, r.w - 68));
-            hits.push((900 + k as u32, r));
+            hits.push((900 + j as u32, r));
         }
-        let tip = ["Escreva novas histórias em data/historias,", "pelo PC ou pedindo ao Claude."];
-        for (k, l) in tip.iter().enumerate() {
-            f.draw(fb, Face::Body, 28.0, MARGIN, 1340 + k as i32 * 42, MUTED, l);
+        if pages > 1 {
+            let (pr, nr) = (Rect::new(MARGIN, 1300, 260, 88), Rect::new(W - MARGIN - 260, 1300, 260, 88));
+            if page > 0 {
+                ui::button(fb, f, pr, "‹ Anterior", false);
+                hits.push((720, pr));
+            }
+            if page + 1 < pages {
+                ui::button(fb, f, nr, "Próxima ›", false);
+                hits.push((721, nr));
+            }
+            let t = format!("{} de {pages}", page + 1);
+            let w = f.measure(Face::Strong, 28.0, &t);
+            f.draw(fb, Face::Strong, 28.0, (W - w) / 2, 1356, MUTED, &t);
+        } else {
+            let tip = "Durante a leitura, \"Seguir outro rumo\" cria uma história nova com o Claude.";
+            f.draw(fb, Face::Body, 26.0, MARGIN, 1356, MUTED, &crate::apps::fit(f, Face::Body, 26.0, tip, W - 2 * MARGIN));
         }
         *self.hits.borrow_mut() = hits;
     }
@@ -266,7 +292,8 @@ impl Historias {
         let layout_top = |opts: &[(u32, String)]| 1430 - opts.iter().map(|(_, t)| choice_h(t) + 14).sum::<i32>() - if p.end { 60 } else { 0 };
         // Páginas: se o texto não cabe acima das escolhas, mostra só "Continuar" até a última.
         let cap = |top: i32| (((top - 40 - TEXT_TOP) / LINE).max(3)) as usize;
-        let full_cap = cap(layout_top(&options));
+        let with_new: Vec<(u32, String)> = options.iter().cloned().chain([(710, "+ Seguir outro rumo…".to_string())]).collect();
+        let full_cap = cap(layout_top(&with_new));
         let more_cap = cap(layout_top(&[(700, "Continuar ›".into())]));
         let mut pages: Vec<(usize, usize)> = Vec::new();
         let mut start = 0;
@@ -279,6 +306,9 @@ impl Historias {
         let page = r.page.min(pages.len() - 1);
         if page + 1 < pages.len() {
             options = vec![(700, "Continuar ›".into())];
+        } else {
+            // Com o Claude: sair do roteiro e criar uma história nova a partir daqui.
+            options.push((710, "+ Seguir outro rumo…".into()));
         }
         let (a, b) = pages[page];
         let mut y = TEXT_TOP;
@@ -294,16 +324,21 @@ impl Historias {
         if p.end && page + 1 == pages.len() {
             f.draw(fb, Face::Display, 56.0, MARGIN, y + 70, INK, "Fim.");
         }
+        if let Some(n) = &self.note {
+            f.draw(fb, Face::Strong, 26.0, MARGIN, 206, INK, &crate::apps::fit(f, Face::Strong, 26.0, n, W - 2 * MARGIN));
+        }
         let mut hits = Vec::new();
         let mut cy = layout_top(&options) + if p.end { 60 } else { 0 };
         for (id, text) in &options {
             let h = choice_h(text);
             let rr = Rect::new(MARGIN - 16, cy, W - 2 * MARGIN + 32, h);
             let filled = *id == 700 || *id == 701;
-            if filled {
-                fb.round_rect(rr, 26, INK);
+            if *id == 710 {
+                // O rumo novo: cartão cinza, diferente das escolhas do roteiro.
+                fb.round_rect(rr, 26, ui::SURFACE);
+                fb.round_outline(rr, 26, 3, 0x88, ui::SURFACE);
             } else {
-                fb.round_outline(rr, 26, 4, INK, PAPER);
+                ui::card(fb, Rect::new(rr.x, rr.y, rr.w, rr.h - ui::SH), 26, if filled { INK } else { PAPER }, false);
             }
             for (k, l) in wrap(f, Face::Strong, 32.0, text, width - 64).iter().enumerate() {
                 f.draw(fb, Face::Strong, 32.0, rr.x + 32, rr.y + 52 + k as i32 * 42, if filled { PAPER } else { INK }, l);
@@ -352,7 +387,11 @@ impl MiniGame for Historias {
 
     fn tap(&mut self, id: u32, _x: i32, _y: i32) -> Redraw {
         match id {
-            900..=905 => {
+            720 | 721 => {
+                self.list_page = if id == 720 { self.list_page.saturating_sub(1) } else { self.list_page + 1 };
+                Redraw::Full
+            }
+            900..=1899 if ((id - 900) as usize) < self.list.len() => {
                 self.open((id - 900) as usize);
                 Redraw::Full
             }
@@ -370,6 +409,10 @@ impl MiniGame for Historias {
             702 => {
                 self.read = None;
                 Redraw::Full
+            }
+            710 => {
+                self.want_text = true;
+                Redraw::None
             }
             i => {
                 let Some(c) = self.visible_choices().get(i as usize).cloned() else { return Redraw::None };
@@ -389,6 +432,60 @@ impl MiniGame for Historias {
 
     fn keep_awake(&self) -> bool {
         false
+    }
+
+    fn wants_text(&mut self) -> Option<String> {
+        std::mem::take(&mut self.want_text).then(|| "Para onde a história vai?".to_string())
+    }
+
+    fn text_input(&mut self, text: &str) -> Redraw {
+        self.note = match self.new_branch(text) {
+            Ok(()) => None,
+            Err(e) => Some(e),
+        };
+        Redraw::Full
+    }
+}
+
+impl Historias {
+    /// Pede ao Claude uma história nova que parte do trecho atual e segue o rumo pedido; salva
+    /// como arquivo próprio (a original não muda) e abre no começo dela.
+    fn new_branch(&mut self, direction: &str) -> Result<(), String> {
+        let r = self.read.as_ref().ok_or("Abra uma história antes.")?;
+        let (_, story) = &self.list[r.k];
+        let here = story.passages.get(&r.at).map(|p| p.paragraphs.join("\n\n")).unwrap_or_default();
+        let context = format!("História \"{}\". Trecho onde o leitor está:\n{here}", story.title);
+        let prompt = format!(
+            "Escreva uma história interativa NOVA que continua exatamente do trecho do contexto, mas segue este rumo pedido pelo leitor: «{direction}». \
+Português do Brasil, prosa literária enxuta (trechos de 60 a 140 palavras), de 8 a 14 trechos, 2 ou 3 escolhas por trecho, pelo menos 3 finais diferentes. \
+Responda SÓ com o texto da história neste formato (sem comentários, sem cercas de código):\n\
+# Título novo\n@ Uma frase de resumo\n\n== inicio\nTexto do trecho.\n\n* Texto da escolha -> nome_do_trecho\n* Outra escolha -> outro_trecho\n\n== nome_do_trecho\nTexto...\n\n\
+Nomes de trecho em minúsculas, sem acento e sem espaço. Trecho final não tem escolhas. Toda escolha leva a um trecho que existe."
+        );
+        let id = crate::chat::send(None, &prompt, Some(&context))?;
+        let chat = crate::chat::open(&id)?;
+        let reply = chat.messages.iter().rev().find(|m| !m.user).map(|m| m.text.clone()).ok_or("O Claude não respondeu.")?;
+        let body: String = reply.lines().filter(|l| !l.trim_start().starts_with("```")).collect::<Vec<_>>().join("\n");
+        let mut new = parse(&body);
+        // Escolhas para trechos que não existem saem; o que ficar sem saída vira final.
+        let names: BTreeSet<String> = new.passages.keys().cloned().collect();
+        for p in new.passages.values_mut() {
+            p.choices.retain(|c| names.contains(&c.to));
+            if p.choices.is_empty() {
+                p.end = true;
+            }
+        }
+        if new.title.is_empty() || new.passages.len() < 2 || !new.passages.contains_key(&new.first) {
+            return Err("A resposta não veio no formato de história. Tente de novo.".into());
+        }
+        let slug: String = crate::apps::fold(&new.title).chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '-' }).collect();
+        let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+        let path = dir().join(format!("{}-{stamp}.txt", slug.trim_matches('-')));
+        std::fs::write(&path, &body).map_err(|e| e.to_string())?;
+        self.list = load_all();
+        let k = self.list.iter().position(|(p, _)| *p == path).ok_or("História salva, mas não abriu.")?;
+        self.open(k);
+        Ok(())
     }
 }
 

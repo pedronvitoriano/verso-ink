@@ -44,6 +44,15 @@ pub trait MiniGame {
         None
     }
     /// O estado do jogo em texto, para o Claude entender a pergunta (vazio = só o nome do jogo).
+    /// Depois de um toque, o jogo pode pedir um texto ao leitor: devolve o título do pedido
+    /// (o app abre o teclado e entrega o resultado em `text_input`).
+    fn wants_text(&mut self) -> Option<String> {
+        None
+    }
+    /// Texto digitado a pedido do jogo.
+    fn text_input(&mut self, _text: &str) -> Redraw {
+        Redraw::None
+    }
     /// Botão que apaga a partida em andamento (pede um segundo toque).
     fn risky(&self, _id: u32) -> bool {
         false

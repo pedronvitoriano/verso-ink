@@ -49,6 +49,8 @@ pub enum Screen {
     Wifi,
     WifiPass,
     LibSearch,
+    /// Texto pedido por um minijogo (ex.: o rumo novo de uma história).
+    MiniText,
     Calendar,
     Tutorial,
     Sleep,
@@ -157,6 +159,10 @@ pub struct App {
     mini_confirm: Option<u32>,
     /// O que os relógios do xadrez mostram agora (para redesenhar só quando muda).
     clock_shown: String,
+    /// Título do pedido de texto de um minijogo.
+    mini_prompt: String,
+    /// O que estava na tela quando o Kindle dormiu (para a tela de repouso).
+    sleep_scene: Option<ui::SleepScene>,
     /// Para onde o botão Início leva ao sair do minijogo/módulo.
     mini_back: Screen,
     /// Índice (na tela Jogar) do minijogo aberto.
@@ -283,6 +289,8 @@ impl App {
             mini_cache: std::collections::HashMap::new(),
             mini_confirm: None,
             clock_shown: String::new(),
+            mini_prompt: String::new(),
+            sleep_scene: None,
             mini_back: Screen::Games,
             mini_game: 0,
             light_return: None,
@@ -452,6 +460,13 @@ impl App {
                 }
             }
             Screen::ClaudeDoc => crate::chat::draw_doc(fb, f, &self.doc.0, &self.doc.1, self.doc.2),
+            Screen::MiniText => {
+                let kicker = if self.mini_game == 14 { "HISTÓRIAS" } else { "JOGO" };
+                ui::draw_field_header(fb, f, kicker, &self.mini_prompt);
+                crate::today_ui::draw_field(fb, f, &self.compose_text, &self.compose_hint);
+                self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
+                crate::keyboard::draw(fb, f, &self.keys);
+            }
             Screen::LibSearch => {
                 ui::draw_field_header(fb, f, "BIBLIOTECA", "Buscar livro");
                 crate::today_ui::draw_field(fb, f, &self.compose_text, &self.compose_hint);
@@ -479,7 +494,7 @@ impl App {
                     crate::clippings::draw_book(fb, f, b, &self.clip_pages, self.clip_bpage);
                 }
             }
-            Screen::Sleep => ui::draw_sleep(fb, f, st, data::last_book().as_ref()),
+            Screen::Sleep => ui::draw_sleep(fb, f, st, self.sleep_scene.as_ref()),
             Screen::Tutorial => crate::tutorial::draw(fb, f, self.tut.0, self.tut.1),
         }
         if let Some(g) = self.help_game() {
@@ -670,7 +685,7 @@ impl App {
                 }
                 v
             }
-            Screen::WifiPass | Screen::LibSearch => {
+            Screen::WifiPass | Screen::LibSearch | Screen::MiniText => {
                 let mut v = vec![(Back, ui::back_rect())];
                 v.extend(self.keys.iter().enumerate().map(|(i, k)| (Key(i as u8), k.rect)));
                 v
@@ -967,6 +982,9 @@ impl App {
                     self.lib.query = self.compose_text.trim().to_string();
                     return self.go(Screen::Library);
                 }
+                if self.screen == Screen::MiniText {
+                    return self.mini_text_done();
+                }
                 if self.screen == Screen::WifiPass {
                     let (Some(n), psk) = (self.wifi_target.clone(), self.compose_text.clone()) else { return };
                     if psk.chars().count() < 8 {
@@ -1010,7 +1028,7 @@ impl App {
     fn light_swipe_ok(&self) -> bool {
         !matches!(
             self.screen,
-            Screen::Sleep | Screen::Light | Screen::Settings | Screen::Wifi | Screen::WifiPass | Screen::Compose | Screen::ClaudeCompose | Screen::LibSearch | Screen::Update
+            Screen::Sleep | Screen::Light | Screen::Settings | Screen::Wifi | Screen::WifiPass | Screen::Compose | Screen::ClaudeCompose | Screen::LibSearch | Screen::MiniText | Screen::Update
         )
     }
 
@@ -1029,6 +1047,7 @@ impl App {
                 | Screen::Compose
                 | Screen::WifiPass
                 | Screen::LibSearch
+                | Screen::MiniText
                 | Screen::Update
                 | Screen::Reminder
                 | Screen::Light
@@ -1036,7 +1055,30 @@ impl App {
     }
 
     /// Pergunta ao Claude sobre o que está na tela agora (deslizar de cima para baixo).
-    fn ask_claude_here(&mut self) {
+    /// Guarda o que estava na tela ao dormir: o trecho da página (livro) ou uma miniatura da
+    /// partida (jogos). Nas outras telas, nada (o repouso mostra a ilustração do dia).
+    fn capture_sleep(&self) -> Option<ui::SleepScene> {
+        let (what, detail) = self.here_label();
+        match self.screen {
+            Screen::Reader | Screen::ReaderToc => {
+                let r = self.reader.as_ref()?;
+                Some(ui::SleepScene { what, detail, quote: Some(r.page_text()), shot: None })
+            }
+            Screen::Mini | Screen::Sudoku | Screen::SudokuWon | Screen::Chess => {
+                // Miniatura da tela (sem a faixa do botão Início), a 60%.
+                let (w, top) = (self.fb.width, 174);
+                let h = self.fb.height - top;
+                let img = image::GrayImage::from_raw(w as u32, h as u32, self.fb.buf[(top * w) as usize..].to_vec())?;
+                let (tw, th) = (624u32, (624.0 * h as f32 / w as f32) as u32);
+                let small = image::imageops::resize(&img, tw, th, image::imageops::FilterType::Triangle);
+                Some(ui::SleepScene { what, detail, quote: None, shot: Some((tw as i32, th as i32, small.into_raw())) })
+            }
+            _ => None,
+        }
+    }
+
+    /// O que está na tela, em duas partes curtas: (o quê, detalhe). Usado pelo Claude e pelo repouso.
+    fn here_label(&self) -> (String, String) {
         let ctx = self.screen_context();
         let mut lines = ctx.lines();
         let first = lines.next().unwrap_or("").to_string();
@@ -1059,13 +1101,18 @@ impl App {
             Screen::Reader | Screen::ReaderToc => self.reader.as_ref().map(|r| r.book.title.clone()).unwrap_or_else(|| "Livro".into()),
             _ => first.chars().take(40).collect(),
         };
+        (what, detail)
+    }
+
+    fn ask_claude_here(&mut self) {
+        let (what, detail) = self.here_label();
         self.claude_about = Some((what.clone(), detail));
         self.claude_sugg = if matches!(self.screen, Screen::Reader | Screen::ReaderToc) {
             ["Explique esta página", "Resuma o capítulo até aqui", "Quem é quem nesta parte?"].iter().map(|s| s.to_string()).collect()
         } else {
             Self::suggestions_for(Some(&what), false)
         };
-        self.claude_ctx = Some(ctx);
+        self.claude_ctx = Some(self.screen_context());
         self.claude_return = Some(self.screen);
         self.cur_chat = None;
         self.open_compose();
@@ -1394,6 +1441,26 @@ impl App {
     }
 
     /// Toque num minijogo: redesenha o que ele pedir e, se for a vez da CPU, joga por ela.
+    /// Texto pronto para o minijogo: mostra que está trabalhando (pode levar um minuto, se
+    /// for o Claude escrevendo) e devolve ao jogo.
+    fn mini_text_done(&mut self) {
+        let text = self.compose_text.trim().to_string();
+        if text.is_empty() {
+            self.compose_hint = "Escreva alguma coisa antes de tocar em OK.".into();
+            return self.render(false);
+        }
+        self.fb.fill(self.fb.screen(), ui::PAPER);
+        ui::draw_field_header(&mut self.fb, &self.fonts, "UM MOMENTO", "Escrevendo…");
+        let hint = "O Claude está escrevendo a continuação. Leva até um minuto.";
+        self.fonts.draw(&mut self.fb, crate::text::Face::Body, 32.0, 72, 460, ui::MUTED, hint);
+        self.fb.refresh(self.fb.screen(), Wave::Quality, true);
+        self.fb.wait();
+        if let Some(g) = self.mini.as_mut() {
+            g.text_input(&text);
+        }
+        self.go(Screen::Mini);
+    }
+
     fn mini_tap(&mut self, id: u32, x: i32) {
         let Some(g) = self.mini.as_mut() else { return };
         // Novo jogo e recomeçar pedem um segundo toque: um esbarrão não apaga a partida.
@@ -1416,6 +1483,12 @@ impl App {
         }
         let Some(g) = self.mini.as_mut() else { return };
         let r = g.tap(id, x, 0);
+        if let Some(prompt) = g.wants_text() {
+            self.mini_prompt = prompt;
+            self.compose_text.clear();
+            self.compose_hint = "Escreva o que acontece agora e toque em OK.".into();
+            return self.go(Screen::MiniText);
+        }
         self.apply_mini_redraw(r);
         let mut guard = 0;
         while self.mini.as_ref().is_some_and(|g| g.cpu_turn()) && guard < 200 {
@@ -1739,6 +1812,9 @@ impl App {
             }
         }
         self.clock_shown.clear();
+        if screen == Screen::Sleep && self.screen != Screen::Sleep {
+            self.sleep_scene = self.capture_sleep();
+        }
         match screen {
             Screen::Light => self.light = read_light(),
             Screen::Library => self.lib = Library::scan(&self.lib.query.clone()),
@@ -1921,7 +1997,8 @@ impl App {
                 }
                 self.render(false);
             }
-            (Screen::Compose | Screen::WifiPass | Screen::ClaudeCompose | Screen::LibSearch, Key(i)) => self.press_key(i as usize),
+            (Screen::Compose | Screen::WifiPass | Screen::ClaudeCompose | Screen::LibSearch | Screen::MiniText, Key(i)) => self.press_key(i as usize),
+            (Screen::MiniText, Back) => self.go(Screen::Mini),
             (Screen::Wifi, Back) => {
                 let back = self.wifi_back;
                 self.go(back);
@@ -2782,6 +2859,9 @@ mod raio_x {
             app.fb.save_pgm(&out.join(format!("{n:02}-{name}.pgm")));
         };
         shot(&mut app, "inicio");
+        app.go(Screen::Sleep);
+        shot(&mut app, "repouso");
+        app.go(Screen::Home);
         for (s, name) in [
             (Screen::Light, "luz"),
             (Screen::Settings, "ajustes"),
@@ -2811,6 +2891,11 @@ mod raio_x {
                 if let Some((id, _)) = app.mini.as_ref().and_then(|g| g.targets().into_iter().find(|(id, _)| *id == 900)) {
                     app.mini_tap(id, 0);
                     shot(&mut app, &format!("jogo-{name}-partida"));
+                    if name == "masmorra" {
+                        app.go(Screen::Sleep);
+                        shot(&mut app, "repouso-jogo");
+                        app.go(Screen::Mini);
+                    }
                 }
                 app.activate(Target::Back, 0);
             } else if app.screen == Screen::SudokuMenu {
