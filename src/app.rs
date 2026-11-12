@@ -1068,6 +1068,11 @@ impl App {
             return; // a resposta é a própria mudança
         }
         let Some(r) = self.rect_of(t) else { return };
+        // Áreas grandes (virar a página, abrir o menu do leitor) não piscam: inverter meia
+        // tela é feio no e-ink e a página nova já é a resposta.
+        if r.w as i64 * r.h as i64 > 300_000 || matches!(self.screen, Screen::Reader) && !matches!(t, Target::Level(_)) {
+            return;
+        }
         self.fb.invert_round(r, round_radius(t, r));
         self.fb.refresh(r, if pressed { Wave::Fast } else { Wave::Quality }, false);
     }
@@ -3892,6 +3897,19 @@ mod raio_x {
             app.go(Screen::Mini);
             app.mini_tap(700, 0);
             shot(&mut app, "violao-aula");
+        }
+        // Leitor: página, página seguinte, menu e sumário (um texto de exemplo, domínio público).
+        {
+            let txt = home.join("leitura-exemplo.txt");
+            let para = "Era uma vez uma cidade à beira de um rio largo, onde as manhãs começavam com neblina e cheiro de café. Ninguém tinha pressa: os barcos chegavam quando chegavam, e as conversas na beira do cais duravam o tempo de uma xícara. ";
+            std::fs::write(&txt, format!("Capítulo 1\n\n{}\n\nCapítulo 2\n\n{}", para.repeat(14), para.repeat(10))).unwrap();
+            app.open_reader(txt, "Leitura de exemplo".into());
+            shot(&mut app, "leitor-pagina");
+            app.turn_page(true);
+            shot(&mut app, "leitor-pagina-2");
+            app.activate(Target::Header, 0);
+            shot(&mut app, "leitor-menu");
+            app.go(Screen::Home);
         }
         // Achados: um guardado agora e a coleção.
         {

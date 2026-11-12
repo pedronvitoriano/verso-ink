@@ -947,8 +947,14 @@ pub fn draw(fb: &mut Framebuffer, f: &crate::text::Fonts, rf: &RFonts, r: &Reade
     // Cabeçalho discreto: título do capítulo.
     let head = crate::apps::fit(f, Face::Body, 24.0, &r.chapter_title, W - 2 * SIDE);
     f.draw(fb, Face::Body, 24.0, SIDE, 56, MUTED, &head);
+    // Com o menu aberto, só as linhas inteiras entre as duas folhas (nada cortado pela metade).
+    let (top, bottom) = if r.menu { (menu_top().h + 14, menu_bottom().y - 10) } else { (0, i32::MAX) };
     if let Some(p) = r.pages.get(r.page) {
         for l in &p.lines {
+            let (ltop, lbot) = (l.baseline - (l.size * 0.85) as i32, l.baseline + (l.size * 0.3) as i32);
+            if ltop < top || lbot > bottom {
+                continue;
+            }
             if l.rule {
                 fb.fill(Rect::new(W / 2 - 60, l.baseline, 120, 2), MUTED);
                 continue;
@@ -976,54 +982,63 @@ pub fn menu_top() -> Rect {
     Rect::new(0, 0, W, 300)
 }
 pub fn menu_bottom() -> Rect {
-    Rect::new(0, 1180, W, 268)
+    Rect::new(0, 1130, W, 318)
 }
 /// Botões do menu: 0 biblioteca, 1 A-, 2 A+, 3 sumário, 4 Claude, 5 capítulo anterior, 6 próximo.
 pub fn menu_btn(k: usize) -> Rect {
     match k {
-        0 => Rect::new(40, 60, 260, 84),
-        1 => Rect::new(W - 40 - 2 * 110 - 16, 60, 110, 84),
-        2 => Rect::new(W - 40 - 110, 60, 110, 84),
-        3 => Rect::new(40, 180, 300, 84),
-        4 => Rect::new(W - 40 - 400, 180, 400, 84),
-        5 => Rect::new(40, 1330, 300, 88),
-        _ => Rect::new(W - 40 - 300, 1330, 300, 88),
+        0 => Rect::new(48, 56, 250, 84),
+        1 => Rect::new(W - 48 - 2 * 104 - 14, 56, 104, 84),
+        2 => Rect::new(W - 48 - 104, 56, 104, 84),
+        3 => Rect::new(48, 180, 300, 88),
+        4 => Rect::new(W - 48 - 440, 180, 440, 88),
+        5 => Rect::new(48, 1334, 300, 88),
+        _ => Rect::new(W - 48 - 300, 1334, 300, 88),
     }
 }
 
 fn draw_menu(fb: &mut Framebuffer, f: &crate::text::Fonts, r: &Reader) {
     use crate::text::Face;
-    let pill = |fb: &mut Framebuffer, rect: Rect, label: &str, filled: bool| {
-        if filled {
-            fb.round_rect(rect, rect.h / 2, INK);
-        } else {
-            fb.round_outline(rect, rect.h / 2, 4, INK, PAPER);
-        }
-        let w = f.measure(Face::Strong, 32.0, label);
-        f.draw(fb, Face::Strong, 32.0, rect.x + (rect.w - w) / 2, rect.y + rect.h / 2 + 12, if filled { PAPER } else { INK }, label);
-    };
-    for area in [menu_top(), menu_bottom()] {
-        fb.fill(area, PAPER);
+    use crate::ui;
+    // Folhas por cima da página, com a sombra chapada do sistema.
+    let (t, b) = (menu_top(), menu_bottom());
+    fb.fill(t, PAPER);
+    fb.fill(Rect::new(0, t.h, W, 8), ui::SHADOW);
+    fb.fill(Rect::new(0, t.h - 3, W, 3), INK);
+    fb.fill(b, PAPER);
+    fb.fill(Rect::new(0, b.y, W, 3), INK);
+    ui::button(fb, f, menu_btn(0), "‹ Biblioteca", false);
+    ui::button(fb, f, menu_btn(1), "A−", false);
+    ui::button(fb, f, menu_btn(2), "A+", false);
+    ui::button(fb, f, menu_btn(3), "Sumário", false);
+    ui::button(fb, f, menu_btn(4), "Perguntar ao Claude", true);
+    // Título do livro entre o botão da biblioteca e os da letra.
+    let (x0, x1) = (menu_btn(0).x + menu_btn(0).w + 24, menu_btn(1).x - 24);
+    let title = crate::apps::fit(f, Face::Display, 34.0, &r.book.title, x1 - x0);
+    let tw = f.measure(Face::Display, 34.0, &title);
+    f.draw(fb, Face::Display, 34.0, x0 + (x1 - x0 - tw) / 2, 108, INK, &title);
+    let size = format!("letra {}", r.size_k + 1);
+    let sw = f.measure(Face::Body, 22.0, &size);
+    f.draw(fb, Face::Body, 22.0, x0 + (x1 - x0 - sw) / 2, 140, MUTED, &size);
+    // Embaixo: capítulo, página e o progresso do livro.
+    let chap = crate::apps::fit(f, Face::Display, 36.0, &r.chapter_title, W - 96);
+    f.draw(fb, Face::Display, 36.0, 48, b.y + 64, INK, &chap);
+    let info = format!("Capítulo {} de {} · página {} de {}", r.chapter + 1, r.book.chapters(), r.page + 1, r.pages.len());
+    f.draw(fb, Face::Body, 26.0, 48, b.y + 106, MUTED, &info);
+    let pct = format!("{}%", (r.progress() * 100.0).round() as i32);
+    let pw = f.measure(Face::Strong, 30.0, &pct);
+    let bar = Rect::new(48, b.y + 140, W - 96 - pw - 24, 18);
+    fb.round_rect(bar, 9, 0xD0);
+    let fill = (bar.w as f32 * r.progress()) as i32;
+    if fill > 0 {
+        fb.round_rect(Rect::new(bar.x, bar.y, fill.max(18), bar.h), 9, INK);
     }
-    fb.fill(Rect::new(0, 296, W, 4), INK);
-    fb.fill(Rect::new(0, 1180, W, 4), INK);
-    pill(fb, menu_btn(0), "‹ Biblioteca", false);
-    pill(fb, menu_btn(1), "A−", false);
-    pill(fb, menu_btn(2), "A+", false);
-    pill(fb, menu_btn(3), "Sumário", false);
-    pill(fb, menu_btn(4), "Perguntar ao Claude", true);
-    let title = crate::apps::fit(f, Face::Display, 40.0, &r.book.title, W - 2 * 40 - 290);
-    let tw = f.measure(Face::Display, 40.0, &title);
-    let _ = tw;
-    f.draw(fb, Face::Display, 40.0, 330, 116, INK, &title);
-    let info = format!("Capítulo {} de {} · letra {}", r.chapter + 1, r.book.chapters(), r.size_k + 1);
-    f.draw(fb, Face::Body, 28.0, 40, 1240, INK, &crate::apps::fit(f, Face::Body, 28.0, &r.chapter_title, W - 80));
-    f.draw(fb, Face::Body, 26.0, 40, 1286, MUTED, &info);
+    f.draw(fb, Face::Strong, 30.0, W - 48 - pw, bar.y + 18, INK, &pct);
     if r.chapter > 0 {
-        pill(fb, menu_btn(5), "‹ Capítulo", false);
+        ui::button(fb, f, menu_btn(5), "‹ Capítulo", false);
     }
     if r.chapter + 1 < r.book.chapters() {
-        pill(fb, menu_btn(6), "Capítulo ›", false);
+        ui::button(fb, f, menu_btn(6), "Capítulo ›", false);
     }
 }
 
