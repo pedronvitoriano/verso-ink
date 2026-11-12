@@ -11,7 +11,7 @@ fn dir() -> PathBuf {
     d
 }
 
-fn epoch() -> i64 {
+pub fn epoch() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
 }
 
@@ -99,6 +99,14 @@ pub fn reading_minutes_today(offset_min: i64) -> u32 {
         .map(|(_, dur)| dur.max(0))
         .sum();
     (secs / 60) as u32
+}
+
+/// Registra uma sessão de leitura no leitor do próprio Verso Ink (mesmo arquivo do KOReader),
+/// para a meta de leitura e as frases contarem tudo o que foi lido.
+pub fn log_reading(start: i64, secs: i64) {
+    if secs >= 20 {
+        append("reading.log", &format!("{start} {}", secs.min(4 * 3600)));
+    }
 }
 
 /// Minutos lidos e pomodoros de foco num dia qualquer (para o fechamento da semana).

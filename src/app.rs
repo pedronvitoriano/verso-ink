@@ -146,6 +146,8 @@ pub struct App {
     attach_page: usize,
     /// Lugar do módulo aberto no cache de minijogos, quando não é o padrão da tela de volta.
     mini_slot: Option<usize>,
+    /// Início da leitura em andamento no leitor próprio (segundos, para o reading.log).
+    reading_since: Option<i64>,
     /// Achado que acabou de entrar na coleção (destaque na tela Achados).
     achado_new: Option<usize>,
     pub status: Status,
@@ -312,6 +314,7 @@ impl App {
             attach_sel: Vec::new(),
             attach_page: 0,
             mini_slot: None,
+            reading_since: None,
             achado_new: None,
             status: read_status(),
             light: read_light(),
@@ -2362,6 +2365,15 @@ impl App {
     }
 
     pub fn go(&mut self, screen: Screen) {
+        // Leitura no leitor próprio: começa ao entrar, registra ao sair (dormir também conta como sair).
+        let reading = |s: Screen| matches!(s, Screen::Reader | Screen::ReaderToc);
+        if reading(screen) && !reading(self.screen) {
+            self.reading_since = Some(data::epoch());
+        } else if !reading(screen) && reading(self.screen) {
+            if let Some(t0) = self.reading_since.take() {
+                data::log_reading(t0, data::epoch() - t0);
+            }
+        }
         // Relógio do xadrez: para ao sair da partida e volta a correr ao entrar.
         if let Some(g) = self.chess.as_mut() {
             if screen == Screen::Chess && self.chess_over.is_none() {
