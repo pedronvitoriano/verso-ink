@@ -347,7 +347,7 @@ fn draw_chips(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     fb.fill(Rect::new(c.x, c.y, c.w, c.h + SH), PAPER);
     let gap = 22;
     let weather = crate::weather::load();
-    let w0 = if weather.is_some() { (c.w - gap) * 9 / 20 } else { 0 };
+    let w0 = if weather.is_some() { (c.w - gap) * 11 / 20 } else { 0 };
     if let Some(w) = weather {
         let r = Rect::new(c.x, c.y, w0, c.h);
         card(fb, r, 26, PAPER, false);
@@ -380,7 +380,7 @@ fn draw_daily_art(fb: &mut Framebuffer, st: &Status) {
 /// Botão "Continuar" dentro do bloco Ler.
 pub fn continue_rect() -> Rect {
     let r = tile_rect(0);
-    Rect::new(r.x + 330, r.y + r.h - 40 - 100, r.w - 330 - 36, 100)
+    Rect::new(r.x + 330, r.y + r.h - 34 - 88, r.w - 330 - 36, 88)
 }
 
 /// O que a tela inicial mostra além do fixo: livro em leitura e jogo em andamento.
@@ -408,17 +408,34 @@ fn draw_cover(fb: &mut Framebuffer, f: &Fonts, r: Rect, book: Option<&crate::dat
     // Capa desenhada: lombada, título e um ornamento.
     fb.round_rect(inner, 10, 0xD4);
     fb.fill(Rect::new(inner.x, inner.y, 22, inner.h), 0x88);
-    let title = book.map(|b| b.title.as_str()).unwrap_or("Biblioteca");
-    let lines = crate::chat::wrap_words(f, Face::Display, 38.0, title, inner.w - 60);
-    let n = lines.len().min(4) as i32;
-    let y0 = inner.y + inner.h / 2 - n * 22;
-    for (k, l) in lines.iter().take(4).enumerate() {
-        let w = f.measure(Face::Display, 38.0, l);
-        f.draw(fb, Face::Display, 38.0, inner.x + 22 + (inner.w - 22 - w) / 2, y0 + k as i32 * 46, INK, l);
-    }
+    let full = book.map(|b| b.title.as_str()).unwrap_or("Biblioteca");
+    let (title, author) = split_title(full);
     let cx = inner.x + 11 + inner.w / 2;
-    fb.fill(Rect::new(cx - 50, inner.y + 46, 100, 4), INK);
-    fb.fill(Rect::new(cx - 50, inner.y + inner.h - 50, 100, 4), INK);
+    fb.fill(Rect::new(cx - 50, inner.y + 30, 100, 4), INK);
+    fb.fill(Rect::new(cx - 50, inner.y + inner.h - 34, 100, 4), INK);
+    let lines = crate::chat::wrap_words(f, Face::Display, 32.0, title, inner.w - 56);
+    let n = lines.len().min(4) as i32;
+    let block = n * 40 + if author.is_empty() { 0 } else { 40 };
+    let y0 = inner.y + (inner.h - block) / 2 + 30;
+    for (k, l) in lines.iter().take(4).enumerate() {
+        let w = f.measure(Face::Display, 32.0, l);
+        f.draw(fb, Face::Display, 32.0, inner.x + 22 + (inner.w - 22 - w) / 2, y0 + k as i32 * 40, INK, l);
+    }
+    if !author.is_empty() {
+        let a = crate::apps::fit(f, Face::Body, 22.0, author, inner.w - 50);
+        let w = f.measure(Face::Body, 22.0, &a);
+        f.draw(fb, Face::Body, 22.0, inner.x + 22 + (inner.w - 22 - w) / 2, y0 + n * 40 + 4, 0x44, &a);
+    }
+}
+
+/// "Título - Autor PDF" → ("Título", "Autor"): nomes de arquivo viram título e autor.
+fn split_title(full: &str) -> (&str, &str) {
+    let full = full.trim();
+    let full = full.strip_suffix(" PDF").or_else(|| full.strip_suffix(" EPUB")).unwrap_or(full);
+    match full.split_once(" - ") {
+        Some((t, a)) if !t.trim().is_empty() => (t.trim(), a.trim()),
+        _ => (full, ""),
+    }
 }
 
 pub fn draw_tile(fb: &mut Framebuffer, f: &Fonts, i: usize, pressed: bool, extra: &HomeExtra) {
@@ -442,23 +459,28 @@ pub fn draw_tile(fb: &mut Framebuffer, f: &Fonts, i: usize, pressed: bool, extra
             }
             return;
         };
-        let lines = crate::chat::wrap_words(f, Face::Display, 46.0, &book.title, r.x + r.w - 36 - x);
+        let (title, author) = split_title(&book.title);
+        let room = r.x + r.w - 36 - x;
+        let lines = crate::chat::wrap_words(f, Face::Display, 44.0, title, room);
+        let n = lines.len().min(2) as i32;
         for (k, l) in lines.iter().take(2).enumerate() {
-            let l = if k == 1 && lines.len() > 2 { crate::apps::fit(f, Face::Display, 46.0, &format!("{l}…"), r.x + r.w - 36 - x) } else { l.clone() };
-            f.draw(fb, Face::Display, 46.0, x, r.y + 140 + k as i32 * 54, INK, &l);
+            let l = if k == 1 && lines.len() > 2 { crate::apps::fit(f, Face::Display, 44.0, &format!("{l}…"), room) } else { l.clone() };
+            f.draw(fb, Face::Display, 44.0, x, r.y + 128 + k as i32 * 50, INK, &l);
         }
-        let pct = book.progress.map(|p| format!("{}%", (p * 100.0).round() as i32)).unwrap_or_else(|| "Começar".into());
-        let py = r.y + 140 + lines.len().min(2) as i32 * 54 + 8;
-        f.draw(fb, Face::Body, 30.0, x, py, MUTED, &pct);
+        // Autor e progresso numa linha só, para o botão nunca cobrir nada.
+        let pct = book.progress.map(|p| format!("{}% lido", (p * 100.0).round() as i32)).unwrap_or_else(|| "ainda não começou".into());
+        let meta = if author.is_empty() { pct } else { format!("{author} · {pct}") };
+        let py = r.y + 128 + n * 50 - 6;
+        f.draw(fb, Face::Body, 27.0, x, py, MUTED, &crate::apps::fit(f, Face::Body, 27.0, &meta, room));
         if let Some(p) = book.progress {
-            let bar = Rect::new(x, py + 18, r.x + r.w - 36 - x, 16);
+            let bar = Rect::new(x, py + 16, room, 14);
             fb.round_rect(bar, 8, SURFACE);
             fb.round_outline(bar, 8, 2, INK, SURFACE);
             fb.round_rect(Rect::new(bar.x, bar.y, ((bar.w as f32 * p.clamp(0.0, 1.0)) as i32).max(16), bar.h), 8, 0x55);
         }
         let c = continue_rect();
         let c = if pressed { Rect::new(c.x, c.y + SH, c.w, c.h) } else { c };
-        button(fb, f, c, "Continuar", true);
+        button(fb, f, c, if book.progress.is_some_and(|p| p > 0.0) { "Continuar" } else { "Começar a ler" }, true);
     } else {
         let d = 100;
         let has = icon_disc(fb, r.x + 22, r.y + (r.h - d) / 2, d, match m {
