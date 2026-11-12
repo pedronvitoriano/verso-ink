@@ -3487,6 +3487,19 @@ mod raio_x {
                             app.mini_tap(id, 0);
                         }
                         shot(&mut app, "jogo-coroas-marcas");
+                        // Vidas: uma das duas primeiras casas da linha 1 é errada; segurar nela custa vida.
+                        let _ = app.mini.as_mut().and_then(|g| g.hold(0));
+                        let _ = app.mini.as_mut().and_then(|g| g.hold(1));
+                        shot(&mut app, "jogo-coroas-vida");
+                        for _ in 0..6 {
+                            let _ = app.mini.as_mut().and_then(|g| g.hold(0));
+                            let _ = app.mini.as_mut().and_then(|g| g.hold(1));
+                        }
+                        shot(&mut app, "jogo-coroas-sem-vidas");
+                        app.mini = Some(Box::new(crate::coroas::Coroas::new()));
+                        app.go(Screen::Mini);
+                        shot(&mut app, "jogo-coroas-sem-vidas-menu");
+                        std::fs::write(home.join("data/coroas/vidas.txt"), "5 0").unwrap();
                     }
                     if name == "masmorra" {
                         app.go(Screen::Sleep);

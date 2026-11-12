@@ -31,6 +31,76 @@ pub struct Coroas {
     kind: Kind,
     hints: u32,
     stats: Stats,
+    lives: Lives,
+    /// Fase difícil jogada para ganhar vidas (não gasta vida, vale 3 se vencer sem dica).
+    recharge: bool,
+    /// Recado curto no topo (coroa errada, vidas ganhas).
+    msg: Option<String>,
+}
+
+// ---------- Vidas ----------
+
+const MAX_LIVES: u32 = 5;
+/// Uma vida volta a cada 30 minutos.
+const REGEN_SECS: i64 = 30 * 60;
+const RECHARGE_LIVES: u32 = 3;
+
+fn now_secs() -> i64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
+}
+
+/// Vidas das fases: perde uma a cada coroa no lugar errado; voltam com o tempo.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Lives {
+    n: u32,
+    /// Quando começou a contar a próxima vida (só vale com menos que o máximo).
+    since: i64,
+}
+
+impl Lives {
+    fn load() -> Self {
+        let s = std::fs::read_to_string(dir().join("vidas.txt")).unwrap_or_default();
+        let mut p = s.split_whitespace().filter_map(|x| x.parse::<i64>().ok());
+        let mut l = match (p.next(), p.next()) {
+            (Some(n), Some(t)) => Lives { n: n.clamp(0, MAX_LIVES as i64) as u32, since: t },
+            _ => Lives { n: MAX_LIVES, since: now_secs() },
+        };
+        l.regen(now_secs());
+        l
+    }
+    fn save(&self) {
+        write_atomic("vidas.txt", &format!("{} {}\n", self.n, self.since));
+    }
+    /// Devolve as vidas que o tempo já recuperou.
+    fn regen(&mut self, now: i64) {
+        while self.n < MAX_LIVES && now - self.since >= REGEN_SECS {
+            self.n += 1;
+            self.since += REGEN_SECS;
+        }
+        if self.n >= MAX_LIVES {
+            self.since = now;
+        }
+    }
+    fn lose(&mut self, now: i64) {
+        self.regen(now);
+        if self.n == MAX_LIVES {
+            self.since = now;
+        }
+        self.n = self.n.saturating_sub(1);
+        self.save();
+    }
+    fn gain(&mut self, k: u32, now: i64) {
+        self.regen(now);
+        self.n = (self.n + k).min(MAX_LIVES);
+        if self.n == MAX_LIVES {
+            self.since = now;
+        }
+        self.save();
+    }
+    /// Segundos até a próxima vida.
+    fn next_in(&self, now: i64) -> i64 {
+        (REGEN_SECS - (now - self.since)).max(0)
+    }
 }
 
 const SIZES: [(usize, &str); 6] = [(5, "5×5"), (6, "6×6"), (7, "7×7"), (8, "8×8"), (10, "10×10"), (12, "12×12")];
@@ -390,6 +460,9 @@ impl Coroas {
             kind: Kind::Normal,
             hints: 0,
             stats,
+            lives: Lives::load(),
+            recharge: false,
+            msg: None,
         };
         // Fase deixada no meio: continua de onde parou.
         if let Some((level, n, reg, sol, rest)) = read_puzzle("andamento.txt") {
@@ -436,6 +509,40 @@ impl Coroas {
         self.level = level;
         self.kind = if level > 0 { fase_spec(level).1 } else { Kind::Normal };
         self.hints = 0;
+        self.recharge = false;
+        self.msg = None;
+    }
+
+    /// Joga uma vida de verdade? (fases contam; treino livre e a fase de recarga não).
+    fn uses_lives(&self) -> bool {
+        self.level > 0 && !self.recharge
+    }
+
+    fn out_of_lives(&mut self) -> bool {
+        self.lives.regen(now_secs());
+        self.lives.n == 0
+    }
+
+    /// Fase difícil para ganhar vidas: um desafio maior que a fase atual.
+    fn start_recharge(&mut self) {
+        self.save();
+        let k = (self.stats.level / 10 + 1) * 10;
+        let (reg, sol) = generate_fase(k, std::time::Duration::from_secs(6));
+        let n = fase_spec(k).0;
+        self.load_grid(0, n, reg, sol);
+        self.kind = Kind::Challenge;
+        self.recharge = true;
+    }
+
+    /// Volta para a fase que estava em jogo (ou abre a atual).
+    fn back_to_fase(&mut self) {
+        *self = Coroas::new();
+        if self.has_saved() {
+            self.menu = false;
+            self.started = std::time::Instant::now();
+        } else {
+            self.start_fase();
+        }
     }
 
     /// Abre a fase atual (a grade já preparada em segundo plano, se houver).
@@ -463,6 +570,11 @@ impl Coroas {
         self.won = self.crowns().len() == self.n && self.conflicts().is_empty();
         if self.won && !was {
             self.before = self.elapsed();
+            if self.recharge {
+                let k = if self.hints == 0 { RECHARGE_LIVES } else { 1 };
+                self.lives.gain(k, now_secs());
+                self.msg = Some(format!("+{k} vida{}", if k == 1 { "" } else { "s" }));
+            }
             if self.level > 0 && self.level == self.stats.level {
                 self.stats.record_win(today());
                 self.stats.save();
@@ -474,6 +586,7 @@ impl Coroas {
 
     fn fase_title(&self) -> String {
         match (self.level, self.kind) {
+            (0, _) if self.recharge => "Fase difícil · vale vidas".to_string(),
             (0, _) => format!("Treino · {0}×{0}", self.n),
             (k, Kind::Normal) => format!("Fase {k}"),
             (k, Kind::Hard) => format!("Fase {k} · Difícil"),
@@ -630,6 +743,31 @@ impl Coroas {
         }
     }
 
+    /// Corações das vidas (cheios e vazios) e, faltando alguma, o tempo para a próxima.
+    fn draw_hearts(fb: &mut Framebuffer, f: &Fonts, x: i32, y: i32, d: i32, l: &Lives, now: i64) {
+        for k in 0..MAX_LIVES as i32 {
+            let r = Rect::new(x + k * (d + 6), y, d, d);
+            let full = (k as u32) < l.n;
+            if crate::sprites::draw(fb, "coracao", r) {
+                if !full {
+                    for yy in r.y..r.y + r.h {
+                        for xx in r.x..r.x + r.w {
+                            fb.blend(xx, yy, PAPER, 190);
+                        }
+                    }
+                }
+            } else if full {
+                fb.round_rect(Rect::new(r.x + 4, r.y + 4, d - 8, d - 8), d / 2, INK);
+            } else {
+                fb.round_outline(Rect::new(r.x + 4, r.y + 4, d - 8, d - 8), d / 2, 3, 0x99, PAPER);
+            }
+        }
+        if l.n < MAX_LIVES {
+            let t = format!("+1 em {}", mmss(l.next_in(now) as u64));
+            f.draw(fb, Face::Strong, 22.0, x + MAX_LIVES as i32 * (d + 6) + 10, y + d * 2 / 3, MUTED, &t);
+        }
+    }
+
     fn draw_crown(fb: &mut Framebuffer, r: Rect, v: u8) {
         // A coroa desenhada (a mesma das damas e do tutorial); apagada quando não conta.
         let m = r.w / 10;
@@ -681,6 +819,9 @@ impl MiniGame for Coroas {
     fn draw(&self, fb: &mut Framebuffer, f: &Fonts) {
         fb.fill(fb.screen(), PAPER);
         ui::draw_back(fb, f, false);
+        let now = now_secs();
+        let mut lives = self.lives;
+        lives.regen(now);
         if self.menu && self.practice {
             let opts: Vec<&str> = SIZES.iter().map(|s| s.1).collect();
             minigame::draw_menu(fb, f, "Treino", "Escolha o tamanho. Não conta para as fases.", &opts);
@@ -689,9 +830,21 @@ impl MiniGame for Coroas {
         if self.menu {
             let st = &self.stats;
             let streak = st.current_streak(today());
-            let main = if self.has_saved() { format!("Continuar fase {}", st.level) } else { format!("Fase {}", st.level) };
-            minigame::draw_menu(fb, f, "Coroas", "Uma por linha, coluna e reino. Sem encostar.", &[&main, "Treino livre"]);
-            let y = minigame::menu_row(2).y + 40;
+            let main = if lives.n == 0 {
+                format!("Sem vidas · volta em {}", mmss(lives.next_in(now) as u64))
+            } else if self.has_saved() {
+                format!("Continuar fase {}", st.level)
+            } else {
+                format!("Fase {}", st.level)
+            };
+            let mut opts = vec![main.as_str(), "Treino livre"];
+            if lives.n < MAX_LIVES {
+                opts.push("Fase difícil: ganhe 3 vidas");
+            }
+            minigame::draw_menu(fb, f, "Coroas", "Uma por linha, coluna e reino. Sem encostar.", &opts);
+            let y = minigame::menu_row(opts.len()).y + 40;
+            // Vidas, depois das estatísticas.
+            Self::draw_hearts(fb, f, minigame::MARGIN, y + 250, 56, &lives, now);
             let lines = [
                 format!("Sequência: {} dia{}", streak, if streak == 1 { "" } else { "s" }),
                 format!("Melhor sequência: {} · Fases resolvidas: {}", st.best, st.solved),
@@ -704,7 +857,9 @@ impl MiniGame for Coroas {
             }
             return;
         }
-        let status = if self.won {
+        let status = if let Some(m) = &self.msg {
+            if self.won { format!("Resolvida em {} · {m}", mmss(self.before)) } else { m.clone() }
+        } else if self.won {
             format!("Resolvida em {}", mmss(self.before))
         } else if self.crowns().is_empty() && self.kind != Kind::Normal {
             format!("{} coroas. {}", self.n, if self.kind == Kind::Challenge { "Um desafio de verdade." } else { "Fase difícil." })
@@ -714,6 +869,11 @@ impl MiniGame for Coroas {
             if c > 0 { "Há coroas em conflito (sublinhadas).".to_string() } else { format!("{placed} de {} coroas", self.n) }
         };
         minigame::header(fb, f, &self.fase_title(), &status);
+        if self.level > 0 || self.recharge {
+            // Vidas à direita, na linha do recado.
+            let w = if lives.n < MAX_LIVES { 150 } else { 0 };
+            Self::draw_hearts(fb, f, W - minigame::MARGIN - 5 * 46 - w, 184, 40, &lives, now);
+        }
         if self.won && self.level > 0 {
             // Coroas de nota ao lado do tempo.
             for k in 0..3 {
@@ -774,11 +934,36 @@ impl MiniGame for Coroas {
             minigame::pill(fb, f, minigame::bottom_button(1, 2), &format!("Fase {}", self.stats.level), true);
             return;
         }
+        if self.recharge && self.won {
+            minigame::hint(fb, f, "Vidas guardadas. Agora, de volta à fase.");
+            minigame::pill(fb, f, minigame::bottom_button(0, 2), "Menu", false);
+            minigame::pill(fb, f, minigame::bottom_button(1, 2), &format!("Voltar à fase {}", self.stats.level), true);
+            return;
+        }
+        if self.uses_lives() && lives.n == 0 && !self.won {
+            // Sem vidas: a fase fica guardada; esperar ou ganhar vidas numa fase difícil.
+            let r = Rect::new(minigame::MARGIN, 520, W - 2 * minigame::MARGIN, 520);
+            ui::card(fb, r, 34, PAPER, false);
+            if !crate::sprites::draw(fb, "coracao", Rect::new((W - 160) / 2, r.y + 30, 160, 160)) {
+                fb.round_rect(Rect::new((W - 120) / 2, r.y + 50, 120, 120), 60, 0xC8);
+            }
+            let t = "Acabaram as vidas";
+            let w = f.measure(Face::Display, 56.0, t);
+            f.draw(fb, Face::Display, 56.0, (W - w) / 2, r.y + 260, INK, t);
+            let sub = format!("Uma volta em {} (uma a cada 30 min). Ou vença uma fase difícil e ganhe 3.", mmss(lives.next_in(now) as u64));
+            for (k, l) in crate::chat::wrap_words(f, Face::Body, 30.0, &sub, r.w - 80).iter().take(3).enumerate() {
+                let w = f.measure(Face::Body, 30.0, l);
+                f.draw(fb, Face::Body, 30.0, (W - w) / 2, r.y + 330 + k as i32 * 42, MUTED, l);
+            }
+            minigame::pill(fb, f, minigame::bottom_button(0, 2), "Menu", false);
+            minigame::pill(fb, f, minigame::bottom_button(1, 2), "Fase difícil +3", true);
+            return;
+        }
         let last = if self.level > 0 { "Menu" } else { "Novo" };
         for (k, l) in ["Desfazer", "Limpar", "Dica", last].iter().enumerate() {
             minigame::pill(fb, f, minigame::bottom_button(k, 4), l, false);
         }
-        minigame::hint(fb, f, "Toque ou arraste: marca X. Segure: coroa.");
+        minigame::hint(fb, f, if self.uses_lives() { "Toque ou arraste: X. Segure: coroa. Coroa errada custa uma vida." } else if self.recharge { "Vença sem dica: 3 vidas (com dica, 1)." } else { "Toque ou arraste: marca X. Segure: coroa." });
     }
 
     fn save(&self) {
@@ -813,7 +998,19 @@ impl MiniGame for Coroas {
         if self.menu || self.won || i >= self.n * self.n {
             return None;
         }
+        if self.uses_lives() && self.lives.n == 0 {
+            return None;
+        }
         let next = if self.marks[i] == Mark::Crown { Mark::Empty } else { Mark::Crown };
+        // Coroa no lugar errado: perde uma vida e a casa vira X (marcar X errado não custa nada).
+        if next == Mark::Crown && self.uses_lives() && self.solution[i / self.n] != i % self.n {
+            self.lives.lose(now_secs());
+            self.undo.push((i, self.marks[i]));
+            self.marks[i] = Mark::X;
+            self.msg = Some(if self.lives.n == 0 { "Coroa errada. Acabaram as vidas.".into() } else { format!("Coroa errada: −1 vida ({} restam)", self.lives.n) });
+            return Some(Redraw::Full);
+        }
+        self.msg = None;
         Some(self.set(i, next))
     }
 
@@ -835,7 +1032,19 @@ impl MiniGame for Coroas {
             return (0..SIZES.len()).map(|k| (910 + k as u32, minigame::menu_row(k))).collect();
         }
         if self.menu {
-            return vec![(900, minigame::menu_row(0)), (901, minigame::menu_row(1))];
+            let mut v = vec![(900, minigame::menu_row(0)), (901, minigame::menu_row(1))];
+            let mut l = self.lives;
+            l.regen(now_secs());
+            if l.n < MAX_LIVES {
+                v.push((902, minigame::menu_row(2)));
+            }
+            return v;
+        }
+        if self.recharge && self.won {
+            return vec![(803, minigame::bottom_button(0, 2)), (806, minigame::bottom_button(1, 2))];
+        }
+        if self.uses_lives() && self.lives.n == 0 && !self.won {
+            return vec![(803, minigame::bottom_button(0, 2)), (805, minigame::bottom_button(1, 2))];
         }
         if self.won && self.level > 0 {
             return vec![(803, minigame::bottom_button(0, 2)), (804, minigame::bottom_button(1, 2))];
@@ -849,6 +1058,22 @@ impl MiniGame for Coroas {
 
     fn tap(&mut self, id: u32, _x: i32, _y: i32) -> Redraw {
         match id {
+            900 if self.out_of_lives() => {
+                self.msg = Some("Sem vidas: espere ou jogue a fase difícil.".into());
+                Redraw::Full
+            }
+            902 | 805 => {
+                self.start_recharge();
+                Redraw::Full
+            }
+            806 => {
+                self.back_to_fase();
+                Redraw::Full
+            }
+            804 if self.out_of_lives() => {
+                self.menu = true;
+                Redraw::Full
+            }
             900 => {
                 if self.has_saved() {
                     self.menu = false;
@@ -897,6 +1122,11 @@ impl MiniGame for Coroas {
                 self.check_win();
                 if self.won { Redraw::Full } else { Redraw::Part(Rect::new(0, 170, W, 1448 - 170)) }
             }
+            803 if self.recharge => {
+                // Saindo da fase difícil: o menu volta a mostrar a fase guardada.
+                *self = Coroas::new();
+                Redraw::Full
+            }
             803 => {
                 // Sair da fase guarda o tempo; o andamento fica salvo pelo `save`.
                 self.before = if self.won { self.before } else { self.elapsed() };
@@ -919,6 +1149,23 @@ impl MiniGame for Coroas {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn vidas_voltam_com_o_tempo() {
+        let mut l = Lives { n: MAX_LIVES, since: 0 };
+        l.regen(1000);
+        assert_eq!(l.since, 1000);
+        // Perde duas (sem gravar: só a conta).
+        l.n -= 2;
+        l.since = 1000;
+        l.regen(1000 + REGEN_SECS - 1);
+        assert_eq!(l.n, MAX_LIVES - 2);
+        l.regen(1000 + REGEN_SECS);
+        assert_eq!(l.n, MAX_LIVES - 1);
+        assert_eq!(l.next_in(1000 + REGEN_SECS), REGEN_SECS);
+        l.regen(1000 + 5 * REGEN_SECS);
+        assert_eq!(l.n, MAX_LIVES);
+    }
 
     #[test]
     fn fases_crescem_e_as_especiais_sao_maiores() {
