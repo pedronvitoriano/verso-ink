@@ -1,6 +1,7 @@
 //! Sprites dos jogos de masmorra (assets/sprites → /mnt/us/verso-ink/sprites): carregados na
-//! primeira vez, reduzidos para o tamanho da casa e guardados na memória. O fundo branco do
-//! sprite não apaga a casa: só os tons mais escuros que o papel são desenhados.
+//! primeira vez, reduzidos para o tamanho da casa e guardados na memória. Se o PNG tem
+//! transparência (peças de xadrez, ladrilhos), ela vale; se não tem, o fundo branco do sprite
+//! não apaga a casa: só os tons mais escuros que o papel são desenhados.
 
 use crate::fb::{Framebuffer, Rect};
 use std::cell::RefCell;
@@ -26,8 +27,17 @@ pub fn draw(fb: &mut Framebuffer, name: &str, r: Rect) -> bool {
         c.borrow_mut()
             .entry((name.to_string(), side))
             .or_insert_with(|| {
-                let img = image::open(path(name)).ok()?.to_luma8();
-                Some(image::imageops::resize(&img, side as u32, side as u32, image::imageops::FilterType::Triangle).into_raw())
+                let img = image::open(path(name)).ok()?;
+                let alpha = img.color().has_alpha();
+                let la = image::imageops::resize(&img.to_luma_alpha8(), side as u32, side as u32, image::imageops::FilterType::Triangle);
+                let mut out = Vec::with_capacity((side * side * 2) as usize);
+                for p in la.pixels() {
+                    let v = p[0];
+                    // Sem transparência no arquivo: opaco nos tons do desenho, a borda clara funde.
+                    let a = if alpha { p[1] } else if v < 0xD0 { 255 } else if v < 0xF0 { 120 } else { 0 };
+                    out.extend([v, a]);
+                }
+                Some(out)
             })
             .clone()
     });
@@ -35,10 +45,10 @@ pub fn draw(fb: &mut Framebuffer, name: &str, r: Rect) -> bool {
     let (x0, y0) = (r.x + (r.w - side) / 2, r.y + (r.h - side) / 2);
     for y in 0..side {
         for x in 0..side {
-            let v = px[(y * side + x) as usize];
-            if v < 0xF0 {
-                // Opaco nos tons do desenho; a borda clara funde com o fundo.
-                fb.blend(x0 + x, y0 + y, v, if v < 0xD0 { 255 } else { 120 });
+            let k = 2 * (y * side + x) as usize;
+            let (v, a) = (px[k], px[k + 1]);
+            if a > 8 {
+                fb.blend(x0 + x, y0 + y, v, a);
             }
         }
     }

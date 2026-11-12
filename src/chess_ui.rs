@@ -247,24 +247,49 @@ pub fn draw_coaches(fb: &mut Framebuffer, f: &Fonts, page: usize) {
 // ---------- Partida contra treinador ----------
 
 pub fn coach_line_rect() -> Rect {
-    Rect::new(0, 166, W, 80)
+    Rect::new(0, 166, W, chess::BY - 8 - 166)
 }
 
-/// Fala do treinador acima do tabuleiro (até duas linhas).
-/// `reserve`: espaço à direita deixado livre (o relógio do treinador).
-pub fn draw_coach_line(fb: &mut Framebuffer, f: &Fonts, who: &str, text: &str, reserve: i32) {
+/// Balão de fala do treinador (à direita do busto).
+pub fn bubble_rect() -> Rect {
+    let x = MARGIN + 250;
+    Rect::new(x, 184, W - MARGIN - x, 166)
+}
+
+/// Treinador em cima do tabuleiro, como num app de jogo: o busto recortado no papel (sem
+/// moldura), apoiado na borda do tabuleiro, e o que ele diz num balão ao lado.
+pub fn draw_coach_line(fb: &mut Framebuffer, f: &Fonts, who: &str, text: &str) {
     let r = coach_line_rect();
     fb.fill(r, PAPER);
-    // Rosto pequeno à esquerda, se houver (o nome vem como "Nome (rating)").
     let name = who.split(" (").next().unwrap_or(who);
-    let x0 = if draw_portrait(fb, name, MARGIN, r.y + 6, 68, false) { MARGIN + 86 } else { MARGIN };
-    let head = format!("{who}: ");
-    let hw = f.measure(Face::Strong, 27.0, &head);
-    f.draw(fb, Face::Strong, 27.0, x0, r.y + 32, INK, &head);
-    let lines = wrap(f, Face::Body, 27.0, text, W - MARGIN - x0 - hw - reserve);
-    for (k, l) in lines.iter().take(2).enumerate() {
-        f.draw(fb, Face::Body, 27.0, x0 + hw, r.y + 32 + k as i32 * 36, INK, l);
+    let slug = crate::apps::fold(name).split_whitespace().collect::<Vec<_>>().join("-");
+    let side = r.y + r.h - 170 + 2;
+    if !crate::sprites::draw(fb, &format!("busto-{slug}"), Rect::new(MARGIN - 44, 170, side, side)) {
+        draw_portrait(fb, name, MARGIN, 190, 200, false);
     }
+    let bb = bubble_rect();
+    fb.round_rect(bb, 30, PAPER);
+    fb.round_outline(bb, 30, 4, INK, PAPER);
+    // Rabicho do balão apontando para o treinador.
+    let (tx, ty) = (bb.x, bb.y + 96);
+    for k in 0..26 {
+        let h = 26 - k;
+        fb.fill(Rect::new(tx - k, ty - h / 2, 1, h), INK);
+    }
+    for k in 4..22 {
+        let h = (26 - k) - 8;
+        if h > 0 {
+            fb.fill(Rect::new(tx - k + 4, ty - h / 2, 1, h), PAPER);
+        }
+    }
+    fb.fill(Rect::new(tx, ty - 9, 4, 18), PAPER);
+    for (k, l) in wrap(f, Face::Body, 31.0, text, bb.w - 64).iter().take(3).enumerate() {
+        f.draw(fb, Face::Body, 31.0, bb.x + 32, bb.y + 52 + k as i32 * 42, INK, l);
+    }
+    // Nome e rating embaixo do balão (o relógio dele fica à direita, na mesma linha).
+    let end = f.draw(fb, Face::Strong, 32.0, bb.x + 6, 412, INK, name);
+    let rating = who.split(" (").nth(1).map(|s| s.trim_end_matches(')')).unwrap_or("");
+    f.draw(fb, Face::Body, 28.0, end + 14, 412, MUTED, rating);
 }
 
 // ---------- Fim de partida ----------
@@ -385,7 +410,7 @@ pub fn draw_review(fb: &mut Framebuffer, f: &Fonts, sp: &Sprites, g: &Saved, k: 
         format!("{why}Melhor lance: {} (casas com moldura). O seu está em cinza.", rec.best_san)
     };
     for (n, l) in wrap(f, Face::Body, 30.0, &text, W - 2 * MARGIN).iter().take(3).enumerate() {
-        f.draw(fb, Face::Body, 30.0, MARGIN, 1196 + n as i32 * 40, INK, l);
+        f.draw(fb, Face::Body, 30.0, MARGIN, 290 + n as i32 * 42, INK, l);
     }
     pill(fb, f, review_btn(0), "‹ Anterior", false);
     pill(fb, f, review_btn(1), "Insights", true);

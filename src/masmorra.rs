@@ -12,8 +12,11 @@ use crate::ui::{self, INK, MUTED, PAPER};
 
 const MW: usize = 14;
 const MH: usize = 13;
-const CELL: i32 = 64;
-const MX: i32 = (W - MW as i32 * CELL) / 2;
+/// Janela da câmera: o mapa é maior que a tela; ela segue o herói.
+const VW: usize = 11;
+const VH: usize = 9;
+const CELL: i32 = 88;
+const MX: i32 = (W - VW as i32 * CELL) / 2;
 const MY: i32 = 262;
 const SIGHT: i32 = 4;
 /// Distância em que um monstro dormindo acorda.
@@ -482,11 +485,20 @@ impl Masmorra {
     }
 
     fn choice_rect(k: usize) -> Rect {
-        Rect::new(MX + 90, MY + 370 + k as i32 * 125, MW as i32 * CELL - 180, 100)
+        Rect::new(MX + 90, MY + 370 + k as i32 * 125, VW as i32 * CELL - 180, 100)
     }
 
-    fn cell(i: usize) -> Rect {
-        Rect::new(MX + (i % MW) as i32 * CELL, MY + (i / MW) as i32 * CELL, CELL, CELL)
+    /// Canto da câmera (linha, coluna), centrada no herói e presa às bordas do mapa.
+    fn view(&self) -> (i32, i32) {
+        let (hr, hc) = ((self.pos / MW) as i32, (self.pos % MW) as i32);
+        ((hr - VH as i32 / 2).clamp(0, (MH - VH) as i32), (hc - VW as i32 / 2).clamp(0, (MW - VW) as i32))
+    }
+
+    /// Casa na tela, se estiver dentro da câmera.
+    fn cell(&self, i: usize) -> Option<Rect> {
+        let (r0, c0) = self.view();
+        let (r, c) = ((i / MW) as i32 - r0, (i % MW) as i32 - c0);
+        ((0..VH as i32).contains(&r) && (0..VW as i32).contains(&c)).then(|| Rect::new(MX + c * CELL, MY + r * CELL, CELL, CELL))
     }
 
     fn heart(fb: &mut Framebuffer, x: i32, y: i32, s: i32, v: u8) {
@@ -545,32 +557,48 @@ impl MiniGame for Masmorra {
         }
         let mode = if self.daily { " · desafio do dia" } else { "" };
         minigame::header(fb, f, "Masmorra", &format!("Andar {} de 5 · {} pontos{mode}", self.depth, self.score()));
+        // Fundo: rocha escura onde você ainda não esteve (a masmorra não é papel em branco).
+        fb.fill(Rect::new(MX, MY, VW as i32 * CELL, VH as i32 * CELL), 0x2A);
         for i in 0..MW * MH {
-            let r = Self::cell(i);
+            let Some(r) = self.cell(i) else { continue };
             if !self.seen[i] {
+                // Veios na rocha, fixos por casa.
+                let h = (i as i32 * 7919) % 97;
+                fb.fill(Rect::new(r.x + 10 + h % 40, r.y + 18 + h % 30, 26, 3), 0x3A);
+                fb.fill(Rect::new(r.x + 40 - h % 20, r.y + 58 - h % 16, 20, 3), 0x3A);
                 continue;
             }
             let vis = self.visible(i);
             match self.map[i] {
                 Tile::Wall => {
-                    // Parede de pedra: blocos desencontrados.
-                    fb.fill(r, if vis { 0x5C } else { 0xB4 });
-                    let line = if vis { 0x3A } else { 0xA0 };
-                    for k in 0..4 {
-                        let y = r.y + k * CELL / 4;
-                        fb.fill(Rect::new(r.x, y, CELL, 2), line);
-                        let off = if k % 2 == 0 { CELL / 3 } else { CELL * 5 / 6 };
-                        fb.fill(Rect::new(r.x + off, y, 2, CELL / 4), line);
+                    if !crate::sprites::draw(fb, "parede", r) {
+                        // Parede de pedra: blocos desencontrados.
+                        fb.fill(r, 0x5C);
+                        for k in 0..4 {
+                            let y = r.y + k * CELL / 4;
+                            fb.fill(Rect::new(r.x, y, CELL, 3), 0x3A);
+                            let off = if k % 2 == 0 { CELL / 3 } else { CELL * 5 / 6 };
+                            fb.fill(Rect::new(r.x + off, y, 3, CELL / 4), 0x3A);
+                        }
                     }
                 }
-                Tile::Floor => {
-                    fb.fill(r, if vis { PAPER } else { 0xEE });
-                    fb.fill(Rect::new(r.x + CELL / 2 - 3, r.y + CELL / 2 - 3, 6, 6), 0xBB);
+                Tile::Floor | Tile::Stairs => {
+                    if !crate::sprites::draw(fb, "chao", r) {
+                        fb.fill(r, 0xF2);
+                        fb.round_outline(Rect::new(r.x + 3, r.y + 3, r.w - 6, r.h - 6), 6, 2, 0xD8, 0xF2);
+                    }
+                    if self.map[i] == Tile::Stairs && !crate::sprites::draw(fb, "escada", Rect::new(r.x + 6, r.y + 6, r.w - 12, r.h - 12)) {
+                        for k in 0..3 {
+                            fb.fill(Rect::new(r.x + 14 + k * 20, r.y + 62 - k * 20, CELL - 28 - k * 20, 16), INK);
+                        }
+                    }
                 }
-                Tile::Stairs if crate::sprites::draw(fb, "escada", r) => {}
-                Tile::Stairs => {
-                    for k in 0..3 {
-                        fb.fill(Rect::new(r.x + 10 + k * 14, r.y + 44 - k * 14, CELL - 20 - k * 14, 12), INK);
+            }
+            if !vis {
+                // Lembrança: o que já viu, mas está longe, fica na penumbra.
+                for yy in r.y..r.y + r.h {
+                    for xx in r.x..r.x + r.w {
+                        fb.blend(xx, yy, 0x40, 110);
                     }
                 }
             }
@@ -578,9 +606,8 @@ impl MiniGame for Masmorra {
         // Personagens alternam dois quadros a cada passo.
         let frame = if self.steps % 2 == 0 { "1" } else { "2" };
         let sprite = |fb: &mut Framebuffer, i: usize, name: &str| {
-            let r = Self::cell(i);
-            fb.fill(r, PAPER);
-            if !crate::sprites::draw(fb, name, Rect::new(r.x + 2, r.y + 2, r.w - 4, r.h - 4)) {
+            let Some(r) = self.cell(i) else { return };
+            if !crate::sprites::draw(fb, name, Rect::new(r.x + 4, r.y + 4, r.w - 8, r.h - 8)) {
                 fb.round_rect(Rect::new(r.x + 14, r.y + 14, r.w - 28, r.h - 28), 12, INK);
             }
         };
@@ -600,7 +627,7 @@ impl MiniGame for Masmorra {
                 continue;
             }
             sprite(fb, m.pos, &format!("{}-{frame}", m.kind.sprite()));
-            let r = Self::cell(m.pos);
+            let Some(r) = self.cell(m.pos) else { continue };
             // Vida do monstro, sempre à vista; z quando dorme.
             let s = m.hp.to_string();
             let w = f.measure(Face::Display, 20.0, &s) + 12;
@@ -616,7 +643,7 @@ impl MiniGame for Masmorra {
         }
         sprite(fb, self.pos, &format!("heroi-{frame}"));
         // Moldura fina do mapa (quatro traços, sem pintar o miolo).
-        let (bw, bh) = (MW as i32 * CELL, MH as i32 * CELL);
+        let (bw, bh) = (VW as i32 * CELL, VH as i32 * CELL);
         for r in [Rect::new(MX - 4, MY - 4, bw + 8, 3), Rect::new(MX - 4, MY + bh + 1, bw + 8, 3), Rect::new(MX - 4, MY - 4, 3, bh + 8), Rect::new(MX + bw + 1, MY - 4, 3, bh + 8)] {
             fb.fill(r, INK);
         }

@@ -811,9 +811,9 @@ pub fn san(pos: &Pos, m: Move, promo: Option<Kind>) -> String {
 
 // ---------- Desenho ----------
 
-pub const SQ: i32 = 112;
+pub const SQ: i32 = 104;
 pub const BX: i32 = (1072 - 8 * SQ) / 2;
-pub const BY: i32 = 250;
+pub const BY: i32 = 446;
 
 /// Casa na tela; com `flip`, as pretas ficam embaixo.
 pub fn square_rect(i: usize, flip: bool) -> Rect {
@@ -824,7 +824,7 @@ pub fn board_rect() -> Rect {
     Rect::new(BX, BY, 8 * SQ, 8 * SQ)
 }
 pub fn undo_rect() -> Rect {
-    Rect::new(72, 1300, (1072 - 144 - 24) / 2, 100)
+    Rect::new(72, 1368, (1072 - 144 - 24) / 2, 72)
 }
 pub fn new_rect() -> Rect {
     let r = undo_rect();
@@ -938,6 +938,22 @@ impl Sprites {
         sp
     }
     pub fn draw(&self, fb: &mut Framebuffer, p: Piece, x: i32, y: i32) {
+        self.draw_sized(fb, p, x, y, SQ - 8);
+    }
+
+    /// Peça desenhada (assets/sprites/xadrez-*.png) ou, sem o arquivo, o desenho geométrico.
+    pub fn draw_sized(&self, fb: &mut Framebuffer, p: Piece, x: i32, y: i32, size: i32) {
+        let name = match p.kind {
+            Kind::King => "rei",
+            Kind::Queen => "dama",
+            Kind::Rook => "torre",
+            Kind::Bishop => "bispo",
+            Kind::Knight => "cavalo",
+            Kind::Pawn => "peao",
+        };
+        if crate::sprites::draw(fb, &format!("xadrez-{name}-{}", if p.white { "b" } else { "p" }), Rect::new(x, y, size, size)) {
+            return;
+        }
         let k = KINDS.iter().position(|&q| q == p.kind).unwrap_or(0);
         let size = SQ - 8;
         for (layer, v) in [(&self.full[k], INK), (&self.inner[k], if p.white { PAPER } else { 0x55 })] {
@@ -950,6 +966,30 @@ impl Sprites {
                 }
             }
         }
+    }
+}
+
+/// Moldura do tabuleiro: borda escura arredondada, como um tabuleiro de verdade.
+pub fn draw_board_frame(fb: &mut Framebuffer, b: Rect) {
+    fb.round_rect(Rect::new(b.x - 10, b.y - 10, b.w + 20, b.h + 20), 18, 0x30);
+}
+
+/// Letras e números das casas, pequenos, no canto das casas da borda.
+pub fn draw_coords(fb: &mut Framebuffer, f: &Fonts, flip: bool) {
+    for k in 0..8 {
+        // Coluna (embaixo) e fileira (à esquerda), na ordem de quem está embaixo.
+        let file = if flip { 7 - k } else { k };
+        let col_sq = 56 + file; // fileira 1 vista de baixo
+        let r = square_rect(if flip { file } else { col_sq }, flip);
+        let dark = ((if flip { file } else { col_sq }) / 8 + file) % 2 == 1;
+        let t = ((b'a' + file as u8) as char).to_string();
+        f.draw(fb, Face::Strong, 19.0, r.x + r.w - 17, r.y + r.h - 6, if dark { 0xEE } else { 0x88 }, &t);
+        let rank_row = k; // linha da tela, de cima para baixo
+        let sq = if flip { (7 - rank_row) * 8 + 7 } else { rank_row * 8 };
+        let r = square_rect(sq, flip);
+        let dark = (sq / 8 + sq % 8) % 2 == 1;
+        let n = (8 - sq / 8).to_string();
+        f.draw(fb, Face::Strong, 19.0, r.x + 5, r.y + 21, if dark { 0xEE } else { 0x88 }, &n);
     }
 }
 
@@ -1024,11 +1064,17 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites, btn: &Butto
         f.draw(fb, Face::Strong, 34.0, 1072 - 72 - tw, 128, INK, "Xadrez");
     }
     draw_status(fb, f, g, sp);
+    if g.mode == Mode::Local {
+        // Sem treinador: o nome de quem joga do lado de cima, grande.
+        let top = if g.flipped() { "Brancas" } else { "Pretas" };
+        f.draw(fb, Face::Display, 64.0, 72, 420, INK, top);
+    }
     let b = board_rect();
-    fb.round_outline(Rect::new(b.x - 6, b.y - 6, b.w + 12, b.h + 12), 8, 4, INK, PAPER);
+    draw_board_frame(fb, b);
     for i in 0..64 {
         draw_square(fb, g, sp, i);
     }
+    draw_coords(fb, f, g.flipped());
     // Xeque e xeque-mate escritos sobre o tabuleiro, além da casa marcada.
     let stm = g.pos.white_to_move;
     if g.pos.in_check(stm) {
@@ -1045,7 +1091,7 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites, btn: &Butto
     if let Some(n) = btn.note {
         let r = status_rect();
         fb.fill(r, PAPER);
-        f.draw(fb, Face::Display, 40.0, 72, r.y + 62, INK, &crate::apps::fit(f, Face::Display, 40.0, n, 1072 - 144));
+        f.draw(fb, Face::Display, 40.0, 72, r.y + 50, INK, &crate::apps::fit(f, Face::Display, 40.0, n, 1072 - 144));
     }
     for (r, (label, filled)) in [(undo_rect(), btn.left), (new_rect(), btn.right)] {
         if label.is_empty() {
@@ -1058,7 +1104,7 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites, btn: &Butto
         }
         let size = if f.measure(Face::Strong, 38.0, label) > r.w - 40 { 30.0 } else { 38.0 };
         let w = f.measure(Face::Strong, size, label);
-        f.draw(fb, Face::Strong, size, r.x + (r.w - w) / 2, r.y + 63, if filled { PAPER } else { INK }, label);
+        f.draw(fb, Face::Strong, size, r.x + (r.w - w) / 2, r.y + r.h / 2 + (size * 0.36) as i32, if filled { PAPER } else { INK }, label);
     }
 }
 
@@ -1082,14 +1128,10 @@ pub fn set_rotate(on: bool) {
 
 /// Relógios: o de cima é de quem joga do lado de cima do tabuleiro.
 pub fn top_clock_rect() -> Rect {
-    Rect::new(1072 - 72 - 220, 170, 220, 72)
+    Rect::new(1072 - 72 - 210, 368, 210, 64)
 }
 pub fn bottom_clock_rect() -> Rect {
-    Rect::new(1072 - 72 - 220, 1189, 220, 72)
-}
-
-pub fn clock_reserve(g: &Game) -> i32 {
-    if g.clock.is_some() { 240 } else { 0 }
+    Rect::new(1072 - 72 - 210, 1292, 210, 64)
 }
 
 /// Desenha os dois relógios. O que está correndo fica preto; com menos de 10 s ganha borda grossa.
@@ -1108,18 +1150,18 @@ pub fn draw_clocks(fb: &mut Framebuffer, f: &Fonts, g: &Game) {
             fb.round_outline(r, r.h / 2, if ms < 10_000 { 7 } else { 3 }, INK, PAPER);
         }
         let t = clock_text(ms);
-        let w = f.measure(Face::Display, 46.0, &t);
-        f.draw(fb, Face::Display, 46.0, r.x + (r.w - w) / 2, r.y + 53, if active { PAPER } else { INK }, &t);
+        let w = f.measure(Face::Display, 42.0, &t);
+        f.draw(fb, Face::Display, 42.0, r.x + (r.w - w) / 2, r.y + 47, if active { PAPER } else { INK }, &t);
     }
 }
 
 pub fn status_rect() -> Rect {
-    Rect::new(0, 1180, 1072, 90)
+    Rect::new(0, 1288, 1072, 72)
 }
 
 pub fn promo_rect(k: usize) -> Rect {
     let w = (1072 - 144 - 3 * 16) / 4;
-    Rect::new(72 + k as i32 * (w + 16), 1176, w, 96)
+    Rect::new(72 + k as i32 * (w + 16), 1286, w, 76)
 }
 
 pub fn draw_status(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites) {
@@ -1131,13 +1173,13 @@ pub fn draw_status(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites) {
         for (k, kind) in PROMO.iter().enumerate() {
             let b = promo_rect(k);
             fb.round_outline(b, 20, 4, INK, PAPER);
-            sp.draw(fb, Piece { kind: *kind, white }, b.x + (b.w - (SQ - 8)) / 2, b.y - 4);
+            sp.draw_sized(fb, Piece { kind: *kind, white }, b.x + (b.w - 70) / 2, b.y + 3, 70);
         }
         return;
     }
     let s = g.status();
     let s = crate::apps::fit(f, Face::Display, 46.0, &s, 1072 - 144 - 240);
-    f.draw(fb, Face::Display, 46.0, 72, r.y + 62, INK, &s);
+    f.draw(fb, Face::Display, 44.0, 72, r.y + 50, INK, &s);
     if g.clock.is_some() {
         draw_clocks(fb, f, g);
         return;
@@ -1151,7 +1193,7 @@ pub fn draw_status(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites) {
     };
     let moves = if n == 0 { "início".to_string() } else { format!("{side}{n} {}", if n == 1 { "lance" } else { "lances" }) };
     let w = f.measure(Face::Body, 28.0, &moves);
-    f.draw(fb, Face::Body, 28.0, 1072 - 72 - w, r.y + 60, MUTED, &moves);
+    f.draw(fb, Face::Body, 28.0, 1072 - 72 - w, r.y + 48, MUTED, &moves);
 }
 
 #[cfg(test)]

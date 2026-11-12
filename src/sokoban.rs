@@ -230,23 +230,32 @@ impl MiniGame for Sokoban {
         minigame::header(fb, f, &title, &status);
         for i in 0..N * N {
             let r = Self::cell(i);
+            // Arte desenhada (mesmo cenário da Masmorra); sem os arquivos, as formas simples.
             if self.wall[i] {
-                fb.fill(r, 0x55);
+                if !crate::sprites::draw(fb, "parede", r) {
+                    fb.fill(r, 0x55);
+                }
                 continue;
             }
-            fb.fill(r, 0xF2);
-            if self.goal[i] {
+            if !crate::sprites::draw(fb, "chao", r) {
+                fb.fill(r, 0xF2);
+            }
+            let inset = |k: i32| Rect::new(r.x + k, r.y + k, r.w - 2 * k, r.h - 2 * k);
+            let boxed = self.s.boxes.contains(&i);
+            if self.goal[i] && !boxed && !crate::sprites::draw(fb, "alvo", inset(r.w / 8)) {
                 let d = r.w / 5;
                 fb.round_outline(Rect::new(r.x + r.w / 2 - d, r.y + r.h / 2 - d, 2 * d, 2 * d), d, 4, INK, 0xF2);
             }
-            if self.s.boxes.contains(&i) {
+            if boxed {
                 let on = self.goal[i];
-                let b = Rect::new(r.x + 8, r.y + 8, r.w - 16, r.h - 16);
-                fb.round_rect(b, 8, if on { INK } else { 0x99 });
-                ui::stroke(fb, (b.x as f32 + 8.0, b.y as f32 + 8.0), ((b.x + b.w) as f32 - 8.0, (b.y + b.h) as f32 - 8.0), 4.0, PAPER);
-                ui::stroke(fb, ((b.x + b.w) as f32 - 8.0, b.y as f32 + 8.0), (b.x as f32 + 8.0, (b.y + b.h) as f32 - 8.0), 4.0, PAPER);
+                if !crate::sprites::draw(fb, if on { "caixa-ok" } else { "caixa" }, inset(4)) {
+                    let b = Rect::new(r.x + 8, r.y + 8, r.w - 16, r.h - 16);
+                    fb.round_rect(b, 8, if on { INK } else { 0x99 });
+                    ui::stroke(fb, (b.x as f32 + 8.0, b.y as f32 + 8.0), ((b.x + b.w) as f32 - 8.0, (b.y + b.h) as f32 - 8.0), 4.0, PAPER);
+                    ui::stroke(fb, ((b.x + b.w) as f32 - 8.0, b.y as f32 + 8.0), (b.x as f32 + 8.0, (b.y + b.h) as f32 - 8.0), 4.0, PAPER);
+                }
             }
-            if i == self.s.player {
+            if i == self.s.player && !crate::sprites::draw(fb, "carregador", inset(2)) && !crate::sprites::draw(fb, "heroi-1", inset(2)) {
                 let (cx, cy) = (r.x + r.w / 2, r.y + r.h / 2);
                 fb.round_rect(Rect::new(cx - 14, cy - 30, 28, 28), 14, INK);
                 fb.round_rect(Rect::new(cx - 22, cy, 44, 32), 14, INK);

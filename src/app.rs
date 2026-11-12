@@ -383,7 +383,7 @@ impl App {
                     crate::chess::draw(fb, f, g, sp, &b);
                     if let crate::chess::Mode::Coach { level, .. } = g.mode {
                         let c = crate::coach::coach(level);
-                        crate::chess_ui::draw_coach_line(fb, f, &format!("{} ({})", c.name, c.rating), &self.coach_msg, crate::chess::clock_reserve(g));
+                        crate::chess_ui::draw_coach_line(fb, f, &format!("{} ({})", c.name, c.rating), &self.coach_msg);
                     }
                     crate::chess::draw_clocks(fb, f, g);
                 }
@@ -1509,8 +1509,7 @@ impl App {
         self.coach_msg = text.to_string();
         if let Some(level) = self.coach_level() {
             let c = crate::coach::coach(level);
-            let reserve = self.chess.as_ref().map(crate::chess::clock_reserve).unwrap_or(0);
-            crate::chess_ui::draw_coach_line(&mut self.fb, &self.fonts, &format!("{} ({})", c.name, c.rating), text, reserve);
+            crate::chess_ui::draw_coach_line(&mut self.fb, &self.fonts, &format!("{} ({})", c.name, c.rating), text);
             if let Some(g) = &self.chess {
                 crate::chess::draw_clocks(&mut self.fb, &self.fonts, g);
             }
@@ -1697,7 +1696,7 @@ impl App {
             let msg = self.coach_msg.clone();
             if let Some(level) = self.coach_level() {
                 let c = crate::coach::coach(level);
-                crate::chess_ui::draw_coach_line(&mut self.fb, &self.fonts, &format!("{} ({})", c.name, c.rating), &msg, crate::chess::clock_reserve(g));
+                crate::chess_ui::draw_coach_line(&mut self.fb, &self.fonts, &format!("{} ({})", c.name, c.rating), &msg);
             }
         }
         crate::chess::draw_clocks(&mut self.fb, &self.fonts, g);
@@ -2788,6 +2787,14 @@ mod raio_x {
                 shot(&mut app, "jogo-xadrez-partida");
                 app.go(Screen::Coaches);
                 shot(&mut app, "jogo-xadrez-treinadores");
+                // Partida contra treinador (sem motor no PC: só a tela).
+                let mut g = crate::chess::Game::new_coach(0, true);
+                let _ = g.play_uci("e2e4");
+                let _ = g.play_uci("e7e5");
+                app.chess = Some(g);
+                app.coach_msg = "Boa abertura! Peões no centro abrem caminho para os bispos. Sua vez.".into();
+                app.go(Screen::Chess);
+                shot(&mut app, "jogo-xadrez-treinador-partida");
             }
         }
         let _ = std::fs::remove_dir_all(&home);
