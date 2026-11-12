@@ -11,7 +11,7 @@ for f in "$BRAIN"/Pessoal/Handoffs/*.md; do
     out+="- Retomada em andamento: $title"$'\n'
 done
 if [ -f "$BRAIN/00 Home/Adequações do Brain.md" ]; then
-    n="$(grep -c '^- \[ \]' "$BRAIN/00 Home/Adequações do Brain.md" 2>/dev/null || echo 0)"
+    n="$(grep -c '^- \[ \]' "$BRAIN/00 Home/Adequações do Brain.md" 2>/dev/null)"; n="${n:-0}"
     [ "$n" -gt 0 ] && out+="- $n adequações do Brain pendentes"$'\n'
 fi
 [ -n "$out" ] || out="- Nenhuma pendência registrada no Brain."
