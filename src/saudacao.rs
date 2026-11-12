@@ -111,6 +111,10 @@ fn candidates(c: &Context) -> Vec<&'static str> {
             }
         }
     }
+    // Domingo: hora de fechar a semana (Mais › Semana).
+    if c.weekday == 0 && (10..=21).contains(&c.hour) {
+        v.extend(["Domingo, {nome}: que tal fechar a semana?", "Três minutos para fechar a semana, {nome}?"]);
+    }
     if let Some((done, streak)) = c.learn {
         if !done && streak >= 2 && c.hour >= 17 {
             // Ofensiva em risco: vira prioridade da frase.

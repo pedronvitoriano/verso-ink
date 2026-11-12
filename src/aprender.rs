@@ -126,6 +126,21 @@ pub fn topic_streak(sources: &[&str]) -> (u32, bool) {
     (n, done)
 }
 
+/// XP por fonte entre `from` e `to` (a fonte "protetor" fica de fora).
+pub fn xp_by_source(from: i64, to: i64) -> Vec<(String, u32)> {
+    let mut m: Vec<(String, u32)> = Vec::new();
+    for (d, x, src) in log() {
+        if (from..=to).contains(&d) && src != "protetor" {
+            match m.iter_mut().find(|(s, _)| *s == src) {
+                Some(e) => e.1 += x,
+                None => m.push((src, x)),
+            }
+        }
+    }
+    m.sort_by_key(|e| std::cmp::Reverse(e.1));
+    m
+}
+
 /// XP por dia entre `from` e `to`.
 pub fn xp_days(from: i64, to: i64) -> Vec<u32> {
     let lg = log();

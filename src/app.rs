@@ -138,6 +138,8 @@ pub struct App {
     attach_items: Vec<crate::chat::AttachItem>,
     attach_sel: Vec<usize>,
     attach_page: usize,
+    /// Lugar do módulo aberto no cache de minijogos, quando não é o padrão da tela de volta.
+    mini_slot: Option<usize>,
     pub status: Status,
     light: ui::Light,
     lib: Library,
@@ -301,6 +303,7 @@ impl App {
             attach_items: Vec::new(),
             attach_sel: Vec::new(),
             attach_page: 0,
+            mini_slot: None,
             status: read_status(),
             light: read_light(),
             lib: Library::empty(),
@@ -2549,11 +2552,11 @@ impl App {
                 if let Some(g) = self.mini.take() {
                     g.save();
                     // Guarda a partida: ao voltar ao jogo, continua daqui.
-                    let key = match self.mini_back {
+                    let key = self.mini_slot.take().unwrap_or(match self.mini_back {
                         Screen::Games => self.mini_game,
                         Screen::Home => 101,
                         _ => 100,
-                    };
+                    });
                     self.mini_cache.insert(key, g);
                 }
                 let back = self.mini_back;
@@ -2601,6 +2604,12 @@ impl App {
                 self.background_sync(true);
             }
             (Screen::Module(Module::Mais), Row(5)) => self.go(Screen::Terminal),
+            (Screen::Module(Module::Mais), Row(6)) => {
+                self.mini = Some(self.mini_cache.remove(&102).unwrap_or_else(|| Box::new(crate::semana::Semana::new())));
+                self.mini_slot = Some(102);
+                self.mini_back = Screen::Module(Module::Mais);
+                self.go(Screen::Mini);
+            }
             (Screen::Edicao | Screen::Artigos | Screen::Retrato | Screen::Terminal, Back) => self.go(Screen::Module(Module::Mais)),
             (Screen::Edicao, Row(k)) => {
                 if let Some((_, act)) = self.ed_hits.get(k).cloned() {
@@ -2640,6 +2649,7 @@ impl App {
             (Screen::Aprovar, Level(k)) => self.decide_approval(k == 1),
             (Screen::Module(Module::Mais), Row(4)) => {
                 self.mini = Some(self.mini_cache.remove(&100).unwrap_or_else(|| Box::new(crate::receitas::Receitas::new())));
+                self.mini_slot = None;
                 self.mini_back = Screen::Module(Module::Mais);
                 self.go(Screen::Mini);
             }
@@ -2755,6 +2765,7 @@ impl App {
                 Module::Claude => self.go(Screen::Claude),
                 Module::Violao => {
                     self.mini = Some(self.mini_cache.remove(&101).unwrap_or_else(|| Box::new(crate::estudo::Estudo::new())));
+                    self.mini_slot = None;
                     self.mini_back = Screen::Home;
                     self.go(Screen::Mini);
                 }
@@ -2800,6 +2811,7 @@ impl App {
             (Screen::Library, Clips) => self.go(Screen::Clips),
             (Screen::Clips, Clips) => {
                 self.mini = Some(Box::new(crate::revisao::Revisao::new()));
+                self.mini_slot = None;
                 self.mini_back = Screen::Clips;
                 self.go(Screen::Mini);
             }
@@ -2840,6 +2852,7 @@ impl App {
                 let mut g = self.mini_cache.remove(&i).unwrap();
                 g.resume();
                 self.mini = Some(g);
+                self.mini_slot = None;
                 self.mini_game = i;
                 self.mini_back = Screen::Games;
                 self.go(Screen::Mini);
@@ -3789,6 +3802,23 @@ mod raio_x {
             app.cur_chat = Some(c);
             app.go(Screen::ClaudeChat);
             shot(&mut app, "claude-conversa");
+        }
+        // Fechamento da semana com dados de exemplo.
+        {
+            let w = crate::semana::Week {
+                id: "2026-W46".into(),
+                title: "Semana de aprender: partitura todo dia".into(),
+                summary: vec!["Você abriu a partitura cinco dias seguidos e passou do módulo de ritmo. A leitura ficou para trás: só dois dias com o livro.".into(), "Os agentes fecharam o raio-x do Verso Ink e prepararam o rascunho do post; o Brain tem duas retomadas paradas.".into()],
+                numbers: vec![("dias de ofensiva".into(), "5".into()), ("XP na semana".into(), "184".into()), ("min de leitura".into(), "46".into()), ("dias de violão".into(), "3".into()), ("missões".into(), "4".into()), ("pomodoros".into(), "7".into())],
+                questions: vec![("p1".into(), "O que mais importa na próxima semana?".into(), vec!["Violão".into(), "Ler mais".into(), "Fechar o Brain".into(), "Trabalho".into()])],
+                plan: vec!["Ler 15 minutos antes de dormir, de segunda a sexta.".into(), "Uma lição de partitura por dia, mesmo nos dias corridos.".into(), "Fechar as duas retomadas do Brain até quarta.".into()],
+            };
+            app.mini_back = Screen::Home;
+            for (v, name) in [(0, "semana-inicio"), (1, "semana-resumo"), (2, "semana-pergunta"), (3, "semana-plano")] {
+                app.mini = Some(Box::new(crate::semana::Semana::with(w.clone(), v)));
+                app.go(Screen::Mini);
+                shot(&mut app, name);
+            }
         }
         // Revisão dos destaques com cartões de exemplo (o arquivo do Kindle não existe no PC).
         {

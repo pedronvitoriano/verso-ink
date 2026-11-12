@@ -244,6 +244,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, a) if a else self.reply(404, {"error": "não encontrado"})
         if parts == ["missoes"]:
             return self.reply(200, EXTRAS.missions_view())
+        if parts == ["semana"]:
+            wk = EXTRAS.week()
+            return self.reply(200, wk) if wk else self.reply(404, {"error": "a semana ainda não foi montada"})
         if parts == ["edicao"]:
             ed = EXTRAS.edition()
             return self.reply(200, ed) if ed else self.reply(404, {"error": "ainda não há edição"})
@@ -319,7 +322,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(413, {"error": "imagem grande demais"})
             out, err = EXTRAS.add_photo(data, self.headers.get("Content-Type", ""))
             return self.reply(400, {"error": err}) if err else self.reply(200, out)
-        extras_routes = {("missoes",), ("missoes", "proxima"), ("missoes", "projetos"), ("inbox", "link"), ("inbox", "cifra"), ("sessoes",), ("avisos",), ("longe",), ("aprovacoes",), ("brain",), ("edicao", "gerar"), ("google",), ("edicao", "email"), ("destaques", "perguntas"), ("codigo",), ("edicao", "codigo"), ("aprender", "curriculo"), ("aprender", "licao")}
+        extras_routes = {("missoes",), ("missoes", "proxima"), ("missoes", "projetos"), ("inbox", "link"), ("inbox", "cifra"), ("sessoes",), ("avisos",), ("longe",), ("aprovacoes",), ("brain",), ("edicao", "gerar"), ("google",), ("edicao", "email"), ("destaques", "perguntas"), ("codigo",), ("edicao", "codigo"), ("aprender", "curriculo"), ("aprender", "licao"), ("semana", "gerar"), ("semana", "respostas")}
         if tuple(parts) in extras_routes or (len(parts) == 2 and parts[0] in ("aprovacoes", "missoes")):
             req = self.json_body() if tuple(parts) != ("edicao", "gerar") else {}
             if req is None:
@@ -367,6 +370,12 @@ class Handler(BaseHTTPRequestHandler):
             if parts == ["destaques", "perguntas"]:
                 out, err = EXTRAS.highlight_questions(req)
                 return self.reply(502 if err != "nada para preparar" else 400, {"error": err}) if err else self.reply(200, out)
+            if parts == ["semana", "gerar"]:
+                out, err = EXTRAS.week_generate(req)
+                return self.reply(502, {"error": err}) if err else self.reply(200, out)
+            if parts == ["semana", "respostas"]:
+                out, err = EXTRAS.week_answer(req)
+                return self.reply(502 if "montada" not in str(err) else 404, {"error": err}) if err else self.reply(200, out)
             if parts == ["aprender", "curriculo"]:
                 out, err = EXTRAS.learn_curriculum(req)
                 return self.reply(502, {"error": err}) if err else self.reply(200, out)

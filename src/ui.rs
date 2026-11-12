@@ -654,17 +654,18 @@ pub fn draw_back(fb: &mut Framebuffer, f: &Fonts, pressed: bool) {
 
 /// Ideias de módulos futuros (da conversa de concepção); entram aqui conforme forem feitos.
 /// Módulos do Mais: (nome, descrição, pronto?). Os prontos abrem ao toque.
-pub const COMING: [(&str, &str, bool); 6] = [
+pub const COMING: [(&str, &str, bool); 7] = [
     ("Edição da manhã", "Os agentes da noite, avisos e notícias", true),
     ("Missões", "Mande os agentes do PC trabalharem por você", true),
     ("Artigos", "Links mandados do celular, para ler depois", true),
     ("Porta-retrato", "Fotos do celular em tons de cinza", true),
     ("Receitas", "Aberta na cozinha, sem apagar", true),
     ("Terminal", "Comandos de um toque no Linux do Kindle", true),
+    ("Semana", "Fechamento com o Claude e o plano da próxima", true),
 ];
 
 pub fn more_row(k: usize) -> Rect {
-    Rect::new(MARGIN, 480 + k as i32 * 138, 1072 - 2 * MARGIN, 122)
+    Rect::new(MARGIN, 470 + k as i32 * 124, 1072 - 2 * MARGIN, 110)
 }
 
 fn draw_more(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
@@ -682,8 +683,8 @@ fn draw_more(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
             fb.round_rect(r, 30, SURFACE);
         }
         let ink = if *ready { INK } else { 0x55 };
-        f.draw(fb, Face::Display, 46.0, r.x + 34, r.y + 58, ink, name);
-        f.draw(fb, Face::Body, 26.0, r.x + 36, r.y + 96, MUTED, desc);
+        f.draw(fb, Face::Display, 42.0, r.x + 34, r.y + 52, ink, name);
+        f.draw(fb, Face::Body, 25.0, r.x + 36, r.y + 88, MUTED, desc);
         let tag = if *ready { "Abrir" } else { "Em breve" };
         let tw = f.measure(Face::Strong, 26.0, tag);
         let tr = Rect::new(r.x + r.w - tw - 48 - 28, r.y + (r.h - 56) / 2, tw + 48, 56);

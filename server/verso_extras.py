@@ -77,7 +77,7 @@ class Extras:
     def __init__(self, base: Path, run_claude):
         self.base = base
         self.run_claude = run_claude
-        for d in ("artigos", "fotos", "cifras", "sessoes", "avisos", "aprovacoes", "edicoes", "missoes"):
+        for d in ("artigos", "fotos", "cifras", "sessoes", "avisos", "aprovacoes", "edicoes", "missoes", "semanas"):
             (base / d).mkdir(parents=True, exist_ok=True)
         self.lock = threading.Lock()
         threading.Thread(target=self.morning_loop, daemon=True).start()
@@ -625,6 +625,84 @@ Português do Brasil (exemplos em outra língua quando o tema pedir)."""
         if not cards or len(exs) < 3:
             return None, "lição incompleta"
         return {"cartoes": cards, "exercicios": exs}, None
+
+    # ---------- Fechamento da semana ----------
+
+    def week_id(self):
+        return time.strftime("%G-W%V", time.gmtime(time.time() + MANAUS))
+
+    def week(self):
+        return self.read(self.base / "semanas" / f"{self.week_id()}.json")
+
+    def week_generate(self, req):
+        kindle = req.get("kindle", {}) if isinstance(req.get("kindle"), dict) else {}
+        since = time.time() - 7 * 86400
+        by = {}
+        for r in self.session_log(since):
+            by.setdefault(r["project"], set()).add(time.strftime("%Y-%m-%d", time.gmtime(r["time"] + MANAUS)))
+        work = [f"- {p}: {len(d)} dia(s) com sessões de agente" for p, d in sorted(by.items(), key=lambda x: -len(x[1]))[:8]]
+        missions = [f"- {r['title']} ({r['status']})" for r in self.missions() if r.get("finished", 0) >= since][:12]
+        brain = self.read(self.base / "brain.json", {}).get("text", "")
+        prompt = f"""Você faz o fechamento da semana do Pedro (dev full-stack, aprendendo violão e partitura, lê no Kindle), para ele ler no Kindle no domingo e responder com toques.
+Dados do Kindle nos últimos 7 dias (JSON): {json.dumps(kindle, ensure_ascii=False)[:3000]}
+Trabalho dos agentes por projeto:
+{chr(10).join(work) or "nenhum registro"}
+Missões terminadas:
+{chr(10).join(missions) or "nenhuma"}
+Resumo do Brain (pendências): {brain[:2500] or "sem resumo"}
+Responda SÓ com JSON válido, sem cercas:
+{{"titulo": "frase curta que resume a semana (até 60 caracteres)", "resumo": ["2 a 4 parágrafos curtos (até 260 caracteres cada), honestos, com o que foi bem e o que escapou"], "numeros": [{{"rotulo": "até 22 caracteres", "valor": "curto, ex.: 5 dias"}}], "perguntas": [{{"id": "p1", "texto": "pergunta para ele refletir (até 120 caracteres)", "opcoes": ["3 ou 4 respostas curtas, até 40 caracteres"]}}]}}
+Exatamente 3 perguntas, que ajudem a planejar a próxima semana (prioridade, o que cortar, energia). Até 6 números. Português do Brasil, direto, sem emoji."""
+        data, err = self._claude_json(prompt, timeout=300)
+        if err or not isinstance(data, dict):
+            return None, err or "resposta inválida"
+        clip = lambda v, n: str(v or "").strip()[:n]
+        qs = []
+        for k, q in enumerate(data.get("perguntas", [])[:3]):
+            ops = [clip(o, 50) for o in (q.get("opcoes") or [])[:4] if str(o).strip()] if isinstance(q, dict) else []
+            if len(ops) >= 2 and q.get("texto"):
+                qs.append({"id": f"p{k + 1}", "texto": clip(q.get("texto"), 160), "opcoes": ops})
+        wk = {
+            "semana": self.week_id(),
+            "titulo": clip(data.get("titulo"), 80),
+            "resumo": [clip(p, 320) for p in data.get("resumo", [])[:4] if str(p).strip()],
+            "numeros": [{"rotulo": clip(n.get("rotulo"), 30), "valor": clip(n.get("valor"), 20)} for n in data.get("numeros", [])[:6] if isinstance(n, dict) and n.get("rotulo")],
+            "perguntas": qs,
+            "respostas": {},
+            "plano": [],
+            "kindle": kindle,
+            "gerada": int(time.time()),
+        }
+        self.write(self.base / "semanas" / f"{wk['semana']}.json", wk)
+        return wk, None
+
+    def week_answer(self, req):
+        wk = self.week()
+        if not wk:
+            return None, "a semana ainda não foi montada"
+        ans = {q["id"]: str(req.get("respostas", {}).get(q["id"], ""))[:60] for q in wk["perguntas"]}
+        qa = "\n".join(f"- {q['texto']} → {ans[q['id']] or 'sem resposta'}" for q in wk["perguntas"])
+        prompt = f"""Fechamento da semana do Pedro: {wk['titulo']}
+{chr(10).join(wk['resumo'])}
+Respostas dele:
+{qa}
+Escreva o plano da próxima semana: 3 compromissos concretos e pequenos, coerentes com as respostas (cada um até 90 caracteres), e uma nota em Markdown para o Brain pessoal dele (título, resumo da semana, números, perguntas e respostas, plano).
+Responda SÓ com JSON válido, sem cercas: {{"plano": ["...", "...", "..."], "nota": "markdown"}}
+Português do Brasil."""
+        data, err = self._claude_json(prompt, timeout=240)
+        if err or not isinstance(data, dict):
+            return None, err or "resposta inválida"
+        wk["respostas"] = ans
+        wk["plano"] = [str(p).strip()[:120] for p in data.get("plano", [])[:3] if str(p).strip()]
+        self.write(self.base / "semanas" / f"{wk['semana']}.json", wk)
+        nota = str(data.get("nota", "")).strip()[:8000]
+        if nota:
+            now = int(time.time())
+            mid = new_id()
+            path = f"/home/pedro/dev/aions-brain/Brain/Pessoal/Semanas/{wk['semana']}.md"
+            prompt_m = f"Grave exatamente o texto abaixo no arquivo {path} (crie a pasta se faltar; se o arquivo existir, substitua). É a nota pessoal do fechamento da semana. Não faça commit nem PR e não mexa em mais nada.\n\n{nota}"
+            self.write(self.base / "missoes" / f"{mid}.json", {"id": mid, "template": "semana", "title": f"Nota da semana {wk['semana']} no Brain", "prompt": prompt_m, "project": "", "status": "na fila", "created": now, "not_before": now, "when": "agora"})
+        return wk, None
 
     # ---------- Revisão dos destaques ----------
 
