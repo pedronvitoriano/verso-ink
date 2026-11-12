@@ -424,21 +424,29 @@ fn draw_cover(fb: &mut Framebuffer, f: &Fonts, r: Rect, book: Option<&crate::dat
     fb.fill(Rect::new(inner.x, inner.y, 22, inner.h), 0x88);
     let full = book.map(|b| b.title.as_str()).unwrap_or("Biblioteca");
     let (title, author) = split_title(full);
+    // Letra proporcional à capa: cabe tanto na capa grande quanto na miniatura do Continuar.
+    let size = (inner.w as f32 / 6.5).clamp(13.0, 34.0);
+    let lh = (size * 1.2) as i32;
+    let pad = (inner.w / 10).max(6);
     let cx = inner.x + 11 + inner.w / 2;
-    fb.fill(Rect::new(cx - 50, inner.y + 30, 100, 4), INK);
-    fb.fill(Rect::new(cx - 50, inner.y + inner.h - 34, 100, 4), INK);
-    let lines = crate::chat::wrap_words(f, Face::Display, 32.0, title, inner.w - 56);
-    let n = lines.len().min(4) as i32;
-    let block = n * 40 + if author.is_empty() { 0 } else { 40 };
-    let y0 = inner.y + (inner.h - block) / 2 + 30;
-    for (k, l) in lines.iter().take(4).enumerate() {
-        let w = f.measure(Face::Display, 32.0, l);
-        f.draw(fb, Face::Display, 32.0, inner.x + 22 + (inner.w - 22 - w) / 2, y0 + k as i32 * 40, INK, l);
+    let rule = (inner.w / 3).max(20);
+    fb.fill(Rect::new(cx - rule / 2, inner.y + pad + 4, rule, 3), INK);
+    fb.fill(Rect::new(cx - rule / 2, inner.y + inner.h - pad - 7, rule, 3), INK);
+    let room_w = inner.w - 22 - 2 * pad;
+    let max_lines = ((inner.h - 4 * pad - if author.is_empty() { 0 } else { lh }) / lh).max(1) as usize;
+    let lines = crate::chat::wrap_words(f, Face::Display, size, title, room_w);
+    let n = lines.len().min(max_lines) as i32;
+    let block = n * lh + if author.is_empty() || inner.w < 120 { 0 } else { lh };
+    let y0 = inner.y + (inner.h - block) / 2 + (size * 0.8) as i32;
+    for (k, l) in lines.iter().take(max_lines).enumerate() {
+        let l = if k + 1 == max_lines && lines.len() > max_lines { crate::apps::fit(f, Face::Display, size, &format!("{l}…"), room_w) } else { crate::apps::fit(f, Face::Display, size, l, room_w) };
+        let w = f.measure(Face::Display, size, &l);
+        f.draw(fb, Face::Display, size, inner.x + 22 + (inner.w - 22 - w) / 2, y0 + k as i32 * lh, INK, &l);
     }
-    if !author.is_empty() {
-        let a = crate::apps::fit(f, Face::Body, 22.0, author, inner.w - 50);
-        let w = f.measure(Face::Body, 22.0, &a);
-        f.draw(fb, Face::Body, 22.0, inner.x + 22 + (inner.w - 22 - w) / 2, y0 + n * 40 + 4, 0x44, &a);
+    if !author.is_empty() && inner.w >= 120 {
+        let a = crate::apps::fit(f, Face::Body, size * 0.66, author, room_w);
+        let w = f.measure(Face::Body, size * 0.66, &a);
+        f.draw(fb, Face::Body, size * 0.66, inner.x + 22 + (inner.w - 22 - w) / 2, y0 + n * lh + 2, 0x44, &a);
     }
 }
 

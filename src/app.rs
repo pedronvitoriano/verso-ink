@@ -2845,7 +2845,8 @@ mod raio_x {
             std::fs::write(home.join(format!("data/tutoriais/{g}.visto")), "1").unwrap();
         }
         // Um livro e um jogo para o "Continuar" da tela inicial.
-        std::fs::write(home.join("data/last_book"), "/nao/existe.epub\nO nome do vento - Patrick Rothfuss\n").unwrap();
+        std::fs::write(home.join("livro.pdf"), "").unwrap();
+        std::fs::write(home.join("data/last_book"), format!("{}\nPerfil de três reis - Gene Edwards PDF\n", home.join("livro.pdf").display())).unwrap();
         std::fs::write(home.join("data/ultimo_jogo"), "1").unwrap();
         // Relógio 5+3 nas partidas, para a tela da partida mostrar os dois mostradores.
         std::fs::write(home.join("data/xadrez_ritmo.txt"), "5").unwrap();
