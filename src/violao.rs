@@ -534,6 +534,13 @@ impl Violao {
         Violao { view: View::Hub, songs, song: 0, page: 0, shift: 0, list_page: 0, dict_root: 0, pair: suggested(), timer: Timer::Idle, shown_secs: 0, module: crate::partitura::locate(lesson).0, lesson, answered: None, course_root: false, quiz, cel: None, from_aula: false }
     }
 
+    /// Abre direto na Aula do dia (botão da frase da Início).
+    pub fn open_aula() -> Self {
+        let mut v = Self::new();
+        v.view = View::Aula;
+        v
+    }
+
     /// Abre direto no curso de partitura (para o tópico Partitura da seção Aprender).
     pub fn course() -> Self {
         let mut v = Self::new();

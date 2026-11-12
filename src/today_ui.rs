@@ -135,6 +135,37 @@ pub fn draw_today(fb: &mut Framebuffer, f: &Fonts, items: &[Item], done: &HashSe
         }
         y += 96;
     }
+    // Hábitos do Aprender: marcados sozinhos quando você estuda (chama na frente, sem toque).
+    let learn = crate::aprender::habit_topics();
+    if y < BOTTOM - 120 {
+        section(fb, f, y, "APRENDER (MARCA SOZINHO)");
+        y += 50;
+        let mut x = MARGIN;
+        for (name, srcs) in &learn {
+            let (n, on) = crate::aprender::habit_streak(srcs);
+            let label = if n > 0 { format!("{name} · {n}") } else { name.clone() };
+            let tw = f.measure(Face::Strong, 30.0, &label).min(W - 2 * MARGIN - 90);
+            let wdt = tw + 90;
+            if x + wdt > W - MARGIN {
+                x = MARGIN;
+                y += 84;
+            }
+            if y + 72 > BOTTOM {
+                break;
+            }
+            let r = Rect::new(x, y, wdt, 72);
+            if on {
+                fb.round_rect(r, 36, INK);
+            } else {
+                fb.round_outline(r, 36, 4, INK, PAPER);
+            }
+            fb.round_rect(Rect::new(r.x + 14, r.y + 12, 48, 48), 24, PAPER);
+            crate::aprender::flame(fb, Rect::new(r.x + 16, r.y + 14, 44, 44), on);
+            f.draw(fb, Face::Strong, 30.0, r.x + 72, r.y + 47, if on { PAPER } else { INK }, &fit(f, Face::Strong, 30.0, &label, tw));
+            x += wdt + 16;
+        }
+        y += 96;
+    }
     // Lembretes do dia.
     if group(Kind::Reminder).next().is_some() && y < BOTTOM - 60 {
         section(fb, f, y, "LEMBRETES");
@@ -204,6 +235,10 @@ pub fn draw_calendar(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
         detail: format!("meta de {goal} min"),
         cells: days.iter().map(|d| Some(reading.get(d).copied().unwrap_or(0) >= goal * 60)).collect(),
     });
+    // Hábitos do Aprender, marcados pelo XP de cada dia.
+    for (name, srcs) in crate::aprender::habit_topics().into_iter().take(4) {
+        rows.push(CalRow { label: name, detail: "aprender".into(), cells: days.iter().map(|&d| Some(crate::aprender::habit_on(&srcs, d))).collect() });
+    }
     for it in all.iter().filter(|i| i.kind == Kind::Habit).take(7) {
         let key = it.key();
         let cells = days.iter().zip(&marks).map(|(&d, m)| it.on(d).then(|| m.contains(&key))).collect();

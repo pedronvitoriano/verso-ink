@@ -138,18 +138,22 @@ pub fn bar_rect() -> Rect {
     Rect::new(MARGIN, 712, 1072 - 2 * MARGIN, 96)
 }
 pub fn night_rect() -> Rect {
-    Rect::new(MARGIN - 16, 900, 1072 - 2 * MARGIN + 32, 170)
+    Rect::new(MARGIN - 16, 866, 1072 - 2 * MARGIN + 32, 116)
+}
+/// Modo avião: desliga o rádio do Kindle (Wi-Fi), economiza bateria.
+pub fn plane_rect() -> Rect {
+    Rect::new(MARGIN - 16, 990, 1072 - 2 * MARGIN + 32, 116)
 }
 /// Botão do Claude no painel Luz e tela (pergunta sobre a tela de onde você veio).
 pub fn light_claude_rect() -> Rect {
     Rect::new(1072 - MARGIN - 420, 72, 420, 88)
 }
 pub fn settings_row_rect() -> Rect {
-    Rect::new(MARGIN, 1220, 1072 - 2 * MARGIN, 84)
+    Rect::new(MARGIN, 1226, 1072 - 2 * MARGIN, 84)
 }
 /// Wi-Fi direto no painel (trocar de rede sem passar pelos ajustes).
 pub fn wifi_row_rect() -> Rect {
-    Rect::new(MARGIN, 1114, 1072 - 2 * MARGIN, 84)
+    Rect::new(MARGIN, 1124, 1072 - 2 * MARGIN, 84)
 }
 pub fn low_battery_ok_rect() -> Rect {
     Rect::new(MARGIN, 1150, 1072 - 2 * MARGIN, 120)
@@ -359,25 +363,93 @@ pub fn draw_header(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
 pub fn draw_clock(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     let r = time_rect();
     fb.fill(r, PAPER);
-    // A frase do momento, grande: o toque pessoal da tela inicial.
-    let phrase = home_phrase(st);
+    // A frase do momento, grande: o toque pessoal da tela inicial; embaixo, o botão dela.
+    let p = home_phrase(st);
+    let kicker = match p.rarity {
+        crate::saudacao::Rarity::Rare => "ACHADO RARO",
+        crate::saudacao::Rarity::Legendary => "ACHADO LENDÁRIO",
+        _ => "",
+    };
+    let text = p.text.trim_start_matches("LENDÁRIO: ").to_string();
+    let top = r.y + if kicker.is_empty() { 0 } else { 40 };
+    let bottom = r.y + r.h - if p.act == crate::saudacao::Act::None { 0 } else { 74 };
     let mut size = 76.0;
-    let mut lines = crate::chat::wrap_words(f, Face::Display, size, &phrase, r.w - 10);
-    while lines.len() > 3 && size > 50.0 {
+    let fits = |size: f32, n: usize| n as i32 * (size * 1.1) as i32 <= bottom - top;
+    let mut lines = crate::chat::wrap_words(f, Face::Display, size, &text, r.w - 10);
+    while (lines.len() > 3 || !fits(size, lines.len())) && size > 40.0 {
         size -= 4.0;
-        lines = crate::chat::wrap_words(f, Face::Display, size, &phrase, r.w - 10);
+        lines = crate::chat::wrap_words(f, Face::Display, size, &text, r.w - 10);
     }
     let lh = (size * 1.1) as i32;
-    let n = lines.len().min(3) as i32;
-    let y0 = r.y + (r.h - n * lh) / 2 + (size * 0.8) as i32;
-    for (k, l) in lines.iter().take(3).enumerate() {
+    let n = lines.len().min(4) as i32;
+    if !kicker.is_empty() {
+        f.draw(fb, Face::Strong, 26.0, MARGIN, r.y + 34, MUTED, kicker);
+    }
+    let y0 = top + (bottom - top - n * lh) / 2 + (size * 0.8) as i32;
+    for (k, l) in lines.iter().take(4).enumerate() {
         f.draw(fb, Face::Display, size, MARGIN - 4, y0 + k as i32 * lh, INK, l);
+    }
+    if p.act != crate::saudacao::Act::None {
+        button(fb, f, phrase_rect(f, p.act), p.act.label(), matches!(p.act, crate::saudacao::Act::Achado(_)));
     }
     draw_chips(fb, f, st);
 }
 
+/// Coleção de achados raros: os guardados com o desenho, os que faltam como "?".
+/// `new` = o que acabou de entrar (destaque e o bônus embaixo).
+pub fn draw_achados(fb: &mut Framebuffer, f: &Fonts, new: Option<usize>) {
+    use crate::saudacao::ITEMS;
+    fb.fill(fb.screen(), PAPER);
+    draw_back(fb, f, false);
+    let got: Vec<usize> = crate::saudacao::collected().iter().map(|(i, _)| *i).collect();
+    let owned = (0..ITEMS.len()).filter(|i| got.contains(i)).count();
+    f.draw(fb, Face::Display, 110.0, MARGIN - 4, 300, INK, "Achados");
+    f.draw(fb, Face::Strong, 30.0, MARGIN, 360, MUTED, &format!("{owned} de {} · aparecem nas frases da Início, quando menos se espera", ITEMS.len()));
+    let cw = (1072 - 2 * MARGIN - 3 * 16) / 4;
+    for (i, it) in ITEMS.iter().enumerate() {
+        let r = Rect::new(MARGIN + (i % 4) as i32 * (cw + 16), 400 + (i / 4) as i32 * 196, cw, 180);
+        let have = got.contains(&i);
+        let n = got.iter().filter(|g| **g == i).count();
+        if Some(i) == new {
+            card(fb, r, 24, INK, false);
+            fb.round_rect(Rect::new(r.x + 10, r.y + 10, r.w - 20, 130), 18, PAPER);
+        } else if have {
+            card(fb, r, 24, PAPER, false);
+        } else {
+            fb.round_rect(r, 24, SURFACE);
+        }
+        if have {
+            crate::sprites::draw(fb, it.2, Rect::new(r.x + (r.w - 120) / 2, r.y + 14, 120, 120));
+            let name = crate::apps::fit(f, Face::Strong, 20.0, it.0, r.w - 16);
+            let w = f.measure(Face::Strong, 20.0, &name);
+            f.draw(fb, Face::Strong, 20.0, r.x + (r.w - w) / 2, r.y + 166, if Some(i) == new { PAPER } else { INK }, &name);
+            if n > 1 {
+                f.draw(fb, Face::Strong, 22.0, r.x + r.w - 44, r.y + 34, MUTED, &format!("×{n}"));
+            }
+        } else {
+            let q = if it.4 { "★" } else { "?" };
+            let w = f.measure(Face::Display, 70.0, q);
+            f.draw(fb, Face::Display, 70.0, r.x + (r.w - w) / 2, r.y + 110, 0xAA, q);
+        }
+    }
+    if let Some(i) = new {
+        let it = &ITEMS[i];
+        let t = format!("{} guardado. {}", it.0, crate::saudacao::bonus_text(it.3));
+        let w = f.measure(Face::Strong, 30.0, &t);
+        f.draw(fb, Face::Strong, 30.0, (1072 - w) / 2, 1230, INK, &t);
+    }
+    draw_footer(fb, f, &Status { battery: None, charging: false, wifi: false, offset_min: 0 });
+}
+
+/// Botão da frase da Início (largura pelo texto).
+pub fn phrase_rect(f: &Fonts, act: crate::saudacao::Act) -> Rect {
+    let w = f.measure(Face::Strong, 28.0, act.label()) + 60;
+    let r = time_rect();
+    Rect::new(MARGIN - 4, r.y + r.h - 66, w.min(r.w), 60)
+}
+
 /// Frase do momento (muda de hora em hora) a partir do que o Kindle sabe agora.
-fn home_phrase(st: &Status) -> String {
+pub fn home_phrase(st: &Status) -> crate::saudacao::Phrase {
     let now = clock::now(st.offset_min);
     let book = crate::data::last_book();
     let game = crate::data::last_game().and_then(|i| crate::apps::GAMES.get(i)).map(|g| g.0.to_string());
@@ -394,9 +466,13 @@ fn home_phrase(st: &Status) -> String {
         battery: st.battery,
         guitar: Some((crate::violao::practiced_today(), crate::violao::streak())),
         learn: { let st = crate::aprender::status(); (st.streak > 0 || st.today_done).then_some((st.today_done, st.streak)) },
+        review_due: crate::revisao::due_count(),
     };
-    let p = crate::saudacao::phrase(&ctx);
-    if p.is_empty() { "O que vamos fazer hoje?".into() } else { p }
+    let mut p = crate::saudacao::pick(&ctx);
+    if p.text.is_empty() {
+        p.text = "O que vamos fazer hoje?".into();
+    }
+    p
 }
 
 /// Dois cartões abaixo da hora: o clima e o resumo do dia (lembrete, leitura, focos).
@@ -438,6 +514,13 @@ fn draw_chips(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
 
 /// Ilustração do dia (muda à meia-noite): um personagem diferente a cada dia, ao lado da hora.
 fn draw_daily_art(fb: &mut Framebuffer, st: &Status) {
+    // Achado raro na frase: o próprio achado no lugar da ilustração, num pedestal.
+    if let crate::saudacao::Act::Achado(i) = home_phrase(st).act {
+        let r = Rect::new(1072 - MARGIN - 300, 170, 300, 280);
+        fb.round_rect(Rect::new(r.x + 30, r.y + 220, r.w - 60, 40), 20, SURFACE);
+        crate::sprites::draw(fb, crate::saudacao::ITEMS[i].2, Rect::new(r.x + 40, r.y + 10, 220, 220));
+        return;
+    }
     let day = crate::data::today(st.offset_min);
     let n = (0..40).filter(|k| crate::sprites::exists(&format!("dia-{:02}", k + 1))).count() as i64;
     if n == 0 {
@@ -887,9 +970,9 @@ pub fn draw_light_level(fb: &mut Framebuffer, f: &Fonts, l: &Light) {
     fb.fill(Rect::new(MARGIN - 8, 440, 560, 230), PAPER);
     f.draw(fb, Face::Strong, 36.0, MARGIN, 470, MUTED, "LUZ");
     let label = if l.level == 0 { "Apagada".to_string() } else { l.level.to_string() };
-    let end = f.draw(fb, Face::Display, if l.level == 0 { 120.0 } else { 170.0 }, MARGIN - 6, 640, INK, &label);
+    let end = f.draw(fb, Face::Display, if l.level == 0 { 76.0 } else { 120.0 }, MARGIN - 4, 612, INK, &label);
     if l.level > 0 {
-        f.draw(fb, Face::Body, 36.0, end + 16, 640, MUTED, &format!("de {}", l.max));
+        f.draw(fb, Face::Body, 34.0, end + 14, 612, MUTED, &format!("de {}", l.max));
     }
     // Trilho único com a parte acesa preenchida e marcas a cada passo (toque em qualquer ponto).
     let r = bar_rect();
@@ -908,25 +991,32 @@ pub fn draw_light_level(fb: &mut Framebuffer, f: &Fonts, l: &Light) {
 }
 
 pub fn draw_night(fb: &mut Framebuffer, f: &Fonts, l: &Light, pressed: bool) {
-    let r = night_rect();
+    toggle_row(fb, f, night_rect(), "Modo noturno", "Texto claro sobre fundo escuro", l.night, pressed);
+}
+
+pub fn draw_plane(fb: &mut Framebuffer, f: &Fonts, on: bool, pressed: bool) {
+    toggle_row(fb, f, plane_rect(), "Modo avião", if on { "Rádio desligado: sem Wi-Fi, mais bateria" } else { "Desliga o Wi-Fi e economiza bateria" }, on, pressed);
+}
+
+/// Linha com título, explicação e a chave liga/desliga à direita.
+fn toggle_row(fb: &mut Framebuffer, f: &Fonts, r: Rect, title: &str, sub: &str, on: bool, pressed: bool) {
     fb.fill(r, PAPER);
     if pressed {
         fb.round_rect(r, 32, 0xDD);
     }
-    f.draw(fb, Face::Display, 64.0, MARGIN, r.y + 82, INK, "Modo noturno");
-    f.draw(fb, Face::Body, 32.0, MARGIN, r.y + 134, MUTED, "Texto claro sobre fundo escuro");
-    // Chave liga/desliga.
-    let sw = Rect::new(1072 - MARGIN - 180, r.y + 40, 180, 96);
-    if l.night {
-        fb.round_rect(sw, 48, INK);
-        disc(fb, sw.x as f32 + sw.w as f32 - 48.0, sw.y as f32 + 48.0, 36.0, PAPER);
+    f.draw(fb, Face::Display, 46.0, MARGIN, r.y + 54, INK, title);
+    f.draw(fb, Face::Body, 28.0, MARGIN, r.y + 96, MUTED, sub);
+    let sw = Rect::new(1072 - MARGIN - 150, r.y + (r.h - 80) / 2, 150, 80);
+    if on {
+        fb.round_rect(sw, 40, INK);
+        disc(fb, sw.x as f32 + sw.w as f32 - 40.0, sw.y as f32 + 40.0, 30.0, PAPER);
     } else {
-        fb.round_outline(sw, 48, 5, INK, if pressed { 0xDD } else { PAPER });
-        disc(fb, sw.x as f32 + 48.0, sw.y as f32 + 48.0, 30.0, INK);
+        fb.round_outline(sw, 40, 5, INK, if pressed { 0xDD } else { PAPER });
+        disc(fb, sw.x as f32 + 40.0, sw.y as f32 + 40.0, 25.0, INK);
     }
 }
 
-pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status, claude: bool) {
+pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status, claude: bool, plane: bool) {
     fb.fill(fb.screen(), PAPER);
     draw_back(fb, f, false);
     if claude {
@@ -945,8 +1035,9 @@ pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status, claud
     draw_light_level(fb, f, l);
     draw_light_minus(fb, false);
     draw_light_plus(fb, false);
-    fb.fill(Rect::new(MARGIN, 862, 1072 - 2 * MARGIN, 3), INK);
+    fb.fill(Rect::new(MARGIN, 848, 1072 - 2 * MARGIN, 3), INK);
     draw_night(fb, f, l, false);
+    draw_plane(fb, f, plane, false);
     let rows = [
         (wifi_row_rect(), "Wi-Fi", if st.wifi { "Conectado · trocar de rede" } else { "Sem rede · conectar" }),
         (settings_row_rect(), "Ajustes do sistema", "Bateria, cópia, reiniciar"),

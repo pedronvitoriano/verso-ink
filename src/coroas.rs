@@ -40,6 +40,12 @@ pub struct Coroas {
 
 // ---------- Vidas ----------
 
+/// Bônus de achado raro: uma vida a mais.
+pub fn bonus_life() {
+    let mut l = Lives::load();
+    l.gain(1, now_secs());
+}
+
 const MAX_LIVES: u32 = 5;
 /// Uma vida volta a cada 30 minutos.
 const REGEN_SECS: i64 = 30 * 60;

@@ -57,6 +57,11 @@ pub fn freezes() -> u32 {
     std::fs::read_to_string(data("aprender_protetor.txt")).ok().and_then(|s| s.trim().parse().ok()).unwrap_or(0)
 }
 
+/// Bônus de achado raro: um protetor a mais (até o máximo).
+pub fn add_freeze() {
+    set_freezes(freezes() + 1);
+}
+
 fn set_freezes(n: u32) {
     let _ = std::fs::write(data("aprender_protetor.txt"), n.min(MAX_FREEZE).to_string());
 }
@@ -120,6 +125,48 @@ pub fn topic_streak(sources: &[&str]) -> (u32, bool) {
     let mut d = if done { t } else { t - 1 };
     let mut n = 0;
     while did(d) {
+        n += 1;
+        d -= 1;
+    }
+    (n, done)
+}
+
+/// Hábitos automáticos do aprendizado, para o gerenciador de hábitos (tela Hoje e 30 dias):
+/// (nome, fontes de XP; vazio = qualquer fonte, a ofensiva geral). Só entram os tópicos usados
+/// nos últimos 30 dias.
+pub fn habit_topics() -> Vec<(String, Vec<String>)> {
+    let t = today();
+    let used: Vec<String> = xp_by_source(t - 29, t).into_iter().map(|(s, _)| s).collect();
+    let mut v = vec![("Aprender".to_string(), Vec::new())];
+    for (name, srcs) in [("Violão", vec!["violao"]), ("Partitura", vec!["licao", "treino"]), ("Destaques", vec!["revisao"])] {
+        if srcs.iter().any(|s| used.iter().any(|u| u == s)) {
+            v.push((name.to_string(), srcs.iter().map(|s| s.to_string()).collect()));
+        }
+    }
+    for u in used.iter().filter(|u| u.starts_with("t:")) {
+        let id = &u[2..];
+        let name = std::fs::read_to_string(crate::home_dir().join(format!("data/aprender/topicos/{id}/tema.txt"))).map(|s| s.trim().to_string()).unwrap_or(id.to_string());
+        v.push((name, vec![u.clone()]));
+    }
+    v
+}
+
+/// O hábito contou nesse dia? (ofensiva geral: lição do dia; tópico: algum XP dele)
+pub fn habit_on(sources: &[String], day: i64) -> bool {
+    let lg = log();
+    if sources.is_empty() {
+        return kept(&lg, day);
+    }
+    lg.iter().any(|(d, x, s)| *d == day && *x > 0 && sources.iter().any(|src| src == s))
+}
+
+/// Sequência do hábito (dias seguidos até hoje, ou até ontem se hoje ainda não).
+pub fn habit_streak(sources: &[String]) -> (u32, bool) {
+    let t = today();
+    let done = habit_on(sources, t);
+    let mut d = if done { t } else { t - 1 };
+    let mut n = 0;
+    while habit_on(sources, d) {
         n += 1;
         d -= 1;
     }

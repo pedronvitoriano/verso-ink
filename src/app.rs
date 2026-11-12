@@ -44,6 +44,8 @@ pub enum Screen {
     ClaudeFiles,
     /// Escolher arquivos do Kindle para anexar à pergunta.
     ClaudeAttach,
+    /// Coleção de achados raros (das frases da Início).
+    Achados,
     Reader,
     ReaderToc,
     ClaudeDoc,
@@ -106,6 +108,10 @@ pub enum Target {
     Mini(u32),
     Search,
     Sort,
+    /// Modo avião (Luz e tela).
+    Plane,
+    /// Botão da frase da Início.
+    Phrase,
     Help,
     Ctx,
 }
@@ -140,6 +146,8 @@ pub struct App {
     attach_page: usize,
     /// Lugar do módulo aberto no cache de minijogos, quando não é o padrão da tela de volta.
     mini_slot: Option<usize>,
+    /// Achado que acabou de entrar na coleção (destaque na tela Achados).
+    achado_new: Option<usize>,
     pub status: Status,
     light: ui::Light,
     lib: Library,
@@ -304,6 +312,7 @@ impl App {
             attach_sel: Vec::new(),
             attach_page: 0,
             mini_slot: None,
+            achado_new: None,
             status: read_status(),
             light: read_light(),
             lib: Library::empty(),
@@ -415,7 +424,7 @@ impl App {
         match self.screen {
             Screen::Home => ui::draw_home(fb, f, st, &data::summary(st.offset_min), home_game.as_ref()),
             Screen::Module(m) => ui::draw_module(fb, f, m, st),
-            Screen::Light => ui::draw_light(fb, f, &self.light, st, light_claude),
+            Screen::Light => ui::draw_light(fb, f, &self.light, st, light_claude, !self.wifi_on),
             Screen::Library => apps::draw_library(fb, f, &self.lib, st),
             Screen::Focus => apps::draw_focus(fb, f, self.pomo, data::focus_today(st.offset_min), st),
             Screen::Settings => apps::draw_settings(fb, f, &self.sys, st, self.confirm.map(|c| c.0)),
@@ -526,6 +535,7 @@ impl App {
                     crate::reader::draw_toc(fb, f, r, self.toc_page);
                 }
             }
+            Screen::Achados => ui::draw_achados(fb, f, self.achado_new),
             Screen::ClaudeAttach => crate::chat::draw_attach(fb, f, &self.attach_items, &self.attach_sel, self.attach_page),
             Screen::ClaudeFiles => {
                 if let Some(c) = &self.cur_chat {
@@ -656,6 +666,10 @@ impl App {
                 }
                 v.extend((0..Module::ALL.len()).map(|i| (Tile(i), ui::tile_rect(i))));
                 v.push((Header, ui::header_rect()));
+                let act = ui::home_phrase(&self.status).act;
+                if act != crate::saudacao::Act::None {
+                    v.push((Phrase, ui::phrase_rect(&self.fonts, act)));
+                }
                 // Cartões abaixo da hora: abrem a Edição da manhã (e os avisos).
                 v.push((Row(0), ui::chips_rect()));
                 v
@@ -672,6 +686,7 @@ impl App {
                 (Plus, ui::plus_rect()),
                 (Bar, ui::bar_rect()),
                 (Night, ui::night_rect()),
+                (Plane, ui::plane_rect()),
                 (OpenSettings, ui::settings_row_rect()),
                 (Wifi, ui::wifi_row_rect()),
             ]
@@ -772,6 +787,7 @@ impl App {
                 }
                 v
             }
+            Screen::Achados => vec![(Back, ui::back_rect())],
             Screen::ClaudeAttach => {
                 let mut v = vec![(Back, ui::back_rect()), (Primary, crate::chat::attach_done_rect())];
                 let n = self.attach_items.len().saturating_sub(self.attach_page * crate::chat::ATTACH_ROWS).min(crate::chat::ATTACH_ROWS);
@@ -1431,6 +1447,51 @@ impl App {
     }
 
     /// Envia a mensagem e mostra a espera; a resposta abre na última página da conversa.
+    /// Botão da frase da Início: abre a tela que a frase sugere (ou guarda o achado raro).
+    fn phrase_action(&mut self) {
+        use crate::saudacao::Act;
+        use Target::*;
+        let act = ui::home_phrase(&self.status).act;
+        let open_mini = |app: &mut Self, g: Box<dyn crate::minigame::MiniGame>, slot: usize| {
+            app.mini = Some(app.mini_cache.remove(&slot).unwrap_or(g));
+            app.mini_slot = Some(slot);
+            app.mini_back = Screen::Home;
+            app.go(Screen::Mini);
+        };
+        match act {
+            Act::None => {}
+            Act::Aprender => self.activate(Tile(Module::ALL.iter().position(|m| *m == Module::Violao).unwrap_or(4)), 0),
+            Act::Aula => open_mini(self, Box::new(crate::violao::Violao::open_aula()), 103),
+            Act::Revisao => open_mini(self, Box::new(crate::revisao::Revisao::new()), 104),
+            Act::Semana => open_mini(self, Box::new(crate::semana::Semana::new()), 102),
+            Act::Edicao => {
+                self.ed_page = 0;
+                self.go(Screen::Edicao);
+            }
+            Act::Jogo => match data::last_game().filter(|&i| i < apps::GAMES.len()) {
+                Some(i) => {
+                    self.go(Screen::Games);
+                    self.activate(Game(i), 0);
+                }
+                None => self.go(Screen::Games),
+            },
+            Act::Ler => self.activate(Continue, 0),
+            Act::Foco => self.go(Screen::Focus),
+            Act::Claude => self.go(Screen::Claude),
+            Act::Hoje => self.go(Screen::Today),
+            Act::Jogar => self.go(Screen::Games),
+            Act::Colecao => {
+                self.achado_new = None;
+                self.go(Screen::Achados);
+            }
+            Act::Achado(i) => {
+                let day = data::today(self.status.offset_min);
+                self.achado_new = crate::saudacao::collect(i, day).then_some(i);
+                self.go(Screen::Achados);
+            }
+        }
+    }
+
     fn send_claude(&mut self) {
         let text = self.compose_text.trim().to_string();
         if text.is_empty() {
@@ -2310,7 +2371,10 @@ impl App {
             self.sleep_scene = self.capture_sleep();
         }
         match screen {
-            Screen::Light => self.light = read_light(),
+            Screen::Light => {
+                self.light = read_light();
+                self.wifi_on = crate::wifi::enabled();
+            }
             Screen::Library => self.lib = Library::scan(&self.lib.query.clone()),
             Screen::Settings => {
                 self.sys = SysInfo::read();
@@ -2745,6 +2809,11 @@ impl App {
                 self.go(Screen::Games);
                 self.activate(Game(i), x);
             }
+            (Screen::Home, Phrase) => self.phrase_action(),
+            (Screen::Achados, Back) => {
+                self.achado_new = None;
+                self.go(Screen::Home);
+            }
             (Screen::Home, Continue) => {
                 let Some(b) = data::last_book() else { return };
                 if !b.path.exists() {
@@ -2787,6 +2856,14 @@ impl App {
                 self.render(true);
             }
             (Screen::Light, OpenSettings) => self.go(Screen::Settings),
+            (Screen::Light, Plane) => {
+                // Modo avião = rádio desligado (o Kindle só tem Wi-Fi).
+                set_wifi(!self.wifi_on);
+                std::thread::sleep(Duration::from_millis(800));
+                self.wifi_on = crate::wifi::enabled();
+                log(&format!("modo avião {}", !self.wifi_on));
+                self.render(false);
+            }
             (Screen::Light, Ctx) => {
                 // Volta à tela de onde veio (sem redesenhar) e pergunta ao Claude sobre ela.
                 let back = self.light_return.take().unwrap_or(Screen::Home);
@@ -3815,6 +3892,18 @@ mod raio_x {
             app.go(Screen::Mini);
             app.mini_tap(700, 0);
             shot(&mut app, "violao-aula");
+        }
+        // Achados: um guardado agora e a coleção.
+        {
+            let day = crate::data::today(crate::offset_min());
+            crate::saudacao::collect(1, day - 3);
+            crate::saudacao::collect(5, day - 1);
+            app.achado_new = crate::saudacao::collect(0, day).then_some(0);
+            app.go(Screen::Achados);
+            shot(&mut app, "achados");
+            app.achado_new = None;
+            app.go(Screen::Today);
+            shot(&mut app, "hoje-com-aprender");
         }
         // Fechamento da semana com dados de exemplo.
         {
