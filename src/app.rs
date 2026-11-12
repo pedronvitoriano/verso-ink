@@ -146,6 +146,8 @@ pub struct App {
     attach_page: usize,
     /// Lugar do módulo aberto no cache de minijogos, quando não é o padrão da tela de volta.
     mini_slot: Option<usize>,
+    /// Página da lista de redes Wi-Fi.
+    wifi_page: usize,
     /// Início da leitura em andamento no leitor próprio (segundos, para o reading.log).
     reading_since: Option<i64>,
     /// Achado que acabou de entrar na coleção (destaque na tela Achados).
@@ -382,6 +384,7 @@ impl App {
             attach_sel: Vec::new(),
             attach_page: 0,
             mini_slot: None,
+            wifi_page: 0,
             reading_since: None,
             achado_new: None,
             status: read_status(),
@@ -613,7 +616,7 @@ impl App {
                 self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
                 crate::keyboard::draw(fb, f, &self.keys);
             }
-            Screen::Wifi => crate::wifi::draw(fb, f, self.wifi_on, self.wifi_cur.as_deref(), &self.nets, &self.wifi_note),
+            Screen::Wifi => crate::wifi::draw(fb, f, self.wifi_on, self.wifi_cur.as_deref(), &self.nets, &self.wifi_note, self.wifi_page),
             Screen::Calendar => crate::today_ui::draw_calendar(fb, f, st),
             Screen::Reader => {
                 if let (Some(r), Some(rf)) = (&self.reader, &self.rfonts) {
@@ -895,7 +898,15 @@ impl App {
             Screen::Wifi => {
                 let mut v = vec![(Back, ui::back_rect()), (Wifi, crate::wifi::toggle_rect()), (Check, crate::wifi::rescan_rect())];
                 if self.wifi_on {
-                    v.extend((0..self.nets.len().min(crate::wifi::ROWS)).map(|i| (Row(i), crate::wifi::row_rect(i))));
+                    let rows = crate::wifi::ROWS;
+                    let shown = self.nets.len().saturating_sub(self.wifi_page * rows).min(rows);
+                    v.extend((0..shown).map(|i| (Row(i), crate::wifi::row_rect(i))));
+                    if self.wifi_page > 0 {
+                        v.push((Prev, crate::wifi::nav_rect(0)));
+                    }
+                    if (self.wifi_page + 1) * rows < self.nets.len() {
+                        v.push((Next, crate::wifi::nav_rect(1)));
+                    }
                 }
                 v
             }
@@ -1627,6 +1638,7 @@ impl App {
     }
 
     fn refresh_wifi(&mut self) {
+        self.wifi_page = 0;
         self.wifi_on = crate::wifi::enabled();
         self.wifi_cur = if crate::wifi::connected() { crate::wifi::current() } else { None };
         self.nets = crate::wifi::networks();
@@ -3331,8 +3343,16 @@ impl App {
                 self.wifi_note = format!("{} redes encontradas.", self.nets.len());
                 self.render(false);
             }
+            (Screen::Wifi, Prev) => {
+                self.wifi_page = self.wifi_page.saturating_sub(1);
+                self.render(false);
+            }
+            (Screen::Wifi, Next) => {
+                self.wifi_page += 1;
+                self.render(false);
+            }
             (Screen::Wifi, Row(i)) => {
-                let Some(n) = self.nets.get(i).cloned() else { return };
+                let Some(n) = self.nets.get(self.wifi_page * crate::wifi::ROWS + i).cloned() else { return };
                 log(&format!("wifi: tocou em {} (conhecida={}, protegida={})", n.essid, n.known, n.secured));
                 if self.wifi_cur.as_deref() == Some(n.essid.as_str()) {
                     return;
@@ -4041,6 +4061,28 @@ mod raio_x {
                 app.go(Screen::Mini);
                 shot(&mut app, name);
             }
+        }
+        // Wi-Fi com muitas redes (páginas) e os teclados de números e de símbolos.
+        {
+            app.nets = (0..9).map(|k| crate::wifi::Net { essid: format!("Rede vizinha {}", k + 1), secured: k % 2 == 0, known: k == 3, signal: 5 - (k as i32 % 5) }).collect();
+            app.wifi_on = true;
+            app.wifi_page = 0;
+            app.screen = Screen::Wifi;
+            app.render(false);
+            shot(&mut app, "wifi-muitas");
+            app.wifi_page = 1;
+            app.render(false);
+            shot(&mut app, "wifi-muitas-p2");
+            app.wifi_page = 0;
+            app.cur_chat = None;
+            app.start_claude_compose();
+            app.kb_mode = crate::keyboard::Mode::Numbers;
+            app.render(false);
+            shot(&mut app, "teclado-numeros");
+            app.kb_mode = crate::keyboard::Mode::Symbols;
+            app.render(false);
+            shot(&mut app, "teclado-simbolos");
+            app.kb_mode = crate::keyboard::Mode::Letters;
         }
         // Revisão dos destaques com cartões de exemplo (o arquivo do Kindle não existe no PC).
         {

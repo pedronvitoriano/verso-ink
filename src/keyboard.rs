@@ -8,6 +8,8 @@ use crate::ui::{self, INK, PAPER};
 pub enum Mode {
     Letters,
     Numbers,
+    /// Segunda página de símbolos (#+=), como no celular.
+    Symbols,
     Accents,
 }
 
@@ -50,9 +52,16 @@ pub fn layout(mode: Mode, shift: bool) -> Vec<Key> {
             r.push(("⌫".to_string(), Action::Backspace, 1.5));
             r
         }],
-        Mode::Numbers => vec![row_chars("1234567890", false), row_chars("-/:;()@&\"'", false), {
-            let mut r = row_chars(".,?!#%+=*", false);
-            r.push(("⌫".to_string(), Action::Backspace, 1.0));
+        Mode::Numbers => vec![row_chars("1234567890", false), row_chars("-/:;()$&@\"", false), {
+            let mut r = vec![("#+=".to_string(), Action::Mode(Mode::Symbols), 1.5)];
+            r.extend(row_chars(".,?!'", false));
+            r.push(("⌫".to_string(), Action::Backspace, 1.5));
+            r
+        }],
+        Mode::Symbols => vec![row_chars("[]{}#%^*+=", false), row_chars("_\\|~<>€£·", false), {
+            let mut r = vec![("123".to_string(), Action::Mode(Mode::Numbers), 1.5)];
+            r.extend(row_chars(".,?!'", false));
+            r.push(("⌫".to_string(), Action::Backspace, 1.5));
             r
         }],
         Mode::Accents => vec![row_chars("áàâãéêíóôõ", shift), row_chars("úüçñ", shift), {

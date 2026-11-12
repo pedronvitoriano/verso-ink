@@ -142,6 +142,11 @@ pub fn row_rect(i: usize) -> Rect {
 }
 pub const ROWS: usize = 6;
 
+/// Páginas da lista de redes (quando há mais que cabe numa tela).
+pub fn nav_rect(k: usize) -> Rect {
+    Rect::new(if k == 0 { MARGIN } else { W - MARGIN - 330 }, 1250, 330, 90)
+}
+
 fn bars(fb: &mut Framebuffer, x: i32, y: i32, signal: i32) {
     for k in 0..5 {
         let h = 12 + k * 9;
@@ -154,7 +159,7 @@ fn bars(fb: &mut Framebuffer, x: i32, y: i32, signal: i32) {
     }
 }
 
-pub fn draw(fb: &mut Framebuffer, f: &Fonts, on: bool, cur: Option<&str>, nets: &[Net], note: &str) {
+pub fn draw(fb: &mut Framebuffer, f: &Fonts, on: bool, cur: Option<&str>, nets: &[Net], note: &str, page: usize) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
     let rr = rescan_rect();
@@ -180,7 +185,7 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, on: bool, cur: Option<&str>, nets: 
     if !on {
         return;
     }
-    for (i, n) in nets.iter().take(ROWS).enumerate() {
+    for (i, n) in nets.iter().skip(page * ROWS).take(ROWS).enumerate() {
         let r = row_rect(i);
         fb.fill(Rect::new(MARGIN, r.y, W - 2 * MARGIN, 3), INK);
         let here = cur == Some(n.essid.as_str());
@@ -194,8 +199,16 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, on: bool, cur: Option<&str>, nets: 
         f.draw(fb, Face::Body, 28.0, MARGIN + 2, r.y + 100, if here { INK } else { MUTED }, &sub);
         bars(fb, W - MARGIN - 70, r.y + 30, n.signal);
     }
-    if nets.len() > ROWS {
-        fb.fill(Rect::new(MARGIN, row_rect(ROWS).y, W - 2 * MARGIN, 3), INK);
+    let shown = nets.len().saturating_sub(page * ROWS).min(ROWS);
+    fb.fill(Rect::new(MARGIN, row_rect(shown).y, W - 2 * MARGIN, 3), INK);
+    // Mais redes do que cabe: páginas, com quantas faltam.
+    let pages = nets.len().div_ceil(ROWS);
+    if page > 0 {
+        ui::button(fb, f, nav_rect(0), "‹ Anteriores", false);
+    }
+    if page + 1 < pages {
+        let rest = nets.len() - (page + 1) * ROWS;
+        ui::button(fb, f, nav_rect(1), &format!("Mais {rest} rede{} ›", if rest == 1 { "" } else { "s" }), true);
     }
 }
 
