@@ -969,6 +969,49 @@ impl Sprites {
     }
 }
 
+/// Peças de `white` que já saíram do tabuleiro (capturadas pelo outro lado), da mais valiosa.
+pub fn captured(pos: &Pos, white: bool) -> Vec<Kind> {
+    let start: [(Kind, usize); 5] = [(Kind::Queen, 1), (Kind::Rook, 2), (Kind::Bishop, 2), (Kind::Knight, 2), (Kind::Pawn, 8)];
+    let mut out = Vec::new();
+    for (k, n) in start {
+        let on = pos.board.iter().flatten().filter(|p| p.white == white && p.kind == k).count();
+        out.extend(std::iter::repeat(k).take(n.saturating_sub(on)));
+    }
+    out
+}
+
+/// Partida a dois: em cima, o cartão de quem joga daquele lado (o rei grande da cor, o nome, de
+/// quem é a vez e o que já capturou), no lugar do treinador.
+fn draw_player_card(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites) {
+    let top_white = g.flipped();
+    sp.draw_sized(fb, Piece { kind: Kind::King, white: top_white }, 60, 176, 230);
+    let x = 320;
+    let name = if top_white { "Brancas" } else { "Pretas" };
+    f.draw(fb, Face::Display, 72.0, x, 262, INK, name);
+    let turn = g.pos.white_to_move == top_white;
+    let state = if g.result().is_some() { "Partida encerrada" } else if turn { "Vez delas" } else { "Esperando a vez" };
+    if turn && g.result().is_none() {
+        let w = f.measure(Face::Strong, 30.0, state) + 40;
+        fb.round_rect(Rect::new(x, 288, w, 50), 25, INK);
+        f.draw(fb, Face::Strong, 30.0, x + 20, 324, PAPER, state);
+    } else {
+        f.draw(fb, Face::Body, 30.0, x + 2, 324, MUTED, state);
+    }
+    // Capturas de quem está em cima: as peças do outro lado que já saíram.
+    let caps = captured(&g.pos, !top_white);
+    let mut cx = x;
+    for k in caps.iter().take(14) {
+        sp.draw_sized(fb, Piece { kind: *k, white: !top_white }, cx, 352, 48);
+        cx += 30;
+    }
+    let m = g.pos.material() * if top_white { 1 } else { -1 };
+    if m > 0 {
+        f.draw(fb, Face::Strong, 30.0, cx + 26, 392, INK, &format!("+{m}"));
+    } else if caps.is_empty() {
+        f.draw(fb, Face::Body, 26.0, x + 2, 392, MUTED, "Nenhuma captura ainda");
+    }
+}
+
 /// Moldura do tabuleiro: borda escura arredondada, como um tabuleiro de verdade.
 pub fn draw_board_frame(fb: &mut Framebuffer, b: Rect) {
     fb.round_rect(Rect::new(b.x - 10, b.y - 10, b.w + 20, b.h + 20), 18, 0x30);
@@ -1065,9 +1108,7 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites, btn: &Butto
     }
     draw_status(fb, f, g, sp);
     if g.mode == Mode::Local {
-        // Sem treinador: o nome de quem joga do lado de cima, grande.
-        let top = if g.flipped() { "Brancas" } else { "Pretas" };
-        f.draw(fb, Face::Display, 64.0, 72, 420, INK, top);
+        draw_player_card(fb, f, g, sp);
     }
     let b = board_rect();
     draw_board_frame(fb, b);

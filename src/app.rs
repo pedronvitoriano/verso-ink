@@ -2784,6 +2784,11 @@ mod raio_x {
                 shot(&mut app, "jogo-sudoku-partida");
             } else if app.screen == Screen::ChessHub {
                 app.activate(Target::Game(2), 0);
+                if let Some(g) = app.chess.as_mut() {
+                    for m in ["e2e4", "d7d5", "e4d5", "d8d5", "b1c3", "d5a5"] {
+                        let _ = g.play_uci(m);
+                    }
+                }
                 shot(&mut app, "jogo-xadrez-partida");
                 app.go(Screen::Coaches);
                 shot(&mut app, "jogo-xadrez-treinadores");

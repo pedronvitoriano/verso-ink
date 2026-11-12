@@ -488,10 +488,29 @@ impl Masmorra {
         Rect::new(MX + 90, MY + 370 + k as i32 * 125, VW as i32 * CELL - 180, 100)
     }
 
-    /// Canto da câmera (linha, coluna), centrada no herói e presa às bordas do mapa.
+    /// Canto da câmera (linha, coluna). Centraliza o que já foi explorado, para a pedra sobrar
+    /// igual dos dois lados; se o explorado não cabe, segue o herói. Pode passar da borda do
+    /// mapa (lá é pedra escura).
     fn view(&self) -> (i32, i32) {
         let (hr, hc) = ((self.pos / MW) as i32, (self.pos % MW) as i32);
-        ((hr - VH as i32 / 2).clamp(0, (MH - VH) as i32), (hc - VW as i32 / 2).clamp(0, (MW - VW) as i32))
+        let seen: Vec<usize> = (0..MW * MH).filter(|&i| self.seen.get(i) == Some(&true) && self.map[i] != Tile::Wall).collect();
+        let axis = |lo: i32, hi: i32, h: i32, span: i32| {
+            if hi - lo + 1 <= span {
+                (lo + hi + 1) / 2 - span / 2
+            } else {
+                // Não cabe: o herói no meio, sem esconder o explorado à toa.
+                (h - span / 2).clamp(lo, hi + 1 - span)
+            }
+        };
+        let (mut r0, mut r1, mut c0, mut c1) = (hr, hr, hc, hc);
+        for &i in &seen {
+            let (r, c) = ((i / MW) as i32, (i % MW) as i32);
+            r0 = r0.min(r);
+            r1 = r1.max(r);
+            c0 = c0.min(c);
+            c1 = c1.max(c);
+        }
+        (axis(r0, r1, hr, VH as i32), axis(c0, c1, hc, VW as i32))
     }
 
     /// Casa na tela, se estiver dentro da câmera.
@@ -557,15 +576,30 @@ impl MiniGame for Masmorra {
         }
         let mode = if self.daily { " · desafio do dia" } else { "" };
         minigame::header(fb, f, "Masmorra", &format!("Andar {} de 5 · {} pontos{mode}", self.depth, self.score()));
-        // Fundo: rocha escura onde você ainda não esteve (a masmorra não é papel em branco).
+        // Fundo: rocha escura (fora do mapa e onde você ainda não esteve), na mesma pedra da parede.
         fb.fill(Rect::new(MX, MY, VW as i32 * CELL, VH as i32 * CELL), 0x2A);
+        for k in 0..(VW * VH) as i32 {
+            let r = Rect::new(MX + (k % VW as i32) * CELL, MY + (k / VW as i32) * CELL, CELL, CELL);
+            if crate::sprites::draw(fb, "parede", r) {
+                for yy in r.y..r.y + r.h {
+                    for xx in r.x..r.x + r.w {
+                        fb.blend(xx, yy, 0x16, 175);
+                    }
+                }
+            }
+        }
         for i in 0..MW * MH {
             let Some(r) = self.cell(i) else { continue };
             if !self.seen[i] {
-                // Veios na rocha, fixos por casa.
-                let h = (i as i32 * 7919) % 97;
-                fb.fill(Rect::new(r.x + 10 + h % 40, r.y + 18 + h % 30, 26, 3), 0x3A);
-                fb.fill(Rect::new(r.x + 40 - h % 20, r.y + 58 - h % 16, 20, 3), 0x3A);
+                // Ainda não explorado: a mesma pedra, mergulhada no escuro (continua a masmorra,
+                // não vira um buraco liso na tela).
+                if crate::sprites::draw(fb, "parede", r) {
+                    for yy in r.y..r.y + r.h {
+                        for xx in r.x..r.x + r.w {
+                            fb.blend(xx, yy, 0x16, 175);
+                        }
+                    }
+                }
                 continue;
             }
             let vis = self.visible(i);

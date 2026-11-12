@@ -15,7 +15,7 @@ out = pathlib.Path("assets/sprites")
 PALETTE = [0x14, 0x4C, 0x88, 0xC4, 0xF4]
 lut = [min(PALETTE, key=lambda p: abs(p - v)) for v in range(256)]
 
-def cutout(src, side):
+def cutout(src, side, box=None):
     im = ImageOps.autocontrast(Image.open(src).convert("L"), cutoff=1)
     w, h = im.size
     # Fundo: branco alcançável a partir da borda (preenchimento a partir dos quatro lados).
@@ -27,7 +27,7 @@ def cutout(src, side):
     ImageDraw.floodfill(filled, (0, 0), 128)
     bg = filled.point(lambda v: 255 if v == 128 else 0).crop((1, 1, w + 1, h + 1))
     alpha = ImageOps.invert(bg).filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(1.2))
-    box = alpha.point(lambda v: 255 if v > 40 else 0).getbbox() or (0, 0, w, h)
+    box = box or alpha.point(lambda v: 255 if v > 40 else 0).getbbox() or (0, 0, w, h)
     x0, y0, x1, y1 = box
     s = int(max(x1 - x0, y1 - y0) * 1.04)
     cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
@@ -47,8 +47,14 @@ def tile(src, side):
 
 if mode == "pecas":
     src = pathlib.Path(sys.argv[2])
+    # Proporção clássica entre as peças (o rei é a maior), todas com a base na mesma linha.
+    scale = {"rei": 1.0, "dama": 0.95, "bispo": 0.9, "cavalo": 0.86, "torre": 0.8, "peao": 0.72}
     for p in sorted(src.glob("*-[bp].png")):
-        cutout(p, 160).save(out / f"xadrez-{p.stem}.png", optimize=True)
+        f = scale[p.stem.rsplit("-", 1)[0]]
+        piece = cutout(p, int(160 * f))
+        canvas = Image.new("LA", (160, 160), (255, 0))
+        canvas.paste(piece, ((160 - piece.width) // 2, 160 - piece.height - 4))
+        canvas.save(out / f"xadrez-{p.stem}.png", optimize=True)
         print("ok", p.stem)
 elif mode == "ladrilho":
     tile(sys.argv[2], 176).save(out / f"{sys.argv[3]}.png", optimize=True)
