@@ -122,11 +122,11 @@ pub fn night_rect() -> Rect {
     Rect::new(MARGIN - 16, 900, 1072 - 2 * MARGIN + 32, 170)
 }
 pub fn settings_row_rect() -> Rect {
-    Rect::new(MARGIN - 16, 1214, 1072 - 2 * MARGIN + 32, 104)
+    Rect::new(MARGIN, 1220, 1072 - 2 * MARGIN, 84)
 }
 /// Wi-Fi direto no painel (trocar de rede sem passar pelos ajustes).
 pub fn wifi_row_rect() -> Rect {
-    Rect::new(MARGIN - 16, 1106, 1072 - 2 * MARGIN + 32, 104)
+    Rect::new(MARGIN, 1114, 1072 - 2 * MARGIN, 84)
 }
 pub fn low_battery_ok_rect() -> Rect {
     Rect::new(MARGIN, 1150, 1072 - 2 * MARGIN, 120)
@@ -558,30 +558,35 @@ const COMING: [(&str, &str, bool); 4] = [
 ];
 
 pub fn more_row(k: usize) -> Rect {
-    Rect::new(MARGIN - 16, 560 + k as i32 * 168, 1072 - 2 * MARGIN + 32, 164)
+    Rect::new(MARGIN, 540 + k as i32 * 172, 1072 - 2 * MARGIN, 148)
 }
 
 fn draw_more(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     fb.fill(fb.screen(), PAPER);
     draw_back(fb, f, false);
-    f.draw(fb, Face::Display, 180.0, MARGIN - 6, 400, INK, "Mais");
-    f.draw(fb, Face::Strong, 40.0, MARGIN, 480, MUTED, "Módulos extras, e os que vêm por aí");
+    f.draw(fb, Face::Display, 150.0, MARGIN - 6, 370, INK, "Mais");
+    f.draw(fb, Face::Strong, 34.0, MARGIN, 446, MUTED, "Módulos extras, e os que vêm por aí");
     for (k, (name, desc, ready)) in COMING.iter().enumerate() {
-        let tag = if *ready { "ABRIR" } else { "EM BREVE" };
-        let tw = f.measure(Face::Strong, 24.0, tag);
-        let y = 560 + k as i32 * 168;
-        fb.fill(Rect::new(MARGIN, y, 1072 - 2 * MARGIN, 3), INK);
-        f.draw(fb, Face::Display, 60.0, MARGIN, y + 86, INK, name);
-        f.draw(fb, Face::Body, 32.0, MARGIN + 2, y + 136, MUTED, desc);
-        let tr = Rect::new(1072 - MARGIN - tw - 44, y + 42, tw + 44, 52);
+        // Pronto: cartão branco com sombra (dá para tocar). Em breve: superfície cinza, sem sombra.
+        let r = more_row(k);
         if *ready {
-            fb.round_rect(tr, 26, INK);
+            card(fb, r, 30, PAPER, false);
         } else {
-            fb.round_outline(tr, 26, 3, INK, PAPER);
+            fb.round_rect(r, 30, SURFACE);
         }
-        f.draw(fb, Face::Strong, 24.0, tr.x + 22, tr.y + 35, if *ready { PAPER } else { INK }, tag);
+        let ink = if *ready { INK } else { 0x55 };
+        f.draw(fb, Face::Display, 54.0, r.x + 34, r.y + 70, ink, name);
+        f.draw(fb, Face::Body, 30.0, r.x + 36, r.y + 116, MUTED, desc);
+        let tag = if *ready { "Abrir" } else { "Em breve" };
+        let tw = f.measure(Face::Strong, 26.0, tag);
+        let tr = Rect::new(r.x + r.w - tw - 48 - 28, r.y + (r.h - 56) / 2, tw + 48, 56);
+        if *ready {
+            fb.round_rect(tr, 28, INK);
+        } else {
+            fb.round_outline(tr, 28, 3, 0x88, SURFACE);
+        }
+        f.draw(fb, Face::Strong, 26.0, tr.x + 24, tr.y + 38, if *ready { PAPER } else { 0x55 }, tag);
     }
-    fb.fill(Rect::new(MARGIN, 560 + 4 * 168, 1072 - 2 * MARGIN, 3), INK);
     draw_footer(fb, f, st);
 }
 
@@ -704,16 +709,13 @@ pub struct Light {
 }
 
 fn round_button(fb: &mut Framebuffer, r: Rect, pressed: bool, plus: bool) {
-    let (cx, cy, rad) = (r.x as f32 + r.w as f32 / 2.0, r.y as f32 + r.h as f32 / 2.0, r.w as f32 / 2.0 - 3.0);
-    fb.fill(r, PAPER);
-    let fg = if pressed {
-        disc(fb, cx, cy, rad, INK);
-        PAPER
-    } else {
-        ring(fb, cx, cy, rad - 3.0, 6.0, INK);
-        INK
-    };
-    let arm = rad * 0.42;
+    // Tecla redonda com sombra chapada; tocada, afunda na sombra.
+    let d = r.w - 10;
+    let k = Rect::new(r.x + 5, r.y + 2, d, d);
+    card(fb, k, d / 2, if pressed { INK } else { PAPER }, pressed);
+    let fg = if pressed { PAPER } else { INK };
+    let (cx, cy) = (k.x as f32 + d as f32 / 2.0, k.y as f32 + d as f32 / 2.0 + if pressed { SH as f32 } else { 0.0 });
+    let arm = d as f32 * 0.2;
     line(fb, (cx - arm, cy), (cx + arm, cy), 9.0, fg);
     if plus {
         line(fb, (cx, cy - arm), (cx, cy + arm), 9.0, fg);
@@ -736,19 +738,19 @@ pub fn draw_light_level(fb: &mut Framebuffer, f: &Fonts, l: &Light) {
     if l.level > 0 {
         f.draw(fb, Face::Body, 36.0, end + 16, 640, MUTED, &format!("de {}", l.max));
     }
+    // Trilho único com a parte acesa preenchida e marcas a cada passo (toque em qualquer ponto).
     let r = bar_rect();
-    fb.fill(r, PAPER);
+    card(fb, r, r.h / 2, SURFACE, false);
     let n = l.max.max(1);
-    let gap = 6;
-    let seg = (r.w - gap * (n - 1)) / n;
-    for i in 0..n {
-        let sx = r.x + i * (seg + gap);
-        let cell = Rect::new(sx, r.y, seg, r.h);
-        if i < l.level {
-            fb.round_rect(cell, 6, INK);
-        } else {
-            fb.round_outline(cell, 6, 3, INK, PAPER);
-        }
+    let inner = Rect::new(r.x + 10, r.y + 10, r.w - 20, r.h - 20);
+    let fill_w = inner.w * l.level / n;
+    if fill_w > 0 {
+        fb.round_rect(Rect::new(inner.x, inner.y, fill_w.max(inner.h), inner.h), inner.h / 2, INK);
+    }
+    for i in 1..n {
+        let x = inner.x + inner.w * i / n;
+        let v = if i <= l.level { 0x88 } else { 0xB8 };
+        fb.fill(Rect::new(x - 1, inner.y + inner.h / 2 - 8, 3, 16), v);
     }
 }
 
@@ -780,22 +782,21 @@ pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status) {
     draw_light_plus(fb, false);
     fb.fill(Rect::new(MARGIN, 862, 1072 - 2 * MARGIN, 3), INK);
     draw_night(fb, f, l, false);
-    fb.fill(Rect::new(MARGIN, 1100, 1072 - 2 * MARGIN, 3), INK);
     let rows = [
         (wifi_row_rect(), "Wi-Fi", if st.wifi { "Conectado · trocar de rede" } else { "Sem rede · conectar" }),
         (settings_row_rect(), "Ajustes do sistema", "Bateria, cópia, reiniciar"),
     ];
-    for (r, title, sub) in rows {
-        let end = f.draw(fb, Face::Display, 46.0, MARGIN, r.y + 62, INK, title);
-        let sub_x = (end + 24).max(MARGIN + 400);
-        let _ = sub_x;
-        let (cx, cy) = (r.x + r.w - 40, r.y + r.h / 2);
-        let room = cx - 40 - (end + 24);
-        f.draw(fb, Face::Body, 28.0, end + 24, r.y + 60, MUTED, &crate::apps::fit(f, Face::Body, 28.0, sub, room));
-        line(fb, ((cx - 14) as f32, (cy - 22) as f32), (cx as f32, cy as f32), 6.0, INK);
-        line(fb, (cx as f32, cy as f32), ((cx - 14) as f32, (cy + 22) as f32), 6.0, INK);
+    for ((r, title, sub), icon_name) in rows.into_iter().zip(["wifi", "luz"]) {
+        card(fb, r, 28, PAPER, false);
+        let d = r.h - 20;
+        let tx = if icon_disc(fb, r.x + 12, r.y + 10, d, icon_name) { r.x + 12 + d + 20 } else { r.x + 28 };
+        let end = f.draw(fb, Face::Display, 40.0, tx, r.y + 58, INK, title);
+        let (cx, cy) = (r.x + r.w - 36, r.y + r.h / 2);
+        let room = cx - 40 - (end + 20);
+        f.draw(fb, Face::Body, 26.0, end + 20, r.y + 56, MUTED, &crate::apps::fit(f, Face::Body, 26.0, sub, room));
+        line(fb, ((cx - 12) as f32, (cy - 18) as f32), (cx as f32, cy as f32), 6.0, INK);
+        line(fb, (cx as f32, cy as f32), ((cx - 12) as f32, (cy + 18) as f32), 6.0, INK);
     }
-    fb.fill(Rect::new(MARGIN, 1210, 1072 - 2 * MARGIN, 2), 0xBB);
     draw_footer(fb, f, st);
 }
 

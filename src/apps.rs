@@ -634,12 +634,15 @@ pub fn set_off_rect() -> Rect {
     Rect::new(r.x + r.w + 28, r.y, r.w, r.h)
 }
 
+/// Linha do cartão de informações (rótulo à esquerda, valor à direita, fio fino entre linhas).
 fn info_row(fb: &mut Framebuffer, f: &Fonts, y: i32, label: &str, value: &str) {
-    fb.fill(Rect::new(MARGIN, y, W - 2 * MARGIN, 3), INK);
-    f.draw(fb, Face::Strong, 30.0, MARGIN, y + 56, MUTED, label);
-    let v = fit(f, Face::Display, 44.0, value, W - 2 * MARGIN - 260);
-    let vw = f.measure(Face::Display, 44.0, &v);
-    f.draw(fb, Face::Display, 44.0, W - MARGIN - vw, y + 60, INK, &v);
+    if y > 590 {
+        fb.fill(Rect::new(MARGIN + 28, y, W - 2 * MARGIN - 56, 2), 0xC8);
+    }
+    f.draw(fb, Face::Strong, 28.0, MARGIN + 30, y + 56, MUTED, label);
+    let v = fit(f, Face::Display, 40.0, value, W - 2 * MARGIN - 300);
+    let vw = f.measure(Face::Display, 40.0, &v);
+    f.draw(fb, Face::Display, 40.0, W - MARGIN - 30 - vw, y + 58, INK, &v);
 }
 
 /// `confirm`: qual botão pediu confirmação (0 = reiniciar, 1 = desligar).
@@ -667,6 +670,7 @@ pub fn draw_settings(fb: &mut Framebuffer, f: &Fonts, s: &SysInfo, st: &Status, 
         fb.round_rect(Rect::new(sw.x + 18, sw.y + 18, 60, 60), 30, INK);
     }
     let ip = s.ip.clone().unwrap_or_else(|| "sem rede".into());
+    ui::card(fb, Rect::new(MARGIN, 580, W - 2 * MARGIN, 460), 30, PAPER, false);
     info_row(fb, f, 590, "ENDEREÇO", &ip);
     info_row(fb, f, 680, "SSH", if s.ip.is_some() { "porta 2223, só chave" } else { "indisponível" });
     let bat = match st.battery {
@@ -680,7 +684,6 @@ pub fn draw_settings(fb: &mut Framebuffer, f: &Fonts, s: &SysInfo, st: &Status, 
     };
     info_row(fb, f, 860, "VERSÃO", &version);
     info_row(fb, f, 950, "CÓPIA", &crate::backup::summary());
-    fb.fill(Rect::new(MARGIN, 1040, W - 2 * MARGIN, 3), INK);
     let (rl, ol) = match confirm {
         Some(0) => ("Toque de novo", "Desligar"),
         Some(1) => ("Reiniciar", "Toque de novo"),
