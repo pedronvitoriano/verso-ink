@@ -42,6 +42,33 @@ APPROVAL_TTL = 600  # 10 minutos sem resposta = negado
 MANAUS = -4 * 3600
 
 
+def md_paras(text):
+    """Markdown simples em parágrafos de leitura: sem **, crases e #; cada item de lista vira um
+    parágrafo com •; linhas comuns seguidas formam um parágrafo."""
+    paras, cur = [], []
+    for raw in text.splitlines():
+        line = re.sub(r"\*\*|__|`", "", raw).strip()
+        if line.startswith("#"):
+            # Título de seção: parágrafo próprio.
+            if cur:
+                paras.append(" ".join(cur))
+                cur = []
+            paras.append(re.sub(r"^#+\s*", "", line))
+            continue
+        bullet = re.match(r"^(?:[-*•]|\d+[.)])\s+(.*)", line)
+        if not line or bullet:
+            if cur:
+                paras.append(" ".join(cur))
+                cur = []
+            if bullet:
+                paras.append("• " + bullet.group(1))
+            continue
+        cur.append(line)
+    if cur:
+        paras.append(" ".join(cur))
+    return paras
+
+
 def new_id():
     return secrets.token_hex(6)
 
@@ -350,7 +377,7 @@ class Extras:
         text = str(res.get("result", "")).strip()
         # O relatório vira artigo para ler no Kindle.
         aid = new_id()
-        paras = [x.strip() for x in text.split("\n\n") if x.strip()] or ["(sem relatório)"]
+        paras = md_paras(text) or ["(sem relatório)"]
         self.write(self.base / "artigos" / f"{aid}.json", {"id": aid, "title": f"Missão: {r['title']}", "url": "", "site": "agentes do PC", "created": int(time.time()), "paras": paras})
         r["article"] = aid
         r["summary"] = text[:400]
@@ -462,9 +489,9 @@ Cada "texto" tem no máximo 200 caracteres. Português do Brasil, direto, sem em
 MISSION_TEMPLATES = {
     "raiox": ("Raio-x do projeto", "Testes, bugs e pontos fracos, com correções pequenas", True,
               "Faça um raio-x deste projeto: rode os testes e o build, procure bugs e pontos fracos reais, corrija o que for pequeno e seguro (com commit local) e liste o resto em ordem de importância."),
-    "pendente": ("Revisar o que está pendente", "Mudanças sem commit e o último trabalho", True,
+    "pendente": ("Revisar pendências", "Mudanças sem commit e o último trabalho", True,
                  "Revise as mudanças sem commit e os últimos commits deste repositório: aponte bugs, riscos e o que está pela metade. Não faça commit do trabalho dos outros; só relate."),
-    "post": ("Rascunho do post de amanhã", "LinkedIn, no seu tom, sem publicar", False,
+    "post": ("Post de amanhã", "LinkedIn, no seu tom, sem publicar", False,
              "Use a skill de posts do Pedro para preparar o rascunho do post de amanhã no LinkedIn (sem publicar nada), seguindo o ciclo de melhoria dela. Mostre o rascunho completo no relatório."),
     "vagas": ("Vagas da semana", "As que combinam com o seu currículo", False,
               "Use a skill de vagas do Pedro para listar as melhores vagas abertas desta semana, em ordem de chance, sem se candidatar. Liste no relatório com o link de cada uma."),
