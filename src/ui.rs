@@ -333,8 +333,13 @@ pub fn draw_header(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     let now = clock::now(st.offset_min);
     let r = date_rect();
     fb.fill(Rect::new(r.x, r.y, 1072 - 2 * MARGIN, r.h), PAPER);
-    let date = if now.plausible() { now.date().to_uppercase() } else { "ACERTANDO O RELÓGIO".into() };
-    f.draw(fb, Face::Strong, 30.0, r.x, r.y + 44, MUTED, &date);
+    // Hora em destaque na linha de cima e a data ao lado (a frase do dia é a protagonista).
+    if now.plausible() {
+        let end = f.draw(fb, Face::Display, 40.0, r.x, r.y + 46, INK, &now.time());
+        f.draw(fb, Face::Strong, 28.0, end + 18, r.y + 44, MUTED, &now.date().to_uppercase());
+    } else {
+        f.draw(fb, Face::Strong, 30.0, r.x, r.y + 44, MUTED, "ACERTANDO O RELÓGIO");
+    }
     if let Some(p) = st.battery {
         let label = format!("{p}%");
         let lw = f.measure(Face::Strong, 30.0, &label);
@@ -345,16 +350,44 @@ pub fn draw_header(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
 }
 
 pub fn draw_clock(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
-    let now = clock::now(st.offset_min);
     let r = time_rect();
     fb.fill(r, PAPER);
-    let t = if now.plausible() { now.time() } else { "--:--".into() };
-    let mut size = 230.0;
-    while f.measure(Face::Display, size, &t) > r.w && size > 150.0 {
-        size -= 6.0;
+    // A frase do momento, grande: o toque pessoal da tela inicial.
+    let phrase = home_phrase(st);
+    let mut size = 76.0;
+    let mut lines = crate::chat::wrap_words(f, Face::Display, size, &phrase, r.w - 10);
+    while lines.len() > 3 && size > 50.0 {
+        size -= 4.0;
+        lines = crate::chat::wrap_words(f, Face::Display, size, &phrase, r.w - 10);
     }
-    f.draw(fb, Face::Display, size, MARGIN - 10, r.y + 236, INK, &t);
+    let lh = (size * 1.1) as i32;
+    let n = lines.len().min(3) as i32;
+    let y0 = r.y + (r.h - n * lh) / 2 + (size * 0.8) as i32;
+    for (k, l) in lines.iter().take(3).enumerate() {
+        f.draw(fb, Face::Display, size, MARGIN - 4, y0 + k as i32 * lh, INK, l);
+    }
     draw_chips(fb, f, st);
+}
+
+/// Frase do momento (muda de hora em hora) a partir do que o Kindle sabe agora.
+fn home_phrase(st: &Status) -> String {
+    let now = clock::now(st.offset_min);
+    let book = crate::data::last_book();
+    let game = crate::data::last_game().and_then(|i| crate::apps::GAMES.get(i)).map(|g| g.0.to_string());
+    let ctx = crate::saudacao::Context {
+        hour: now.hour,
+        weekday: now.weekday,
+        day: crate::data::today(st.offset_min),
+        raining: crate::weather::load().is_some_and(|w| w.rain_pct >= 50),
+        book: book.map(|b| (b.title, b.progress)),
+        game,
+        read_today: crate::data::reading_minutes_today(st.offset_min),
+        edition: crate::painel::edition().is_some_and(|e| e.day == crate::painel::today_iso(st.offset_min)),
+        notice: !crate::painel::notices().is_empty(),
+        battery: st.battery,
+    };
+    let p = crate::saudacao::phrase(&ctx);
+    if p.is_empty() { "O que vamos fazer hoje?".into() } else { p }
 }
 
 /// Dois cartões abaixo da hora: o clima e o resumo do dia (lembrete, leitura, focos).
@@ -503,23 +536,10 @@ pub fn draw_tile(fb: &mut Framebuffer, f: &Fonts, i: usize, pressed: bool, _extr
 /// Faixa "Continuar": cartões do último livro e do último jogo.
 fn draw_continue(fb: &mut Framebuffer, f: &Fonts, st: &Status, extra: &HomeExtra, game: Option<&(usize, String)>) {
     let book = extra.book.as_ref();
-    // A frase do momento (pessoal, muda com a hora e com o que você anda fazendo).
-    let now = clock::now(st.offset_min);
-    let ctx = crate::saudacao::Context {
-        hour: now.hour,
-        weekday: now.weekday,
-        day: crate::data::today(st.offset_min),
-        raining: crate::weather::load().is_some_and(|w| w.rain_pct >= 50),
-        book: book.map(|b| (b.title.clone(), b.progress)),
-        game: game.map(|(i, _)| crate::apps::GAMES[*i].0.to_string()),
-        read_today: crate::data::reading_minutes_today(st.offset_min),
-        edition: crate::painel::edition().is_some_and(|e| e.day == crate::painel::today_iso(st.offset_min)),
-        notice: !crate::painel::notices().is_empty(),
-        battery: st.battery,
-    };
-    let phrase = crate::saudacao::phrase(&ctx);
-    let label = if phrase.is_empty() { "Continuar".to_string() } else { phrase };
-    f.draw(fb, Face::Display, 34.0, MARGIN, CONT_Y - 20, INK, &crate::apps::fit(f, Face::Display, 34.0, &label, 1072 - 2 * MARGIN));
+    let _ = st;
+    if book.is_some() || game.is_some() {
+        f.draw(fb, Face::Strong, 30.0, MARGIN, CONT_Y - 18, INK, "Continuar");
+    }
     if book.is_none() && game.is_none() {
         return;
     }

@@ -608,6 +608,11 @@ impl Coroas {
     }
 
     fn draw_crown(fb: &mut Framebuffer, r: Rect, v: u8) {
+        // A coroa desenhada (a mesma das damas e do tutorial); apagada quando não conta.
+        let m = r.w / 10;
+        if v == INK && crate::sprites::draw(fb, "peca-coroa", Rect::new(r.x + m, r.y + m, r.w - 2 * m, r.h - 2 * m)) {
+            return;
+        }
         // Desenho em 0..1 ampliado a partir do centro, para a coroa encher a casa.
         let k = 1.4;
         let (s, x, y) = (r.w as f32 * k, r.x as f32 - r.w as f32 * (k - 1.0) / 2.0, r.y as f32 - r.w as f32 * (k - 1.0) / 2.0);

@@ -203,6 +203,12 @@ impl Paciencia {
     }
 
     fn suit_icon(fb: &mut Framebuffer, suit: u8, cx: f32, cy: f32, s: f32, v: u8) {
+        // Naipe desenhado (copas e ouros num cinza, o "vermelho" do e-ink).
+        let name = ["naipe-copas", "naipe-ouros", "naipe-espadas", "naipe-paus"][suit.min(3) as usize];
+        let side = (s * 1.1) as i32;
+        if crate::sprites::draw(fb, name, Rect::new(cx as i32 - side / 2, cy as i32 - side / 2, side, side)) {
+            return;
+        }
         match suit {
             0 => {
                 // Copas: dois círculos e uma ponta.

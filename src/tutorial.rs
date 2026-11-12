@@ -658,6 +658,10 @@ fn cell(fb: &mut Framebuffer, f: &Fonts, r: Rect, ch: char, sh: char, lines_mode
 }
 
 fn crown(fb: &mut Framebuffer, r: Rect, v: u8) {
+    let m = r.w / 10;
+    if v == INK && crate::sprites::draw(fb, "peca-coroa", Rect::new(r.x + m, r.y + m, r.w - 2 * m, r.h - 2 * m)) {
+        return;
+    }
     let (x, y, s) = (r.x as f32, r.y as f32, r.w as f32);
     let pts = [(0.15, 0.75), (0.15, 0.35), (0.33, 0.55), (0.5, 0.25), (0.67, 0.55), (0.85, 0.35), (0.85, 0.75)];
     for w in pts.windows(2) {

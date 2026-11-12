@@ -241,7 +241,11 @@ impl Naval {
             }
             if sea.shot[i] {
                 let (cx, cy) = (r.x + r.w / 2, r.y + r.h / 2);
-                if k == 0 {
+                let m = s / 8;
+                let art = Rect::new(r.x + m, r.y + m, r.w - 2 * m, r.h - 2 * m);
+                if k == 0 && crate::sprites::draw(fb, "peca-agua", art) {
+                } else if k != 0 && crate::sprites::draw(fb, "peca-acerto", art) {
+                } else if k == 0 {
                     fb.round_rect(Rect::new(cx - 6, cy - 6, 12, 12), 6, MUTED);
                 } else {
                     let d = s as f32 * 0.22;
