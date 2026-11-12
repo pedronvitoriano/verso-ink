@@ -569,7 +569,7 @@ impl App {
     /// Jogo cujo "Como jogar" aparece nesta tela (menus dos jogos).
     fn help_game(&self) -> Option<usize> {
         match self.screen {
-            Screen::Mini if self.mini.as_ref().is_some_and(|g| g.at_menu()) && !crate::tutorial::pages(self.mini_game).is_empty() => Some(self.mini_game),
+            Screen::Mini if self.mini_back == Screen::Games && self.mini.as_ref().is_some_and(|g| g.at_menu()) && !crate::tutorial::pages(self.mini_game).is_empty() => Some(self.mini_game),
             Screen::SudokuMenu if !self.sudoku_practice => Some(0),
             Screen::ChessHub => Some(1),
             _ => None,
@@ -2263,7 +2263,11 @@ impl App {
                 if let Some(g) = self.mini.take() {
                     g.save();
                     // Guarda a partida: ao voltar ao jogo, continua daqui.
-                    let key = if self.mini_back == Screen::Games { self.mini_game } else { 100 };
+                    let key = match self.mini_back {
+                        Screen::Games => self.mini_game,
+                        Screen::Home => 101,
+                        _ => 100,
+                    };
                     self.mini_cache.insert(key, g);
                 }
                 let back = self.mini_back;
@@ -2440,6 +2444,11 @@ impl App {
                 Module::Foco => self.go(Screen::Today),
                 Module::Jogar => self.go(Screen::Games),
                 Module::Claude => self.go(Screen::Claude),
+                Module::Violao => {
+                    self.mini = Some(self.mini_cache.remove(&101).unwrap_or_else(|| Box::new(crate::violao::Violao::new())));
+                    self.mini_back = Screen::Home;
+                    self.go(Screen::Mini);
+                }
                 m => self.go(Screen::Module(m)),
             },
             (Screen::Light, Minus) => self.set_light(self.light.level - 1),
@@ -3035,6 +3044,14 @@ impl App {
             let full = self.sync_full.is_none_or(|t| t.elapsed() >= Duration::from_secs(20 * 60));
             self.background_sync(full);
         }
+        // Minijogos com relógio (o treino de violão): redesenham quando pedem.
+        if self.screen == Screen::Mini {
+            if let Some(r) = self.mini.as_mut().map(|g| g.tick()) {
+                if !matches!(r, crate::minigame::Redraw::None) {
+                    self.apply_mini_redraw(r);
+                }
+            }
+        }
         // Porta-retrato: troca a foto a cada 15 minutos.
         if self.screen == Screen::Retrato && self.photo_at.elapsed() >= Duration::from_secs(15 * 60) {
             self.photo_k += 1;
@@ -3246,6 +3263,24 @@ mod raio_x {
             app.go(s);
             shot(&mut app, name);
         }
+        // Violão: início, treino (com o cronômetro e a contagem), músicas, cifra e acordes.
+        app.go(Screen::Home);
+        app.mini = Some(Box::new(crate::violao::Violao::new()));
+        app.mini_back = Screen::Home;
+        app.go(Screen::Mini);
+        shot(&mut app, "violao-inicio");
+        for (id, name) in [(700, "violao-treino"), (780, "violao-treino-cronometro"), (780, "violao-treino-contagem")] {
+            app.mini_tap(id, 0);
+            shot(&mut app, name);
+        }
+        app.mini = Some(Box::new(crate::violao::Violao::new()));
+        app.mini_tap(701, 0);
+        shot(&mut app, "violao-musicas");
+        app.mini_tap(100, 0);
+        shot(&mut app, "violao-cifra");
+        app.mini = Some(Box::new(crate::violao::Violao::new()));
+        app.mini_tap(702, 0);
+        shot(&mut app, "violao-acordes");
         app.approvals = vec![crate::painel::Approval { id: "abc".into(), project: "verso-ink".into(), tool: "Bash".into(), summary: "cargo build --release && tools/deploy.sh (envia o binário novo ao Kindle pelo túnel)".into(), created: 0 }];
         app.go(Screen::Aprovar);
         shot(&mut app, "painel-aprovar");

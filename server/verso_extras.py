@@ -7,6 +7,8 @@ menos a página /enviar, que só pede o token no próprio navegador):
     GET  /enviar                       página para o celular (link ou foto)
     POST /inbox/link                   JSON {"url"} -> {"id", "title"}
     POST /inbox/foto                   corpo = imagem (JPEG/PNG, até 12 MB) -> {"id"}
+    POST /inbox/cifra                  JSON {"title", "text"} -> {"id", "title"}
+    GET  /inbox/cifra/<id>             -> texto (título na 1ª linha)
     GET  /inbox                        -> {"artigos": [...], "fotos": [...]}
     GET  /inbox/artigo/<id>            -> texto (título na 1ª linha, parágrafos separados por linha vazia)
     GET  /inbox/foto/<id>              -> a imagem
@@ -48,7 +50,7 @@ class Extras:
     def __init__(self, base: Path, run_claude):
         self.base = base
         self.run_claude = run_claude
-        for d in ("artigos", "fotos", "sessoes", "avisos", "aprovacoes", "edicoes"):
+        for d in ("artigos", "fotos", "cifras", "sessoes", "avisos", "aprovacoes", "edicoes"):
             (base / d).mkdir(parents=True, exist_ok=True)
         self.lock = threading.Lock()
         threading.Thread(target=self.morning_loop, daemon=True).start()
@@ -126,6 +128,20 @@ class Extras:
         (self.base / "fotos" / f"{pid}.{ext}").write_bytes(data)
         return {"id": pid}, None
 
+    def add_cifra(self, title, text):
+        """Cifra colada pelo Pedro (texto com linhas de acordes e de letra), para o violão."""
+        text = str(text).replace("\r\n", "\n").strip()
+        title = str(title).strip()[:120] or (text.splitlines()[0][:120] if text else "")
+        if len(text) < 20:
+            return None, "cole a cifra (acordes e letra)"
+        cid = new_id()
+        self.write(self.base / "cifras" / f"{cid}.json", {"id": cid, "title": title, "created": int(time.time()), "text": text[:60000]})
+        return {"id": cid, "title": title}, None
+
+    def cifra_text(self, cid):
+        c = self.read(self.base / "cifras" / f"{cid}.json")
+        return (c["title"] + "\n\n" + c["text"] + "\n") if c else None
+
     def inbox(self):
         arts = []
         for p in (self.base / "artigos").glob("*.json"):
@@ -134,7 +150,8 @@ class Extras:
                 arts.append({k: a[k] for k in ("id", "title", "site", "created")} | {"words": sum(len(x.split()) for x in a.get("paras", []))})
         arts.sort(key=lambda a: a["created"], reverse=True)
         fotos = sorted(({"id": p.stem, "created": int(p.stat().st_mtime)} for p in (self.base / "fotos").glob("*.*")), key=lambda f: f["created"], reverse=True)
-        return {"artigos": arts[:60], "fotos": fotos[:200]}
+        cifras = sorted(({k: c[k] for k in ("id", "title", "created")} for p in (self.base / "cifras").glob("*.json") if (c := self.read(p, {}))), key=lambda c: c["created"], reverse=True)
+        return {"artigos": arts[:60], "fotos": fotos[:200], "cifras": cifras[:200]}
 
     def article_text(self, aid):
         a = self.read(self.base / "artigos" / f"{aid}.json")
@@ -148,7 +165,9 @@ class Extras:
         return None
 
     def delete(self, kind, iid):
-        if kind == "artigo":
+        if kind == "cifra":
+            (self.base / "cifras" / f"{iid}.json").unlink(missing_ok=True)
+        elif kind == "artigo":
             (self.base / "artigos" / f"{iid}.json").unlink(missing_ok=True)
         elif kind == "foto" and (p := self.photo(iid)):
             p.unlink(missing_ok=True)
@@ -368,12 +387,16 @@ button,.file{display:block;width:100%;margin-top:12px;font:inherit;font-weight:7
 .file{background:#fff;color:var(--ink)}input[type=file]{display:none}
 #msg{min-height:24px;font-weight:600}.muted{color:var(--muted);font-size:14px}
 </style></head><body><main>
-<h1>Mandar para o Kindle</h1><p class="sub">Links viram artigos para ler no Verso Ink. Fotos vão para o porta-retrato.</p>
+<h1>Mandar para o Kindle</h1><p class="sub">Links viram artigos para ler no Verso Ink, cifras vão para o violão e fotos para o porta-retrato.</p>
 <div class="card" id="tok" hidden><label for="t">Chave do Verso Ink</label>
 <input id="t" type="password" autocomplete="off" placeholder="cole a chave uma vez">
 <button onclick="saveTok()">Guardar neste aparelho</button><p class="muted">Fica só neste navegador.</p></div>
 <div class="card"><label for="u">Artigo</label><input id="u" type="url" placeholder="https://…">
 <button onclick="sendLink()">Mandar artigo</button></div>
+<div class="card"><label for="ct">Cifra para o violão</label>
+<input id="ct" type="url" style="margin-bottom:10px" placeholder="Nome da música (opcional)">
+<textarea id="cx" rows="7" placeholder="Cole aqui a cifra: linhas de acordes e de letra" style="width:100%;font:15px/1.4 ui-monospace,monospace;padding:12px;border:2px solid var(--ink);border-radius:12px"></textarea>
+<button onclick="sendCifra()">Mandar cifra</button></div>
 <div class="card"><label>Foto</label><label class="file" for="f">Escolher foto</label>
 <input id="f" type="file" accept="image/*" multiple onchange="sendPhotos(this.files)"></div>
 <p id="msg"></p></main>
@@ -385,6 +408,7 @@ function say(t){document.getElementById('msg').textContent=t}
 function saveTok(){tok=document.getElementById('t').value.trim();try{localStorage.setItem('vi-tok',tok)}catch(e){}document.getElementById('tok').hidden=true;say('Chave guardada.')}
 async function call(path,opt){opt.headers=Object.assign(opt.headers||{},{Authorization:'Bearer '+tok});const r=await fetch(base+path,opt);const j=await r.json().catch(()=>({}));if(r.status==401){document.getElementById('tok').hidden=false;throw new Error('chave inválida')}if(!r.ok)throw new Error(j.error||('erro '+r.status));return j}
 async function sendLink(){const u=document.getElementById('u').value.trim();if(!u)return;say('Lendo a página…');try{const j=await call('inbox/link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:u})});say('Mandado: '+j.title);document.getElementById('u').value=''}catch(e){say('Não deu: '+e.message)}}
+async function sendCifra(){const t=document.getElementById('cx').value;if(!t.trim())return;say('Mandando a cifra…');try{const j=await call('inbox/cifra',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:document.getElementById('ct').value,text:t})});say('Cifra no Kindle: '+j.title);document.getElementById('cx').value='';document.getElementById('ct').value=''}catch(e){say('Não deu: '+e.message)}}
 function shrink(file){return new Promise((ok,bad)=>{const img=new Image();img.onload=()=>{const s=Math.min(1,1448/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);c.toBlob(b=>b?ok(b):bad(new Error('imagem')),'image/jpeg',0.86)};img.onerror=()=>bad(new Error('imagem ilegível'));img.src=URL.createObjectURL(file)})}
 async function sendPhotos(files){let n=0;for(const f of files){say('Mandando foto '+(n+1)+' de '+files.length+'…');try{const b=await shrink(f);await call('inbox/foto',{method:'POST',headers:{'Content-Type':'image/jpeg'},body:b});n++}catch(e){say('Não deu: '+e.message);return}}say(n==1?'Foto mandada.':n+' fotos mandadas.')}
 </script></body></html>"""

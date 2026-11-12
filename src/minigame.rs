@@ -53,6 +53,10 @@ pub trait MiniGame {
     fn text_input(&mut self, _text: &str) -> Redraw {
         Redraw::None
     }
+    /// Chamado de tempos em tempos (relógios, cronômetros). Devolve o que redesenhar.
+    fn tick(&mut self) -> Redraw {
+        Redraw::None
+    }
     /// Botão que apaga a partida em andamento (pede um segundo toque).
     fn risky(&self, _id: u32) -> bool {
         false

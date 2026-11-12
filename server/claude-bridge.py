@@ -223,6 +223,8 @@ class Handler(BaseHTTPRequestHandler):
         if len(parts) == 3 and parts[0] == "inbox" and XID_RE.match(parts[2]):
             if parts[1] == "artigo" and (t := EXTRAS.article_text(parts[2])):
                 return self.send_bytes(t.encode(), "text/plain; charset=utf-8")
+            if parts[1] == "cifra" and (t := EXTRAS.cifra_text(parts[2])):
+                return self.send_bytes(t.encode(), "text/plain; charset=utf-8")
             if parts[1] == "foto" and (p := EXTRAS.photo(parts[2])):
                 return self.send_bytes(p.read_bytes(), "application/octet-stream")
             return self.reply(404, {"error": "não encontrado"})
@@ -273,7 +275,7 @@ class Handler(BaseHTTPRequestHandler):
         if not self.authorized():
             return
         parts = self.path_parts()
-        if len(parts) == 3 and parts[0] == "inbox" and parts[1] in ("artigo", "foto") and XID_RE.match(parts[2]):
+        if len(parts) == 3 and parts[0] == "inbox" and parts[1] in ("artigo", "foto", "cifra") and XID_RE.match(parts[2]):
             EXTRAS.delete(parts[1], parts[2])
             return self.reply(200, {"ok": True})
         if len(parts) == 2 and parts[0] == "avisos" and XID_RE.match(parts[1]):
@@ -297,11 +299,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(413, {"error": "imagem grande demais"})
             out, err = EXTRAS.add_photo(data, self.headers.get("Content-Type", ""))
             return self.reply(400, {"error": err}) if err else self.reply(200, out)
-        extras_routes = {("inbox", "link"), ("sessoes",), ("avisos",), ("longe",), ("aprovacoes",), ("brain",), ("edicao", "gerar")}
+        extras_routes = {("inbox", "link"), ("inbox", "cifra"), ("sessoes",), ("avisos",), ("longe",), ("aprovacoes",), ("brain",), ("edicao", "gerar")}
         if tuple(parts) in extras_routes or (len(parts) == 2 and parts[0] == "aprovacoes"):
             req = self.json_body() if tuple(parts) != ("edicao", "gerar") else {}
             if req is None:
                 return self.reply(400, {"error": "JSON inválido"})
+            if parts == ["inbox", "cifra"]:
+                out, err = EXTRAS.add_cifra(req.get("title", ""), req.get("text", ""))
+                return self.reply(400, {"error": err}) if err else self.reply(200, out)
             if parts == ["inbox", "link"]:
                 out, err = EXTRAS.add_link(str(req.get("url", "")).strip())
                 return self.reply(400, {"error": err}) if err else self.reply(200, out)

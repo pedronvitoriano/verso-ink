@@ -14,6 +14,8 @@ pub struct Context {
     pub edition: bool,
     pub notice: bool,
     pub battery: Option<u8>,
+    /// Já treinou violão hoje (e quantos dias seguidos).
+    pub guitar: Option<(bool, u32)>,
 }
 
 pub fn name() -> Option<String> {
@@ -99,6 +101,14 @@ fn candidates(c: &Context) -> Vec<&'static str> {
             v.extend(["A partida de {jogo} ficou pela metade, {nome}.", "Revanche no {jogo}, {nome}?"]);
         }
     }
+    if let Some((done, streak)) = c.guitar {
+        if !done && (17..=22).contains(&c.hour) {
+            v.extend(["Já pegou o violão hoje, {nome}?", "Um minuto de trocas no violão, {nome}?"]);
+            if streak >= 2 {
+                v.push("Não quebra a sequência do violão, {nome}!");
+            }
+        }
+    }
     if c.read_today >= 20 {
         v.push("Já foram {min} minutos de leitura hoje. Bonito, {nome}!");
     }
@@ -122,7 +132,7 @@ mod tests {
     use super::*;
 
     fn ctx(hour: u32) -> Context {
-        Context { hour, weekday: 3, day: 20000, raining: false, book: Some(("Perfil de três reis - Gene Edwards PDF".into(), Some(0.4))), game: Some("Xadrez".into()), read_today: 5, edition: true, notice: false, battery: Some(80) }
+        Context { hour, weekday: 3, day: 20000, raining: false, book: Some(("Perfil de três reis - Gene Edwards PDF".into(), Some(0.4))), game: Some("Xadrez".into()), read_today: 5, edition: true, notice: false, battery: Some(80), guitar: Some((false, 3)) }
     }
 
     #[test]

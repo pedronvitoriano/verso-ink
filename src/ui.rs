@@ -17,17 +17,19 @@ pub enum Module {
     Jogar,
     Foco,
     Claude,
+    Violao,
     Mais,
 }
 
 impl Module {
-    pub const ALL: [Module; 5] = [Module::Ler, Module::Jogar, Module::Foco, Module::Claude, Module::Mais];
+    pub const ALL: [Module; 6] = [Module::Ler, Module::Jogar, Module::Foco, Module::Claude, Module::Violao, Module::Mais];
     pub fn title(self) -> &'static str {
         match self {
             Module::Ler => "Ler",
             Module::Jogar => "Jogar",
             Module::Foco => "Foco",
             Module::Claude => "Claude",
+            Module::Violao => "Violão",
             Module::Mais => "Mais",
         }
     }
@@ -37,7 +39,8 @@ impl Module {
             Module::Jogar => "Xadrez, sudoku e mais 14",
             Module::Foco => "Pomodoro e o seu dia",
             Module::Claude => "Conversa ao vivo",
-            Module::Mais => "Novos módulos",
+            Module::Violao => "Cifras, acordes e treino",
+            Module::Mais => "Edição, artigos e mais",
         }
     }
     pub fn plan(self) -> [&'static str; 3] {
@@ -62,7 +65,7 @@ impl Module {
                 "acompanhe as sessões ao vivo",
                 "e receba textos para ler.",
             ],
-            Module::Mais => ["", "", ""],
+            Module::Violao | Module::Mais => ["", "", ""],
         }
     }
 }
@@ -292,7 +295,7 @@ pub fn icon(fb: &mut Framebuffer, m: Module, x: i32, y: i32, s: i32, v: u8) {
             line(fb, (cx - s * 0.12, y + s * 0.06), (cx + s * 0.12, y + s * 0.06), t, v);
             disc(fb, cx, cy, t * 0.9, v);
         }
-        Module::Mais => {
+        Module::Mais | Module::Violao => {
             // Sinal de mais dentro de um círculo: espaço para crescer.
             let (cx, cy, r) = (x + s * 0.5, y + s * 0.5, s * 0.42);
             ring(fb, cx, cy, r, t, v);
@@ -385,6 +388,7 @@ fn home_phrase(st: &Status) -> String {
         edition: crate::painel::edition().is_some_and(|e| e.day == crate::painel::today_iso(st.offset_min)),
         notice: !crate::painel::notices().is_empty(),
         battery: st.battery,
+        guitar: Some((crate::violao::practiced_today(), crate::violao::streak())),
     };
     let p = crate::saudacao::phrase(&ctx);
     if p.is_empty() { "O que vamos fazer hoje?".into() } else { p }
@@ -512,6 +516,7 @@ fn module_icon(m: Module) -> &'static str {
         Module::Jogar => "jogar",
         Module::Foco => "foco",
         Module::Claude => "claude",
+        Module::Violao => "violao",
         Module::Mais => "mais",
     }
 }

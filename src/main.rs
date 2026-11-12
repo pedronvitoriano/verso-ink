@@ -56,6 +56,7 @@ mod sys;
 mod text;
 mod tutorial;
 mod uno;
+mod violao;
 mod ui;
 
 use app::{App, Screen};

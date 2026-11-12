@@ -498,6 +498,19 @@ pub fn sync_inbox() -> (usize, usize) {
             na += 1;
         }
     }
+    // Cifras para o violão: texto puro (título na 1ª linha).
+    let cdir = crate::home_dir().join("data/violao/cifras");
+    let _ = std::fs::create_dir_all(&cdir);
+    for c in j.get("cifras").map(Json::arr).unwrap_or(&[]) {
+        let Some(id) = c.get("id").and_then(Json::str) else { continue };
+        if seen.iter().any(|s| s == id) {
+            continue;
+        }
+        if chat::fetch(&format!("/inbox/cifra/{id}"), &cdir.join(format!("{id}.txt")), 30).is_ok() {
+            seen.push(id.into());
+            na += 1;
+        }
+    }
     let _ = std::fs::create_dir_all(photos_dir());
     for p in j.get("fotos").map(Json::arr).unwrap_or(&[]) {
         let Some(id) = p.get("id").and_then(Json::str) else { continue };
