@@ -374,13 +374,89 @@ pub struct Game {
     pub last: Option<Move>,
     /// Peão chegou à última fileira: esperando a escolha da peça.
     pub pending_promo: Option<Move>,
+    /// Relógio da partida (None = sem tempo).
+    pub clock: Option<Clock>,
+}
+
+// ---------- Relógio ----------
+
+/// Ritmos (minutos + segundos de acréscimo por lance, o incremento de Fischer), na mesma
+/// divisão do Lichess/FIDE: bala, relâmpago, rápida e clássica.
+pub const CONTROLS: [(u32, u32); 11] = [(60, 0), (120, 1), (180, 0), (180, 2), (300, 0), (300, 3), (600, 0), (600, 5), (900, 10), (1800, 0), (1800, 20)];
+
+pub fn control_label(k: usize) -> String {
+    let (b, i) = CONTROLS[k];
+    format!("{}+{}", b / 60, i)
+}
+
+/// Categoria pelo tempo estimado de partida (base + 40 × acréscimo), como no Lichess.
+pub fn control_category(k: usize) -> &'static str {
+    let (b, i) = CONTROLS[k];
+    match b + 40 * i {
+        0..=179 => "Bala",
+        180..=479 => "Relâmpago",
+        480..=1499 => "Rápida",
+        _ => "Clássica",
+    }
+}
+
+fn control_path() -> std::path::PathBuf {
+    crate::home_dir().join("data/xadrez_ritmo.txt")
+}
+
+/// Ritmo escolhido para as próximas partidas (None = sem tempo).
+pub fn load_control() -> Option<usize> {
+    std::fs::read_to_string(control_path()).ok()?.trim().parse().ok().filter(|&k: &usize| k < CONTROLS.len())
+}
+
+pub fn save_control(k: Option<usize>) {
+    let _ = std::fs::write(control_path(), k.map(|k| k.to_string()).unwrap_or_default());
+}
+
+pub fn control_name(k: Option<usize>) -> String {
+    match k {
+        None => "Sem tempo".into(),
+        Some(k) => format!("{} · {}", control_label(k), control_category(k).to_lowercase()),
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Clock {
+    pub ctrl: usize,
+    /// Milissegundos restantes: [brancas, pretas].
+    pub left: [i64; 2],
+    /// Desde quando o relógio de quem joga está correndo.
+    pub since: Option<std::time::Instant>,
+    /// Caiu a bandeira de quem (true = brancas).
+    pub flag: Option<bool>,
+}
+
+impl Clock {
+    pub fn new(ctrl: usize) -> Clock {
+        let ms = CONTROLS[ctrl].0 as i64 * 1000;
+        Clock { ctrl, left: [ms, ms], since: None, flag: None }
+    }
+}
+
+fn side(white: bool) -> usize {
+    if white { 0 } else { 1 }
+}
+
+/// "4:59", "0:07"; abaixo de 10 s mostra décimos ("9.4").
+pub fn clock_text(ms: i64) -> String {
+    let ms = ms.max(0);
+    if ms < 10_000 {
+        return format!("{}.{}", ms / 1000, ms % 1000 / 100);
+    }
+    let s = (ms + 999) / 1000;
+    if s >= 3600 { format!("{}:{:02}:{:02}", s / 3600, s % 3600 / 60, s % 60) } else { format!("{}:{:02}", s / 60, s % 60) }
 }
 
 pub const PROMO: [Kind; 4] = [Kind::Queen, Kind::Rook, Kind::Bishop, Kind::Knight];
 
 impl Game {
     pub fn new() -> Self {
-        Game { mode: Mode::Local, moves: Vec::new(), pos: Pos::start(), history: Vec::new(), selected: None, targets: Vec::new(), last: None, pending_promo: None }
+        Game { mode: Mode::Local, moves: Vec::new(), pos: Pos::start(), history: Vec::new(), selected: None, targets: Vec::new(), last: None, pending_promo: None, clock: load_control().map(Clock::new) }
     }
 
     fn path() -> std::path::PathBuf {
@@ -417,6 +493,14 @@ impl Game {
             Mode::Coach { level, user_white } => format!("M coach {level} {}", if user_white { "w" } else { "b" }),
         };
         let mut s: Vec<String> = vec![mode, format!("U {}", self.moves.join(" "))];
+        if let Some(c) = &self.clock {
+            let flag = match c.flag {
+                Some(true) => "w",
+                Some(false) => "b",
+                None => "-",
+            };
+            s.push(format!("C {} {} {} {flag}", c.ctrl, self.clock_left(true).unwrap_or(0), self.clock_left(false).unwrap_or(0)));
+        }
         s.extend(self.history.iter().map(Pos::encode));
         s.push(self.pos.encode());
         let _ = std::fs::write(Self::path(), s.join("\n"));
@@ -426,7 +510,22 @@ impl Game {
         let s = std::fs::read_to_string(Self::path()).ok()?;
         let mut mode = Mode::Local;
         let mut moves = Vec::new();
+        let mut clock = None;
         for l in s.lines() {
+            if let Some(c) = l.strip_prefix("C ") {
+                let w: Vec<&str> = c.split_whitespace().collect();
+                if let (Some(k), Some(a), Some(b)) = (w.first().and_then(|x| x.parse::<usize>().ok()), w.get(1).and_then(|x| x.parse().ok()), w.get(2).and_then(|x| x.parse().ok())) {
+                    if k < CONTROLS.len() {
+                        let flag = match w.get(3) {
+                            Some(&"w") => Some(true),
+                            Some(&"b") => Some(false),
+                            _ => None,
+                        };
+                        clock = Some(Clock { ctrl: k, left: [a, b], since: None, flag });
+                    }
+                }
+                continue;
+            }
             if let Some(m) = l.strip_prefix("M ") {
                 let w: Vec<&str> = m.split_whitespace().collect();
                 if w.first() == Some(&"coach") {
@@ -438,7 +537,7 @@ impl Game {
         }
         let mut all: Vec<Pos> = s.lines().filter_map(Pos::decode).collect();
         let pos = all.pop()?;
-        Some(Game { mode, moves, pos, history: all, selected: None, targets: Vec::new(), last: None, pending_promo: None })
+        Some(Game { mode, moves, pos, history: all, selected: None, targets: Vec::new(), last: None, pending_promo: None, clock })
     }
 
     /// Aplica um lance que veio do Stockfish (e2e4 / e7e8q). Devolve o lance em notação.
@@ -455,6 +554,12 @@ impl Game {
 
     /// Partida terminada? Devolve o texto do resultado.
     pub fn result(&self) -> Option<String> {
+        if let Some(loser) = self.clock.as_ref().and_then(|c| c.flag) {
+            // Sem material para dar mate, quem venceria só empata.
+            let winner_has = self.pos.board.iter().flatten().any(|p| p.white != loser && p.kind != Kind::King);
+            let (who, other) = if loser { ("brancas", "pretas") } else { ("pretas", "brancas") };
+            return Some(if winner_has { format!("Tempo das {who} acabou. Vitória das {other}.") } else { format!("Tempo das {who} acabou, mas as {other} não têm como dar mate: empate.") });
+        }
         let other = if self.pos.white_to_move { "pretas" } else { "brancas" };
         if !self.pos.has_moves() {
             return Some(if self.pos.in_check(self.pos.white_to_move) { format!("Xeque-mate. Vitória das {other}.") } else { "Empate por afogamento.".into() });
@@ -480,11 +585,72 @@ impl Game {
         if self.pos.in_check(self.pos.white_to_move) { format!("Xeque! Vez das {side}.") } else { format!("Vez das {side}.") }
     }
 
+    /// Tempo restante de um lado (None = partida sem relógio).
+    pub fn clock_left(&self, white: bool) -> Option<i64> {
+        let c = self.clock.as_ref()?;
+        let mut ms = c.left[side(white)];
+        if let Some(t) = c.since.filter(|_| self.pos.white_to_move == white) {
+            ms -= t.elapsed().as_millis() as i64;
+        }
+        Some(ms.max(0))
+    }
+
+    pub fn clock_running(&self) -> bool {
+        self.clock.as_ref().is_some_and(|c| c.since.is_some())
+    }
+
+    /// Confere a bandeira; devolve true se acabou o tempo agora.
+    pub fn clock_tick(&mut self) -> bool {
+        let white = self.pos.white_to_move;
+        if self.clock_running() && self.clock_left(white) == Some(0) {
+            if let Some(c) = self.clock.as_mut() {
+                c.left[side(white)] = 0;
+                c.since = None;
+                c.flag = Some(white);
+            }
+            self.save();
+            return true;
+        }
+        false
+    }
+
+    /// Para o relógio (saiu da partida); o tempo gasto fica guardado.
+    pub fn clock_pause(&mut self) {
+        let white = self.pos.white_to_move;
+        let left = self.clock_left(white);
+        if let (Some(c), Some(ms)) = (self.clock.as_mut(), left) {
+            c.left[side(white)] = ms;
+            c.since = None;
+        }
+    }
+
+    /// Volta a correr (entrou na partida de novo).
+    pub fn clock_resume(&mut self) {
+        let go = self.moves.len() >= 2 && self.result().is_none() && self.pending_promo.is_none();
+        if let Some(c) = self.clock.as_mut() {
+            if go && c.since.is_none() {
+                c.since = Some(std::time::Instant::now());
+            }
+        }
+    }
+
     pub fn in_progress(&self) -> bool {
         !self.history.is_empty() && self.result().is_none()
     }
 
     fn commit(&mut self, next: Pos, m: Move, promo: Option<Kind>) {
+        let mover = self.pos.white_to_move;
+        let n = self.moves.len() + 1;
+        if let Some(c) = self.clock.as_mut() {
+            if let Some(t) = c.since.take() {
+                c.left[side(mover)] -= t.elapsed().as_millis() as i64;
+            }
+            c.left[side(mover)] += CONTROLS[c.ctrl].1 as i64 * 1000;
+            // Como no Lichess: o relógio só corre depois do primeiro lance de cada lado.
+            if n >= 2 {
+                c.since = Some(std::time::Instant::now());
+            }
+        }
         self.moves.push(uci(m, promo));
         self.history.push(self.pos.clone());
         self.pos = next;
@@ -914,6 +1080,39 @@ pub fn set_rotate(on: bool) {
     }
 }
 
+/// Relógios: o de cima é de quem joga do lado de cima do tabuleiro.
+pub fn top_clock_rect() -> Rect {
+    Rect::new(1072 - 72 - 220, 170, 220, 72)
+}
+pub fn bottom_clock_rect() -> Rect {
+    Rect::new(1072 - 72 - 220, 1189, 220, 72)
+}
+
+pub fn clock_reserve(g: &Game) -> i32 {
+    if g.clock.is_some() { 240 } else { 0 }
+}
+
+/// Desenha os dois relógios. O que está correndo fica preto; com menos de 10 s ganha borda grossa.
+pub fn draw_clocks(fb: &mut Framebuffer, f: &Fonts, g: &Game) {
+    if g.clock.is_none() {
+        return;
+    }
+    let bottom_white = !g.flipped();
+    for (r, white) in [(top_clock_rect(), !bottom_white), (bottom_clock_rect(), bottom_white)] {
+        let ms = g.clock_left(white).unwrap_or(0);
+        let active = g.clock_running() && g.pos.white_to_move == white;
+        fb.fill(Rect::new(r.x - 6, r.y - 6, r.w + 12, r.h + 12), PAPER);
+        if active {
+            fb.round_rect(r, r.h / 2, INK);
+        } else {
+            fb.round_outline(r, r.h / 2, if ms < 10_000 { 7 } else { 3 }, INK, PAPER);
+        }
+        let t = clock_text(ms);
+        let w = f.measure(Face::Display, 46.0, &t);
+        f.draw(fb, Face::Display, 46.0, r.x + (r.w - w) / 2, r.y + 53, if active { PAPER } else { INK }, &t);
+    }
+}
+
 pub fn status_rect() -> Rect {
     Rect::new(0, 1180, 1072, 90)
 }
@@ -937,8 +1136,12 @@ pub fn draw_status(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites) {
         return;
     }
     let s = g.status();
-    let s = crate::apps::fit(f, Face::Display, 46.0, &s, 1072 - 144 - 200);
+    let s = crate::apps::fit(f, Face::Display, 46.0, &s, 1072 - 144 - 240);
     f.draw(fb, Face::Display, 46.0, 72, r.y + 62, INK, &s);
+    if g.clock.is_some() {
+        draw_clocks(fb, f, g);
+        return;
+    }
     let n = g.history.len();
     let mat = g.pos.material();
     let side = match mat {
@@ -954,6 +1157,23 @@ pub fn draw_status(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn relogio_desconta_soma_acrescimo_e_cai_a_bandeira() {
+        let mut g = Game { clock: Some(Clock::new(3)), ..Game::new() }; // 3+2
+        assert_eq!(g.clock_left(true), Some(180_000));
+        assert!(g.play_uci("e2e4").is_some());
+        assert!(!g.clock_running(), "só corre depois do primeiro lance de cada lado");
+        assert_eq!(g.clock_left(true), Some(182_000));
+        assert!(g.play_uci("e7e5").is_some());
+        assert!(g.clock_running());
+        // Brancas sem tempo: a bandeira cai e as pretas vencem (têm material).
+        g.clock.as_mut().unwrap().left[0] = 0;
+        assert!(g.clock_tick());
+        assert!(g.result().unwrap().contains("Vitória das pretas"));
+        assert_eq!(clock_text(65_000), "1:05");
+        assert_eq!(clock_text(9_450), "9.4");
+    }
 
     #[test]
     fn fen_e_lances_legais() {

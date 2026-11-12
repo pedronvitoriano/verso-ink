@@ -25,6 +25,8 @@ pub enum Screen {
     Sudoku,
     SudokuWon,
     ChessHub,
+    /// Escolha do relógio das partidas.
+    ChessClock,
     Coaches,
     Chess,
     ChessEnd,
@@ -153,6 +155,8 @@ pub struct App {
     mini_cache: std::collections::HashMap<usize, Box<dyn crate::minigame::MiniGame>>,
     /// Botão arriscado (novo jogo, recomeçar) esperando o segundo toque.
     mini_confirm: Option<u32>,
+    /// O que os relógios do xadrez mostram agora (para redesenhar só quando muda).
+    clock_shown: String,
     /// Para onde o botão Início leva ao sair do minijogo/módulo.
     mini_back: Screen,
     /// Índice (na tela Jogar) do minijogo aberto.
@@ -273,6 +277,7 @@ impl App {
             mini: None,
             mini_cache: std::collections::HashMap::new(),
             mini_confirm: None,
+            clock_shown: String::new(),
             mini_back: Screen::Games,
             mini_game: 0,
             light_return: None,
@@ -370,6 +375,7 @@ impl App {
                 crate::chess_ui::draw_hub(fb, f, resume);
             }
             Screen::Coaches => crate::chess_ui::draw_coaches(fb, f, self.coach_page),
+            Screen::ChessClock => crate::chess_ui::draw_clock_picker(fb, f),
             Screen::Chess => {
                 if let (Some(g), Some(sp)) = (&self.chess, &self.sprites) {
                     let (left, right, note) = chess_btn.clone().unwrap_or_default();
@@ -377,8 +383,9 @@ impl App {
                     crate::chess::draw(fb, f, g, sp, &b);
                     if let crate::chess::Mode::Coach { level, .. } = g.mode {
                         let c = crate::coach::coach(level);
-                        crate::chess_ui::draw_coach_line(fb, f, &format!("{} ({})", c.name, c.rating), &self.coach_msg);
+                        crate::chess_ui::draw_coach_line(fb, f, &format!("{} ({})", c.name, c.rating), &self.coach_msg, crate::chess::clock_reserve(g));
                     }
+                    crate::chess::draw_clocks(fb, f, g);
                 }
             }
             Screen::ChessEnd => {
@@ -720,6 +727,12 @@ impl App {
                 let n = if has_resume { 4 } else { 3 };
                 let mut v = vec![(Back, ui::back_rect())];
                 v.extend((0..n).map(|k| (Game(k + if has_resume { 0 } else { 1 }), crate::chess_ui::hub_row(k))));
+                v.push((Sort, crate::chess_ui::clock_row_rect()));
+                v
+            }
+            Screen::ChessClock => {
+                let mut v = vec![(Back, ui::back_rect()), (Level(0), crate::chess_ui::clock_option_rect(None))];
+                v.extend((0..crate::chess::CONTROLS.len()).map(|k| (Level(k + 1), crate::chess_ui::clock_option_rect(Some(k)))));
                 v
             }
             Screen::Coaches => {
@@ -1318,7 +1331,43 @@ impl App {
     }
 
     pub fn mini_awake(&self) -> bool {
-        self.screen == Screen::Mini && self.mini.as_ref().is_some_and(|g| g.keep_awake())
+        (self.screen == Screen::Mini && self.mini.as_ref().is_some_and(|g| g.keep_awake())) || (self.screen == Screen::Chess && self.chess.as_ref().is_some_and(|g| g.clock_running()))
+    }
+
+    /// Relógio do xadrez: redesenha só os mostradores quando o número muda e encerra a partida
+    /// quando cai a bandeira.
+    fn chess_clock_tick(&mut self) {
+        if self.screen != Screen::Chess || self.chess_over.is_some() {
+            return;
+        }
+        let Some(g) = self.chess.as_mut() else { return };
+        if !g.clock_running() {
+            return;
+        }
+        if g.clock_tick() {
+            let loser = g.clock.as_ref().and_then(|c| c.flag).unwrap_or(true);
+            let winner_has = g.pos.board.iter().flatten().any(|p| p.white != loser && p.kind != crate::chess::Kind::King);
+            let user_white = match g.mode {
+                crate::chess::Mode::Coach { user_white, .. } => Some(user_white),
+                _ => None,
+            };
+            match user_white {
+                Some(uw) => {
+                    let score = if !winner_has { 0.5 } else if uw == loser { 0.0 } else { 1.0 };
+                    self.finish_coach_game(Some(score));
+                }
+                None => self.render(true),
+            }
+            return;
+        }
+        let shown = format!("{}|{}|{}", g.clock_left(true).map(crate::chess::clock_text).unwrap_or_default(), g.clock_left(false).map(crate::chess::clock_text).unwrap_or_default(), g.pos.white_to_move);
+        if shown != self.clock_shown {
+            self.clock_shown = shown;
+            crate::chess::draw_clocks(&mut self.fb, &self.fonts, g);
+            for r in [crate::chess::top_clock_rect(), crate::chess::bottom_clock_rect()] {
+                self.fb.refresh(Rect::new(r.x - 6, r.y - 6, r.w + 12, r.h + 12), Wave::Fast, false);
+            }
+        }
     }
 
     /// Toque num minijogo: redesenha o que ele pedir e, se for a vez da CPU, joga por ela.
@@ -1450,6 +1499,9 @@ impl App {
     fn end_local(&mut self, text: &str) {
         crate::chess::Game::clear_saved();
         self.chess_over = Some(text.to_string());
+        if let Some(g) = self.chess.as_mut() {
+            g.clock_pause();
+        }
         self.render(true);
     }
 
@@ -1457,7 +1509,11 @@ impl App {
         self.coach_msg = text.to_string();
         if let Some(level) = self.coach_level() {
             let c = crate::coach::coach(level);
-            crate::chess_ui::draw_coach_line(&mut self.fb, &self.fonts, &format!("{} ({})", c.name, c.rating), text);
+            let reserve = self.chess.as_ref().map(crate::chess::clock_reserve).unwrap_or(0);
+            crate::chess_ui::draw_coach_line(&mut self.fb, &self.fonts, &format!("{} ({})", c.name, c.rating), text, reserve);
+            if let Some(g) = &self.chess {
+                crate::chess::draw_clocks(&mut self.fb, &self.fonts, g);
+            }
             self.fb.refresh(crate::chess_ui::coach_line_rect(), Wave::Quality, false);
         }
     }
@@ -1641,15 +1697,26 @@ impl App {
             let msg = self.coach_msg.clone();
             if let Some(level) = self.coach_level() {
                 let c = crate::coach::coach(level);
-                crate::chess_ui::draw_coach_line(&mut self.fb, &self.fonts, &format!("{} ({})", c.name, c.rating), &msg);
+                crate::chess_ui::draw_coach_line(&mut self.fb, &self.fonts, &format!("{} ({})", c.name, c.rating), &msg, crate::chess::clock_reserve(g));
             }
         }
+        crate::chess::draw_clocks(&mut self.fb, &self.fonts, g);
         let b = crate::chess::board_rect();
         let s = crate::chess::status_rect();
         self.fb.refresh(Rect::new(0, b.y, 1072, s.y + s.h - b.y), Wave::Quality, false);
     }
 
     pub fn go(&mut self, screen: Screen) {
+        // Relógio do xadrez: para ao sair da partida e volta a correr ao entrar.
+        if let Some(g) = self.chess.as_mut() {
+            if screen == Screen::Chess && self.chess_over.is_none() {
+                g.clock_resume();
+            } else if self.screen == Screen::Chess {
+                g.clock_pause();
+                g.save();
+            }
+        }
+        self.clock_shown.clear();
         match screen {
             Screen::Light => self.light = read_light(),
             Screen::Library => self.lib = Library::scan(&self.lib.query.clone()),
@@ -1742,7 +1809,7 @@ impl App {
                 self.engine = None; // fecha o Stockfish; a partida fica salva para continuar
                 self.go(Screen::ChessHub);
             }
-            (Screen::Coaches | Screen::ChessEnd | Screen::ChessGames, Back) => self.go(Screen::ChessHub),
+            (Screen::Coaches | Screen::ChessEnd | Screen::ChessGames | Screen::ChessClock, Back) => self.go(Screen::ChessHub),
             (Screen::ChessReview, Back) => self.go(Screen::ChessGames),
             (Screen::ChessInsights, Back) => self.go(Screen::ChessReview),
             (Screen::Clips, Back) => self.go(Screen::Library),
@@ -2129,6 +2196,11 @@ impl App {
                 self.go(Screen::ChessGames);
             }
             (Screen::Coaches, Row(i)) => self.start_coach_game(i),
+            (Screen::ChessHub, Sort) => self.go(Screen::ChessClock),
+            (Screen::ChessClock, Level(k)) => {
+                crate::chess::save_control(k.checked_sub(1));
+                self.go(Screen::ChessHub);
+            }
             (Screen::Coaches, Prev) => {
                 self.coach_page = self.coach_page.saturating_sub(1);
                 self.render(true);
@@ -2548,6 +2620,7 @@ impl App {
         if self.gesture.is_some() {
             self.check_hold();
         }
+        self.chess_clock_tick();
         let now = clock::now(self.status.offset_min);
         let minute_changed = now.minute != self.last_minute;
 
@@ -2664,6 +2737,8 @@ mod raio_x {
         for g in 0..apps::GAMES.len() {
             std::fs::write(home.join(format!("data/tutoriais/{g}.visto")), "1").unwrap();
         }
+        // Relógio 5+3 nas partidas, para a tela da partida mostrar os dois mostradores.
+        std::fs::write(home.join("data/xadrez_ritmo.txt"), "5").unwrap();
         std::fs::write(home.join("data/dia.txt"), "! Revisar o capítulo 3\n- Comprar pão\n@ 08:00 Remédio\n* Ler 20 min\n* {seg,qua,sex} Academia\n").unwrap();
         let out = std::path::PathBuf::from(std::env::var("VERSO_INK_SHOTS").expect("VERSO_INK_SHOTS"));
         let mut app = App::new(Framebuffer::memory());
@@ -2684,6 +2759,7 @@ mod raio_x {
             (Screen::Module(Module::Mais), "mais"),
             (Screen::Games, "jogar"),
             (Screen::Claude, "claude"),
+            (Screen::ChessClock, "xadrez-relogio"),
         ] {
             app.go(s);
             shot(&mut app, name);

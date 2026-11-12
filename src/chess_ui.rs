@@ -77,6 +77,71 @@ pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, resume: Option<String>) {
         f.draw(fb, Face::Display, 50.0, r.x + 40, r.y + 66, fg, t);
         f.draw(fb, Face::Body, 28.0, r.x + 42, r.y + 108, sub, &fit(f, Face::Body, 28.0, s, r.w - 80));
     }
+    // Relógio das próximas partidas.
+    let r = clock_row_rect();
+    fb.fill(Rect::new(MARGIN, r.y - 18, W - 2 * MARGIN, 3), 0xCC);
+    f.draw(fb, Face::Strong, 34.0, MARGIN, r.y + 60, INK, "Relógio");
+    let v = crate::chess::control_name(crate::chess::load_control());
+    let vw = f.measure(Face::Display, 38.0, &v);
+    f.draw(fb, Face::Display, 38.0, r.x + r.w - 50 - vw, r.y + 62, INK, &v);
+    let (cx, cy) = (r.x + r.w - 14, r.y + r.h / 2);
+    ui::stroke(fb, ((cx - 12) as f32, (cy - 18) as f32), (cx as f32, cy as f32), 5.0, INK);
+    ui::stroke(fb, (cx as f32, cy as f32), ((cx - 12) as f32, (cy + 18) as f32), 5.0, INK);
+}
+
+pub fn clock_row_rect() -> Rect {
+    Rect::new(MARGIN, 1310, W - 2 * MARGIN, 96)
+}
+
+// ---------- Escolha do relógio ----------
+
+/// Grupos da tela de relógio: (nome, explicação, índices em CONTROLS).
+const CLOCK_GROUPS: [(&str, &str, &[usize]); 4] = [
+    ("Bala", "menos de 3 minutos", &[0, 1]),
+    ("Relâmpago", "3 a 8 minutos", &[2, 3, 4, 5]),
+    ("Rápida", "8 a 25 minutos", &[6, 7, 8]),
+    ("Clássica", "mais de 25 minutos", &[9, 10]),
+];
+
+/// `None` = sem tempo; `Some(k)` = CONTROLS[k].
+pub fn clock_option_rect(k: Option<usize>) -> Rect {
+    let w = (W - 2 * MARGIN - 3 * 16) / 4;
+    let Some(k) = k else { return Rect::new(MARGIN, 420, W - 2 * MARGIN, 100) };
+    for (g, (_, _, ks)) in CLOCK_GROUPS.iter().enumerate() {
+        if let Some(j) = ks.iter().position(|&x| x == k) {
+            return Rect::new(MARGIN + j as i32 * (w + 16), 620 + g as i32 * 190, w, 100);
+        }
+    }
+    Rect::new(0, 0, 0, 0)
+}
+
+pub fn draw_clock_picker(fb: &mut Framebuffer, f: &Fonts) {
+    fb.fill(fb.screen(), PAPER);
+    ui::draw_back(fb, f, false);
+    f.draw(fb, Face::Display, 110.0, MARGIN - 4, 290, INK, "Relógio");
+    f.draw(fb, Face::Strong, 28.0, MARGIN, 350, MUTED, "Vale para as próximas partidas, contra treinador ou a dois.");
+    let cur = crate::chess::load_control();
+    pill(fb, f, clock_option_rect(None), "Sem tempo", cur.is_none());
+    for (g, (name, hint, ks)) in CLOCK_GROUPS.iter().enumerate() {
+        let y = 600 + g as i32 * 190;
+        let end = f.draw(fb, Face::Strong, 30.0, MARGIN, y, INK, name);
+        f.draw(fb, Face::Body, 26.0, end + 14, y, MUTED, hint);
+        for &k in ks.iter() {
+            let r = clock_option_rect(Some(k));
+            pill(fb, f, r, &crate::chess::control_label(k), cur == Some(k));
+        }
+    }
+    let note = match cur {
+        None => "Sem relógio: pense o quanto quiser.".to_string(),
+        Some(k) => {
+            let (b, i) = crate::chess::CONTROLS[k];
+            let inc = if i > 0 { format!(", e cada lance devolve {i} s") } else { String::new() };
+            format!("{}: {} minutos para cada um{inc}. Acabou o tempo, perdeu.", crate::chess::control_label(k), b / 60)
+        }
+    };
+    for (n, l) in wrap(f, Face::Body, 30.0, &note, W - 2 * MARGIN).iter().take(2).enumerate() {
+        f.draw(fb, Face::Body, 30.0, MARGIN, 1390 - 44 + n as i32 * 40, INK, l);
+    }
 }
 
 // ---------- Escada ----------
@@ -186,7 +251,8 @@ pub fn coach_line_rect() -> Rect {
 }
 
 /// Fala do treinador acima do tabuleiro (até duas linhas).
-pub fn draw_coach_line(fb: &mut Framebuffer, f: &Fonts, who: &str, text: &str) {
+/// `reserve`: espaço à direita deixado livre (o relógio do treinador).
+pub fn draw_coach_line(fb: &mut Framebuffer, f: &Fonts, who: &str, text: &str, reserve: i32) {
     let r = coach_line_rect();
     fb.fill(r, PAPER);
     // Rosto pequeno à esquerda, se houver (o nome vem como "Nome (rating)").
@@ -195,7 +261,7 @@ pub fn draw_coach_line(fb: &mut Framebuffer, f: &Fonts, who: &str, text: &str) {
     let head = format!("{who}: ");
     let hw = f.measure(Face::Strong, 27.0, &head);
     f.draw(fb, Face::Strong, 27.0, x0, r.y + 32, INK, &head);
-    let lines = wrap(f, Face::Body, 27.0, text, W - MARGIN - x0 - hw);
+    let lines = wrap(f, Face::Body, 27.0, text, W - MARGIN - x0 - hw - reserve);
     for (k, l) in lines.iter().take(2).enumerate() {
         f.draw(fb, Face::Body, 27.0, x0 + hw, r.y + 32 + k as i32 * 36, INK, l);
     }
