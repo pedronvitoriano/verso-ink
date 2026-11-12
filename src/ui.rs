@@ -376,7 +376,7 @@ fn draw_chips(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     let x1 = if w0 > 0 { c.x + w0 + gap } else { c.x };
     let r = Rect::new(x1, c.y, c.x + c.w - x1, c.h);
     card(fb, r, 26, PAPER, false);
-    let line = crate::data::summary(st.offset_min).line.unwrap_or_else(|| "Um bom momento para ler".into());
+    let line = crate::data::summary(st.offset_min).line.unwrap_or_else(|| "Hora de ler um pouco".into());
     let tx = if crate::sprites::draw(fb, "icone-livro", Rect::new(r.x + 14, r.y + 10, 62, 62)) { r.x + 88 } else { r.x + 24 };
     let line = crate::apps::fit(f, Face::Strong, 27.0, &line, r.x + r.w - 20 - tx);
     f.draw(fb, Face::Strong, 27.0, tx, r.y + 52, INK, &line);
