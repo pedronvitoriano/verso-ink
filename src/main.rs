@@ -41,6 +41,7 @@ mod revisao;
 mod aprender;
 mod estudo;
 mod semana;
+mod velha;
 mod claude_ui;
 mod clock;
 mod update;

@@ -170,6 +170,7 @@ pub fn make(i: usize) -> Option<Box<dyn MiniGame>> {
         13 => Box::new(crate::cripta::Cripta::new()),
         14 => Box::new(crate::historias::Historias::new()),
         15 => Box::new(crate::damas::Damas::new()),
+        16 => Box::new(crate::velha::Velha::new()),
         _ => return None,
     })
 }

@@ -48,6 +48,7 @@ pub fn pages(game: usize) -> &'static [Page] {
         13 => &CRIPTA,
         14 => &HISTORIAS,
         15 => &DAMAS,
+        16 => &VELHA,
         _ => &[],
     }
 }
@@ -154,6 +155,12 @@ static DAMAS: [Page; 4] = [
     p("Capturar", "Pule por cima de uma peça vizinha para uma casa livre. O peão captura para a frente e para trás, e pode emendar capturas em sequência.", "...\n.o.\n..w", "LDL\nDLD\nLDL"),
     p("É obrigatório", "Se puder capturar, tem de capturar, e pela maioria: o lance que leva mais peças. As peças que podem jogar ficam marcadas.", ".o.o\no.w.", "LDLD\nDLDL"),
     p("A dama", "O peão que chega à última linha vira dama (com coroa). Ela anda e captura em diagonais longas, várias casas de uma vez.", "c...\n.o..\n....", "DLDL\nLDLD\nDLDL"),
+];
+
+static VELHA: [Page; 3] = [
+    p("O clássico", "Três em linha (deitado, em pé ou na diagonal) ganha. Você é o X. Quem começa troca a cada partida.", "", ""),
+    p("O super", "O tabuleiro tem 9 velhas pequenas. A casa onde você joga dentro de uma velha manda o outro jogar na velha de mesma posição: jogou no canto de cima, ele vai para a velha do canto de cima.", "", ""),
+    p("Vencer o super", "Ganhe uma velha pequena para marcá-la com o seu símbolo. Três velhas em linha vencem. Se a velha para onde você foi mandado já acabou, jogue em qualquer uma.", "", ""),
 ];
 
 static HISTORIAS: [Page; 2] = [

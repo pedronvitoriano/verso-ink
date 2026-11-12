@@ -4086,6 +4086,30 @@ mod raio_x {
             shot(&mut app, "teclado-simbolos");
             app.kb_mode = crate::keyboard::Mode::Letters;
         }
+        // Velha: o clássico e o super no meio da partida.
+        {
+            use crate::minigame::MiniGame;
+            let mut v = crate::velha::Velha::new();
+            v.tap(900, 0, 0);
+            for m in [4, 0, 8] {
+                v.tap(m, 0, 0);
+                if v.cpu_turn() {
+                    v.cpu_move();
+                }
+            }
+            app.mini = Some(Box::new(v));
+            app.mini_back = Screen::Games;
+            app.go(Screen::Mini);
+            shot(&mut app, "jogo-velha-classico");
+            let mut v = crate::velha::Velha::new();
+            v.tap(903, 0, 0);
+            for m in [40u32, 36, 4, 38, 22, 44, 76, 12] {
+                v.tap(m, 0, 0);
+            }
+            app.mini = Some(Box::new(v));
+            app.go(Screen::Mini);
+            shot(&mut app, "jogo-velha-super");
+        }
         // Revisão dos destaques com cartões de exemplo (o arquivo do Kindle não existe no PC).
         {
             let cards = vec![
