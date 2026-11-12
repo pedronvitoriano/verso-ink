@@ -154,6 +154,8 @@ pub struct Item {
     pub url: Option<String>,
     pub id: Option<String>,
     pub critical: bool,
+    /// Artigo na ponte com o texto completo (revisão de código).
+    pub article: Option<String>,
 }
 
 pub struct Section {
@@ -181,8 +183,11 @@ pub enum EdAction {
     Regen,
     /// Abre (ou fecha) as escolhas de um cartão de e-mail.
     Open(String),
-    /// Ação num e-mail: (id, "rascunho" | "lembrar" | "ignorar").
+    /// Ação num e-mail ("mail:…": rascunho, lembrar, ignorar) ou num commit ("rev:…": aprovar,
+    /// corrigir, desfazer).
     Mail(String, &'static str),
+    /// Abre um artigo da ponte pelo id (título para o arquivo).
+    Article(String, String),
     Prev,
     Next,
 }
@@ -198,12 +203,13 @@ fn parse_edition(j: &Json) -> Option<Edition> {
                 .arr()
                 .iter()
                 .filter_map(|i| match i {
-                    Json::Str(t) => Some(Item { text: t.clone(), url: None, id: None, critical: false }),
+                    Json::Str(t) => Some(Item { text: t.clone(), url: None, id: None, critical: false, article: None }),
                     _ => Some(Item {
                         text: i.get("texto")?.str()?.to_string(),
                         url: i.get("url").and_then(Json::str).filter(|u| u.starts_with("http")).map(str::to_string),
                         id: i.get("id").and_then(Json::str).map(str::to_string),
                         critical: i.get("critico").and_then(Json::bool).unwrap_or(false),
+                        article: i.get("artigo").and_then(Json::str).map(str::to_string),
                     }),
                 })
                 .collect();
@@ -254,6 +260,15 @@ pub fn regen_edition() -> Result<(), String> {
     chat::call("POST", "/edicao/gerar", Some("{}"), 15).map(|_| ())
 }
 
+/// Baixa um artigo da ponte pelo id e devolve o arquivo (em Artigos).
+pub fn article_by_id(id: &str, title: &str) -> Result<PathBuf, String> {
+    let _ = std::fs::create_dir_all(articles_dir());
+    let name: String = title.chars().filter(|c| !"/\\:*?\"<>|".contains(*c)).take(80).collect();
+    let dest = articles_dir().join(format!("{}.txt", name.trim()));
+    chat::fetch(&format!("/inbox/artigo/{id}"), &dest, 30)?;
+    Ok(dest)
+}
+
 /// Busca uma notícia pela ponte, guarda em Artigos e devolve o arquivo.
 pub fn fetch_article(url: &str) -> Result<PathBuf, String> {
     let j = chat::call("POST", "/inbox/link", Some(&format!("{{\"url\": {}}}", chat::json_str(url))), 200)?;
@@ -274,6 +289,7 @@ fn kind_icon(kind: &str) -> &'static str {
         "agente" => "claude",
         "agenda" => "foco",
         "email" => "wifi",
+        "codigo" => "mais",
         "noticia" => "livro",
         _ => "ler",
     }
@@ -290,7 +306,8 @@ pub fn toggle_open(id: &str) {
 
 /// Ação num e-mail da edição: a VPS registra (e o PC escreve o rascunho, se for o caso).
 pub fn mail_action(id: &str, acao: &str) -> Result<(), String> {
-    chat::call("POST", "/edicao/email", Some(&format!("{{\"id\": {}, \"acao\": {}}}", chat::json_str(id), chat::json_str(acao))), 20)?;
+    let route = if id.starts_with("rev:") { "/edicao/codigo" } else { "/edicao/email" };
+    chat::call("POST", route, Some(&format!("{{\"id\": {}, \"acao\": {}}}", chat::json_str(id), chat::json_str(acao))), 20)?;
     drop_item(id);
     *OPEN.lock().unwrap() = None;
     Ok(())
@@ -333,14 +350,22 @@ fn blocks(f: &Fonts, e: &Edition) -> Vec<Block> {
         }
         v.push(Block::Head(s.title.clone(), s.kind.clone()));
         for it in items {
-            // E-mail: um toque abre as escolhas (rascunho, amanhã, ignorar).
-            if let ("email", Some(id)) = (s.kind.as_str(), &it.id) {
+            // E-mail e código: um toque abre as escolhas.
+            if let ("email" | "codigo", Some(id)) = (s.kind.as_str(), &it.id) {
                 let is_open = open.as_deref() == Some(id.as_str());
                 let action = Some((if is_open { "Fechar" } else { "Decidir" }.to_string(), EdAction::Open(id.clone())));
-                let choices = if is_open {
-                    vec![("Rascunho", EdAction::Mail(id.clone(), "rascunho")), ("Amanhã", EdAction::Mail(id.clone(), "lembrar")), ("Ignorar", EdAction::Mail(id.clone(), "ignorar"))]
-                } else {
-                    Vec::new()
+                let choices = match (is_open, s.kind.as_str()) {
+                    (false, _) => Vec::new(),
+                    (true, "email") => vec![("Rascunho", EdAction::Mail(id.clone(), "rascunho")), ("Amanhã", EdAction::Mail(id.clone(), "lembrar")), ("Ignorar", EdAction::Mail(id.clone(), "ignorar"))],
+                    (true, _) => {
+                        let mut v = Vec::new();
+                        if let Some(a) = &it.article {
+                            let repo = id.split(':').nth(1).unwrap_or("código");
+                            v.push(("Ler", EdAction::Article(a.clone(), format!("Código de ontem - {repo}"))));
+                        }
+                        v.extend([("Aprovar", EdAction::Mail(id.clone(), "aprovar")), ("Corrigir", EdAction::Mail(id.clone(), "corrigir")), ("Desfazer", EdAction::Mail(id.clone(), "desfazer"))]);
+                        v
+                    }
                 };
                 let text_w = W - 2 * MARGIN - 2 * CARD_PAD - 84 - 196;
                 v.push(Block::Card { kind: s.kind.clone(), lines: chat::wrap_words(f, Face::Body, 29.0, &it.text, text_w), action, critical: false, choices });
@@ -438,7 +463,8 @@ pub fn draw_edition(fb: &mut Framebuffer, f: &Fonts, e: Option<&Edition>, page: 
                 if !choices.is_empty() {
                     // Cartão aberto: as três escolhas embaixo, dentro do mesmo cartão.
                     ui::card(fb, full, 26, ui::SURFACE, false);
-                    let bw = (full.w - 2 * CARD_PAD - 2 * 16) / 3;
+                    let n = choices.len() as i32;
+                    let bw = (full.w - 2 * CARD_PAD - (n - 1) * 16) / n;
                     for (k, (label, act)) in choices.iter().enumerate() {
                         let br = Rect::new(full.x + CARD_PAD + k as i32 * (bw + 16), full.y + full.h - 96, bw, 72);
                         ui::button(fb, f, br, label, k == 0);

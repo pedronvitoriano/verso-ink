@@ -430,12 +430,92 @@ class Extras:
         return secs
 
     def with_google(self, secs, day):
-        """Troca as seções de agenda e e-mail pelas do Google, logo depois das dos agentes e avisos."""
-        rest = [x for x in secs if x.get("tipo") not in ("agenda", "email")]
+        """Troca as seções de agenda, e-mail e código pelas atuais, logo depois das dos agentes e avisos."""
+        rest = [x for x in secs if x.get("tipo") not in ("agenda", "email", "codigo")]
         at = 0
         while at < len(rest) and rest[at].get("tipo") in ("aviso", "agente"):
             at += 1
-        return rest[:at] + self.google_sections(day) + rest[at:]
+        return rest[:at] + self.code_sections(day) + self.google_sections(day) + rest[at:]
+
+    # ---------- Revisão do código de ontem (o PC revisa, o Kindle decide) ----------
+
+    def set_code(self, req):
+        day = str(req.get("day", ""))[:10]
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", day):
+            return None, "dia inválido"
+        clip = lambda v, n: str(v or "").strip()[:n]
+        repos = []
+        for r in req.get("repos", [])[:5]:
+            if not isinstance(r, dict) or not re.match(r"^[\w.-]{1,80}$", str(r.get("name", ""))):
+                continue
+            commits = []
+            for c in r.get("commits", [])[:8]:
+                sha = clip(c.get("sha"), 12)
+                if isinstance(c, dict) and re.match(r"^[0-9a-f]{7,12}$", sha):
+                    commits.append({"sha": sha[:7], "titulo": clip(c.get("titulo"), 90), "explicacao": clip(c.get("explicacao"), 500), "risco": clip(c.get("risco"), 10), "pontos": [clip(x, 200) for x in c.get("pontos", [])[:3] if str(x).strip()]})
+            if not commits:
+                continue
+            aid = new_id()
+            paras = md_paras(str(r.get("artigo", ""))) or [c["explicacao"] for c in commits]
+            self.write(self.base / "artigos" / f"{aid}.json", {"id": aid, "title": f"Código de ontem: {r['name']}", "url": "", "site": "revisão do PC", "created": int(time.time()), "paras": paras})
+            repos.append({"name": r["name"], "resumo": clip(r.get("resumo"), 200), "commits": commits, "article": aid})
+        self.write(self.base / "codigo.json", {"day": day, "repos": repos, "time": int(time.time())})
+        ed = self.read(self.base / "edicoes" / f"{day}.json")
+        if ed:
+            ed["secoes"] = self.with_google(ed.get("secoes", []), day)
+            self.write(self.base / "edicoes" / f"{day}.json", ed)
+        return {"ok": True, "repos": len(repos)}, None
+
+    def code_sections(self, day):
+        g = self.read(self.base / "codigo.json", {})
+        if g.get("day") != day:
+            return []
+        gone = set(self.read(self.base / "codigo_feito.json", {}).get("ids", []))
+        items = []
+        for r in g.get("repos", []):
+            for c in r["commits"]:
+                cid = f"rev:{r['name']}:{c['sha']}"
+                if cid in gone:
+                    continue
+                risco = {"alto": " · risco alto", "médio": " · risco médio"}.get(c["risco"], "")
+                pontos = f" Pontos: {len(c['pontos'])}." if c["pontos"] else ""
+                items.append({"texto": f"{r['name']}: {c['titulo']}{risco}. {c['explicacao'][:150]}{pontos}", "id": cid, "artigo": r["article"]})
+        return [{"titulo": "Código de ontem", "tipo": "codigo", "itens": items}] if items else []
+
+    def code_action(self, req):
+        """Aprovar (sai da lista), Corrigir (missão com os pontos) ou Desfazer (missão de git revert)."""
+        cid = str(req.get("id", ""))
+        acao = str(req.get("acao", ""))
+        m = re.match(r"^rev:([\w.-]{1,80}):([0-9a-f]{7})$", cid)
+        if not m or acao not in ("aprovar", "corrigir", "desfazer"):
+            return None, "pedido inválido"
+        repo, sha = m.groups()
+        g = self.read(self.base / "codigo.json", {})
+        c = next((c for r in g.get("repos", []) if r["name"] == repo for c in r["commits"] if c["sha"] == sha), None)
+        if not c:
+            return None, "commit não encontrado"
+        out = {"ok": True}
+        if acao in ("corrigir", "desfazer"):
+            now = int(time.time())
+            mid = new_id()
+            if acao == "corrigir":
+                pontos = "; ".join(c["pontos"]) or "o que a revisão de código apontar"
+                title, prompt = f"Corrigir {sha}: {c['titulo'][:50]}", f"Revise o commit {sha} (\"{c['titulo']}\") e corrija estes pontos, com testes quando fizer sentido e commit local: {pontos}. Se algum ponto não proceder, explique por quê no relatório."
+            else:
+                title, prompt = f"Desfazer {sha}: {c['titulo'][:50]}", f"Desfaça o commit {sha} (\"{c['titulo']}\") com git revert --no-edit {sha} (commit local, sem push). Se houver conflito, não force: aborte o revert e explique no relatório. Depois rode os testes do projeto e relate."
+            rec = {"id": mid, "template": "codigo", "title": f"{title} · {repo}", "prompt": prompt, "project": repo, "status": "na fila", "created": now, "not_before": now, "when": "agora"}
+            self.write(self.base / "missoes" / f"{mid}.json", rec)
+            out["mission"] = mid
+        feito = self.read(self.base / "codigo_feito.json", {"ids": []})
+        feito["ids"] = (feito["ids"] + [cid])[-300:]
+        self.write(self.base / "codigo_feito.json", feito)
+        ed = self.read(self.base / "edicoes" / f"{g['day']}.json")
+        if ed:
+            for sec in ed.get("secoes", []):
+                sec["itens"] = [i for i in sec.get("itens", []) if i.get("id") != cid]
+            ed["secoes"] = [x for x in ed["secoes"] if x.get("itens")]
+            self.write(self.base / "edicoes" / f"{g['day']}.json", ed)
+        return out, None
 
     def email_action(self, req):
         """Ações do cartão de e-mail na edição: rascunho (o PC escreve), amanhã (lembrete) ou ignorar."""

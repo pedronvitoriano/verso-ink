@@ -28,7 +28,7 @@ MAX_SECONDS = 45 * 60
 # Ferramentas liberadas: ler, editar, testar e commit local. Push e publicação bloqueados.
 ALLOWED = ",".join([
     "Read", "Edit", "Write", "Glob", "Grep", "WebSearch", "WebFetch", "Skill",
-    "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git add:*)", "Bash(git commit:*)",
+    "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)", "Bash(git add:*)", "Bash(git commit:*)", "Bash(git revert:*)",
     "Bash(cargo build:*)", "Bash(cargo test:*)", "Bash(cargo check:*)", "Bash(npm test:*)", "Bash(npm run:*)",
     "Bash(ls:*)", "Bash(wc:*)", "Bash(node:*)", "Bash(python3:*)",
 ])
@@ -134,6 +134,49 @@ def google_digest():
     (CONF / "google_dia").write_text(day)
 
 
+CODE_PROMPT = """Você revisa o código que entrou ontem no repositório {name}, para o Pedro ler no Kindle de manhã e decidir com um toque.
+Use só leitura (git log, git show, git diff, Read, Grep). Não altere nada.
+Commits das últimas 24 horas (mais novo primeiro):
+{log}
+Para cada commit (no máximo 8, os mais importantes): explique em linguagem comum o que mudou e por quê, avalie o risco (baixo, médio ou alto) e liste até 3 pontos concretos a corrigir ou conferir (bug, caso esquecido, teste faltando), só se forem reais.
+Responda SÓ com JSON válido, sem cercas:
+{{"resumo": "uma frase sobre o dia no repositório", "commits": [{{"sha": "7 primeiros caracteres", "titulo": "até 70 caracteres", "explicacao": "até 400 caracteres", "risco": "baixo|médio|alto", "pontos": ["..."]}}], "artigo": "texto em Markdown simples para ler com calma: um parágrafo de visão geral e uma seção por commit com o que mudou, o trecho mais importante explicado em palavras e os pontos de atenção"}}
+Português do Brasil."""
+CODE_HOUR = 3  # a partir das 3h de Manaus (antes da edição das 6h)
+
+
+def code_digest(known):
+    """Revisão do código de ontem, uma vez por dia: um resumo por repositório com commits."""
+    day = local_day()
+    if time.gmtime(time.time() + MANAUS).tm_hour < CODE_HOUR or conf("codigo_dia") == day:
+        return
+    repos = []
+    for p in known:
+        try:
+            log = subprocess.run(["git", "log", "--since=24 hours ago", "--no-merges", "--format=%h %s"], cwd=p["path"], capture_output=True, text=True, timeout=20).stdout.strip()
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if log:
+            repos.append((p, log))
+    out = []
+    for p, log in sorted(repos, key=lambda r: -len(r[1].splitlines()))[:3]:
+        lines = "\n".join(log.splitlines()[:12])
+        text, ok = claude_json(CODE_PROMPT.format(name=p["name"], log=lines), ["Read", "Grep", "Glob", "Bash(git log:*)", "Bash(git show:*)", "Bash(git diff:*)"], BLOCKED + ",Edit,Write,Bash(git commit:*),Bash(git reset:*),Bash(git checkout:*)", cwd=p["path"], timeout=900)
+        m = re.search(r"\{.*\}", text, re.S)
+        try:
+            data = json.loads(m.group(0)) if ok and m else None
+        except json.JSONDecodeError:
+            data = None
+        if not isinstance(data, dict):
+            if "limit" in text.lower():
+                return  # tenta de novo mais tarde
+            continue
+        data["name"] = p["name"]
+        out.append(data)
+    api("POST", "/codigo", {"day": day, "repos": out}, timeout=30)
+    (CONF / "codigo_dia").write_text(day)
+
+
 def projects():
     out = []
     for root in ROOTS:
@@ -201,6 +244,7 @@ def main():
                 api("POST", "/missoes/projetos", {"projects": [p["name"] for p in known]})
                 last_projects = time.time()
             google_digest()
+            code_digest(known)
             m = api("POST", "/missoes/proxima", {})
             if m and m.get("id"):
                 res = run(m, known)

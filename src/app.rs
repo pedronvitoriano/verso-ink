@@ -1726,12 +1726,22 @@ impl App {
                     Ok(()) => match acao {
                         "rascunho" => "O PC vai escrever o rascunho; o texto chega em Missões.".into(),
                         "lembrar" => "Volta na edição de amanhã.".into(),
+                        "aprovar" => "Commit aprovado.".into(),
+                        "corrigir" => "Um agente vai corrigir os pontos; o relatório chega em Missões.".into(),
+                        "desfazer" => "Um agente vai desfazer o commit (git revert, sem push).".into(),
                         _ => "E-mail tirado da edição.".into(),
                     },
                     Err(e) => format!("Não deu: {e}"),
                 };
                 self.render(true);
             }
+            EdAction::Article(id, title) => match crate::painel::article_by_id(&id, &title) {
+                Ok(path) => self.open_reader(path, title),
+                Err(e) => {
+                    self.panel_note = format!("Não consegui abrir: {e}");
+                    self.render(true);
+                }
+            },
             EdAction::Regen => {
                 self.panel_note = match crate::painel::regen_edition() {
                     Ok(()) => "Montando uma edição nova; leva uns 2 minutos.".into(),
@@ -3511,7 +3521,7 @@ mod raio_x {
         // Painel: edição de exemplo, artigos e fotos vazios, terminal e um pedido de permissão.
         std::fs::write(
             home.join("data/edicao.json"),
-            r#"{"dia": "2026-11-12", "manchete": "Os agentes terminaram o raio-x; um deles ainda precisa de você.", "secoes": [{"titulo": "Avisos", "tipo": "aviso", "itens": [{"texto": "NÃO DESCONECTAR O KINDLE até o fim da atualização", "id": "a1b2c3d4e5f6", "critico": true}]}, {"titulo": "Os agentes durante a noite", "tipo": "agente", "itens": [{"texto": "verso-ink: refez a Início e a Jogar e parou às 03:10 esperando a sua escolha de direção.", "projeto": "verso-ink"}, {"texto": "aions-brain: atualizou duas notas de retomada e terminou sem pendências.", "projeto": "aions-brain"}]}, {"titulo": "Agenda de hoje", "tipo": "agenda", "itens": [{"texto": "09:00 · Daily da equipe (Meet)"}, {"texto": "19:30 · Aula de violão"}]}, {"titulo": "E-mails que importam", "tipo": "email", "itens": [{"texto": "Ana (RH): Contrato de estágio. Pede a assinatura até sexta.", "id": "mail:abc123"}, {"texto": "Banco: Fatura de novembro. Vence dia 20.", "id": "mail:def456"}]}, {"titulo": "Brain e tarefas", "tipo": "tarefa", "itens": [{"texto": "3 retomadas em andamento; a do Verso Ink está em dia."}]}, {"titulo": "Na sua área", "tipo": "noticia", "itens": [{"texto": "Rust 1.92 estabiliza novos recursos de async (blog do Rust).", "url": "https://blog.rust-lang.org/"}, {"texto": "Agentes de código ganham espaço em equipes pequenas, diz pesquisa (InfoQ).", "url": "https://www.infoq.com/"}]}]}"#,
+            r#"{"dia": "2026-11-12", "manchete": "Os agentes terminaram o raio-x; um deles ainda precisa de você.", "secoes": [{"titulo": "Avisos", "tipo": "aviso", "itens": [{"texto": "NÃO DESCONECTAR O KINDLE até o fim da atualização", "id": "a1b2c3d4e5f6", "critico": true}]}, {"titulo": "Os agentes durante a noite", "tipo": "agente", "itens": [{"texto": "verso-ink: refez a Início e a Jogar e parou às 03:10 esperando a sua escolha de direção.", "projeto": "verso-ink"}, {"texto": "aions-brain: atualizou duas notas de retomada e terminou sem pendências.", "projeto": "aions-brain"}]}, {"titulo": "Código de ontem", "tipo": "codigo", "itens": [{"texto": "verso-ink: Aprender no jeito dos apps de idioma · risco médio. XP, meta e ofensiva com protetor. Pontos: 1.", "id": "rev:verso-ink:0bfa0c0", "artigo": "abc"}]}, {"titulo": "Agenda de hoje", "tipo": "agenda", "itens": [{"texto": "09:00 · Daily da equipe (Meet)"}, {"texto": "19:30 · Aula de violão"}]}, {"titulo": "E-mails que importam", "tipo": "email", "itens": [{"texto": "Ana (RH): Contrato de estágio. Pede a assinatura até sexta.", "id": "mail:abc123"}, {"texto": "Banco: Fatura de novembro. Vence dia 20.", "id": "mail:def456"}]}, {"titulo": "Brain e tarefas", "tipo": "tarefa", "itens": [{"texto": "3 retomadas em andamento; a do Verso Ink está em dia."}]}, {"titulo": "Na sua área", "tipo": "noticia", "itens": [{"texto": "Rust 1.92 estabiliza novos recursos de async (blog do Rust).", "url": "https://blog.rust-lang.org/"}, {"texto": "Agentes de código ganham espaço em equipes pequenas, diz pesquisa (InfoQ).", "url": "https://www.infoq.com/"}]}]}"#,
         )
         .unwrap();
         app.go(Screen::Edicao);
@@ -3519,7 +3529,9 @@ mod raio_x {
         shot(&mut app, "painel-edicao-p2");
         crate::painel::toggle_open("mail:abc123");
         shot(&mut app, "painel-edicao-email-aberto");
-        crate::painel::toggle_open("mail:abc123");
+        crate::painel::toggle_open("rev:verso-ink:0bfa0c0");
+        shot(&mut app, "painel-edicao-codigo-aberto");
+        crate::painel::toggle_open("rev:verso-ink:0bfa0c0");
         app.ed_page = 0;
         for (s, name) in [(Screen::Edicao, "painel-edicao"), (Screen::Artigos, "painel-artigos"), (Screen::Retrato, "painel-retrato"), (Screen::Terminal, "painel-terminal")] {
             app.go(s);
