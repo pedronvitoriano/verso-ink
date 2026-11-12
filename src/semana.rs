@@ -192,7 +192,7 @@ impl MiniGame for Semana {
             }
             View::Summary => {
                 let Some(w) = &self.week else { return };
-                f.draw(fb, Face::Strong, 26.0, MARGIN, 210, MUTED, &format!("SEMANA {}", w.id.replace("-W", " · ")));
+                f.draw(fb, Face::Strong, 26.0, MARGIN, 210, MUTED, "SUA SEMANA · ÚLTIMOS 7 DIAS");
                 let mut y = Self::lines(fb, f, Face::Display, 52.0, 280, &w.title, 2, INK) + 20;
                 // Números em cartões, 3 por linha.
                 let cw = (W - 2 * MARGIN - 2 * 16) / 3;
@@ -200,8 +200,8 @@ impl MiniGame for Semana {
                     let r = Rect::new(MARGIN + (k % 3) as i32 * (cw + 16), y + (k / 3) as i32 * 136, cw, 120);
                     ui::card(fb, r, 24, if k == 0 { INK } else { PAPER }, false);
                     let fg = if k == 0 { PAPER } else { INK };
-                    f.draw(fb, Face::Display, 40.0, r.x + 20, r.y + 56, fg, &crate::apps::fit(f, Face::Display, 40.0, value, r.w - 40));
-                    f.draw(fb, Face::Body, 22.0, r.x + 20, r.y + 96, if k == 0 { 0xCC } else { MUTED }, &crate::apps::fit(f, Face::Body, 22.0, label, r.w - 40));
+                    f.draw(fb, Face::Display, 54.0, r.x + 22, r.y + 66, fg, &crate::apps::fit(f, Face::Display, 54.0, value, r.w - 44));
+                    f.draw(fb, Face::Body, 23.0, r.x + 22, r.y + 102, if k == 0 { 0xCC } else { MUTED }, &crate::apps::fit(f, Face::Body, 23.0, label, r.w - 44));
                 }
                 y += w.numbers.len().div_ceil(3) as i32 * 136 + 40;
                 for p in &w.summary {

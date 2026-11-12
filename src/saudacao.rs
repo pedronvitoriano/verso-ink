@@ -95,7 +95,7 @@ pub enum Bonus {
 
 /// Achados: (nome, frase de quando aparece, desenho, bônus, lendário?).
 pub const ITEMS: [(&str, &str, &str, Bonus, bool); 16] = [
-    ("Palheta dourada", "Uma palheta dourada caiu entre as páginas. Dizem que afina sozinha.", "icone-violao", Bonus::Xp(5), false),
+    ("Palheta dourada", "Uma palheta dourada caiu entre as páginas. Dizem que afina sozinha.", "achado-palheta", Bonus::Xp(5), false),
     ("Coroa perdida", "Achei uma coroa esquecida num reino do Coroas. Ninguém reclamou.", "peca-coroa", Bonus::None, false),
     ("Coração extra", "Um coração extra rolou para fora do Coroas. Vale uma vida.", "coracao", Bonus::Life, false),
     ("Escudo de gelo", "Um escudo de gelo apareceu. Ele segura a ofensiva num dia ruim.", "escudo", Bonus::Shield, false),

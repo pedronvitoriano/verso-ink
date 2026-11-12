@@ -716,7 +716,8 @@ impl MiniGame for Uno {
         fb.fill(fb.screen(), PAPER);
         ui::draw_back(fb, f, false);
         if self.mode == Mode::Menu {
-            minigame::draw_menu(fb, f, "UNO", "Regras do UNO do Pedro (AED1): +2 e +4 acumulam.", &MENU);
+            minigame::draw_menu(fb, f, "UNO", "Contra a CPU, com +2 e +4 que acumulam.", &MENU);
+            minigame::menu_art(fb, "UNO", minigame::menu_row(MENU.len()).y + 40);
             return;
         }
         let status = match self.phase {

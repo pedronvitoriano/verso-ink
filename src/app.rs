@@ -413,8 +413,27 @@ impl App {
         }
     }
 
+    /// Rótulo do botão de voltar: o destino de verdade.
+    fn back_label(&self) -> &'static str {
+        let to = |s: Screen| match s {
+            Screen::Home => "Início",
+            Screen::Module(Module::Mais) => "Mais",
+            Screen::Games => "Jogos",
+            Screen::Clips => "Destaques",
+            _ => "Voltar",
+        };
+        match self.screen {
+            Screen::Library | Screen::Today | Screen::Focus | Screen::Games | Screen::Claude | Screen::Module(_) | Screen::Achados => "Início",
+            Screen::Edicao | Screen::Missoes | Screen::Artigos | Screen::Retrato | Screen::Terminal => "Mais",
+            Screen::Light => self.light_return.map(to).unwrap_or("Início"),
+            Screen::Mini if self.mini.as_ref().is_some_and(|g| g.at_menu()) => to(self.mini_back),
+            _ => "Voltar",
+        }
+    }
+
     pub fn render(&mut self, flash: bool) {
         self.status = read_status();
+        ui::set_back_label(self.back_label());
         // O repouso fica sempre claro, mesmo no modo noturno (escuro parecia aparelho apagado).
         self.fb.invert = self.light.night && self.screen != Screen::Sleep;
         self.fb.rot180 = self.screen == Screen::Chess && self.local_rotated();
@@ -605,16 +624,8 @@ impl App {
             Screen::Sleep => ui::draw_sleep(fb, f, st, self.sleep_scene.as_ref()),
             Screen::Tutorial => crate::tutorial::draw(fb, f, self.tut.0, self.tut.1),
         }
-        if let Some(g) = self.help_game() {
+        if self.help_game().is_some() {
             crate::tutorial::draw_help_button(&mut self.fb, &self.fonts);
-            // Miniatura do jogo ao lado do título, quando o título deixa espaço.
-            if self.screen == Screen::Mini {
-                let title_w = self.fonts.measure(crate::text::Face::Display, 130.0, apps::GAMES.get(g).map(|x| x.0).unwrap_or(""));
-                let x = 72 + title_w + 40;
-                if 1072 - 72 - x >= 200 {
-                    crate::tutorial::draw_preview(&mut self.fb, &self.fonts, g, Rect::new(x, 196, 1072 - 72 - x, 170));
-                }
-            }
         }
         self.fb.present(Wave::Quality, flash);
         self.last_minute = clock::now(self.status.offset_min).minute;
@@ -3772,7 +3783,7 @@ mod raio_x {
         app.mini_back = Screen::Home;
         app.go(Screen::Mini);
         shot(&mut app, "violao-inicio");
-        for (id, name) in [(700, "violao-treino"), (780, "violao-treino-cronometro"), (780, "violao-treino-contagem")] {
+        for (id, name) in [(700, "violao-aula-aberta"), (770, "violao-treino"), (780, "violao-treino-cronometro"), (780, "violao-treino-contagem")] {
             app.mini_tap(id, 0);
             shot(&mut app, name);
         }
@@ -3821,7 +3832,9 @@ mod raio_x {
             app.go(Screen::Mini);
             app.mini_tap(703, 0);
             shot(&mut app, "aprender-curso");
-            for (c, name) in [(crate::aprender::Cel::Streak(5, false), "aprender-ofensiva"), (crate::aprender::Cel::Streak(7, true), "aprender-ofensiva-protetor"), (crate::aprender::Cel::Goal(30), "aprender-meta")] {
+            // Comemorações com os números de verdade: 5 dias seguidos (hoje incluso) e 32 XP hoje.
+            std::fs::write(home.join("data/aprender.txt"), format!("{}|12|licao\n{}|15|licao\n{}|30|treino\n{}|10|licao\n{}|32|licao\n", t - 4, t - 3, t - 2, t - 1, t)).unwrap();
+            for (c, name) in [(crate::aprender::Cel::Streak(5, false), "aprender-ofensiva"),  (crate::aprender::Cel::Goal(30), "aprender-meta")] {
                 crate::aprender::draw_celebration(&mut app.fb, &app.fonts, c);
                 app.fb.save_pgm(&out.join(format!("zz-{name}.pgm")));
             }

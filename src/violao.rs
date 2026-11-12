@@ -1025,7 +1025,7 @@ impl Violao {
     }
 
     fn option_rect(k: usize) -> Rect {
-        Rect::new(MARGIN, 560 + k as i32 * 128, W - 2 * MARGIN, 108)
+        Rect::new(MARGIN, 560 + k as i32 * 112, W - 2 * MARGIN, 98)
     }
 
     fn draw_check(&self, fb: &mut Framebuffer, f: &Fonts) {
@@ -1039,32 +1039,32 @@ impl Violao {
         for (k, o) in c.opts.iter().enumerate() {
             let r = Self::option_rect(k);
             match self.answered {
-                Some(_) if k == c.ok => ui::button(fb, f, r, o, true),
+                Some(_) if k == c.ok => {
+                    ui::button(fb, f, r, o, true);
+                    crate::aprender::badge(fb, r, true, true);
+                }
                 Some(a) if a == k => {
-                    ui::card(fb, r, 40, ui::SURFACE, false);
-                    let t = format!("{o}  (sua resposta)");
+                    ui::card(fb, r, r.h / 2, ui::SURFACE, false);
+                    let t = crate::apps::fit(f, Face::Strong, 32.0, o, r.w - 140);
                     let w = f.measure(Face::Strong, 32.0, &t);
                     f.draw(fb, Face::Strong, 32.0, r.x + (r.w - w) / 2, r.y + r.h / 2 + 12, MUTED, &t);
+                    crate::aprender::badge(fb, r, false, false);
                 }
                 _ => ui::button(fb, f, r, o, false),
             }
         }
-        if let Some(a) = self.answered {
-            let head = if a == c.ok { "Isso! " } else { "Quase. A certa está em preto. " };
-            let msg = format!("{head}{}", c.why);
-            let y0 = Self::option_rect(c.opts.len()).y + 20;
-            for (k, line) in crate::chat::wrap_words(f, Face::Body, 31.0, &msg, W - 2 * MARGIN).iter().take(4).enumerate() {
-                f.draw(fb, if k == 0 { Face::Strong } else { Face::Body }, 31.0, MARGIN, y0 + 30 + k as i32 * 44, INK, line);
+        match self.answered {
+            Some(a) => {
+                let ok = a == c.ok;
+                let title = if ok { "Isso!".to_string() } else { format!("Resposta certa: {}", c.opts[c.ok]) };
+                crate::aprender::draw_feedback(fb, f, ok, &title, c.why);
             }
-            let (m, k) = p::locate(self.lesson);
-            let last_in_module = k + 1 == p::MODULES[m].lessons.len();
-            let label = if self.lesson + 1 == p::total() { "Treinos ›" } else if last_in_module { "Fim do módulo ›" } else { "Próxima lição ›" };
-            ui::button(fb, f, Self::check_next(), label, true);
-        } else {
-            let t = "Toque na resposta.";
-            f.draw(fb, Face::Strong, 28.0, MARGIN, Self::option_rect(c.opts.len()).y + 50, MUTED, t);
+            None => {
+                let t = "Toque na resposta.";
+                f.draw(fb, Face::Strong, 28.0, MARGIN, Self::option_rect(c.opts.len()).y + 40, MUTED, t);
+                ui::button(fb, f, Self::nav(0), "‹ Lição", false);
+            }
         }
-        ui::button(fb, f, Self::nav(0), "‹ Lição", false);
     }
 
     /// Depois da pergunta: a próxima lição do módulo, ou de volta à lista ao fechar o módulo.
@@ -1141,8 +1141,23 @@ impl Violao {
         for (k, l) in crate::chat::wrap_words(f, Face::Strong, 30.0, &msg, W - 2 * MARGIN).iter().take(2).enumerate() {
             f.draw(fb, Face::Strong, 30.0, MARGIN, 994 + k as i32 * 40, if q.wrong.is_some() { INK } else { MUTED }, l);
         }
+        let correct = q.q.correct();
         for (k, a) in p::answers(q.mode).iter().enumerate() {
-            ui::button(fb, f, Self::answer_rect(k), a, false);
+            let r = Self::answer_rect(k);
+            match q.wrong {
+                // Errou: a escolhida com ✗ e a certa com ✓ (a mesma pergunta fica para tentar de novo).
+                Some(w) if *a == w => {
+                    ui::card(fb, r, r.h / 2, ui::SURFACE, false);
+                    let tw = f.measure(Face::Strong, 34.0, a);
+                    f.draw(fb, Face::Strong, 34.0, r.x + 22 + (r.w - 90 - tw).max(0) / 2, r.y + r.h / 2 + 12, MUTED, a);
+                    crate::aprender::badge(fb, Rect::new(r.x, r.y + 10, r.w, r.h - 20), false, false);
+                }
+                Some(_) if k == correct => {
+                    ui::button(fb, f, r, a, true);
+                    crate::aprender::badge(fb, Rect::new(r.x, r.y + 10, r.w, r.h - 20), true, true);
+                }
+                _ => ui::button(fb, f, r, a, false),
+            }
         }
     }
 
@@ -1245,10 +1260,11 @@ impl MiniGame for Violao {
                 v
             }
             View::Check => {
-                let mut v: Vec<(u32, Rect)> = vec![(720, Self::nav(0))];
+                let mut v: Vec<(u32, Rect)> = Vec::new();
                 if self.answered.is_some() {
-                    v.push((721, Self::check_next()));
+                    v.push((721, crate::aprender::feedback_button()));
                 } else {
+                    v.push((720, Self::nav(0)));
                     v.extend((0..crate::partitura::lesson(self.lesson).check.opts.len()).map(|k| (870 + k as u32, Self::option_rect(k))));
                 }
                 v
@@ -1395,9 +1411,9 @@ impl MiniGame for Violao {
                     self.quiz.wrong = Some(picked);
                     self.quiz.streak = 0;
                     // A mesma pergunta fica na tela para olhar de novo.
-                    return Redraw::Part(Rect::new(0, 950, W, 110));
+                    return Redraw::Part(Rect::new(0, 940, W, 1448 - 940));
                 }
-                return Redraw::Part(Rect::new(0, 410, W, 660));
+                return Redraw::Part(Rect::new(0, 410, W, 1448 - 410));
             }
             (View::List, 720) => self.list_page = self.list_page.saturating_sub(1),
             (View::List, 721) if (self.list_page + 1) * 7 < self.songs.len() => self.list_page += 1,

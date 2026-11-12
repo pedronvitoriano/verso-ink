@@ -254,7 +254,7 @@ pub struct Estudo {
 }
 
 /// Os três tópicos embutidos: (nome, fontes de XP, ícone).
-const BUILTIN: [(&str, &[&str], &str); 3] = [("Violão", &["violao"], "violao"), ("Partitura", &["licao", "treino"], "clave-sol"), ("Destaques", &["revisao"], "icone-livro")];
+const BUILTIN: [(&str, &[&str], &str); 3] = [("Violão", &["violao"], "violao"), ("Partitura", &["licao", "treino"], "partitura"), ("Destaques", &["revisao"], "destaques")];
 const PER_PAGE: usize = 8;
 
 impl Estudo {
@@ -333,17 +333,19 @@ impl Estudo {
         for k in start..(start + PER_PAGE).min(self.n_cards()) {
             let r = Self::card_rect(k);
             ui::card(fb, r, 28, PAPER, false);
-            let (title, sub, icon): (String, String, Option<&str>) = if k < BUILTIN.len() {
+            let (title, sub, icon): (String, String, Option<String>) = if k < BUILTIN.len() {
                 let sub = match k {
                     0 => if crate::violao::practiced_today() { "Treino feito hoje".to_string() } else { "Trocas, cifras, acordes".to_string() },
                     1 => format!("{} de {} lições", crate::partitura::done().len().min(crate::partitura::total()), crate::partitura::total()),
                     _ => format!("{} para hoje", crate::revisao::due_count()),
                 };
-                (BUILTIN[k].0.to_string(), sub, Some(BUILTIN[k].2))
-            } else if let Some((_, theme, t)) = self.topics.get(k - BUILTIN.len()) {
+                (BUILTIN[k].0.to_string(), sub, Some(BUILTIN[k].2.to_string()))
+            } else if let Some((id, theme, t)) = self.topics.get(k - BUILTIN.len()) {
+                // Ícone do tópico (os conhecidos têm desenho próprio; os criados, o do Aprender).
+                let icon = [("ingles", "ingles"), ("xadrez", "xadrez"), ("rust", "rust")].iter().find(|(i, _)| i == id).map(|(_, n)| n.to_string()).unwrap_or("aprender".into());
                 match t {
-                    Some(t) => (t.title.clone(), format!("{} de {} lições", t.done().len(), t.total()), None),
-                    None => (theme.clone(), "O Claude está montando…".to_string(), None),
+                    Some(t) => (t.title.clone(), format!("{} de {} lições", t.done().len(), t.total()), Some(icon)),
+                    None => (theme.clone(), "O Claude está montando…".to_string(), Some(icon)),
                 }
             } else {
                 ("+ Novo tópico".to_string(), "Qualquer assunto".to_string(), None)
@@ -352,9 +354,8 @@ impl Estudo {
             // Ícone: o desenho do tópico, ou a inicial num disco.
             let d = 64;
             let ir = Rect::new(r.x + 22, r.y + 22, d, d);
-            let drawn = match icon {
-                Some("violao") => ui::icon_disc(fb, ir.x, ir.y, d, "violao"),
-                Some(name) => crate::sprites::draw(fb, name, ir),
+            let drawn = match &icon {
+                Some(name) => ui::icon_disc(fb, ir.x, ir.y, d, name),
                 None => false,
             };
             if !drawn {
@@ -372,7 +373,12 @@ impl Estudo {
                 }
             }
             let title = if is_new { title.trim_start_matches("+ ").to_string() } else { title };
-            f.draw(fb, Face::Display, 34.0, r.x + 22, r.y + 122, INK, &crate::apps::fit(f, Face::Display, 34.0, &title, r.w - 44));
+            // Título inteiro: diminui a letra (até 26) antes de cortar.
+            let mut ts = 34.0;
+            while f.measure(Face::Display, ts, &title) > r.w - 44 && ts > 26.0 {
+                ts -= 2.0;
+            }
+            f.draw(fb, Face::Display, ts, r.x + 22, r.y + 122, INK, &crate::apps::fit(f, Face::Display, ts, &title, r.w - 44));
             f.draw(fb, Face::Body, 22.0, r.x + 24, r.y + 150, MUTED, &crate::apps::fit(f, Face::Body, 22.0, &sub, r.w - 44));
         }
         let pages = self.n_cards().div_ceil(PER_PAGE);
@@ -440,7 +446,7 @@ impl Estudo {
     }
 
     fn option_rect(k: usize) -> Rect {
-        Rect::new(MARGIN, 640 + k as i32 * 124, W - 2 * MARGIN, 106)
+        Rect::new(MARGIN, 580 + k as i32 * 108, W - 2 * MARGIN, 96)
     }
 
     fn progress_bar(fb: &mut Framebuffer, r: &Run) {
@@ -480,32 +486,36 @@ impl Estudo {
                 let e = &r.data.exs[r.queue[0]];
                 let retry = r.tried[r.queue[0]] && answer.is_none();
                 f.draw(fb, Face::Strong, 26.0, MARGIN, 280, MUTED, if retry { "DE NOVO: ESSA VOCÊ ERROU" } else { "ESCOLHA A RESPOSTA" });
-                let mut y = 350;
-                for l in crate::chat::wrap_words(f, Face::Display, 44.0, &e.q, W - 2 * MARGIN).iter().take(5) {
-                    f.draw(fb, Face::Display, 44.0, MARGIN, y, INK, l);
-                    y += 56;
+                let mut size = 44.0;
+                let mut ql = crate::chat::wrap_words(f, Face::Display, size, &e.q, W - 2 * MARGIN);
+                while ql.len() > 4 && size > 32.0 {
+                    size -= 2.0;
+                    ql = crate::chat::wrap_words(f, Face::Display, size, &e.q, W - 2 * MARGIN);
+                }
+                for (k, l) in ql.iter().take(4).enumerate() {
+                    f.draw(fb, Face::Display, size, MARGIN, 350 + k as i32 * (size * 1.25) as i32, INK, l);
                 }
                 for (k, o) in e.opts.iter().enumerate() {
                     let rr = Self::option_rect(k);
                     match answer {
-                        Some(_) if k == e.ok => ui::button(fb, f, rr, o, true),
+                        Some(_) if k == e.ok => {
+                            ui::button(fb, f, rr, o, true);
+                            crate::aprender::badge(fb, rr, true, true);
+                        }
                         Some(a) if a == k => {
-                            ui::card(fb, rr, 40, ui::SURFACE, false);
-                            let t = format!("{o}  (sua resposta)");
-                            let t = crate::apps::fit(f, Face::Strong, 30.0, &t, rr.w - 40);
-                            let w = f.measure(Face::Strong, 30.0, &t);
-                            f.draw(fb, Face::Strong, 30.0, rr.x + (rr.w - w) / 2, rr.y + rr.h / 2 + 11, MUTED, &t);
+                            ui::card(fb, rr, rr.h / 2, ui::SURFACE, false);
+                            let t = crate::apps::fit(f, Face::Strong, 32.0, o, rr.w - 140);
+                            let w = f.measure(Face::Strong, 32.0, &t);
+                            f.draw(fb, Face::Strong, 32.0, rr.x + (rr.w - w) / 2, rr.y + rr.h / 2 + 12, MUTED, &t);
+                            crate::aprender::badge(fb, rr, false, false);
                         }
                         _ => ui::button(fb, f, rr, o, false),
                     }
                 }
                 if let Some(a) = answer {
-                    let head = if a == e.ok { "Isso! " } else { "Quase. " };
-                    let y0 = Self::option_rect(e.opts.len()).y + 10;
-                    for (k, l) in crate::chat::wrap_words(f, Face::Body, 30.0, &format!("{head}{}", e.why), W - 2 * MARGIN).iter().take(4).enumerate() {
-                        f.draw(fb, if k == 0 { Face::Strong } else { Face::Body }, 30.0, MARGIN, y0 + 30 + k as i32 * 42, INK, l);
-                    }
-                    ui::button(fb, f, Self::wide(), "Continuar", true);
+                    let ok = a == e.ok;
+                    let title = if ok { ["Correto!", "Isso!", "Mandou bem!", "Exato!"][r.queue[0] % 4].to_string() } else { format!("Resposta certa: {}", e.opts[e.ok]) };
+                    crate::aprender::draw_feedback(fb, f, ok, &title, &e.why);
                 }
             }
             Step::Done => {
@@ -660,6 +670,7 @@ impl MiniGame for Estudo {
                     let r = self.run.as_ref().unwrap();
                     (0..r.data.exs[r.queue[0]].opts.len()).map(|k| (740 + k as u32, Self::option_rect(k))).collect()
                 }
+                Some(Step::Ex(Some(_))) => vec![(730, crate::aprender::feedback_button())],
                 Some(_) => vec![(730, Self::wide())],
                 None => vec![],
             },

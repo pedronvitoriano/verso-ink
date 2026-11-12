@@ -298,6 +298,7 @@ impl MiniGame for Paciencia {
         ui::draw_back(fb, f, false);
         if self.menu {
             minigame::draw_menu(fb, f, "Paciência", "Monte as quatro fundações de A até K por naipe.", &["Comprar 1 (fácil)", "Comprar 3 (clássico)"]);
+            minigame::menu_art(fb, "Paciência", minigame::menu_row(2).y + 40);
             return;
         }
         let status = if self.won() { format!("Venceu em {} jogadas!", self.moves) } else { format!("{} jogadas · toque e depois o destino", self.moves) };

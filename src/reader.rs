@@ -1017,7 +1017,7 @@ fn draw_menu(fb: &mut Framebuffer, f: &crate::text::Fonts, r: &Reader) {
     let title = crate::apps::fit(f, Face::Display, 34.0, &r.book.title, x1 - x0);
     let tw = f.measure(Face::Display, 34.0, &title);
     f.draw(fb, Face::Display, 34.0, x0 + (x1 - x0 - tw) / 2, 108, INK, &title);
-    let size = format!("letra {}", r.size_k + 1);
+    let size = format!("Tamanho da letra: {}", r.size_k + 1);
     let sw = f.measure(Face::Body, 22.0, &size);
     f.draw(fb, Face::Body, 22.0, x0 + (x1 - x0 - sw) / 2, 140, MUTED, &size);
     // Embaixo: capítulo, página e o progresso do livro.

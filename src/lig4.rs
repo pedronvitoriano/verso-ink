@@ -142,8 +142,10 @@ impl Lig4 {
         }
     }
 
+    /// Tabuleiro dentro da margem, com espaço para a moldura (x0, y0, lado da casa).
     fn geom() -> (i32, i32, i32) {
-        minigame::grid_geom(COLS as i32, ROWS as i32, 330, 900)
+        let s = ((W - 2 * minigame::MARGIN - 48) / COLS as i32).min(860 / ROWS as i32);
+        ((W - s * COLS as i32) / 2, 330, s)
     }
 
     fn col_rect(c: usize) -> Rect {
@@ -225,8 +227,9 @@ impl MiniGame for Lig4 {
         let title = if self.fase > 0 { fases::title(self.fase) } else { "Lig 4".to_string() };
         minigame::header(fb, f, &title, &self.status());
         let (x0, y0, s) = Self::geom();
-        let board = Rect::new(x0 - 10, y0 - 10, s * COLS as i32 + 20, s * ROWS as i32 + 20);
-        fb.round_rect(board, 24, 0x99);
+        // Moldura do sistema: borda preta grossa, sombra chapada, o painel em cinza médio.
+        let board = Rect::new(x0 - 22, y0 - 22, s * COLS as i32 + 44, s * ROWS as i32 + 44);
+        ui::card(fb, board, 34, 0x9A, false);
         let win: Vec<(usize, usize)> = self.winner.as_ref().map(|w| w.1.clone()).unwrap_or_default();
         for r in 0..ROWS {
             for c in 0..COLS {
@@ -239,7 +242,11 @@ impl MiniGame for Lig4 {
                     2 if crate::sprites::draw(fb, "peca-disco-claro", disc) => {}
                     1 => fb.round_rect(disc, rad, INK),
                     2 => fb.round_outline(disc, rad, 5, INK, PAPER),
-                    _ => fb.round_rect(disc, rad, 0xEE),
+                    _ => {
+                        // Buraco vazio: claro, com um anel escuro por dentro (profundidade).
+                        fb.round_rect(disc, rad, 0x6E);
+                        fb.round_rect(Rect::new(disc.x + 4, disc.y + 6, disc.w - 8, disc.h - 8), rad - 4, 0xF2);
+                    }
                 }
                 if win.contains(&(r, c)) {
                     // Marca as quatro da vitória com um ponto no centro.
@@ -254,6 +261,22 @@ impl MiniGame for Lig4 {
             let y = (y0 - 46) as f32;
             ui::stroke(fb, (cx - 16.0, y), (cx, y + 18.0), 5.0, MUTED);
             ui::stroke(fb, (cx + 16.0, y), (cx, y + 18.0), 5.0, MUTED);
+        }
+        // Legenda: qual peça é de quem.
+        let ly = board.y + board.h + ui::SH + 56;
+        let names: [&str; 2] = match self.mode {
+            Mode::Cpu(_) => ["Você", "CPU"],
+            _ => ["Pretas", "Brancas"],
+        };
+        let mut lx = minigame::MARGIN;
+        for (k, (sprite, name)) in [("peca-disco-escuro", names[0]), ("peca-disco-claro", names[1])].iter().enumerate() {
+            let d = 48;
+            let dr = Rect::new(lx, ly - 36, d, d);
+            if !crate::sprites::draw(fb, sprite, dr) {
+                if k == 0 { fb.round_rect(dr, d / 2, INK) } else { fb.round_outline(dr, d / 2, 5, INK, PAPER) }
+            }
+            let end = f.draw(fb, crate::text::Face::Strong, 30.0, lx + d + 14, ly, INK, name);
+            lx = end + 48;
         }
         if self.fase > 0 && self.winner.as_ref().is_some_and(|w| w.0 == 1) {
             return fases::draw_win(fb, f, &self.prog);

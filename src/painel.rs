@@ -128,8 +128,17 @@ pub fn approve_rect(allow: bool) -> Rect {
 pub fn draw_approval(fb: &mut Framebuffer, f: &Fonts, a: &Approval, more: usize) {
     fb.fill(fb.screen(), PAPER);
     f.draw(fb, Face::Strong, 30.0, MARGIN, 120, MUTED, "UM AGENTE PEDE PERMISSÃO");
-    f.draw(fb, Face::Display, 84.0, MARGIN - 4, 240, INK, &crate::apps::fit(f, Face::Display, 84.0, &a.tool, W - 2 * MARGIN));
-    f.draw(fb, Face::Body, 32.0, MARGIN, 296, MUTED, &format!("projeto {}", a.project));
+    // O que o agente quer fazer, em palavras de gente (o nome da ferramenta vira detalhe).
+    let what = match a.tool.as_str() {
+        "Bash" => "Rodar um comando",
+        "Edit" | "Write" | "MultiEdit" | "NotebookEdit" => "Mudar um arquivo",
+        "Read" | "Glob" | "Grep" => "Ler arquivos",
+        "WebFetch" | "WebSearch" => "Abrir um site",
+        t if t.starts_with("mcp__") => "Usar uma ferramenta",
+        _ => a.tool.as_str(),
+    };
+    f.draw(fb, Face::Display, 76.0, MARGIN - 4, 236, INK, &crate::apps::fit(f, Face::Display, 76.0, what, W - 2 * MARGIN));
+    f.draw(fb, Face::Body, 30.0, MARGIN, 292, MUTED, &format!("no projeto {} · {}", a.project, a.tool));
     let lines = chat::wrap_words(f, Face::Body, 32.0, &a.summary, W - 2 * MARGIN - 64);
     let n = lines.len().clamp(2, 16) as i32;
     let r = Rect::new(MARGIN, 340, W - 2 * MARGIN, 60 + n * 44);
@@ -140,8 +149,13 @@ pub fn draw_approval(fb: &mut Framebuffer, f: &Fonts, a: &Approval, more: usize)
         y += 44;
     }
     let left = (600 - (now() - a.created)).max(0);
-    let t = format!("Sem resposta em {} min, o pedido é negado.{}", (left + 59) / 60, if more > 0 { format!(" Mais {more} na fila.") } else { String::new() });
-    f.draw(fb, Face::Strong, 28.0, MARGIN, 1200, INK, &t);
+    let when = if left > 0 { format!("Sem resposta em {} min, o pedido é negado sozinho.", (left + 59) / 60) } else { "O prazo acabou: sem resposta, o pedido é negado.".to_string() };
+    let t = format!("{when}{}", if more > 0 { format!(" Mais {more} na fila.") } else { String::new() });
+    // O aviso logo abaixo do pedido, perto do que ele explica.
+    let ty = (r.y + r.h + 70).min(1200);
+    for (k, l) in chat::wrap_words(f, Face::Strong, 28.0, &t, W - 2 * MARGIN).iter().take(2).enumerate() {
+        f.draw(fb, Face::Strong, 28.0, MARGIN, ty + k as i32 * 38, INK, l);
+    }
     ui::button(fb, f, approve_rect(false), "Negar", false);
     ui::button(fb, f, approve_rect(true), "Permitir", true);
 }
@@ -287,9 +301,9 @@ fn kind_icon(kind: &str) -> &'static str {
     match kind {
         "aviso" => "luz",
         "agente" => "claude",
-        "agenda" => "foco",
-        "email" => "wifi",
-        "codigo" => "mais",
+        "agenda" => "calendario",
+        "email" => "envelope",
+        "codigo" => "codigo",
         "noticia" => "livro",
         _ => "ler",
     }
@@ -660,23 +674,18 @@ pub fn draw_photo(fb: &mut Framebuffer, f: &Fonts, list: &[PathBuf], k: usize) {
         }
     }
     ui::draw_back(fb, f, false);
-    crate::sprites::draw(fb, "cab-mais", Rect::new(W - MARGIN - 250, 90, 260, 200));
-    f.draw(fb, Face::Display, 96.0, MARGIN - 4, 380, INK, "Porta-retrato");
-    let text = "Abra a página Mandar para o Kindle no celular, escolha uma foto e ela aparece aqui, em tons de cinza. Toque na foto para passar; ela também troca sozinha a cada 15 minutos.";
-    for (n, l) in chat::wrap_words(f, Face::Body, 34.0, text, W - 2 * MARGIN).iter().enumerate() {
-        f.draw(fb, Face::Body, 34.0, MARGIN, 470 + n as i32 * 48, INK, l);
-    }
-    send_hint(fb, f, 760);
+    f.draw(fb, Face::Display, 110.0, MARGIN - 4, 300, INK, "Porta-retrato");
+    f.draw(fb, Face::Strong, 30.0, MARGIN, 360, MUTED, "Suas fotos, em tons de cinza, trocando sozinhas.");
+    ui::draw_empty(
+        fb,
+        f,
+        420,
+        "vazio-moldura",
+        &["No celular, abra a página do endereço abaixo.", "Escolha Foto e mande quantas quiser.", "Elas aparecem aqui; toque para passar, e trocam sozinhas a cada 15 minutos."],
+        send_url(),
+    );
 }
 
-fn send_hint(fb: &mut Framebuffer, f: &Fonts, y: i32) {
-    if let Some(u) = send_url() {
-        let r = Rect::new(MARGIN, y, W - 2 * MARGIN, 120);
-        ui::card(fb, r, 28, ui::SURFACE, false);
-        f.draw(fb, Face::Strong, 26.0, r.x + 28, r.y + 44, MUTED, "NO CELULAR, ABRA");
-        f.draw(fb, Face::Strong, 30.0, r.x + 28, r.y + 90, INK, &crate::apps::fit(f, Face::Strong, 30.0, &u, r.w - 56));
-    }
-}
 
 /// Endereço da página de envio (a mesma ponte, caminho /enviar).
 pub fn send_url() -> Option<String> {
@@ -712,7 +721,9 @@ pub fn article_row(k: usize) -> Rect {
 pub fn draw_articles(fb: &mut Framebuffer, f: &Fonts, list: &[(PathBuf, String, usize)], page: usize, note: &str) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
-    crate::sprites::draw(fb, "cab-ler", Rect::new(W - MARGIN - 300, 96, 310, 240));
+    if !list.is_empty() {
+        crate::sprites::draw(fb, "cab-ler", Rect::new(W - MARGIN - 300, 96, 310, 240));
+    }
     f.draw(fb, Face::Display, 130.0, MARGIN - 6, 330, INK, "Artigos");
     let sub = match (note.is_empty(), list.len()) {
         (false, _) => note.to_string(),
@@ -722,11 +733,14 @@ pub fn draw_articles(fb: &mut Framebuffer, f: &Fonts, list: &[(PathBuf, String, 
     };
     f.draw(fb, Face::Strong, 28.0, MARGIN, 400, MUTED, &crate::apps::fit(f, Face::Strong, 28.0, &sub, W - 2 * MARGIN));
     if list.is_empty() {
-        let text = "Mande um link pela página Mandar para o Kindle e o texto limpo do artigo aparece aqui, para ler no leitor do Verso Ink.";
-        for (n, l) in chat::wrap_words(f, Face::Body, 32.0, text, W - 2 * MARGIN).iter().enumerate() {
-            f.draw(fb, Face::Body, 32.0, MARGIN, 480 + n as i32 * 44, INK, l);
-        }
-        send_hint(fb, f, 640);
+        ui::draw_empty(
+            fb,
+            f,
+            450,
+            "vazio-artigos",
+            &["No celular, abra a página do endereço abaixo.", "Cole o link de uma matéria ou post e toque em Mandar.", "O texto chega limpo, sem anúncio, para ler no leitor do Verso Ink."],
+            send_url(),
+        );
         return;
     }
     for (k, (_, title, words)) in list.iter().skip(page * ART_ROWS).take(ART_ROWS).enumerate() {
@@ -789,8 +803,9 @@ pub fn draw_terminal(fb: &mut Framebuffer, f: &Fonts, last: &str, output: &str) 
     for (k, (label, _)) in COMMANDS.iter().enumerate() {
         ui::button(fb, f, command_rect(k), label, false);
     }
-    let r = Rect::new(MARGIN - 16, 418, W - 2 * MARGIN + 32, 890);
-    fb.round_rect(r, 24, 0x1A);
+    // A tela do terminal alinhada à grade dos botões, com a moldura e a sombra do sistema.
+    let r = Rect::new(MARGIN, 418, W - 2 * MARGIN, 880);
+    ui::card(fb, r, 26, 0x1A, false);
     let prompt = if last.is_empty() { "$ toque num comando ou digite o seu".to_string() } else { format!("$ {last}") };
     f.draw(fb, Face::Strong, 26.0, r.x + 24, r.y + 46, 0xDD, &crate::apps::fit(f, Face::Strong, 26.0, &prompt, r.w - 48));
     let mut y = r.y + 92;

@@ -204,6 +204,32 @@ impl MiniGame for Caixas {
         let title = if self.fase > 0 { fases::title(self.fase) } else { "Pontos e caixas".to_string() };
         minigame::header(fb, f, &title, &status);
         let (x0, y0, s) = Self::geom();
+        // O campo num cartão, como os outros tabuleiros.
+        let (fx, fy) = Self::dot(0, 0);
+        let (lx, ly) = Self::dot(N, N);
+        ui::card(fb, Rect::new(fx - 46, fy - 46, lx - fx + 92, ly - fy + 92), 34, 0xF2, false);
+        // Linhas ainda livres, tracejadas: mostram onde dá para tocar.
+        for e in 0..E {
+            if self.edges[e] {
+                continue;
+            }
+            let r = Self::edge_rect(e);
+            if e < H {
+                let y = r.y + r.h / 2 - 2;
+                let mut x = r.x - 4;
+                while x < r.x + r.w + 4 {
+                    fb.fill(Rect::new(x, y, 14, 4), 0xAE);
+                    x += 26;
+                }
+            } else {
+                let x = r.x + r.w / 2 - 2;
+                let mut y = r.y - 4;
+                while y < r.y + r.h + 4 {
+                    fb.fill(Rect::new(x, y, 4, 14), 0xAE);
+                    y += 26;
+                }
+            }
+        }
         // Caixas fechadas: jogador 1 em preto, jogador 2 em cinza.
         for r in 0..N {
             for c in 0..N {

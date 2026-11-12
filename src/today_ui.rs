@@ -138,7 +138,7 @@ pub fn draw_today(fb: &mut Framebuffer, f: &Fonts, items: &[Item], done: &HashSe
     // Hábitos do Aprender: marcados sozinhos quando você estuda (chama na frente, sem toque).
     let learn = crate::aprender::habit_topics();
     if y < BOTTOM - 120 {
-        section(fb, f, y, "APRENDER (MARCA SOZINHO)");
+        section(fb, f, y, "APRENDER");
         y += 50;
         let mut x = MARGIN;
         for (name, srcs) in &learn {
@@ -214,7 +214,7 @@ struct CalRow {
 pub fn draw_calendar(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
-    f.draw(fb, Face::Display, 120.0, MARGIN - 6, 300, INK, "30 dias");
+    f.draw(fb, Face::Display, 120.0, MARGIN - 6, 300, INK, "Calendário");
     let today = crate::data::today(st.offset_min);
     let days: Vec<i64> = (0..CAL_DAYS).map(|k| today - (CAL_DAYS - 1) + k).collect();
     let marks: Vec<HashSet<String>> = days.iter().map(|&d| day::checked(d)).collect();
@@ -237,7 +237,7 @@ pub fn draw_calendar(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     });
     // Hábitos do Aprender, marcados pelo XP de cada dia.
     for (name, srcs) in crate::aprender::habit_topics().into_iter().take(4) {
-        rows.push(CalRow { label: name, detail: "aprender".into(), cells: days.iter().map(|&d| Some(crate::aprender::habit_on(&srcs, d))).collect() });
+        rows.push(CalRow { detail: if srcs.is_empty() { "qualquer estudo".into() } else { "estudo".into() }, label: name, cells: days.iter().map(|&d| Some(crate::aprender::habit_on(&srcs, d))).collect() });
     }
     for it in all.iter().filter(|i| i.kind == Kind::Habit).take(7) {
         let key = it.key();

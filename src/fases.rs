@@ -122,6 +122,7 @@ pub fn draw_menu(fb: &mut Framebuffer, f: &Fonts, title: &str, subtitle: &str, p
     for (k, l) in lines.iter().enumerate() {
         f.draw(fb, Face::Body, 30.0, MARGIN, y + 110 + k as i32 * 50, MUTED, l);
     }
+    minigame::menu_art(fb, title, y + 280);
 }
 
 /// Rodapé da vitória numa fase: sequência, aviso da próxima especial e os botões Menu e próxima.

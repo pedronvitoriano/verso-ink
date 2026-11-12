@@ -177,7 +177,10 @@ pub const SURFACE: u8 = 0xE6;
 /// Cartão do sistema: contorno firme e sombra chapada embaixo. `pressed` afunda o cartão na
 /// sombra, como uma tecla.
 pub fn card(fb: &mut Framebuffer, r: Rect, radius: i32, fill: u8, pressed: bool) {
-    fb.fill(Rect::new(r.x, r.y, r.w, r.h + SH), PAPER);
+    // Limpa com a cor do fundo que já está ali (o canto fica fora da forma arredondada), para o
+    // cartão não deixar cantos brancos sobre um fundo cinza.
+    let bg = fb.get(r.x, r.y + r.h + SH - 1).max(fb.get(r.x + r.w - 1, r.y));
+    fb.fill(Rect::new(r.x, r.y, r.w, r.h + SH), bg);
     let r = if pressed { Rect::new(r.x, r.y + SH, r.w, r.h) } else { r };
     if !pressed {
         fb.round_rect(Rect::new(r.x, r.y + SH, r.w, r.h), radius, SHADOW);
@@ -404,7 +407,7 @@ pub fn draw_achados(fb: &mut Framebuffer, f: &Fonts, new: Option<usize>) {
     let got: Vec<usize> = crate::saudacao::collected().iter().map(|(i, _)| *i).collect();
     let owned = (0..ITEMS.len()).filter(|i| got.contains(i)).count();
     f.draw(fb, Face::Display, 110.0, MARGIN - 4, 300, INK, "Achados");
-    f.draw(fb, Face::Strong, 30.0, MARGIN, 360, MUTED, &format!("{owned} de {} · aparecem nas frases da Início, quando menos se espera", ITEMS.len()));
+    f.draw(fb, Face::Strong, 30.0, MARGIN, 360, MUTED, &format!("{owned} de {} · aparecem nas frases da Início", ITEMS.len()));
     let cw = (1072 - 2 * MARGIN - 3 * 16) / 4;
     for (i, it) in ITEMS.iter().enumerate() {
         let r = Rect::new(MARGIN + (i % 4) as i32 * (cw + 16), 400 + (i / 4) as i32 * 196, cw, 180);
@@ -434,11 +437,38 @@ pub fn draw_achados(fb: &mut Framebuffer, f: &Fonts, new: Option<usize>) {
     }
     if let Some(i) = new {
         let it = &ITEMS[i];
-        let t = format!("{} guardado. {}", it.0, crate::saudacao::bonus_text(it.3));
+        let t = format!("Na coleção: {}. {}", it.0, crate::saudacao::bonus_text(it.3));
         let w = f.measure(Face::Strong, 30.0, &t);
         f.draw(fb, Face::Strong, 30.0, (1072 - w) / 2, 1230, INK, &t);
     }
     draw_footer(fb, f, &Status { battery: None, charging: false, wifi: false, offset_min: 0 });
+}
+
+/// Tela vazia com propósito: ilustração grande, os passos numerados para encher e, quando houver,
+/// o endereço para mandar pelo celular.
+pub fn draw_empty(fb: &mut Framebuffer, f: &Fonts, top: i32, sprite: &str, steps: &[&str], url: Option<String>) {
+    let d = 300;
+    crate::sprites::draw(fb, sprite, Rect::new((1072 - d) / 2, top, d, d));
+    let mut y = top + d + 40;
+    for (k, s) in steps.iter().enumerate() {
+        let lines = crate::chat::wrap_words(f, Face::Body, 30.0, s, 1072 - 2 * MARGIN - 80);
+        let h = (lines.len() as i32 * 40 + 36).max(84);
+        fb.round_rect(Rect::new(MARGIN, y + (h - 52) / 2, 52, 52), 26, INK);
+        let n = (k + 1).to_string();
+        let w = f.measure(Face::Strong, 28.0, &n);
+        f.draw(fb, Face::Strong, 28.0, MARGIN + 26 - w / 2, y + h / 2 + 10, PAPER, &n);
+        let ty = y + (h - lines.len() as i32 * 40) / 2 + 30;
+        for (i, l) in lines.iter().enumerate() {
+            f.draw(fb, Face::Body, 30.0, MARGIN + 80, ty + i as i32 * 40, INK, l);
+        }
+        y += h + 10;
+    }
+    if let Some(u) = url {
+        let r = Rect::new(MARGIN, y + 20, 1072 - 2 * MARGIN, 120);
+        card(fb, r, 28, SURFACE, false);
+        f.draw(fb, Face::Strong, 24.0, r.x + 28, r.y + 44, MUTED, "NO CELULAR, ABRA");
+        f.draw(fb, Face::Strong, 30.0, r.x + 28, r.y + 90, INK, &crate::apps::fit(f, Face::Strong, 30.0, &u, r.w - 56));
+    }
 }
 
 /// Botão da frase da Início (largura pelo texto).
@@ -725,6 +755,13 @@ pub fn draw_home(fb: &mut Framebuffer, f: &Fonts, st: &Status, sum: &crate::data
     draw_footer(fb, f, st);
 }
 
+/// Para onde o botão de voltar leva (o app define a cada desenho): "Início", "Mais", "Voltar"…
+static BACK_LABEL: std::sync::Mutex<&'static str> = std::sync::Mutex::new("Início");
+
+pub fn set_back_label(l: &'static str) {
+    *BACK_LABEL.lock().unwrap() = l;
+}
+
 pub fn draw_back(fb: &mut Framebuffer, f: &Fonts, pressed: bool) {
     let r0 = back_rect();
     card(fb, r0, r0.h / 2, if pressed { INK } else { PAPER }, pressed);
@@ -732,7 +769,12 @@ pub fn draw_back(fb: &mut Framebuffer, f: &Fonts, pressed: bool) {
     let r = if pressed { Rect::new(r0.x, r0.y + SH, r0.w, r0.h) } else { r0 };
     line(fb, (r.x as f32 + 54.0, r.y as f32 + 28.0), (r.x as f32 + 38.0, r.y as f32 + 44.0), 6.0, fg);
     line(fb, (r.x as f32 + 38.0, r.y as f32 + 44.0), (r.x as f32 + 54.0, r.y as f32 + 60.0), 6.0, fg);
-    f.draw(fb, Face::Strong, 36.0, r.x + 76, r.y + 57, fg, "Início");
+    let label = *BACK_LABEL.lock().unwrap();
+    let mut size = 36.0;
+    while f.measure(Face::Strong, size, label) > r.w - 96 && size > 24.0 {
+        size -= 2.0;
+    }
+    f.draw(fb, Face::Strong, size, r.x + 76, r.y + r.h / 2 + (size * 0.36) as i32, fg, label);
 }
 
 /// Ideias de módulos futuros (da conversa de concepção); entram aqui conforme forem feitos.

@@ -194,6 +194,7 @@ impl MiniGame for Palavra {
         ui::draw_back(fb, f, false);
         if self.menu {
             minigame::draw_menu(fb, f, "Palavra", "Adivinhe a palavra de 5 letras em 6 tentativas.", &["Palavra do dia", "Treino (palavra sorteada)"]);
+            minigame::menu_art(fb, "Palavra", minigame::menu_row(2).y + 40);
             return;
         }
         let status = if self.guesses.last().is_some_and(|g| *g == self.answer) {

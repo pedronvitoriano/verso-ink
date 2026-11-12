@@ -188,6 +188,15 @@ impl Framebuffer {
 
     /// Mistura `v` sobre o pixel com cobertura `a` (0..=255).
     #[inline]
+    /// Cor de um ponto (fora da tela: branco).
+    pub fn get(&self, x: i32, y: i32) -> u8 {
+        if x >= 0 && y >= 0 && x < self.width && y < self.height {
+            self.buf[(y * self.width + x) as usize]
+        } else {
+            0xFF
+        }
+    }
+
     pub fn blend(&mut self, x: i32, y: i32, v: u8, a: u8) {
         if x >= 0 && y >= 0 && x < self.width && y < self.height {
             let i = (y * self.width + x) as usize;

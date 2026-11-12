@@ -408,14 +408,14 @@ pub fn draw_library(fb: &mut Framebuffer, f: &Fonts, lib: &Library, st: &Status)
         f.draw(fb, Face::Body, 40.0, MARGIN, 560, INK, "Nenhum título com esse trecho.");
         f.draw(fb, Face::Body, 40.0, MARGIN, 620, MUTED, "Toque em Limpar para ver todos.");
     } else if n == 0 {
-        let lines = [
-            "Copie arquivos EPUB, PDF ou AZW3 para a",
-            "pasta documents, pelo USB ou pelo Wi-Fi,",
-            "e eles aparecem aqui.",
-        ];
-        for (k, l) in lines.iter().enumerate() {
-            f.draw(fb, Face::Body, 40.0, MARGIN, 560 + k as i32 * 60, INK, l);
-        }
+        crate::ui::draw_empty(
+            fb,
+            f,
+            470,
+            "vazio-estante",
+            &["Ligue o Kindle no computador pelo cabo USB.", "Copie livros EPUB, PDF, MOBI ou AZW3 para a pasta de documentos.", "Desconecte: os livros aparecem aqui, com capa."],
+            None,
+        );
     }
     for (i, b) in lib.visible().iter().enumerate() {
         let r = lib_row_rect(i);

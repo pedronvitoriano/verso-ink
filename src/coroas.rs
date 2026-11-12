@@ -769,8 +769,8 @@ impl Coroas {
             }
         }
         if l.n < MAX_LIVES {
-            let t = format!("+1 em {}", mmss(l.next_in(now) as u64));
-            f.draw(fb, Face::Strong, 22.0, x + MAX_LIVES as i32 * (d + 6) + 10, y + d * 2 / 3, MUTED, &t);
+            let t = format!("+1 vida em {}", mmss(l.next_in(now) as u64));
+            f.draw(fb, Face::Strong, 20.0, x + 2, y + d + 24, MUTED, &t);
         }
     }
 
@@ -863,7 +863,9 @@ impl MiniGame for Coroas {
             }
             return;
         }
-        let status = if let Some(m) = &self.msg {
+        let status = if self.uses_lives() && lives.n == 0 && !self.won {
+            "A fase fica guardada até voltar uma vida.".to_string()
+        } else if let Some(m) = &self.msg {
             if self.won { format!("Resolvida em {} · {m}", mmss(self.before)) } else { m.clone() }
         } else if self.won {
             format!("Resolvida em {}", mmss(self.before))
@@ -876,9 +878,8 @@ impl MiniGame for Coroas {
         };
         minigame::header(fb, f, &self.fase_title(), &status);
         if self.level > 0 || self.recharge {
-            // Vidas à direita, na linha do recado.
-            let w = if lives.n < MAX_LIVES { 150 } else { 0 };
-            Self::draw_hearts(fb, f, W - minigame::MARGIN - 5 * 46 - w, 184, 40, &lives, now);
+            // Vidas no alto, entre o Início e o título (a linha do recado fica livre).
+            Self::draw_hearts(fb, f, 310, 92, 38, &lives, now);
         }
         if self.won && self.level > 0 {
             // Coroas de nota ao lado do tempo.

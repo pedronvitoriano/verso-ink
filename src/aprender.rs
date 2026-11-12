@@ -423,3 +423,83 @@ mod tests {
         assert_eq!(streak_in(&l5, 100), 0);
     }
 }
+
+// ---------- Faixa de acerto e erro (como nos apps de idioma) ----------
+
+/// Topo da faixa de resposta; o conteúdo da tela termina antes disso.
+pub const FEEDBACK_TOP: i32 = 1020;
+
+/// Botão Continuar dentro da faixa.
+pub fn feedback_button() -> Rect {
+    Rect::new(MARGIN, 1318, W - 2 * MARGIN, 100)
+}
+
+/// Selo redondo com ✓ (certa) ou ✗ (sua resposta errada), no canto direito de uma opção.
+pub fn badge(fb: &mut Framebuffer, r: Rect, ok: bool, on_dark: bool) {
+    let d = (r.h - 30).min(60);
+    let (cx, cy) = (r.x + r.w - 26 - d / 2, r.y + r.h / 2);
+    let (fill, mark) = if on_dark { (PAPER, INK) } else { (INK, PAPER) };
+    fb.round_rect(Rect::new(cx - d / 2, cy - d / 2, d, d), d / 2, fill);
+    let k = d as f32 * 0.22;
+    let (x, y) = (cx as f32, cy as f32);
+    if ok {
+        ui::stroke(fb, (x - k, y + 1.0), (x - k * 0.2, y + k * 0.8), 5.0, mark);
+        ui::stroke(fb, (x - k * 0.2, y + k * 0.8), (x + k * 1.2, y - k * 0.8), 5.0, mark);
+    } else {
+        ui::stroke(fb, (x - k, y - k), (x + k, y + k), 5.0, mark);
+        ui::stroke(fb, (x + k, y - k), (x - k, y + k), 5.0, mark);
+    }
+}
+
+/// A faixa: preta cheia no acerto; branca listrada com borda grossa no erro. Título, explicação
+/// e o Continuar dentro dela.
+pub fn draw_feedback(fb: &mut Framebuffer, f: &Fonts, ok: bool, title: &str, body: &str) {
+    let r = Rect::new(0, FEEDBACK_TOP, W, 1448 - FEEDBACK_TOP);
+    if ok {
+        fb.fill(r, INK);
+    } else {
+        fb.fill(r, PAPER);
+        // Listras diagonais claras: "errado" sem cor, só pela textura.
+        for x in (-r.h..W).step_by(28) {
+            ui::stroke(fb, (x as f32, (r.y + r.h) as f32), ((x + r.h) as f32, r.y as f32), 6.0, 0xE2);
+        }
+        fb.fill(Rect::new(0, r.y, W, 8), INK);
+    }
+    let (fg, sub) = if ok { (PAPER, 0xCC) } else { (INK, INK) };
+    // Ícone grande no disco.
+    let d = 88;
+    let ic = Rect::new(MARGIN, r.y + 40, d, d);
+    fb.round_rect(ic, d / 2, if ok { PAPER } else { INK });
+    let (x, y, k) = ((ic.x + d / 2) as f32, (ic.y + d / 2) as f32, d as f32 * 0.22);
+    let mark = if ok { INK } else { PAPER };
+    if ok {
+        ui::stroke(fb, (x - k, y + 2.0), (x - k * 0.2, y + k * 0.9), 9.0, mark);
+        ui::stroke(fb, (x - k * 0.2, y + k * 0.9), (x + k * 1.3, y - k * 0.9), 9.0, mark);
+    } else {
+        ui::stroke(fb, (x - k, y - k), (x + k, y + k), 9.0, mark);
+        ui::stroke(fb, (x + k, y - k), (x - k, y + k), 9.0, mark);
+    }
+    let tx = ic.x + d + 26;
+    let mut size = 52.0;
+    while f.measure(Face::Display, size, title) > W - MARGIN - tx && size > 32.0 {
+        size -= 2.0;
+    }
+    f.draw(fb, Face::Display, size, tx, ic.y + d / 2 + (size * 0.36) as i32, fg, title);
+    let lines = crate::chat::wrap_words(f, Face::Body, 30.0, body, W - 2 * MARGIN);
+    for (k, l) in lines.iter().take(3).enumerate() {
+        if !ok {
+            // Fundo branco sob o texto para ler sobre as listras.
+            let w = f.measure(Face::Body, 30.0, l);
+            fb.fill(Rect::new(MARGIN - 6, r.y + 158 + k as i32 * 42, w + 12, 40), PAPER);
+        }
+        f.draw(fb, Face::Body, 30.0, MARGIN, r.y + 188 + k as i32 * 42, sub, l);
+    }
+    let b = feedback_button();
+    if ok {
+        fb.round_rect(b, b.h / 2, PAPER);
+        let w = f.measure(Face::Strong, 36.0, "Continuar");
+        f.draw(fb, Face::Strong, 36.0, b.x + (b.w - w) / 2, b.y + b.h / 2 + 13, INK, "Continuar");
+    } else {
+        ui::button(fb, f, b, "Continuar", true);
+    }
+}
