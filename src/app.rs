@@ -181,6 +181,8 @@ pub struct App {
     term: (String, String),
     approvals: Vec<crate::painel::Approval>,
     approve_back: Screen,
+    /// Alvos da página atual da Edição da manhã.
+    ed_hits: Vec<(Rect, crate::painel::EdAction)>,
     panel_note: String,
     /// Sincronização em segundo plano com a VPS: última vez (rápida e completa) e o resultado.
     sync_fast: Instant,
@@ -322,6 +324,7 @@ impl App {
             term: (String::new(), String::new()),
             approvals: Vec::new(),
             approve_back: Screen::Home,
+            ed_hits: Vec::new(),
             panel_note: String::new(),
             sync_fast: Instant::now(),
             sync_full: None,
@@ -496,7 +499,7 @@ impl App {
                 }
             }
             Screen::ClaudeDoc => crate::chat::draw_doc(fb, f, &self.doc.0, &self.doc.1, self.doc.2),
-            Screen::Edicao => crate::painel::draw_edition(fb, f, crate::painel::edition().as_ref(), self.ed_page, &self.panel_note),
+            Screen::Edicao => self.ed_hits = crate::painel::draw_edition(fb, f, crate::painel::edition().as_ref(), self.ed_page, &self.panel_note),
             Screen::Artigos => crate::painel::draw_articles(fb, f, &crate::painel::articles(), self.art_page, &self.panel_note),
             Screen::Retrato => crate::painel::draw_photo(fb, f, &crate::painel::photos(), self.photo_k),
             Screen::Terminal => crate::painel::draw_terminal(fb, f, &self.term.0, &self.term.1),
@@ -744,15 +747,7 @@ impl App {
             }
             Screen::Edicao => {
                 let mut v = vec![(Back, ui::back_rect())];
-                if let Some(e) = crate::painel::edition() {
-                    let n = crate::painel::edition_pages(&self.fonts, &e).len();
-                    if self.ed_page > 0 {
-                        v.push((Prev, crate::painel::edition_nav(0)));
-                    }
-                    if self.ed_page + 1 < n {
-                        v.push((Next, crate::painel::edition_nav(1)));
-                    }
-                }
+                v.extend(self.ed_hits.iter().enumerate().map(|(k, (r, _))| (Row(k), *r)));
                 v
             }
             Screen::Artigos => {
@@ -1595,6 +1590,62 @@ impl App {
         }
     }
 
+    /// Ações da Edição da manhã.
+    fn edition_action(&mut self, act: crate::painel::EdAction) {
+        use crate::painel::EdAction;
+        match act {
+            EdAction::Prev => {
+                self.ed_page = self.ed_page.saturating_sub(1);
+                self.render(true);
+            }
+            EdAction::Next => {
+                self.ed_page += 1;
+                self.render(true);
+            }
+            EdAction::Read(url) => {
+                // Buscar e limpar uma notícia leva alguns segundos: diz isso na tela antes.
+                self.fb.fill(self.fb.screen(), ui::PAPER);
+                ui::draw_field_header(&mut self.fb, &self.fonts, "EDIÇÃO DA MANHÃ", "Buscando a notícia…");
+                self.fonts.draw(&mut self.fb, crate::text::Face::Body, 32.0, 72, 460, ui::MUTED, "O texto vem limpo, para ler no Verso Ink. Fica guardado em Artigos.");
+                self.fb.refresh(self.fb.screen(), Wave::Quality, true);
+                self.fb.wait();
+                match crate::painel::fetch_article(&url) {
+                    Ok(path) => {
+                        let title = std::fs::read_to_string(&path).ok().and_then(|t| t.lines().next().map(str::to_string)).unwrap_or_default();
+                        self.open_reader(path, title);
+                    }
+                    Err(e) => {
+                        self.panel_note = format!("Não consegui buscar: {e}");
+                        self.go(Screen::Edicao);
+                    }
+                }
+            }
+            EdAction::Ask(ctx) => {
+                let short: String = ctx.chars().take(60).collect();
+                self.claude_ctx = Some(ctx);
+                self.claude_about = Some(("Edição da manhã".into(), short));
+                self.claude_sugg = ["O que eu faço primeiro?", "Explique melhor", "Resuma em uma frase"].iter().map(|s| s.to_string()).collect();
+                self.cur_chat = None;
+                self.open_compose();
+            }
+            EdAction::Dismiss(id) => {
+                self.panel_note = match crate::painel::dismiss_notice(&id) {
+                    Ok(()) => "Aviso dispensado.".into(),
+                    Err(e) => format!("Não deu para dispensar: {e}"),
+                };
+                self.render(true);
+            }
+            EdAction::Regen => {
+                self.panel_note = match crate::painel::regen_edition() {
+                    Ok(()) => "Montando uma edição nova; leva uns 2 minutos.".into(),
+                    Err(e) => format!("Sem conexão com a VPS: {e}"),
+                };
+                self.sync_full = None;
+                self.render(true);
+            }
+        }
+    }
+
     fn decide_approval(&mut self, allow: bool) {
         if let Some(a) = self.approvals.first().cloned() {
             if let Err(e) = crate::painel::decide(&a.id, allow) {
@@ -1608,6 +1659,20 @@ impl App {
         } else {
             self.render(true);
         }
+    }
+
+    /// Selo "Pensando…" no canto de cima e uma pausa de 0,8 a 1,6 s (a primeira jogada da
+    /// sequência pensa mais; as seguintes, como a CPU emendando capturas, menos).
+    fn cpu_thinking(&mut self, first: bool) {
+        let r = Rect::new(1072 - 72 - 250, 84, 250, 66);
+        self.fb.fill(Rect::new(r.x - 4, r.y - 4, r.w + 8, r.h + 12), ui::PAPER);
+        ui::card(&mut self.fb, r, r.h / 2, ui::INK, false);
+        let t = "Pensando…";
+        let w = self.fonts.measure(crate::text::Face::Strong, 30.0, t);
+        self.fonts.draw(&mut self.fb, crate::text::Face::Strong, 30.0, r.x + (r.w - w) / 2, r.y + 44, ui::PAPER, t);
+        self.fb.refresh(Rect::new(r.x - 4, r.y - 4, r.w + 8, r.h + 12), Wave::Fast, false);
+        let ms = if first { 800 + self.rng.next() % 800 } else { 450 + self.rng.next() % 300 };
+        std::thread::sleep(Duration::from_millis(ms));
     }
 
     /// Texto pronto para o minijogo: mostra que está trabalhando (pode levar um minuto, se
@@ -1662,10 +1727,15 @@ impl App {
         let mut guard = 0;
         while self.mini.as_ref().is_some_and(|g| g.cpu_turn()) && guard < 200 {
             guard += 1;
+            // A CPU "pensa" um pouco antes de jogar: responder na hora parece pouco natural.
+            self.cpu_thinking(guard == 1);
             if let Some(g) = self.mini.as_mut() {
                 g.cpu_move();
             }
-            self.apply_mini_redraw(crate::minigame::Redraw::Part(Rect::new(0, 170, 1072, 1448 - 170)));
+            if let Some(g) = &self.mini {
+                g.draw(&mut self.fb, &self.fonts);
+            }
+            self.fb.refresh(Rect::new(0, 60, 1072, 1448 - 60), Wave::Quality, false);
         }
         if let Some(g) = &self.mini {
             g.save();
@@ -1870,6 +1940,7 @@ impl App {
             Some(g) => (g.moves.clone(), g.pos.clone()),
             None => return,
         };
+        let think_start = Instant::now();
         let random = (self.rng.next() % 1000) as f32 / 1000.0 < crate::coach::random_move_chance(rating);
         let mv = if random {
             crate::coach::random_legal(&pos, &mut self.rng)
@@ -1879,6 +1950,12 @@ impl App {
                 e.play(&moves, crate::coach::think_millis(rating))
             })
         };
+        // Ninguém joga em 0,1 s: o treinador "pensa" ao menos 0,9 a 1,8 s, mais nos níveis altos.
+        let min_ms = 900 + (rating as u64).min(3000) / 4 + self.rng.next() % 400;
+        let spent = think_start.elapsed().as_millis() as u64;
+        if spent < min_ms {
+            std::thread::sleep(Duration::from_millis(min_ms - spent));
+        }
         let san = mv.and_then(|m| self.chess.as_mut().and_then(|g| g.play_uci(&m)));
         self.coach_msg = match san {
             Some(s) => format!("{comment} Joguei {s}.").trim().to_string(),
@@ -2212,13 +2289,10 @@ impl App {
             }
             (Screen::Module(Module::Mais), Row(4)) => self.go(Screen::Terminal),
             (Screen::Edicao | Screen::Artigos | Screen::Retrato | Screen::Terminal, Back) => self.go(Screen::Module(Module::Mais)),
-            (Screen::Edicao, Prev) => {
-                self.ed_page = self.ed_page.saturating_sub(1);
-                self.render(false);
-            }
-            (Screen::Edicao, Next) => {
-                self.ed_page += 1;
-                self.render(false);
+            (Screen::Edicao, Row(k)) => {
+                if let Some((_, act)) = self.ed_hits.get(k).cloned() {
+                    self.edition_action(act);
+                }
             }
             (Screen::Artigos, Prev) => {
                 self.art_page = self.art_page.saturating_sub(1);
@@ -3165,7 +3239,7 @@ mod raio_x {
         // Painel: edição de exemplo, artigos e fotos vazios, terminal e um pedido de permissão.
         std::fs::write(
             home.join("data/edicao.json"),
-            r#"{"dia": "2026-11-12", "manchete": "Os agentes terminaram o raio-x; um ainda precisa de você.", "secoes": [{"titulo": "Avisos", "itens": ["NÃO DESCONECTAR O KINDLE ATÉ O FIM DA ATUALIZAÇÃO"]}, {"titulo": "Os agentes durante a noite", "itens": ["verso-ink: refez a Início e a Jogar; parou às 03:10 esperando a sua escolha de direção.", "aions-brain: atualizou duas notas de retomada e terminou."]}, {"titulo": "Na sua área", "itens": ["Nova versão do Rust estabiliza recursos de async em traits (blog do Rust).", "Pesquisa mostra uso crescente de agentes de código em equipes pequenas (InfoQ)."]}]}"#,
+            r#"{"dia": "2026-11-12", "manchete": "Os agentes terminaram o raio-x; um deles ainda precisa de você.", "secoes": [{"titulo": "Avisos", "tipo": "aviso", "itens": [{"texto": "NÃO DESCONECTAR O KINDLE até o fim da atualização", "id": "a1b2c3d4e5f6", "critico": true}]}, {"titulo": "Os agentes durante a noite", "tipo": "agente", "itens": [{"texto": "verso-ink: refez a Início e a Jogar e parou às 03:10 esperando a sua escolha de direção.", "projeto": "verso-ink"}, {"texto": "aions-brain: atualizou duas notas de retomada e terminou sem pendências.", "projeto": "aions-brain"}]}, {"titulo": "Brain e tarefas", "tipo": "tarefa", "itens": [{"texto": "3 retomadas em andamento; a do Verso Ink está em dia."}]}, {"titulo": "Na sua área", "tipo": "noticia", "itens": [{"texto": "Rust 1.92 estabiliza novos recursos de async (blog do Rust).", "url": "https://blog.rust-lang.org/"}, {"texto": "Agentes de código ganham espaço em equipes pequenas, diz pesquisa (InfoQ).", "url": "https://www.infoq.com/"}]}]}"#,
         )
         .unwrap();
         for (s, name) in [(Screen::Edicao, "painel-edicao"), (Screen::Artigos, "painel-artigos"), (Screen::Retrato, "painel-retrato"), (Screen::Terminal, "painel-terminal")] {

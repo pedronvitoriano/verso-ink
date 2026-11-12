@@ -291,18 +291,17 @@ class Extras:
             )
         notices = [f"- [{a['level']}] {a['text']}" for a in self.notices()]
         brain = self.read(self.base / "brain.json", {}).get("text", "")
-        prompt = f"""Monte a Edição da manhã do Pedro para hoje ({day}), que ele lê no Kindle (e-ink) ao acordar.
+        prompt = f"""Monte a Edição da manhã do Pedro para hoje ({day}), que ele lê no Kindle (e-ink) ao acordar e onde cada item vira um cartão com uma ação.
 Responda SÓ com um JSON válido, sem cercas de código, neste formato:
-{{"manchete": "uma frase que resume o dia", "secoes": [{{"titulo": "...", "itens": ["...", "..."]}}]}}
-Seções, nesta ordem, só as que tiverem conteúdo:
-1. "Avisos" — os avisos abaixo, os críticos primeiro, em CAIXA ALTA quando forem críticos.
-2. "Os agentes durante a noite" — o que cada sessão do Claude Code fez, se terminou, onde parou e se precisa dele. Frases curtas, linguagem comum.
-3. "Agenda de hoje" e "E-mails que importam" — use as ferramentas do Google se estiverem disponíveis; se não estiverem, omita estas seções.
-4. "Brain e tarefas" — as pendências do resumo do Brain abaixo, no máximo 5.
-5. "Na sua área" — 3 a 5 notícias de hoje sobre IA, desenvolvimento de software e tecnologia no Brasil, pesquisadas na web, cada uma com uma linha de resumo e a fonte entre parênteses.
-Cada item tem no máximo 200 caracteres. Português do Brasil, direto, sem emoji.
+{{"manchete": "uma frase que resume o dia", "secoes": [{{"titulo": "...", "tipo": "agente|agenda|email|tarefa|noticia", "itens": [{{"texto": "...", "url": "https://... (só notícias)", "projeto": "nome (só agentes)"}}]}}]}}
+Seções, nesta ordem, só as que tiverem conteúdo (NÃO inclua avisos; o sistema põe sozinho):
+1. "Os agentes durante a noite" (tipo agente) — um item por sessão: o que fez, se terminou, onde parou e se precisa dele. Linguagem comum.
+2. "Agenda de hoje" (tipo agenda) e "E-mails que importam" (tipo email) — use as ferramentas do Google se estiverem disponíveis; se não estiverem, omita.
+3. "Brain e tarefas" (tipo tarefa) — no máximo 5 pendências do resumo do Brain abaixo.
+4. "Na sua área" (tipo noticia) — 3 a 5 notícias de hoje sobre IA, desenvolvimento de software e tecnologia no Brasil, pesquisadas na web; texto com uma linha de resumo e a fonte entre parênteses; "url" com o link da matéria.
+Cada "texto" tem no máximo 200 caracteres. Português do Brasil, direto, sem emoji.
 
-[Avisos]
+[Avisos ativos, para a manchete levar em conta]
 {chr(10).join(notices) or "nenhum"}
 
 [Sessões dos agentes nas últimas 14 horas]
@@ -323,7 +322,18 @@ Cada item tem no máximo 200 caracteres. Português do Brasil, direto, sem emoji
             except json.JSONDecodeError:
                 ed = None
         if not ed:
-            ed = {"manchete": "A edição de hoje não ficou pronta.", "secoes": [{"titulo": "Avisos", "itens": [a["text"] for a in self.notices()] or ["Nenhum aviso."]}]}
+            ed = {"manchete": "A edição de hoje não ficou pronta. Toque em Gerar de novo.", "secoes": []}
+        # Itens como objetos {texto, ...}; avisos reais (com id, para dispensar) sempre primeiro.
+        secs = []
+        for sec in ed.get("secoes", []):
+            items = [i if isinstance(i, dict) else {"texto": str(i)} for i in sec.get("itens", [])]
+            items = [i for i in items if str(i.get("texto", "")).strip()]
+            if items and sec.get("tipo") != "aviso":
+                secs.append({"titulo": sec.get("titulo", ""), "tipo": sec.get("tipo", "tarefa"), "itens": items})
+        avisos = [{"texto": a["text"], "id": a["id"], "critico": a["level"] == "critico"} for a in self.notices()]
+        if avisos:
+            secs.insert(0, {"titulo": "Avisos", "tipo": "aviso", "itens": avisos})
+        ed["secoes"] = secs
         ed["dia"] = day
         ed["gerada"] = now
         self.write(self.base / "edicoes" / f"{day}.json", ed)

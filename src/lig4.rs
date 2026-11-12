@@ -235,6 +235,8 @@ impl MiniGame for Lig4 {
                 let rad = s * 40 / 100;
                 let disc = Rect::new(cx - rad, cy - rad, rad * 2, rad * 2);
                 match self.b[r][c] {
+                    1 if crate::sprites::draw(fb, "peca-disco-escuro", disc) => {}
+                    2 if crate::sprites::draw(fb, "peca-disco-claro", disc) => {}
                     1 => fb.round_rect(disc, rad, INK),
                     2 => fb.round_outline(disc, rad, 5, INK, PAPER),
                     _ => fb.round_rect(disc, rad, 0xEE),

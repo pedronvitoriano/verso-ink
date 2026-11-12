@@ -336,6 +336,17 @@ impl Damas {
     }
 
     fn draw_piece(fb: &mut Framebuffer, r: Rect, p: u8) {
+        // Peça desenhada (assets/sprites/peca-damas-*.png); sem o arquivo, o desenho geométrico.
+        let name = match (is_light(p), is_king(p)) {
+            (true, false) => "peca-damas-branca",
+            (false, false) => "peca-damas-preta",
+            (true, true) => "peca-damas-dama-branca",
+            (false, true) => "peca-damas-dama-preta",
+        };
+        let m = r.w / 12;
+        if crate::sprites::draw(fb, name, Rect::new(r.x + m, r.y + m, r.w - 2 * m, r.h - 2 * m)) {
+            return;
+        }
         let d = r.w * 3 / 4;
         let c = Rect::new(r.x + (r.w - d) / 2, r.y + (r.h - d) / 2, d, d);
         // Sombra de peça (espessura).

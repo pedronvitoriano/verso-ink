@@ -252,8 +252,11 @@ impl MiniGame for Minas {
                 fb.fill(inner, if Some(i) == self.lost { INK } else { PAPER });
                 fb.round_outline(inner, 4, 1, 0xBB, if Some(i) == self.lost { INK } else { PAPER });
                 if self.mine[i] {
-                    let d = (s / 4).max(6);
-                    fb.round_rect(Rect::new(r.x + s / 2 - d, r.y + s / 2 - d, 2 * d, 2 * d), d, if Some(i) == self.lost { PAPER } else { INK });
+                    let m = s / 8;
+                    if !crate::sprites::draw(fb, "peca-mina", Rect::new(r.x + m, r.y + m, s - 2 * m, s - 2 * m)) {
+                        let d = (s / 4).max(6);
+                        fb.round_rect(Rect::new(r.x + s / 2 - d, r.y + s / 2 - d, 2 * d, 2 * d), d, if Some(i) == self.lost { PAPER } else { INK });
+                    }
                 } else {
                     let k = self.count(i);
                     if k > 0 {
@@ -264,7 +267,8 @@ impl MiniGame for Minas {
                 }
             } else {
                 fb.round_rect(inner, 6, 0xC8);
-                if self.flag[i] {
+                if self.flag[i] && crate::sprites::draw(fb, "peca-bandeira", Rect::new(r.x + s / 7, r.y + s / 7, s - 2 * (s / 7), s - 2 * (s / 7))) {
+                } else if self.flag[i] {
                     let (x, y) = (r.x as f32 + s as f32 * 0.38, r.y as f32 + s as f32 * 0.22);
                     ui::stroke(fb, (x, y), (x, y + s as f32 * 0.56), 4.0, INK);
                     for k in 0..6 {

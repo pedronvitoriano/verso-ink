@@ -148,23 +148,65 @@ pub fn draw_approval(fb: &mut Framebuffer, f: &Fonts, a: &Approval, more: usize)
 
 // ---------- Edição da manhã ----------
 
+#[derive(Clone)]
+pub struct Item {
+    pub text: String,
+    pub url: Option<String>,
+    pub id: Option<String>,
+    pub critical: bool,
+}
+
+pub struct Section {
+    pub title: String,
+    pub kind: String,
+    pub items: Vec<Item>,
+}
+
 pub struct Edition {
     pub day: String,
     pub headline: String,
-    pub sections: Vec<(String, Vec<String>)>,
+    pub sections: Vec<Section>,
+}
+
+/// O que um toque na edição faz.
+#[derive(Clone)]
+pub enum EdAction {
+    /// Busca a notícia e abre no leitor.
+    Read(String),
+    /// Abre o Claude com este item como contexto.
+    Ask(String),
+    /// Dispensa um aviso (id).
+    Dismiss(String),
+    /// Pede uma edição nova à VPS.
+    Regen,
+    Prev,
+    Next,
 }
 
 fn parse_edition(j: &Json) -> Option<Edition> {
-    Some(Edition {
-        day: j.get("dia")?.str()?.into(),
-        headline: j.get("manchete").and_then(Json::str).unwrap_or("").into(),
-        sections: j
-            .get("secoes")?
-            .arr()
-            .iter()
-            .filter_map(|s| Some((s.get("titulo")?.str()?.to_string(), s.get("itens")?.arr().iter().filter_map(|i| i.str().map(str::to_string)).collect())))
-            .collect(),
-    })
+    let sections = j
+        .get("secoes")?
+        .arr()
+        .iter()
+        .filter_map(|s| {
+            let items = s
+                .get("itens")?
+                .arr()
+                .iter()
+                .filter_map(|i| match i {
+                    Json::Str(t) => Some(Item { text: t.clone(), url: None, id: None, critical: false }),
+                    _ => Some(Item {
+                        text: i.get("texto")?.str()?.to_string(),
+                        url: i.get("url").and_then(Json::str).filter(|u| u.starts_with("http")).map(str::to_string),
+                        id: i.get("id").and_then(Json::str).map(str::to_string),
+                        critical: i.get("critico").and_then(Json::bool).unwrap_or(false),
+                    }),
+                })
+                .collect();
+            Some(Section { title: s.get("titulo")?.str()?.to_string(), kind: s.get("tipo").and_then(Json::str).unwrap_or("tarefa").to_string(), items })
+        })
+        .collect();
+    Some(Edition { day: j.get("dia")?.str()?.into(), headline: j.get("manchete").and_then(Json::str).unwrap_or("").into(), sections })
 }
 
 /// Edição guardada (a última que chegou).
@@ -182,97 +224,238 @@ pub fn fetch_edition() -> bool {
     std::fs::read_to_string(&dest).unwrap_or_default() != before
 }
 
-/// Linhas da edição já quebradas na largura da tela: (texto, estilo 0 manchete 1 seção 2 item).
-fn edition_lines(f: &Fonts, e: &Edition) -> Vec<(String, u8)> {
-    let mut v = Vec::new();
-    for l in chat::wrap_words(f, Face::Display, 50.0, &e.headline, W - 2 * MARGIN) {
-        v.push((l, 0));
-    }
-    for (title, items) in &e.sections {
-        v.push((title.clone(), 1));
-        for it in items {
-            for (k, l) in chat::wrap_words(f, Face::Body, 32.0, it, W - 2 * MARGIN - 40).into_iter().enumerate() {
-                v.push((if k == 0 { format!("• {l}") } else { format!("  {l}") }, 2));
-            }
+/// Tira um aviso da edição guardada (depois de dispensado na VPS).
+pub fn drop_notice(id: &str) {
+    let path = data("edicao.json");
+    if let Ok(s) = std::fs::read_to_string(&path) {
+        let needle = format!("\"id\": {}", chat::json_str(id));
+        if s.contains(&needle) {
+            // Regrava sem o item: mais simples refazer pela VPS; aqui só some da tela até lá.
+            let _ = std::fs::write(data("avisos_dispensados.txt"), format!("{}\n{id}", std::fs::read_to_string(data("avisos_dispensados.txt")).unwrap_or_default()));
         }
     }
+}
+
+fn dismissed() -> Vec<String> {
+    std::fs::read_to_string(data("avisos_dispensados.txt")).unwrap_or_default().lines().map(str::to_string).collect()
+}
+
+pub fn dismiss_notice(id: &str) -> Result<(), String> {
+    chat::call("DELETE", &format!("/avisos/{id}"), None, 15)?;
+    drop_notice(id);
+    Ok(())
+}
+
+pub fn regen_edition() -> Result<(), String> {
+    chat::call("POST", "/edicao/gerar", Some("{}"), 15).map(|_| ())
+}
+
+/// Busca uma notícia pela ponte, guarda em Artigos e devolve o arquivo.
+pub fn fetch_article(url: &str) -> Result<PathBuf, String> {
+    let j = chat::call("POST", "/inbox/link", Some(&format!("{{\"url\": {}}}", chat::json_str(url))), 200)?;
+    let id = j.get("id").and_then(Json::str).ok_or("resposta sem artigo")?.to_string();
+    let title = j.get("title").and_then(Json::str).unwrap_or("Artigo").to_string();
+    let _ = std::fs::create_dir_all(articles_dir());
+    let name: String = title.chars().filter(|c| !"/\\:*?\"<>|".contains(*c)).take(80).collect();
+    let dest = articles_dir().join(format!("{}.txt", name.trim()));
+    chat::fetch(&format!("/inbox/artigo/{id}"), &dest, 30)?;
+    let seen_path = data("caixa_vista.txt");
+    let _ = std::fs::write(&seen_path, format!("{}\n{id}", std::fs::read_to_string(&seen_path).unwrap_or_default()));
+    Ok(dest)
+}
+
+fn kind_icon(kind: &str) -> &'static str {
+    match kind {
+        "aviso" => "luz",
+        "agente" => "claude",
+        "agenda" => "foco",
+        "email" => "wifi",
+        "noticia" => "livro",
+        _ => "ler",
+    }
+}
+
+/// Bloco da edição já medido: o que desenhar e a altura.
+enum Block {
+    Headline(Vec<String>),
+    Head(String, String),
+    Card { kind: String, lines: Vec<String>, action: Option<(String, EdAction)>, critical: bool },
+    Tail,
+}
+
+const ED_TOP: i32 = 330;
+const ED_BOTTOM: i32 = 1300;
+const CARD_PAD: i32 = 26;
+const LINE: i32 = 38;
+
+fn block_h(b: &Block) -> i32 {
+    match b {
+        Block::Headline(l) => 60 + l.len() as i32 * 54 + 30,
+        Block::Head(..) => 78,
+        Block::Card { lines, .. } => (2 * CARD_PAD + lines.len() as i32 * LINE).max(110) + 16,
+        Block::Tail => 230,
+    }
+}
+
+fn blocks(f: &Fonts, e: &Edition) -> Vec<Block> {
+    let gone = dismissed();
+    let mut v = vec![Block::Headline(chat::wrap_words(f, Face::Display, 44.0, &e.headline, W - 2 * MARGIN - 64))];
+    for s in &e.sections {
+        let items: Vec<&Item> = s.items.iter().filter(|i| !i.id.as_ref().is_some_and(|id| gone.contains(id))).collect();
+        if items.is_empty() {
+            continue;
+        }
+        v.push(Block::Head(s.title.clone(), s.kind.clone()));
+        for it in items {
+            let action = match (s.kind.as_str(), &it.url, &it.id) {
+                ("noticia", Some(u), _) => Some(("Ler".to_string(), EdAction::Read(u.clone()))),
+                ("aviso", _, Some(id)) => Some(("Dispensar".to_string(), EdAction::Dismiss(id.clone()))),
+                ("aviso", _, None) => None,
+                _ => Some(("Perguntar".to_string(), EdAction::Ask(format!("{}: {}", s.title, it.text)))),
+            };
+            let text_w = W - 2 * MARGIN - 2 * CARD_PAD - 84 - if action.is_some() { 196 } else { 0 };
+            v.push(Block::Card { kind: s.kind.clone(), lines: chat::wrap_words(f, Face::Body, 29.0, &it.text, text_w), action, critical: it.critical });
+        }
+    }
+    v.push(Block::Tail);
     v
 }
 
-fn line_h(style: u8) -> i32 {
-    match style {
-        0 => 60,
-        1 => 86,
-        _ => 44,
-    }
-}
-
-/// Páginas da edição (índices de linhas).
+/// Páginas da edição (índices de blocos).
 pub fn edition_pages(f: &Fonts, e: &Edition) -> Vec<(usize, usize)> {
-    let lines = edition_lines(f, e);
-    let (top, bottom) = (330, 1290);
+    let bs = blocks(f, e);
     let mut pages = Vec::new();
-    let (mut start, mut y) = (0, top);
-    for (i, (_, st)) in lines.iter().enumerate() {
-        let h = line_h(*st);
-        if y + h > bottom && i > start {
+    let (mut start, mut y) = (0, ED_TOP);
+    for (i, b) in bs.iter().enumerate() {
+        let h = block_h(b);
+        // Título de seção não fica sozinho no fim da página.
+        let keep_next = matches!(b, Block::Head(..)).then(|| bs.get(i + 1).map(block_h).unwrap_or(0)).unwrap_or(0);
+        if y + h + keep_next > ED_BOTTOM && i > start {
             pages.push((start, i));
             start = i;
-            y = top;
+            y = ED_TOP;
         }
         y += h;
     }
-    pages.push((start, lines.len()));
+    pages.push((start, bs.len()));
     pages
 }
 
 pub fn edition_nav(k: usize) -> Rect {
-    Rect::new(if k == 0 { MARGIN } else { W - MARGIN - 260 }, 1320, 260, 88)
+    Rect::new(if k == 0 { MARGIN } else { W - MARGIN - 260 }, 1322, 260, 88)
 }
 
-pub fn draw_edition(fb: &mut Framebuffer, f: &Fonts, e: Option<&Edition>, page: usize, note: &str) {
+/// Edição da manhã: manchete em destaque e um cartão por item, cada um com a sua ação.
+/// Devolve os alvos de toque desta página.
+pub fn draw_edition(fb: &mut Framebuffer, f: &Fonts, e: Option<&Edition>, page: usize, note: &str) -> Vec<(Rect, EdAction)> {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
-    crate::sprites::draw(fb, "cab-ler", Rect::new(W - MARGIN - 250, 90, 260, 200));
-    f.draw(fb, Face::Strong, 28.0, MARGIN, 220, MUTED, "EDIÇÃO DA MANHÃ");
+    let mut hits = Vec::new();
     let Some(e) = e else {
-        f.draw(fb, Face::Display, 60.0, MARGIN, 300, INK, "Ainda não chegou");
-        for (k, l) in chat::wrap_words(f, Face::Body, 32.0, "A edição é montada às 6h na VPS, com os agentes da noite, avisos, notícias e o Brain. Com Wi-Fi, ela aparece aqui sozinha.", W - 2 * MARGIN).iter().enumerate() {
-            f.draw(fb, Face::Body, 32.0, MARGIN, 380 + k as i32 * 44, MUTED, l);
+        crate::sprites::draw(fb, "cab-ler", Rect::new(W - MARGIN - 300, 96, 310, 240));
+        f.draw(fb, Face::Display, 110.0, MARGIN - 4, 320, INK, "Bom dia");
+        f.draw(fb, Face::Display, 50.0, MARGIN, 450, INK, "A edição ainda não chegou");
+        for (k, l) in chat::wrap_words(f, Face::Body, 32.0, "Ela é montada às 6h, com os agentes da noite, os avisos, o Brain e notícias da sua área. Com Wi-Fi, aparece aqui sozinha.", W - 2 * MARGIN).iter().enumerate() {
+            f.draw(fb, Face::Body, 32.0, MARGIN, 520 + k as i32 * 44, MUTED, l);
         }
+        let r = Rect::new(MARGIN, 720, W - 2 * MARGIN, 100);
+        ui::button(fb, f, r, "Montar a edição agora", true);
+        hits.push((r, EdAction::Regen));
         if !note.is_empty() {
-            f.draw(fb, Face::Strong, 28.0, MARGIN, 620, INK, note);
+            f.draw(fb, Face::Strong, 28.0, MARGIN, 880, INK, note);
         }
-        return;
+        return hits;
     };
-    f.draw(fb, Face::Display, 44.0, MARGIN, 280, INK, &day_label(&e.day));
-    let lines = edition_lines(f, e);
+    let bs = blocks(f, e);
     let pages = edition_pages(f, e);
-    let (a, b) = pages[page.min(pages.len() - 1)];
-    let mut y = 330;
-    for (text, st) in &lines[a..b] {
-        let h = line_h(*st);
-        match st {
-            0 => f.draw(fb, Face::Display, 50.0, MARGIN, y + 48, INK, text),
-            1 => {
-                fb.fill(Rect::new(MARGIN, y + 22, W - 2 * MARGIN, 3), INK);
-                f.draw(fb, Face::Display, 40.0, MARGIN, y + 72, INK, text)
+    let page = page.min(pages.len() - 1);
+    // Cabeçalho: saudação e data; a ilustração da leitura ao lado.
+    crate::sprites::draw(fb, "cab-ler", Rect::new(W - MARGIN - 250, 96, 260, 200));
+    f.draw(fb, Face::Display, 96.0, MARGIN - 4, 250, INK, "Bom dia");
+    let sub = if note.is_empty() { format!("Edição de {}", day_label(&e.day)) } else { note.to_string() };
+    f.draw(fb, Face::Strong, 30.0, MARGIN, 300, MUTED, &crate::apps::fit(f, Face::Strong, 30.0, &sub, W - 2 * MARGIN - 270));
+    let (a, b) = pages[page];
+    let mut y = ED_TOP;
+    for blk in &bs[a..b] {
+        let h = block_h(blk);
+        match blk {
+            Block::Headline(lines) => {
+                let r = Rect::new(MARGIN, y, W - 2 * MARGIN, h - 30);
+                ui::card(fb, r, 30, INK, false);
+                for (k, l) in lines.iter().enumerate() {
+                    f.draw(fb, Face::Display, 44.0, r.x + 32, r.y + 74 + k as i32 * 54, PAPER, l);
+                }
+                hits.push((r, EdAction::Ask(format!("Manchete da Edição da manhã: {}", e.headline))));
             }
-            _ => f.draw(fb, Face::Body, 32.0, MARGIN + 10, y + 34, INK, text),
-        };
+            Block::Head(title, kind) => {
+                let d = 52;
+                let x = if ui::icon_disc(fb, MARGIN, y + 14, d, kind_icon(kind)) { MARGIN + d + 16 } else { MARGIN };
+                f.draw(fb, Face::Display, 38.0, x, y + 54, INK, title);
+            }
+            Block::Card { kind, lines, action, critical } => {
+                let r = Rect::new(MARGIN, y, W - 2 * MARGIN, h - 16);
+                let fill = if *critical { INK } else { PAPER };
+                let ink = if *critical { PAPER } else { INK };
+                ui::card(fb, r, 26, fill, false);
+                // Marca do tipo à esquerda (um traço), texto e a ação à direita.
+                fb.round_rect(Rect::new(r.x + CARD_PAD, r.y + CARD_PAD, 6, r.h - 2 * CARD_PAD), 3, if *critical { PAPER } else { 0x88 });
+                let _ = kind;
+                let tx = r.x + CARD_PAD + 30;
+                let ty = r.y + (r.h - lines.len() as i32 * LINE) / 2 + 30;
+                for (k, l) in lines.iter().enumerate() {
+                    f.draw(fb, Face::Body, 29.0, tx, ty + k as i32 * LINE, ink, l);
+                }
+                if let Some((label, act)) = action {
+                    let br = Rect::new(r.x + r.w - CARD_PAD - 176, r.y + (r.h - 64) / 2, 176, 64);
+                    if *critical {
+                        fb.round_rect(br, 32, PAPER);
+                        let w = f.measure(Face::Strong, 28.0, label);
+                        f.draw(fb, Face::Strong, 28.0, br.x + (br.w - w) / 2, br.y + 43, INK, label);
+                    } else {
+                        ui::button(fb, f, br, label, matches!(act, EdAction::Read(_)));
+                    }
+                    hits.push((r, act.clone()));
+                }
+            }
+            Block::Tail => {
+                let r1 = Rect::new(MARGIN, y + 20, W - 2 * MARGIN, 92);
+                ui::button(fb, f, r1, "Perguntar ao Claude sobre a edição", false);
+                hits.push((r1, EdAction::Ask(format!("Edição da manhã de {}:\n{}", day_label(&e.day), edition_text(e)))));
+                let r2 = Rect::new(MARGIN, y + 130, W - 2 * MARGIN, 80);
+                f.draw(fb, Face::Strong, 28.0, r2.x, r2.y + 30, MUTED, "Algo mudou desde as 6h?");
+                let rb = Rect::new(W - MARGIN - 300, r2.y, 300, 72);
+                ui::button(fb, f, rb, "Gerar de novo", false);
+                hits.push((rb, EdAction::Regen));
+            }
+        }
         y += h;
     }
     if pages.len() > 1 {
         if page > 0 {
             ui::button(fb, f, edition_nav(0), "‹ Anterior", false);
+            hits.push((edition_nav(0), EdAction::Prev));
         }
         if page + 1 < pages.len() {
             ui::button(fb, f, edition_nav(1), "Próxima ›", true);
+            hits.push((edition_nav(1), EdAction::Next));
         }
         let t = format!("{} de {}", page + 1, pages.len());
         let w = f.measure(Face::Strong, 28.0, &t);
-        f.draw(fb, Face::Strong, 28.0, (W - w) / 2, 1376, MUTED, &t);
+        f.draw(fb, Face::Strong, 28.0, (W - w) / 2, 1378, MUTED, &t);
     }
+    hits
+}
+
+/// A edição inteira em texto (para perguntar ao Claude sobre ela).
+fn edition_text(e: &Edition) -> String {
+    let mut s = format!("{}\n", e.headline);
+    for sec in &e.sections {
+        s.push_str(&format!("\n{}\n", sec.title));
+        for it in &sec.items {
+            s.push_str(&format!("- {}\n", it.text));
+        }
+    }
+    s
 }
 
 fn day_label(day: &str) -> String {

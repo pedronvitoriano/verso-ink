@@ -25,6 +25,7 @@ mod paciencia;
 mod painel;
 mod palavra;
 mod reader;
+mod saudacao;
 mod receitas;
 mod sokoban;
 mod sprites;

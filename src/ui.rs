@@ -501,12 +501,28 @@ pub fn draw_tile(fb: &mut Framebuffer, f: &Fonts, i: usize, pressed: bool, _extr
 }
 
 /// Faixa "Continuar": cartões do último livro e do último jogo.
-fn draw_continue(fb: &mut Framebuffer, f: &Fonts, extra: &HomeExtra, game: Option<&(usize, String)>) {
+fn draw_continue(fb: &mut Framebuffer, f: &Fonts, st: &Status, extra: &HomeExtra, game: Option<&(usize, String)>) {
     let book = extra.book.as_ref();
+    // A frase do momento (pessoal, muda com a hora e com o que você anda fazendo).
+    let now = clock::now(st.offset_min);
+    let ctx = crate::saudacao::Context {
+        hour: now.hour,
+        weekday: now.weekday,
+        day: crate::data::today(st.offset_min),
+        raining: crate::weather::load().is_some_and(|w| w.rain_pct >= 50),
+        book: book.map(|b| (b.title.clone(), b.progress)),
+        game: game.map(|(i, _)| crate::apps::GAMES[*i].0.to_string()),
+        read_today: crate::data::reading_minutes_today(st.offset_min),
+        edition: crate::painel::edition().is_some_and(|e| e.day == crate::painel::today_iso(st.offset_min)),
+        notice: !crate::painel::notices().is_empty(),
+        battery: st.battery,
+    };
+    let phrase = crate::saudacao::phrase(&ctx);
+    let label = if phrase.is_empty() { "Continuar".to_string() } else { phrase };
+    f.draw(fb, Face::Display, 34.0, MARGIN, CONT_Y - 20, INK, &crate::apps::fit(f, Face::Display, 34.0, &label, 1072 - 2 * MARGIN));
     if book.is_none() && game.is_none() {
         return;
     }
-    f.draw(fb, Face::Strong, 30.0, MARGIN, CONT_Y - 18, INK, "Continuar");
     if let Some(b) = book {
         let r = continue_book_rect(game.is_some());
         card(fb, r, 28, PAPER, false);
@@ -574,7 +590,7 @@ pub fn draw_home(fb: &mut Framebuffer, f: &Fonts, st: &Status, sum: &crate::data
     draw_clock(fb, f, st);
     let _ = sum; // o resumo é desenhado nos cartões abaixo da hora (draw_chips)
     let extra = HomeExtra::load();
-    draw_continue(fb, f, &extra, game);
+    draw_continue(fb, f, st, &extra, game);
     for i in 0..Module::ALL.len() {
         draw_tile(fb, f, i, false, &extra);
     }
