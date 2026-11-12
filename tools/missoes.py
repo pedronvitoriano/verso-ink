@@ -49,11 +49,29 @@ def conf(name):
         return ""
 
 
+_PINNED = False
+
+
+def pin_dns():
+    """DNS da operadora falhando: usa o IP fixo de ~/.config/verso-ink/resolve (host:443:IP)."""
+    global _PINNED
+    resolve = conf("resolve")
+    if _PINNED or resolve.count(":") != 2:
+        return
+    import socket
+    host, _, ip = resolve.split(":")
+    real = socket.getaddrinfo
+    socket.getaddrinfo = lambda h, *a, **k: real(ip if h == host else h, *a, **k)
+    _PINNED = True
+
+
 def api(method, path, body=None, timeout=20):
     url, tok = conf("url"), conf("token")
     if not url or not tok:
         raise RuntimeError("sem configuração da ponte")
     data = json.dumps(body).encode() if body is not None else None
+    # DNS da operadora falhando: usa o IP fixo de ~/.config/verso-ink/resolve (host:443:IP).
+    pin_dns()
     req = urllib.request.Request(url.rstrip("/") + path, data=data, method=method, headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read() or b"null")

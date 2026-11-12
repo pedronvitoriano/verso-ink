@@ -19,7 +19,13 @@ const NAMES: [&str; 30] = [
 
 pub const LADDER: usize = 30;
 
+/// O Claude como adversário especial (fora da escada): joga pela ponte da VPS e comenta.
+pub const CLAUDE: usize = 99;
+
 pub fn coach(i: usize) -> Coach {
+    if i == CLAUDE {
+        return Coach { rating: 2000, name: "Claude", style: "Joga e conversa com você a cada lance" };
+    }
     let i = i.min(LADDER - 1);
     let rating = 100 + i as u32 * 100;
     let style = match rating {

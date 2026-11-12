@@ -35,7 +35,15 @@ fn wrap(f: &Fonts, face: Face, size: f32, text: &str, max_w: i32) -> Vec<String>
 // ---------- Central ----------
 
 pub fn hub_row(k: usize) -> Rect {
-    Rect::new(MARGIN, 640 + k as i32 * 160, W - 2 * MARGIN, 136)
+    Rect::new(MARGIN, 600 + k as i32 * 136, W - 2 * MARGIN, 118)
+}
+
+/// Linhas do menu do xadrez e o que cada uma abre (0 continuar, 1 treinadores, 4 Claude,
+/// 2 duas pessoas, 3 partidas anteriores).
+pub fn hub_ids(has_resume: bool) -> Vec<usize> {
+    let mut v = if has_resume { vec![0] } else { vec![] };
+    v.extend([1, 4, 2, 3]);
+    v
 }
 
 pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, resume: Option<String>) {
@@ -50,6 +58,7 @@ pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, resume: Option<String>) {
     let rows: Vec<(String, String, bool)> = [
         resume.map(|s| ("Continuar partida".to_string(), s, true)),
         Some(("Treinadores".to_string(), format!("Escada de 100 a 3000 · liberado até {}", coach::coach(coach::unlocked()).rating), false)),
+        Some(("Contra o Claude".to_string(), "Ele joga, comenta cada lance e analisa a partida no fim".to_string(), false)),
         Some(("Duas pessoas".to_string(), "Partida local, no mesmo Kindle".to_string(), false)),
         Some(("Partidas anteriores".to_string(), "Revisão com os melhores lances".to_string(), false)),
     ]
@@ -60,8 +69,8 @@ pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, resume: Option<String>) {
         let r = hub_row(k);
         let (fg, sub) = if *filled { (PAPER, 0xCC) } else { (INK, MUTED) };
         ui::card(fb, r, 40, if *filled { INK } else { PAPER }, false);
-        f.draw(fb, Face::Display, 50.0, r.x + 40, r.y + 66, fg, t);
-        f.draw(fb, Face::Body, 28.0, r.x + 42, r.y + 108, sub, &fit(f, Face::Body, 28.0, s, r.w - 80));
+        f.draw(fb, Face::Display, 46.0, r.x + 36, r.y + 58, fg, t);
+        f.draw(fb, Face::Body, 26.0, r.x + 38, r.y + 96, sub, &fit(f, Face::Body, 26.0, s, r.w - 80));
     }
     // Relógio das próximas partidas.
     let r = clock_row_rect();
@@ -250,8 +259,11 @@ pub fn draw_coach_line(fb: &mut Framebuffer, f: &Fonts, who: &str, text: &str) {
     let name = who.split(" (").next().unwrap_or(who);
     let slug = crate::apps::fold(name).split_whitespace().collect::<Vec<_>>().join("-");
     let side = r.y + r.h - 170 + 2;
-    if !crate::sprites::draw(fb, &format!("busto-{slug}"), Rect::new(MARGIN - 44, 170, side, side)) {
-        draw_portrait(fb, name, MARGIN, 190, 200, false);
+    if !crate::sprites::draw(fb, &format!("busto-{slug}"), Rect::new(MARGIN - 44, 170, side, side))
+        && !draw_portrait(fb, name, MARGIN, 190, 200, false)
+    {
+        // Sem retrato (o Claude): a faísca dele, grande, num disco.
+        ui::icon_disc(fb, MARGIN, 196, 200, "claude");
     }
     let bb = bubble_rect();
     fb.round_rect(bb, 30, PAPER);
@@ -284,7 +296,7 @@ pub fn end_row(k: usize) -> Rect {
     Rect::new(MARGIN, 900 + k as i32 * 150, W - 2 * MARGIN, 124)
 }
 
-pub fn draw_end(fb: &mut Framebuffer, f: &Fonts, title: &str, detail: &str, ratings: Option<(u32, u32)>, unlocked: Option<String>) {
+pub fn draw_end(fb: &mut Framebuffer, f: &Fonts, title: &str, detail: &str, ratings: Option<(u32, u32)>, unlocked: Option<String>, vs_claude: bool) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
     f.draw(fb, Face::Display, 150.0, MARGIN - 6, 360, INK, title);
@@ -302,7 +314,7 @@ pub fn draw_end(fb: &mut Framebuffer, f: &Fonts, title: &str, detail: &str, rati
     }
     pill(fb, f, end_row(0), "Revisar a partida", true);
     pill(fb, f, end_row(1), "Jogar de novo", false);
-    pill(fb, f, end_row(2), "Escolher treinador", false);
+    pill(fb, f, end_row(2), if vs_claude { "Análise do Claude" } else { "Escolher treinador" }, vs_claude);
 }
 
 // ---------- Partidas anteriores ----------

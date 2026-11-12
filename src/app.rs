@@ -185,6 +185,8 @@ pub struct App {
     term: (String, String),
     approvals: Vec<crate::painel::Approval>,
     approve_back: Screen,
+    /// Para onde volta o documento aberto (arquivos do Claude ou fim de partida).
+    doc_back: Screen,
     /// Alvos da página atual da Edição da manhã.
     ed_hits: Vec<(Rect, crate::painel::EdAction)>,
     /// Missões: o que veio da VPS, a etapa da escolha e os alvos da tela.
@@ -332,6 +334,7 @@ impl App {
             term: (String::new(), String::new()),
             approvals: Vec::new(),
             approve_back: Screen::Home,
+            doc_back: Screen::ClaudeFiles,
             ed_hits: Vec::new(),
             missions: None,
             mstage: Default::default(),
@@ -391,6 +394,7 @@ impl App {
         let chess_btn = if self.screen == Screen::Chess { Some(self.chess_buttons()) } else { None };
         let live_games = if self.screen == Screen::Games { self.live_games() } else { Vec::new() };
         let home_game = if self.screen == Screen::Home { self.home_game() } else { None };
+        let vs_claude = self.screen == Screen::ChessEnd && self.coach_level() == Some(crate::coach::CLAUDE);
         let (fb, f, st) = (&mut self.fb, &self.fonts, &self.status);
         match self.screen {
             Screen::Home => ui::draw_home(fb, f, st, &data::summary(st.offset_min), home_game.as_ref()),
@@ -449,7 +453,7 @@ impl App {
             }
             Screen::ChessEnd => {
                 let (t, d, r, u) = &self.end_info;
-                crate::chess_ui::draw_end(fb, f, t, d, *r, u.clone());
+                crate::chess_ui::draw_end(fb, f, t, d, *r, u.clone(), vs_claude);
             }
             Screen::ChessGames => crate::chess_ui::draw_games(fb, f, &self.saved_games, self.games_page, st.offset_min),
             Screen::ChessReview => {
@@ -853,9 +857,8 @@ impl App {
             Screen::SudokuWon => vec![(Back, ui::back_rect()), (NewGame, crate::sudoku::won_new_rect())],
             Screen::ChessHub => {
                 let has_resume = crate::chess::Game::load().is_some_and(|g| g.in_progress());
-                let n = if has_resume { 4 } else { 3 };
                 let mut v = vec![(Back, ui::back_rect())];
-                v.extend((0..n).map(|k| (Game(k + if has_resume { 0 } else { 1 }), crate::chess_ui::hub_row(k))));
+                v.extend(crate::chess_ui::hub_ids(has_resume).into_iter().enumerate().map(|(k, id)| (Game(id), crate::chess_ui::hub_row(k))));
                 v.push((Sort, crate::chess_ui::clock_row_rect()));
                 v
             }
@@ -1931,7 +1934,11 @@ impl App {
         crate::coach::clear_current();
         self.pre_eval = None;
         let c = crate::coach::coach(level);
-        self.coach_msg = format!("Olá, sou {}. {}. Você joga de {}.", c.name, c.style, if user_white { "brancas" } else { "pretas" });
+        self.coach_msg = if level == crate::coach::CLAUDE {
+            format!("Oi, Pedro! Vamos jogar. Você está de {}. Vou comentando os lances.", if user_white { "brancas" } else { "pretas" })
+        } else {
+            format!("Olá, sou {}. {}. Você joga de {}.", c.name, c.style, if user_white { "brancas" } else { "pretas" })
+        };
         self.go(Screen::Chess);
         if !self.ensure_engine() {
             return self.render(false);
@@ -2010,7 +2017,29 @@ impl App {
             None => return,
         };
         let think_start = Instant::now();
-        let random = (self.rng.next() % 1000) as f32 / 1000.0 < crate::coach::random_move_chance(rating);
+        // Contra o Claude: o lance (e uma frase) vem da ponte; sem ela, o Stockfish forte joga.
+        let mut claude_comment = None;
+        if level == crate::coach::CLAUDE {
+            if let Some((m, c)) = self.claude_move() {
+                claude_comment = Some(c);
+                let san = self.chess.as_mut().and_then(|g| g.play_uci(&m));
+                self.coach_msg = match san {
+                    Some(s) => format!("{s}. {}", claude_comment.clone().unwrap_or_default()).trim().to_string(),
+                    None => "Não consegui jogar.".into(),
+                };
+                if let Some(g) = &self.chess {
+                    g.save();
+                }
+                self.redraw_chess();
+                if self.chess.as_ref().is_some_and(|g| g.result().is_some()) {
+                    return self.finish_coach_game(None);
+                }
+                self.analyse_pre();
+                return self.say(&self.coach_msg.clone());
+            }
+        }
+        let _ = &claude_comment;
+        let random = level != crate::coach::CLAUDE && (self.rng.next() % 1000) as f32 / 1000.0 < crate::coach::random_move_chance(rating);
         let mv = if random {
             crate::coach::random_legal(&pos, &mut self.rng)
         } else {
@@ -2039,6 +2068,59 @@ impl App {
         }
         self.analyse_pre();
         self.say(&self.coach_msg.clone());
+    }
+
+    /// Pede o lance ao Claude pela ponte. None se a ponte falhar (o Stockfish joga no lugar).
+    fn claude_move(&mut self) -> Option<(String, String)> {
+        let g = self.chess.as_ref()?;
+        let user_white = matches!(g.mode, crate::chess::Mode::Coach { user_white: true, .. });
+        let legal: Vec<String> = g.pos.legal_uci().iter().map(|m| crate::chat::json_str(m)).collect();
+        let moves: Vec<String> = g.moves.iter().map(|m| crate::chat::json_str(m)).collect();
+        let body = format!(
+            "{{\"fen\": {}, \"moves\": [{}], \"legal\": [{}], \"color\": \"{}\", \"level\": \"forte, mas jogando para ensinar\"}}",
+            crate::chat::json_str(&g.pos.fen(g.moves.len() / 2 + 1)),
+            moves.join(", "),
+            legal.join(", "),
+            if user_white { "b" } else { "w" }
+        );
+        match crate::chat::call("POST", "/xadrez/lance", Some(&body), 200) {
+            Ok(j) => {
+                let m = j.get("move").and_then(crate::chat::Json::str)?.to_string();
+                let c = j.get("comment").and_then(crate::chat::Json::str).unwrap_or("").to_string();
+                Some((m, c))
+            }
+            Err(e) => {
+                log(&format!("xadrez com o Claude: {e}; o Stockfish joga"));
+                None
+            }
+        }
+    }
+
+    /// Análise da partida pelo Claude, aberta como documento.
+    fn claude_review(&mut self) {
+        let Some(g) = self.chess.as_ref() else { return };
+        let user_white = matches!(g.mode, crate::chess::Mode::Coach { user_white: true, .. });
+        let moves: Vec<String> = g.moves.iter().map(|m| crate::chat::json_str(m)).collect();
+        let result = self.end_info.0.clone();
+        let body = format!(
+            "{{\"moves\": [{}], \"evals\": [], \"color\": \"{}\", \"result\": {}, \"coach\": \"Claude\"}}",
+            moves.join(", "),
+            if user_white { "w" } else { "b" },
+            crate::chat::json_str(&result)
+        );
+        self.fb.fill(self.fb.screen(), ui::PAPER);
+        ui::draw_field_header(&mut self.fb, &self.fonts, "XADREZ", "O Claude está analisando…");
+        self.fonts.draw(&mut self.fb, crate::text::Face::Body, 32.0, 72, 460, ui::MUTED, "Os lances que decidiram a partida e o que treinar. Leva até um minuto.");
+        self.fb.refresh(self.fb.screen(), Wave::Quality, true);
+        self.fb.wait();
+        let text = match crate::chat::call("POST", "/xadrez/revisao", Some(&body), 320) {
+            Ok(j) => j.get("text").and_then(crate::chat::Json::str).unwrap_or("").to_string(),
+            Err(e) => format!("Não consegui a análise agora: {e}"),
+        };
+        let lines = crate::chat::layout_text(&self.fonts, &text, false, 1072 - 144);
+        self.doc = ("Análise do Claude".into(), crate::chat::pages_of(lines), 0);
+        self.doc_back = Screen::ChessEnd;
+        self.go(Screen::ClaudeDoc);
     }
 
     fn finish_coach_game(&mut self, forced: Option<f32>) {
@@ -2239,7 +2321,10 @@ impl App {
             }
             (Screen::ClaudeLive | Screen::ClaudeChat, Back) => self.go(Screen::Claude),
             (Screen::ClaudeFiles, Back) => self.go(Screen::ClaudeChat),
-            (Screen::ClaudeDoc, Back) => self.go(Screen::ClaudeFiles),
+            (Screen::ClaudeDoc, Back) => {
+                let back = std::mem::replace(&mut self.doc_back, Screen::ClaudeFiles);
+                self.go(back);
+            }
             (Screen::ClaudeCompose, Ctx) => {
                 self.claude_ctx = None;
                 self.claude_about = None;
@@ -2693,6 +2778,7 @@ impl App {
                 self.coach_page = crate::coach::unlocked() / crate::chess_ui::PER_PAGE;
                 self.go(Screen::Coaches);
             }
+            (Screen::ChessHub, Game(4)) => self.start_coach_game(crate::coach::CLAUDE),
             (Screen::ChessHub, Game(2)) => {
                 self.engine = None;
                 let g = crate::chess::Game::new();
@@ -2807,6 +2893,7 @@ impl App {
                 });
                 self.start_coach_game(lv.unwrap_or(0));
             }
+            (Screen::ChessEnd, Game(2)) if self.coach_level() == Some(crate::coach::CLAUDE) => self.claude_review(),
             (Screen::ChessEnd, Game(_)) => {
                 self.coach_page = crate::coach::unlocked() / crate::chess_ui::PER_PAGE;
                 self.go(Screen::Coaches);

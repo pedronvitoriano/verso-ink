@@ -163,6 +163,15 @@ fn url() -> Option<String> {
     read_trim(crate::home_dir().join("settings/claude_url").to_str()?).filter(|s| !s.is_empty())
 }
 
+/// Endereço fixo da ponte para o curl (`host:443:IP`, em settings/claude_resolve), para quando
+/// o DNS da operadora falha: o nome continua valendo para o HTTPS, a conexão vai direto ao IP.
+fn resolve_args() -> Vec<String> {
+    read_trim(crate::home_dir().join("settings/claude_resolve").to_str().unwrap_or(""))
+        .filter(|s| s.split(':').count() == 3)
+        .map(|r| vec!["--resolve".to_string(), r])
+        .unwrap_or_default()
+}
+
 fn token() -> Option<String> {
     read_trim(crate::home_dir().join("settings/claude_token").to_str()?).filter(|s| !s.is_empty())
 }
@@ -171,6 +180,7 @@ fn token() -> Option<String> {
 pub fn call(method: &str, path: &str, body: Option<&str>, timeout: u32) -> Result<Json, String> {
     let (Some(base), Some(tok)) = (url(), token()) else { return Err("A ponte do Claude ainda não foi configurada.".into()) };
     let mut cmd = Command::new("curl");
+    cmd.args(resolve_args());
     cmd.args(["-s", "-m", &timeout.to_string(), "-X", method, "-H", &format!("Authorization: Bearer {tok}"), "-w", "\n%{http_code}"]);
     if let Some(b) = body {
         let ct = if b.starts_with('{') { "application/json" } else { "text/plain; charset=utf-8" };
@@ -290,6 +300,7 @@ pub fn fetch(path: &str, dest: &std::path::Path, timeout: u32) -> Result<(), Str
     let (Some(base), Some(tok)) = (url(), token()) else { return Err("A ponte do Claude ainda não foi configurada.".into()) };
     let tmp = dest.with_extension("parcial");
     let code = Command::new("curl")
+        .args(resolve_args())
         .args(["-s", "-m", &timeout.to_string(), "-o", &tmp.to_string_lossy(), "-w", "%{http_code}", "-H", &format!("Authorization: Bearer {tok}")])
         .arg(format!("{}{path}", base.trim_end_matches('/')))
         .output()
@@ -318,6 +329,7 @@ pub fn download(id: &str, name: &str) -> Result<std::path::PathBuf, String> {
     let tmp = dir.join(format!(".{name}.parcial"));
     let enc: String = name.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect();
     let code = Command::new("curl")
+        .args(resolve_args())
         .args(["-s", "-m", "120", "-o", &tmp.to_string_lossy(), "-w", "%{http_code}", "-H", &format!("Authorization: Bearer {tok}")])
         .arg(format!("{}/chats/{id}/files/{enc}", base.trim_end_matches('/')))
         .output()
