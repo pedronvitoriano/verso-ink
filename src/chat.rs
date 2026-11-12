@@ -368,7 +368,9 @@ pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, chats: &Result<Vec<ChatInfo>, S
             }
         }
     }
-    f.draw(fb, Face::Body, 26.0, MARGIN, 1222, MUTED, "Dica: em qualquer tela, deslize de cima para baixo para perguntar ao Claude sobre ela.");
+    for (k, l) in wrap_words(f, Face::Body, 26.0, "Dica: em qualquer tela, deslize de cima para baixo para perguntar ao Claude sobre ela.", W - 2 * MARGIN).iter().take(2).enumerate() {
+        f.draw(fb, Face::Body, 26.0, MARGIN, 1180 + k as i32 * 34, MUTED, l);
+    }
     let lr = live_rect();
     fb.round_outline(lr, lr.h / 2, 4, INK, PAPER);
     let label = if live == 0 { "Sessões no PC ao vivo".to_string() } else { format!("Sessões no PC ao vivo · {live}") };

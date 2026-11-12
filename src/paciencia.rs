@@ -279,6 +279,10 @@ impl Paciencia {
 }
 
 impl MiniGame for Paciencia {
+    fn risky(&self, id: u32) -> bool {
+        id == 802 && !self.won()
+    }
+
     fn at_menu(&self) -> bool {
         self.menu
     }

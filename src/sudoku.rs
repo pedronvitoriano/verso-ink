@@ -520,7 +520,7 @@ pub fn draw_keys(fb: &mut Framebuffer, f: &Fonts, g: &Game) {
 }
 
 pub fn draw_actions(fb: &mut Framebuffer, f: &Fonts, g: &Game) {
-    let labels = [if g.notes_mode { "Anotando" } else { "Anotar" }, "Dica", "Desfazer", "Novo"];
+    let labels = [if g.notes_mode { "Anotando" } else { "Anotar" }, "Dica", "Desfazer", "Menu"];
     for (k, l) in labels.iter().enumerate() {
         pill(fb, f, action_rect(k), l, k == 0 && g.notes_mode);
     }

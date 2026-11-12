@@ -169,6 +169,10 @@ impl Caixas {
 }
 
 impl MiniGame for Caixas {
+    fn risky(&self, id: u32) -> bool {
+        id == 800 && self.fase == 0 && !self.over()
+    }
+
     fn at_menu(&self) -> bool {
         self.mode == Mode::Menu
     }

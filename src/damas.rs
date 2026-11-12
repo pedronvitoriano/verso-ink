@@ -361,6 +361,10 @@ impl Damas {
 }
 
 impl MiniGame for Damas {
+    fn risky(&self, id: u32) -> bool {
+        id == 803 && self.fase == 0 && self.winner.is_none()
+    }
+
     fn at_menu(&self) -> bool {
         self.mode == Mode::Menu
     }

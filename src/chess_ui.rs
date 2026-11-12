@@ -83,8 +83,12 @@ pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, resume: Option<String>) {
 
 pub const PER_PAGE: usize = 6;
 
+/// Cartões em grade de 2 colunas por 3 linhas.
 pub fn coach_row(i: usize) -> Rect {
-    Rect::new(MARGIN - 16, 400 + i as i32 * 140, W - 2 * MARGIN + 32, 136)
+    let gap = 24;
+    let w = (W - 2 * MARGIN + 32 - gap) / 2;
+    let h = 270;
+    Rect::new(MARGIN - 16 + (i % 2) as i32 * (w + gap), 410 + (i / 2) as i32 * (h + 22), w, h)
 }
 pub fn prev_rect() -> Rect {
     Rect::new(MARGIN, 1300, 260, 88)
@@ -129,8 +133,9 @@ pub fn draw_coaches(fb: &mut Framebuffer, f: &Fonts, page: usize) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
     f.draw(fb, Face::Display, 110.0, MARGIN - 4, 290, INK, "Treinadores");
-    f.draw(fb, Face::Strong, 28.0, MARGIN, 350, MUTED, "Vença um para liberar o próximo");
     let open = coach::unlocked();
+    let sub = format!("Vença um para liberar o próximo · {} de {} liberados", (open + 1).min(coach::LADDER), coach::LADDER);
+    f.draw(fb, Face::Strong, 28.0, MARGIN, 350, MUTED, &sub);
     for k in 0..PER_PAGE {
         let i = page * PER_PAGE + k;
         if i >= coach::LADDER {
@@ -138,16 +143,29 @@ pub fn draw_coaches(fb: &mut Framebuffer, f: &Fonts, page: usize) {
         }
         let c = coach::coach(i);
         let r = coach_row(k);
-        let locked = i > open;
-        fb.fill(Rect::new(MARGIN, r.y, W - 2 * MARGIN, 3), INK);
-        let ink = if locked { 0xAA } else { INK };
-        let tx = if draw_portrait(fb, c.name, MARGIN, r.y + 14, 108, locked) { MARGIN + 132 } else { MARGIN };
-        f.draw(fb, Face::Display, 50.0, tx, r.y + 66, ink, c.name);
-        let rt = c.rating.to_string();
-        let rw = f.measure(Face::Display, 56.0, &rt);
-        f.draw(fb, Face::Display, 56.0, W - MARGIN - rw, r.y + 70, ink, &rt);
-        let sub = if locked { format!("Vença {} para liberar", coach::coach(i - 1).name) } else { c.style.to_string() };
-        f.draw(fb, Face::Body, 28.0, tx + 2, r.y + 112, if locked { 0xAA } else { MUTED }, &sub);
+        let (locked, current, beaten) = (i > open, i == open, i < open);
+        // Próximo desafio: cartão preto. Vencidos: contorno. Bloqueados: apagados.
+        let (fg, muted) = if current { (PAPER, 0xCC) } else if locked { (0xAA, 0xBB) } else { (INK, MUTED) };
+        if current {
+            fb.round_rect(r, 28, INK);
+        } else {
+            fb.round_outline(r, 28, if locked { 2 } else { 4 }, if locked { 0xCC } else { INK }, PAPER);
+        }
+        let side = 150;
+        if current {
+            fb.round_rect(Rect::new(r.x + 16, r.y + 16, side + 12, side + 12), 18, PAPER);
+        }
+        let has = draw_portrait(fb, c.name, r.x + 22, r.y + 22, side, locked);
+        let tx = if has { r.x + 22 + side + 22 } else { r.x + 26 };
+        let room = r.x + r.w - 20 - tx;
+        let tag = if current { "PRÓXIMO" } else if beaten { "VENCIDO" } else { "BLOQUEADO" };
+        f.draw(fb, Face::Strong, 20.0, tx, r.y + 46, muted, tag);
+        f.draw(fb, Face::Display, 40.0, tx, r.y + 96, fg, &fit(f, Face::Display, 40.0, c.name, room));
+        f.draw(fb, Face::Display, 48.0, tx, r.y + 154, fg, &c.rating.to_string());
+        let style = if locked { format!("Vença {} para liberar", coach::coach(i - 1).name) } else { c.style.to_string() };
+        for (n, l) in wrap(f, Face::Body, 24.0, &style, r.w - 44).iter().take(2).enumerate() {
+            f.draw(fb, Face::Body, 24.0, r.x + 24, r.y + 214 + n as i32 * 30, muted, l);
+        }
     }
     let pages = coach::LADDER.div_ceil(PER_PAGE);
     if page > 0 {

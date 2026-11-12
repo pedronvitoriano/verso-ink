@@ -180,6 +180,10 @@ impl Minas {
 }
 
 impl MiniGame for Minas {
+    fn risky(&self, id: u32) -> bool {
+        id == 801 && self.fase == 0 && !self.won && self.lost.is_none() && self.placed
+    }
+
     fn summary(&self) -> String {
         if self.menu { String::new() } else { format!("{}×{} · {} minas", self.n, self.n, self.mines) }
     }

@@ -135,18 +135,18 @@ static PACIENCIA: [Page; 3] = [
 ];
 
 static MASMORRA: [Page; 4] = [
-    p("O mundo", "Ande com as setas: o mundo só se move quando você anda. Desça cinco andares; o dragão guarda a saída do último.", "H.r\n..>", ""),
-    p("Monstros", "O número é a vida do monstro; o z diz que ele dorme e só acorda se você chegar a duas casas. Dá para escolher a briga ou passar longe.", "rbG\nSO.", ""),
-    p("Lutar", "Ande para cima de um monstro para bater. O dano não tem sorte: sua força, menos a armadura dele. Cada tipo tem um jeito: o morcego é rápido, o ogro é lento.", "H.O\n.b.", ""),
-    p("Crescer", "Ver chão novo cura 1. Guarde as poções para a hora certa. Vencer dá experiência; ao subir de nível a vida enche e você escolhe: mais vida ou mais força.", "H..\n.GZ", ""),
+    p("O mundo", "Ande com as setas: o mundo só se move quando você anda. Desça cinco andares; o dragão guarda a saída do último.", "ʜ.ʀ\n..>", ""),
+    p("Monstros", "O número é a vida do monstro; o z diz que ele dorme e só acorda se você chegar a duas casas. Dá para escolher a briga ou passar longe.", "ʀʙɢ\nꜱᴏ.", ""),
+    p("Lutar", "Ande para cima de um monstro para bater. O dano não tem sorte: sua força, menos a armadura dele. Cada tipo tem um jeito: o morcego é rápido, o ogro é lento.", "ʜ.ᴏ\n.ʙ.", ""),
+    p("Crescer", "Ver chão novo cura 1. Guarde as poções para a hora certa. Vencer dá experiência; ao subir de nível a vida enche e você escolhe: mais vida ou mais força.", "ʜ..\n.ɢᴢ", ""),
 ];
 
 static CRIPTA: [Page; 5] = [
     p("Tudo à vista", "Os monstros já estão no mapa, com vida (coração), força (espada) e nível. Toque numa rocha clara, vizinha das casas abertas, para abri-la.", "", ""),
-    p("Explorar cura", "Cada rocha aberta devolve vida e 1 de mana. Mas os monstros feridos também se recuperam: luta começada é melhor terminar.", "gggg\ng.Hr\ngggg", ""),
-    p("Golpe a golpe", "Toque num monstro para ver a previsão da luta; toque de novo para trocar um golpe. O morcego bate primeiro; o esqueleto tem armadura.", "rHb\n.S.", ""),
-    p("Subir de nível", "Vencer um monstro acima do seu nível vale o dobro. Subir de nível enche vida e mana: no meio de uma luta difícil, isso decide.", "H.G\n.rO", ""),
-    p("Magias e o dragão", "Raio fere sem troco; Pele de pedra anula o próximo golpe; Drenar fere e cura. Mate o monstro da chave, desça e escolha um prêmio. O dragão espera no quinto andar.", "H.>\n..Z", ""),
+    p("Explorar cura", "Cada rocha aberta devolve vida e 1 de mana. Mas os monstros feridos também se recuperam: luta começada é melhor terminar.", "gggg\ng.ʜʀ\ngggg", ""),
+    p("Golpe a golpe", "Toque num monstro para ver a previsão da luta; toque de novo para trocar um golpe. O morcego bate primeiro; o esqueleto tem armadura.", "ʀʜʙ\n.ꜱ.", ""),
+    p("Subir de nível", "Vencer um monstro acima do seu nível vale o dobro. Subir de nível enche vida e mana: no meio de uma luta difícil, isso decide.", "ʜ.ɢ\n.ʀᴏ", ""),
+    p("Magias e o dragão", "Raio fere sem troco; Pele de pedra anula o próximo golpe; Drenar fere e cura. Mate o monstro da chave, desça e escolha um prêmio. O dragão espera no quinto andar.", "ʜ.>\n..ᴢ", ""),
 ];
 
 static DAMAS: [Page; 4] = [
@@ -468,7 +468,7 @@ fn draw_fases(fb: &mut Framebuffer, f: &Fonts, top: i32) -> i32 {
 
 /// Desenha a ilustração centrada a partir de `top`; devolve onde ela termina.
 fn draw_board(fb: &mut Framebuffer, f: &Fonts, page: &Page, top: i32) -> i32 {
-    let max_cell = if page.board.chars().any(|c| "HrbGSOZ".contains(c)) { 170 } else { 110 };
+    let max_cell = if page.board.chars().any(|c| "ʜʀʙɢꜱᴏᴢ".contains(c)) { 170 } else { 110 };
     draw_board_in(fb, f, page, Rect::new(MARGIN, top, W - 2 * MARGIN, 440), max_cell)
 }
 
@@ -554,13 +554,13 @@ fn cell(fb: &mut Framebuffer, f: &Fonts, r: Rect, ch: char, sh: char, lines_mode
     }
     // Personagens desenhados (Cripta e Masmorra): o mesmo sprite do jogo.
     let sprite = match ch {
-        'H' => Some("heroi-1"),
-        'r' => Some("rato-1"),
-        'b' => Some("morcego-1"),
-        'G' => Some("goblin-1"),
-        'S' => Some("esqueleto-1"),
-        'O' => Some("orc-1"),
-        'Z' => Some("dragao-1"),
+        'ʜ' => Some("heroi-1"),
+        'ʀ' => Some("rato-1"),
+        'ʙ' => Some("morcego-1"),
+        'ɢ' => Some("goblin-1"),
+        'ꜱ' => Some("esqueleto-1"),
+        'ᴏ' => Some("orc-1"),
+        'ᴢ' => Some("dragao-1"),
         _ => None,
     };
     if let Some(name) = sprite {

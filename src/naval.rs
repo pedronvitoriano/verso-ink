@@ -260,6 +260,10 @@ impl Naval {
 }
 
 impl MiniGame for Naval {
+    fn risky(&self, id: u32) -> bool {
+        id == 813 && matches!(self.phase, Phase::Play)
+    }
+
     fn at_menu(&self) -> bool {
         self.mode == Mode::Menu
     }

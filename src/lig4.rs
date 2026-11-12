@@ -190,6 +190,10 @@ impl Lig4 {
 }
 
 impl MiniGame for Lig4 {
+    fn risky(&self, id: u32) -> bool {
+        self.winner.is_none() && ((self.fase > 0 && id == 800) || (self.fase == 0 && id == 801))
+    }
+
     fn summary(&self) -> String {
         if self.mode == Mode::Menu { String::new() } else if self.turn == 1 { "Sua vez".into() } else { "Vez do adversário".into() }
     }

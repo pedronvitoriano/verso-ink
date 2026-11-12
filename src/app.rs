@@ -151,6 +151,8 @@ pub struct App {
     mini: Option<Box<dyn crate::minigame::MiniGame>>,
     /// Partidas deixadas no meio (por jogo): voltar ao jogo continua de onde parou.
     mini_cache: std::collections::HashMap<usize, Box<dyn crate::minigame::MiniGame>>,
+    /// Botão arriscado (novo jogo, recomeçar) esperando o segundo toque.
+    mini_confirm: Option<u32>,
     /// Para onde o botão Início leva ao sair do minijogo/módulo.
     mini_back: Screen,
     /// Índice (na tela Jogar) do minijogo aberto.
@@ -270,6 +272,7 @@ impl App {
             rng: crate::sudoku::Rng::new(),
             mini: None,
             mini_cache: std::collections::HashMap::new(),
+            mini_confirm: None,
             mini_back: Screen::Games,
             mini_game: 0,
             light_return: None,
@@ -1316,6 +1319,25 @@ impl App {
 
     /// Toque num minijogo: redesenha o que ele pedir e, se for a vez da CPU, joga por ela.
     fn mini_tap(&mut self, id: u32, x: i32) {
+        let Some(g) = self.mini.as_mut() else { return };
+        // Novo jogo e recomeçar pedem um segundo toque: um esbarrão não apaga a partida.
+        let pending = self.mini_confirm.take();
+        if g.risky(id) && pending != Some(id) {
+            if let Some((_, r)) = g.targets().into_iter().find(|(t, _)| *t == id) {
+                self.mini_confirm = Some(id);
+                g.draw(&mut self.fb, &self.fonts);
+                crate::minigame::pill(&mut self.fb, &self.fonts, r, "Toque de novo", true);
+                self.fb.refresh(r, Wave::Quality, false);
+                return;
+            }
+        }
+        if let Some(p) = pending.filter(|&p| p != id) {
+            // Desfaz o aviso no botão que esperava confirmação.
+            if let Some((_, r)) = g.targets().into_iter().find(|(t, _)| *t == p) {
+                g.draw(&mut self.fb, &self.fonts);
+                self.fb.refresh(r, Wave::Quality, false);
+            }
+        }
         let Some(g) = self.mini.as_mut() else { return };
         let r = g.tap(id, x, 0);
         self.apply_mini_redraw(r);
@@ -2629,6 +2651,11 @@ mod raio_x {
         std::fs::create_dir_all(home.join("data/tutoriais")).unwrap();
         std::fs::create_dir_all(home.join("settings")).unwrap();
         std::env::set_var("VERSO_INK_HOME", &home);
+        // Arte do repositório (sprites e rostos), como no Kindle.
+        let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets");
+        for d in ["sprites", "treinadores"] {
+            let _ = std::os::unix::fs::symlink(repo.join(d), home.join(d));
+        }
         // Tutoriais já vistos, para os jogos abrirem direto no menu.
         for g in 0..apps::GAMES.len() {
             std::fs::write(home.join(format!("data/tutoriais/{g}.visto")), "1").unwrap();

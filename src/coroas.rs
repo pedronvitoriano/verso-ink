@@ -625,6 +625,10 @@ impl Coroas {
 }
 
 impl MiniGame for Coroas {
+    fn risky(&self, id: u32) -> bool {
+        id == 803 && self.level == 0 && !self.undo.is_empty()
+    }
+
     fn summary(&self) -> String {
         if self.menu || self.n == 0 { String::new() } else if self.level > 0 { format!("Fase {} · {}×{}", self.level, self.n, self.n) } else { format!("Treino · {}×{}", self.n, self.n) }
     }

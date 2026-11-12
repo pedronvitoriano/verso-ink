@@ -251,7 +251,7 @@ impl MiniGame for Palavra {
             }
         }
         minigame::pill(fb, f, Self::enter_rect(), "OK", true);
-        minigame::pill(fb, f, Self::back_rect(), "Apagar", false);
+        minigame::pill(fb, f, Self::back_rect(), "←", false);
     }
 
     fn targets(&self) -> Vec<(u32, Rect)> {

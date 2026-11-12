@@ -200,6 +200,10 @@ impl Nonograma {
 }
 
 impl MiniGame for Nonograma {
+    fn risky(&self, id: u32) -> bool {
+        id == 801 && self.fase == 0 && !self.won
+    }
+
     fn at_menu(&self) -> bool {
         self.menu
     }

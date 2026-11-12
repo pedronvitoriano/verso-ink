@@ -44,6 +44,10 @@ pub trait MiniGame {
         None
     }
     /// O estado do jogo em texto, para o Claude entender a pergunta (vazio = só o nome do jogo).
+    /// Botão que apaga a partida em andamento (pede um segundo toque).
+    fn risky(&self, _id: u32) -> bool {
+        false
+    }
     fn context(&self) -> String {
         String::new()
     }

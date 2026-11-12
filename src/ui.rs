@@ -637,14 +637,15 @@ pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status) {
     fb.fill(Rect::new(MARGIN, 1100, 1072 - 2 * MARGIN, 3), INK);
     let rows = [
         (wifi_row_rect(), "Wi-Fi", if st.wifi { "Conectado · trocar de rede" } else { "Sem rede · conectar" }),
-        (settings_row_rect(), "Ajustes do sistema", "Endereço, bateria, cópia, reiniciar e desligar"),
+        (settings_row_rect(), "Ajustes do sistema", "Bateria, cópia, reiniciar"),
     ];
     for (r, title, sub) in rows {
         let end = f.draw(fb, Face::Display, 46.0, MARGIN, r.y + 62, INK, title);
         let sub_x = (end + 24).max(MARGIN + 400);
         let _ = sub_x;
-        f.draw(fb, Face::Body, 28.0, end + 24, r.y + 60, MUTED, sub);
         let (cx, cy) = (r.x + r.w - 40, r.y + r.h / 2);
+        let room = cx - 40 - (end + 24);
+        f.draw(fb, Face::Body, 28.0, end + 24, r.y + 60, MUTED, &crate::apps::fit(f, Face::Body, 28.0, sub, room));
         line(fb, ((cx - 14) as f32, (cy - 22) as f32), (cx as f32, cy as f32), 6.0, INK);
         line(fb, (cx as f32, cy as f32), ((cx - 14) as f32, (cy + 22) as f32), 6.0, INK);
     }
