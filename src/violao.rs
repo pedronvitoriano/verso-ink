@@ -378,7 +378,9 @@ enum View {
     Dict,
     Practice,
     Course,
+    Module,
     Lesson,
+    Check,
     Quiz,
 }
 
@@ -400,14 +402,18 @@ pub struct Violao {
     pair: usize,
     timer: Timer,
     shown_secs: u64,
+    module: usize,
     lesson: usize,
+    answered: Option<usize>,
     quiz: Quiz,
 }
 
-/// Treino de leitura: nível, nota na tela, acertos seguidos e o último erro.
+/// Treinos de leitura: modo (notas, ritmo, armaduras, intervalos), nível, pergunta, acertos
+/// seguidos e o último erro.
 struct Quiz {
+    mode: usize,
     level: usize,
-    step: i32,
+    q: crate::partitura::Q,
     streak: u32,
     wrong: Option<&'static str>,
     rng: crate::minigame::Rng,
@@ -415,14 +421,7 @@ struct Quiz {
 
 impl Quiz {
     fn next(&mut self) {
-        let steps = crate::partitura::LEVELS[self.level].1;
-        let mut s = steps[(self.rng.next() % steps.len() as u64) as usize];
-        if steps.len() > 1 {
-            while s == self.step {
-                s = steps[(self.rng.next() % steps.len() as u64) as usize];
-            }
-        }
-        self.step = s;
+        self.q = crate::partitura::Q::new(self.mode, self.level, &mut self.rng, Some(self.q));
     }
 }
 
@@ -436,9 +435,11 @@ impl Violao {
             let _ = std::fs::write(&p, EXEMPLO);
             songs = self::songs();
         }
-        let mut quiz = Quiz { level: 0, step: 99, streak: 0, wrong: None, rng: crate::minigame::Rng::new() };
-        quiz.next();
-        Violao { view: View::Hub, songs, song: 0, page: 0, shift: 0, list_page: 0, dict_root: 0, pair: suggested(), timer: Timer::Idle, shown_secs: 0, lesson: 0, quiz }
+        let mut rng = crate::minigame::Rng::new();
+        let q = crate::partitura::Q::new(0, 0, &mut rng, None);
+        let quiz = Quiz { mode: 0, level: 0, q, streak: 0, wrong: None, rng };
+        let lesson = crate::partitura::next_lesson();
+        Violao { view: View::Hub, songs, song: 0, page: 0, shift: 0, list_page: 0, dict_root: 0, pair: suggested(), timer: Timer::Idle, shown_secs: 0, module: crate::partitura::locate(lesson).0, lesson, answered: None, quiz }
     }
 
     fn hub_card(k: usize) -> Rect {
@@ -463,7 +464,7 @@ impl Violao {
             ("Treino do dia", practice_sub, true),
             ("Músicas", format!("{} cifra{} · mande pelo celular", self.songs.len(), if self.songs.len() == 1 { "" } else { "s" }), false),
             ("Acordes", "Diagramas de todos os tons".to_string(), false),
-            ("Aprender partitura", format!("{} de {} lições · treino de leitura", crate::partitura::done().len(), crate::partitura::LESSONS.len()), false),
+            ("Aprender partitura", format!("{} de {} lições · 4 treinos de leitura", crate::partitura::done().len().min(crate::partitura::total()), crate::partitura::total()), false),
         ];
         for (k, (t, s, main)) in cards.iter().enumerate() {
             let r = Self::hub_card(k);
@@ -691,81 +692,259 @@ impl Violao {
 }
 
 impl Violao {
+    fn module_row(k: usize) -> Rect {
+        Rect::new(MARGIN, 290 + k as i32 * 150, W - 2 * MARGIN, 132)
+    }
+
     fn lesson_row(k: usize) -> Rect {
-        Rect::new(MARGIN, 300 + k as i32 * 92, W - 2 * MARGIN, 80)
+        Rect::new(MARGIN, 300 + k as i32 * 76, W - 2 * MARGIN, 66)
+    }
+
+    fn course_btn() -> Rect {
+        Rect::new(MARGIN, 1250, W - 2 * MARGIN, 110)
     }
 
     fn draw_course(&self, fb: &mut Framebuffer, f: &Fonts) {
+        use crate::partitura as p;
         f.draw(fb, Face::Display, 80.0, MARGIN - 4, 236, INK, "Partitura");
-        let done = crate::partitura::done();
-        for (k, l) in crate::partitura::LESSONS.iter().enumerate() {
-            let r = Self::lesson_row(k);
-            let seen = done.contains(&k);
-            ui::card(fb, r, 22, if seen { ui::SURFACE } else { PAPER }, false);
-            f.draw(fb, Face::Strong, 30.0, r.x + 24, r.y + 51, INK, &format!("{}. {}", k + 1, l.title));
-            if seen {
-                let t = "vista";
-                let w = f.measure(Face::Strong, 22.0, t);
-                f.draw(fb, Face::Strong, 22.0, r.x + r.w - 24 - w, r.y + 48, MUTED, t);
+        let seen = p::done().len().min(p::total());
+        let t = format!("{seen} de {} lições", p::total());
+        let w = f.measure(Face::Strong, 26.0, &t);
+        f.draw(fb, Face::Strong, 26.0, W - MARGIN - w, 232, MUTED, &t);
+        for (k, m) in p::MODULES.iter().enumerate() {
+            let r = Self::module_row(k);
+            let (n, total) = (p::done_in(k), m.lessons.len());
+            let complete = n == total;
+            ui::card(fb, r, 28, if complete { ui::SURFACE } else { PAPER }, false);
+            // Número do módulo num disco.
+            let d = 76;
+            fb.round_rect(Rect::new(r.x + 24, r.y + (r.h - d) / 2, d, d), d / 2, INK);
+            let num = format!("{}", k + 1);
+            let nw = f.measure(Face::Display, 44.0, &num);
+            f.draw(fb, Face::Display, 44.0, r.x + 24 + (d - nw) / 2, r.y + r.h / 2 + 16, PAPER, &num);
+            let tx = r.x + 24 + d + 26;
+            f.draw(fb, Face::Display, 40.0, tx, r.y + 58, INK, m.title);
+            f.draw(fb, Face::Body, 24.0, tx, r.y + 98, MUTED, &crate::apps::fit(f, Face::Body, 24.0, m.sub, r.x + r.w - 150 - tx));
+            // Progresso: número e barrinha.
+            let prog = format!("{n}/{total}");
+            let pw = f.measure(Face::Strong, 28.0, &prog);
+            f.draw(fb, Face::Strong, 28.0, r.x + r.w - 28 - pw, r.y + 58, INK, &prog);
+            let bar = Rect::new(r.x + r.w - 128, r.y + 82, 100, 12);
+            fb.round_rect(bar, 6, 0xC8);
+            if n > 0 {
+                fb.round_rect(Rect::new(bar.x, bar.y, (bar.w * n as i32 / total as i32).max(12), bar.h), 6, INK);
             }
         }
-        let r = Rect::new(MARGIN, 1250, W - 2 * MARGIN, 110);
-        ui::button(fb, f, r, "Treino de leitura", true);
+        ui::button(fb, f, Self::course_btn(), "Treinos de leitura", true);
+    }
+
+    fn draw_module(&self, fb: &mut Framebuffer, f: &Fonts) {
+        use crate::partitura as p;
+        let m = &p::MODULES[self.module];
+        f.draw(fb, Face::Strong, 26.0, MARGIN, 196, MUTED, &format!("MÓDULO {} DE {}", self.module + 1, p::MODULES.len()));
+        f.draw(fb, Face::Display, 64.0, MARGIN - 2, 264, INK, m.title);
+        let done = p::done();
+        let base = p::first(self.module);
+        let next = (0..m.lessons.len()).find(|k| !done.contains(&(base + k)));
+        for (k, l) in m.lessons.iter().enumerate() {
+            let r = Self::lesson_row(k);
+            let seen = done.contains(&(base + k));
+            let is_next = next == Some(k);
+            ui::card(fb, r, 20, if is_next { INK } else if seen { ui::SURFACE } else { PAPER }, false);
+            let fg = if is_next { PAPER } else { INK };
+            f.draw(fb, Face::Strong, 28.0, r.x + 22, r.y + 44, fg, &crate::apps::fit(f, Face::Strong, 28.0, &format!("{}. {}", k + 1, l.title), r.w - 170));
+            let tag = if is_next { "começar" } else if seen { "vista" } else { "" };
+            if !tag.is_empty() {
+                let w = f.measure(Face::Strong, 22.0, tag);
+                f.draw(fb, Face::Strong, 22.0, r.x + r.w - 24 - w, r.y + 42, if is_next { 0xCC } else { MUTED }, tag);
+            }
+        }
     }
 
     fn draw_lesson(&self, fb: &mut Framebuffer, f: &Fonts) {
-        let l = &crate::partitura::LESSONS[self.lesson];
-        f.draw(fb, Face::Strong, 26.0, MARGIN, 220, MUTED, &format!("LIÇÃO {} DE {}", self.lesson + 1, crate::partitura::LESSONS.len()));
-        f.draw(fb, Face::Display, 56.0, MARGIN, 290, INK, l.title);
-        let mut y = 350;
-        for p in l.text {
-            for line in crate::chat::wrap_words(f, Face::Body, 31.0, p, W - 2 * MARGIN) {
-                f.draw(fb, Face::Body, 31.0, MARGIN, y + 30, INK, &line);
-                y += 42;
-            }
-            y += 16;
+        use crate::partitura as p;
+        let l = p::lesson(self.lesson);
+        let (m, k) = p::locate(self.lesson);
+        f.draw(fb, Face::Strong, 26.0, MARGIN, 210, MUTED, &format!("MÓDULO {} · LIÇÃO {} DE {}", m + 1, k + 1, p::MODULES[m].lessons.len()));
+        let mut tsize = 52.0;
+        while f.measure(Face::Display, tsize, l.title) > W - 2 * MARGIN && tsize > 36.0 {
+            tsize -= 2.0;
         }
-        let demo = Rect::new(MARGIN - 10, y + 20, W - 2 * MARGIN + 20, 360);
-        fb.round_rect(Rect::new(demo.x - 10, demo.y - 10, demo.w + 20, demo.h + 20), 24, ui::SURFACE);
-        crate::partitura::draw_demo(fb, f, demo, &l.demo);
-        if self.lesson > 0 {
+        f.draw(fb, Face::Display, tsize, MARGIN, 276, INK, l.title);
+        // Texto: diminui um pouco se não couber junto com a ilustração.
+        let nav_top = Self::nav(0).y;
+        let mut size = 31.0;
+        let mut lines: Vec<Vec<String>>;
+        loop {
+            lines = l.text.iter().map(|t| crate::chat::wrap_words(f, Face::Body, size, t, W - 2 * MARGIN)).collect();
+            let lh = (size * 1.35) as i32;
+            let h: i32 = lines.iter().map(|ls| ls.len() as i32 * lh + 14).sum();
+            if 316 + h + 40 + 330 <= nav_top - 24 || size <= 26.0 {
+                break;
+            }
+            size -= 1.0;
+        }
+        let lh = (size * 1.35) as i32;
+        let mut y = 316;
+        for ls in &lines {
+            for line in ls {
+                f.draw(fb, Face::Body, size, MARGIN, y + lh - 10, INK, line);
+                y += lh;
+            }
+            y += 14;
+        }
+        let top = y + 24;
+        let h = (nav_top - 34 - top).clamp(300, 380);
+        let demo = Rect::new(MARGIN, top + (nav_top - 34 - top - h).max(0) / 2, W - 2 * MARGIN, h);
+        fb.round_rect(Rect::new(demo.x - 14, demo.y - 10, demo.w + 28, demo.h + 20), 24, ui::SURFACE);
+        p::draw_demo(fb, f, Rect::new(demo.x + 6, demo.y, demo.w - 12, demo.h), &l.demo);
+        if k > 0 {
             ui::button(fb, f, Self::nav(0), "‹ Anterior", false);
         }
-        let last = self.lesson + 1 == crate::partitura::LESSONS.len();
-        ui::button(fb, f, Self::nav(1), if last { "Treinar" } else { "Próxima ›" }, true);
+        ui::button(fb, f, Self::nav(1), "Pergunta ›", true);
+    }
+
+    fn check_next() -> Rect {
+        Rect::new(W - MARGIN - 340, Self::nav(1).y, 340, Self::nav(1).h)
+    }
+
+    fn option_rect(k: usize) -> Rect {
+        Rect::new(MARGIN, 560 + k as i32 * 128, W - 2 * MARGIN, 108)
+    }
+
+    fn draw_check(&self, fb: &mut Framebuffer, f: &Fonts) {
+        use crate::partitura as p;
+        let l = p::lesson(self.lesson);
+        let c = &l.check;
+        f.draw(fb, Face::Strong, 26.0, MARGIN, 210, MUTED, &format!("PERGUNTA · {}", l.title.to_uppercase()));
+        for (k, line) in crate::chat::wrap_words(f, Face::Display, 48.0, c.q, W - 2 * MARGIN).iter().take(4).enumerate() {
+            f.draw(fb, Face::Display, 48.0, MARGIN, 300 + k as i32 * 62, INK, line);
+        }
+        for (k, o) in c.opts.iter().enumerate() {
+            let r = Self::option_rect(k);
+            match self.answered {
+                Some(_) if k == c.ok => ui::button(fb, f, r, o, true),
+                Some(a) if a == k => {
+                    ui::card(fb, r, 40, ui::SURFACE, false);
+                    let t = format!("{o}  (sua resposta)");
+                    let w = f.measure(Face::Strong, 32.0, &t);
+                    f.draw(fb, Face::Strong, 32.0, r.x + (r.w - w) / 2, r.y + r.h / 2 + 12, MUTED, &t);
+                }
+                _ => ui::button(fb, f, r, o, false),
+            }
+        }
+        if let Some(a) = self.answered {
+            let head = if a == c.ok { "Isso! " } else { "Quase. A certa está em preto. " };
+            let msg = format!("{head}{}", c.why);
+            let y0 = Self::option_rect(c.opts.len()).y + 20;
+            for (k, line) in crate::chat::wrap_words(f, Face::Body, 31.0, &msg, W - 2 * MARGIN).iter().take(4).enumerate() {
+                f.draw(fb, if k == 0 { Face::Strong } else { Face::Body }, 31.0, MARGIN, y0 + 30 + k as i32 * 44, INK, line);
+            }
+            let (m, k) = p::locate(self.lesson);
+            let last_in_module = k + 1 == p::MODULES[m].lessons.len();
+            let label = if self.lesson + 1 == p::total() { "Treinos ›" } else if last_in_module { "Fim do módulo ›" } else { "Próxima lição ›" };
+            ui::button(fb, f, Self::check_next(), label, true);
+        } else {
+            let t = "Toque na resposta.";
+            f.draw(fb, Face::Strong, 28.0, MARGIN, Self::option_rect(c.opts.len()).y + 50, MUTED, t);
+        }
+        ui::button(fb, f, Self::nav(0), "‹ Lição", false);
+    }
+
+    /// Depois da pergunta: a próxima lição do módulo, ou de volta à lista ao fechar o módulo.
+    fn advance(&mut self) {
+        use crate::partitura as p;
+        let (m, k) = p::locate(self.lesson);
+        self.answered = None;
+        if self.lesson + 1 == p::total() {
+            self.view = View::Quiz;
+        } else if k + 1 == p::MODULES[m].lessons.len() {
+            self.module = (m + 1).min(p::MODULES.len() - 1);
+            self.lesson += 1;
+            self.view = View::Course;
+        } else {
+            self.lesson += 1;
+            p::mark_done(self.lesson);
+            self.view = View::Lesson;
+        }
     }
 
     fn answer_rect(k: usize) -> Rect {
         let w = (W - 2 * MARGIN - 3 * 14) / 4;
-        Rect::new(MARGIN + (k % 4) as i32 * (w + 14), 1080 + (k / 4) as i32 * 118, w, 100)
+        Rect::new(MARGIN + (k % 4) as i32 * (w + 14), 1100 + (k / 4) as i32 * 118, w, 100)
+    }
+
+    fn mode_rect(k: usize) -> Rect {
+        let w = (W - 2 * MARGIN - 3 * 12) / 4;
+        Rect::new(MARGIN + k as i32 * (w + 12), 236, w, 74)
     }
 
     fn level_rect(k: usize) -> Rect {
-        let w = (W - 2 * MARGIN - 3 * 12) / 4;
-        Rect::new(MARGIN + k as i32 * (w + 12), 250, w, 72)
+        let n = crate::partitura::LEVELS.len() as i32;
+        let w = (W - 2 * MARGIN - (n - 1) * 10) / n;
+        Rect::new(MARGIN + k as i32 * (w + 10), 330, w, 62)
     }
 
     fn draw_quiz(&self, fb: &mut Framebuffer, f: &Fonts) {
+        use crate::partitura as p;
         let q = &self.quiz;
-        f.draw(fb, Face::Strong, 26.0, MARGIN, 220, MUTED, "TREINO DE LEITURA · QUE NOTA É ESTA?");
-        for (k, (name, _)) in crate::partitura::LEVELS.iter().enumerate() {
-            ui::button(fb, f, Self::level_rect(k), name, k == q.level);
+        f.draw(fb, Face::Strong, 26.0, MARGIN, 210, MUTED, &format!("TREINO · {}", p::prompt(q.mode)));
+        for (k, name) in p::MODES.iter().enumerate() {
+            ui::button(fb, f, Self::mode_rect(k), name, k == q.mode);
         }
-        let r = Rect::new(MARGIN, 380, W - 2 * MARGIN, 520);
+        if q.mode == 0 {
+            for (k, (name, _, _)) in p::LEVELS.iter().enumerate() {
+                let r = Self::level_rect(k);
+                if k == q.level {
+                    ui::card(fb, r, 31, ui::SURFACE, false);
+                    fb.round_rect(Rect::new(r.x + 4, r.y + 4, r.w - 8, r.h - 8), 27, ui::SURFACE);
+                    fb.round_outline(Rect::new(r.x + 4, r.y + 4, r.w - 8, r.h - 8), 27, 3, INK, ui::SURFACE);
+                } else {
+                    ui::card(fb, r, 31, PAPER, false);
+                }
+                let mut size = 24.0;
+                while f.measure(Face::Strong, size, name) > r.w - 14 && size > 16.0 {
+                    size -= 1.0;
+                }
+                let w = f.measure(Face::Strong, size, name);
+                f.draw(fb, Face::Strong, size, r.x + (r.w - w) / 2, r.y + r.h / 2 + 9, INK, name);
+            }
+        } else {
+            let t = p::tip(q.mode);
+            f.draw(fb, Face::Body, 27.0, MARGIN, 370, MUTED, &crate::apps::fit(f, Face::Body, 27.0, t, W - 2 * MARGIN));
+        }
+        let r = Rect::new(MARGIN, 420, W - 2 * MARGIN, 520);
         fb.round_rect(r, 30, ui::SURFACE);
-        let (bottom, gap) = crate::partitura::draw_staff(fb, Rect::new(r.x + 30, r.y + 40, r.w - 60, r.h - 80), 40);
-        crate::partitura::draw_note(fb, r.x + r.w / 2 + 40, bottom, gap, q.step, crate::partitura::Fig::Whole);
+        q.q.draw(fb, r);
+        let key = q.q.record_key();
         let msg = match q.wrong {
-            Some(picked) => format!("Era {}. Você tocou {picked}. Sem pressa: olhe a linha ou o espaço.", crate::partitura::note_name(q.step)),
-            None if q.streak > 0 => format!("{} acerto{} seguido{} · recorde {}", q.streak, if q.streak == 1 { "" } else { "s" }, if q.streak == 1 { "" } else { "s" }, crate::partitura::best(q.level).max(q.streak)),
-            None => format!("Recorde neste nível: {} seguidos", crate::partitura::best(q.level)),
+            Some(picked) => format!("Era {}. Você tocou {picked}. {}", q.q.answer(), p::tip(q.mode)),
+            None if q.streak > 0 => format!("{} acerto{} seguido{} · recorde {}", q.streak, if q.streak == 1 { "" } else { "s" }, if q.streak == 1 { "" } else { "s" }, p::best(key).max(q.streak)),
+            None => format!("Recorde aqui: {} seguidos", p::best(key)),
         };
         for (k, l) in crate::chat::wrap_words(f, Face::Strong, 30.0, &msg, W - 2 * MARGIN).iter().take(2).enumerate() {
-            f.draw(fb, Face::Strong, 30.0, MARGIN, 960 + k as i32 * 40, if q.wrong.is_some() { INK } else { MUTED }, l);
+            f.draw(fb, Face::Strong, 30.0, MARGIN, 994 + k as i32 * 40, if q.wrong.is_some() { INK } else { MUTED }, l);
         }
-        for (k, a) in crate::partitura::ANSWERS.iter().enumerate() {
+        for (k, a) in p::answers(q.mode).iter().enumerate() {
             ui::button(fb, f, Self::answer_rect(k), a, false);
         }
+    }
+
+    /// Para os testes de tela: abre uma lição (e a pergunta dela, já respondida).
+    #[cfg(test)]
+    pub fn open_lesson(&mut self, g: usize, check: Option<usize>) {
+        self.lesson = g;
+        self.module = crate::partitura::locate(g).0;
+        self.answered = check;
+        self.view = if check.is_some() { View::Check } else { View::Lesson };
+    }
+
+    #[cfg(test)]
+    pub fn open_quiz(&mut self, mode: usize, level: usize) {
+        self.quiz.mode = mode;
+        self.quiz.level = level;
+        self.quiz.next();
+        self.view = View::Quiz;
     }
 }
 
@@ -792,6 +971,12 @@ impl MiniGame for Violao {
                 let (a, b) = PAIRS[self.pair];
                 format!("Treinando trocas de acorde no violão: {a} e {b}, um minuto. Recorde: {:?}. O Pedro está aprendendo.", best(self.pair))
             }
+            View::Lesson | View::Check => {
+                let l = crate::partitura::lesson(self.lesson);
+                let (m, _) = crate::partitura::locate(self.lesson);
+                format!("Curso de partitura no Kindle, módulo \"{}\", lição \"{}\": {} O Pedro lê cifra e está aprendendo partitura do zero; explique simples, com exemplos no violão.", crate::partitura::MODULES[m].title, l.title, l.text.join(" "))
+            }
+            View::Quiz => format!("Treino de leitura de partitura ({}), no Kindle. O Pedro está aprendendo partitura do zero.", crate::partitura::MODES[self.quiz.mode]),
             _ => "No módulo de violão do Kindle (o Pedro está aprendendo violão).".into(),
         }
     }
@@ -811,7 +996,9 @@ impl MiniGame for Violao {
             View::Dict => self.draw_dict(fb, f),
             View::Practice => self.draw_practice(fb, f),
             View::Course => self.draw_course(fb, f),
+            View::Module => self.draw_module(fb, f),
             View::Lesson => self.draw_lesson(fb, f),
+            View::Check => self.draw_check(fb, f),
             View::Quiz => self.draw_quiz(fb, f),
         }
     }
@@ -820,13 +1007,32 @@ impl MiniGame for Violao {
         match self.view {
             View::Hub => (0..4).map(|k| (700 + k as u32, Self::hub_card(k))).collect(),
             View::Course => {
-                let mut v: Vec<(u32, Rect)> = (0..crate::partitura::LESSONS.len()).map(|k| (800 + k as u32, Self::lesson_row(k))).collect();
-                v.push((790, Rect::new(MARGIN, 1250, W - 2 * MARGIN, 110)));
+                let mut v: Vec<(u32, Rect)> = (0..crate::partitura::MODULES.len()).map(|k| (810 + k as u32, Self::module_row(k))).collect();
+                v.push((790, Self::course_btn()));
                 v
             }
-            View::Lesson => vec![(720, Self::nav(0)), (721, Self::nav(1))],
+            View::Module => (0..crate::partitura::MODULES[self.module].lessons.len()).map(|k| (900 + k as u32, Self::lesson_row(k))).collect(),
+            View::Lesson => {
+                let mut v = vec![(721, Self::nav(1))];
+                if crate::partitura::locate(self.lesson).1 > 0 {
+                    v.push((720, Self::nav(0)));
+                }
+                v
+            }
+            View::Check => {
+                let mut v: Vec<(u32, Rect)> = vec![(720, Self::nav(0))];
+                if self.answered.is_some() {
+                    v.push((721, Self::check_next()));
+                } else {
+                    v.extend((0..crate::partitura::lesson(self.lesson).check.opts.len()).map(|k| (870 + k as u32, Self::option_rect(k))));
+                }
+                v
+            }
             View::Quiz => {
-                let mut v: Vec<(u32, Rect)> = (0..4).map(|k| (850 + k as u32, Self::level_rect(k))).collect();
+                let mut v: Vec<(u32, Rect)> = (0..4).map(|k| (840 + k as u32, Self::mode_rect(k))).collect();
+                if self.quiz.mode == 0 {
+                    v.extend((0..crate::partitura::LEVELS.len()).map(|k| (850 + k as u32, Self::level_rect(k))));
+                }
                 v.extend((0..7).map(|k| (860 + k as u32, Self::answer_rect(k))));
                 v
             }
@@ -862,41 +1068,57 @@ impl MiniGame for Violao {
             }
             (View::Hub, 702) => self.view = View::Dict,
             (View::Hub, 703) => self.view = View::Course,
-            (View::Course, k @ 800..=809) => {
-                self.lesson = (k - 800) as usize;
+            (View::Course, k @ 810..=819) => {
+                self.module = (k - 810) as usize;
+                self.view = View::Module;
+            }
+            (View::Course, 790) => self.view = View::Quiz,
+            (View::Module, k @ 900..=919) => {
+                self.lesson = crate::partitura::first(self.module) + (k - 900) as usize;
                 crate::partitura::mark_done(self.lesson);
                 self.view = View::Lesson;
             }
-            (View::Course, 790) => self.view = View::Quiz,
-            (View::Lesson, 720) => self.lesson = self.lesson.saturating_sub(1),
-            (View::Lesson, 721) => {
-                if self.lesson + 1 < crate::partitura::LESSONS.len() {
-                    self.lesson += 1;
-                    crate::partitura::mark_done(self.lesson);
-                } else {
-                    self.view = View::Quiz;
+            (View::Lesson, 720) => {
+                if crate::partitura::locate(self.lesson).1 > 0 {
+                    self.lesson -= 1;
                 }
             }
-            (View::Quiz, k @ 850..=853) => {
+            (View::Lesson, 721) => {
+                self.answered = None;
+                self.view = View::Check;
+            }
+            (View::Check, 720) => {
+                self.answered = None;
+                self.view = View::Lesson;
+            }
+            (View::Check, k @ 870..=873) => self.answered = Some((k - 870) as usize),
+            (View::Check, 721) => self.advance(),
+            (View::Quiz, k @ 840..=843) => {
+                self.quiz.mode = (k - 840) as usize;
+                self.quiz.streak = 0;
+                self.quiz.wrong = None;
+                self.quiz.next();
+            }
+            (View::Quiz, k @ 850..=855) => {
                 self.quiz.level = (k - 850) as usize;
                 self.quiz.streak = 0;
                 self.quiz.wrong = None;
                 self.quiz.next();
             }
             (View::Quiz, k @ 860..=866) => {
-                let picked = crate::partitura::ANSWERS[(k - 860) as usize];
-                if picked == crate::partitura::note_name(self.quiz.step) {
+                let picked = crate::partitura::answers(self.quiz.mode)[(k - 860) as usize];
+                if (k - 860) as usize == self.quiz.q.correct() {
                     self.quiz.streak += 1;
-                    crate::partitura::save_best(self.quiz.level, self.quiz.streak);
+                    crate::partitura::save_best(self.quiz.q.record_key(), self.quiz.streak);
                     self.quiz.wrong = None;
                     self.quiz.next();
                 } else {
                     self.quiz.wrong = Some(picked);
                     self.quiz.streak = 0;
-                    // A mesma nota fica na tela para olhar de novo.
-                    return Redraw::Part(Rect::new(0, 940, W, 110));
+                    // A mesma pergunta fica na tela para olhar de novo.
+                    return Redraw::Part(Rect::new(0, 950, W, 110));
                 }
-                return Redraw::Part(Rect::new(0, 370, W, 680));
+                return Redraw::Part(Rect::new(0, 410, W, 660));
             }
             (View::List, 720) => self.list_page = self.list_page.saturating_sub(1),
             (View::List, 721) if (self.list_page + 1) * 7 < self.songs.len() => self.list_page += 1,
@@ -965,7 +1187,8 @@ impl MiniGame for Violao {
         self.timer = Timer::Idle;
         self.view = match self.view {
             View::Song => View::List,
-            View::Lesson | View::Quiz => View::Course,
+            View::Lesson | View::Check => View::Module,
+            View::Module | View::Quiz => View::Course,
             _ => View::Hub,
         };
         true

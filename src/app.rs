@@ -3338,6 +3338,44 @@ mod raio_x {
     use super::*;
 
     /// Percorre as telas e salva cada uma (raio-x visual):
+    /// Cada lição do curso de partitura, a pergunta dela respondida e os treinos:
+    /// `VERSO_INK_SHOTS=pasta cargo test curso_de_partitura -- --ignored --test-threads=1`
+    #[test]
+    #[ignore]
+    fn curso_de_partitura() {
+        let home = std::env::temp_dir().join(format!("verso-ink-curso-{}", std::process::id()));
+        std::fs::create_dir_all(home.join("settings")).unwrap();
+        std::env::set_var("VERSO_INK_HOME", &home);
+        let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets");
+        let _ = std::os::unix::fs::symlink(repo.join("sprites"), home.join("sprites"));
+        let out = std::path::PathBuf::from(std::env::var("VERSO_INK_SHOTS").expect("VERSO_INK_SHOTS"));
+        std::fs::create_dir_all(&out).unwrap();
+        let mut app = App::new(Framebuffer::memory());
+        app.mini_back = Screen::Home;
+        for g in 0..crate::partitura::total() {
+            let ok = crate::partitura::lesson(g).check.ok;
+            for (check, tag) in [(None, "licao"), (Some((ok + 1) % crate::partitura::lesson(g).check.opts.len()), "pergunta")] {
+                let mut v = crate::violao::Violao::new();
+                v.open_lesson(g, check);
+                app.mini = Some(Box::new(v));
+                app.go(Screen::Mini);
+                app.render(false);
+                app.fb.save_pgm(&out.join(format!("{g:02}-{tag}.pgm")));
+            }
+        }
+        for mode in 0..4 {
+            for level in 0..if mode == 0 { crate::partitura::LEVELS.len() } else { 1 } {
+                let mut v = crate::violao::Violao::new();
+                v.open_quiz(mode, level);
+                app.mini = Some(Box::new(v));
+                app.go(Screen::Mini);
+                app.render(false);
+                app.fb.save_pgm(&out.join(format!("treino-{mode}-{level}.pgm")));
+            }
+        }
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
     /// `VERSO_INK_SHOTS=pasta cargo test todas_as_telas -- --ignored --test-threads=1`
     #[test]
     #[ignore]
@@ -3470,12 +3508,28 @@ mod raio_x {
         app.mini = Some(Box::new(crate::violao::Violao::new()));
         app.mini_tap(703, 0);
         shot(&mut app, "violao-curso");
-        app.mini_tap(809, 0);
+        app.mini_tap(811, 0);
+        shot(&mut app, "violao-modulo");
+        app.mini_tap(907, 0);
         shot(&mut app, "violao-licao");
         app.mini_tap(721, 0);
+        shot(&mut app, "violao-pergunta");
+        app.mini_tap(870, 0);
+        shot(&mut app, "violao-pergunta-resposta");
+        app.mini_tap(721, 0);
+        shot(&mut app, "violao-licao-seguinte");
+        app.go(Screen::Home);
+        app.mini = Some(Box::new(crate::violao::Violao::new()));
+        app.go(Screen::Mini);
+        app.mini_tap(703, 0);
+        app.mini_tap(790, 0);
         shot(&mut app, "violao-leitura");
         app.mini_tap(863, 0);
         shot(&mut app, "violao-leitura-resposta");
+        for (id, name) in [(841, "violao-treino-ritmo"), (842, "violao-treino-armaduras"), (843, "violao-treino-intervalos")] {
+            app.mini_tap(id, 0);
+            shot(&mut app, name);
+        }
         app.approvals = vec![crate::painel::Approval { id: "abc".into(), project: "verso-ink".into(), tool: "Bash".into(), summary: "cargo build --release && tools/deploy.sh (envia o binário novo ao Kindle pelo túnel)".into(), created: 0 }];
         app.go(Screen::Aprovar);
         shot(&mut app, "painel-aprovar");
