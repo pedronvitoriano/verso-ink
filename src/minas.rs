@@ -20,6 +20,8 @@ pub struct Minas {
     lost: Option<usize>,
     won: bool,
     started: std::time::Instant,
+    /// Tempo da partida, parado na vitória ou na mina (segundos).
+    took: Option<u64>,
     /// Fase em jogo (0 = treino livre).
     fase: u32,
     practice: bool,
@@ -58,6 +60,7 @@ impl Minas {
             lost: None,
             won: false,
             started: std::time::Instant::now(),
+            took: None,
             fase: 0,
             practice: false,
             prog: fases::Progress::load("minas"),
@@ -77,6 +80,7 @@ impl Minas {
         self.lost = None;
         self.won = false;
         self.started = std::time::Instant::now();
+        self.took = None;
         self.fase = 0;
     }
 
@@ -165,18 +169,29 @@ impl Minas {
         }
         if !self.placed {
             self.place(i);
+            // O relógio começa no primeiro toque, não ao abrir o jogo.
+            self.started = std::time::Instant::now();
         }
         if self.mine[i] {
             self.lost = Some(i);
+            self.took = Some(self.started.elapsed().as_secs());
             return Redraw::Full;
         }
         self.reveal(i);
         self.won = (0..self.n * self.n).all(|j| self.mine[j] || self.open[j]);
+        if self.won {
+            self.took = Some(self.started.elapsed().as_secs());
+        }
         if self.won && self.fase > 0 {
             self.prog.record_win(self.fase, fases::today());
         }
         if self.won { Redraw::Full } else { Redraw::Part(Rect::new(0, 170, W, 1448 - 170)) }
     }
+}
+
+/// Tempo em minutos e segundos (ou só segundos, se for menos de um minuto).
+fn mmss(secs: u64) -> String {
+    if secs < 60 { format!("{secs} s") } else { format!("{}:{:02}", secs / 60, secs % 60) }
 }
 
 impl MiniGame for Minas {
@@ -239,9 +254,9 @@ impl MiniGame for Minas {
         }
         let flags = self.flag.iter().filter(|&&x| x).count();
         let status = if self.won {
-            format!("Campo limpo em {} min!", self.started.elapsed().as_secs() / 60 + 1)
+            format!("Campo limpo em {}!", mmss(self.took.unwrap_or(0)))
         } else if self.lost.is_some() {
-            "Boom. Era uma mina.".to_string()
+            format!("Boom. Era uma mina. ({})", mmss(self.took.unwrap_or(0)))
         } else {
             format!("{} minas · {} bandeira{}", self.mines, flags, if flags == 1 { "" } else { "s" })
         };
@@ -289,10 +304,11 @@ impl MiniGame for Minas {
         if self.fase > 0 && self.lost.is_some() {
             return fases::draw_retry(fb, f, self.fase);
         }
-        let mode = if self.flag_mode { "Toque: bandeira" } else { "Toque: abrir" };
+        // A troca: por padrão toque abre e segurar põe bandeira; invertido, o contrário.
+        let mode = if self.flag_mode { "Inverter: toque abre" } else { "Inverter: toque marca" };
         minigame::pill(fb, f, minigame::bottom_button(0, 2), mode, self.flag_mode);
         minigame::pill(fb, f, minigame::bottom_button(1, 2), if self.fase > 0 { "Menu" } else { "Novo jogo" }, false);
-        minigame::hint(fb, f, if self.flag_mode { "Segure uma casa para abrir." } else { "Segure uma casa para pôr ou tirar bandeira." });
+        minigame::hint(fb, f, if self.flag_mode { "Invertido: toque põe bandeira, segurar abre." } else { "Toque abre, segurar põe bandeira." });
     }
 
     fn targets(&self) -> Vec<(u32, Rect)> {
