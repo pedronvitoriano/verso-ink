@@ -137,6 +137,9 @@ pub struct Naval {
     seas: [Sea; 2],
     turn: u8,
     view_own: bool,
+    /// Você acabou de acertar a água (contra a CPU): o mar inimigo fica na tela, com o tiro,
+    /// enquanto a CPU pensa; só depois aparece o seu mar.
+    show_miss: bool,
     msg: String,
     rng: Rng,
     /// Posicionamento manual: próximo navio e orientação.
@@ -159,7 +162,7 @@ impl Naval {
     pub fn new() -> Self {
         let mut rng = Rng::new();
         let seas = [Sea::random(&mut rng), Sea::random(&mut rng)];
-        Naval { mode: Mode::Menu, phase: Phase::Setup(0), seas, turn: 0, view_own: false, msg: String::new(), rng, placing: 0, horiz: true, fase: 0, practice: false, prog: fases::Progress::load("naval") }
+        Naval { mode: Mode::Menu, phase: Phase::Setup(0), seas, turn: 0, view_own: false, show_miss: false, msg: String::new(), rng, placing: 0, horiz: true, fase: 0, practice: false, prog: fases::Progress::load("naval") }
     }
 
     /// Começa uma partida nova mantendo o progresso das fases.
@@ -312,6 +315,7 @@ impl MiniGame for Naval {
             _ => {
                 let status = match self.phase {
                     Phase::Over(p) => if self.name(p) == "Você" { "Você venceu! Frota afundada.".into() } else { format!("{} venceu.", self.name(p)) },
+                    _ if self.show_miss => format!("Água em {}. Agora a CPU atira.", self.msg.trim_start_matches("Você: ").trim_end_matches(" água.").trim_end_matches(':')),
                     _ => {
                         let left = self.seas[1 - self.turn as usize].afloat();
                         format!("{} atira · {} navios inimigos", self.name(self.turn), left)
@@ -324,6 +328,7 @@ impl MiniGame for Naval {
         let (owner, reveal) = match self.phase {
             Phase::Setup(p) => (p as usize, true),
             Phase::Over(_) => (1 - me, true),
+            _ if self.show_miss => (1, false),
             _ if self.view_own => (me, true),
             _ => (1 - me, false),
         };
@@ -477,8 +482,11 @@ impl MiniGame for Naval {
                 Redraw::Part(Rect::new(0, 170, W, 1448 - 170))
             }
             i if (i as usize) < N * N => {
+                let shooter = self.turn;
                 if let Some(t) = self.fire(self.turn, i as usize) {
                     self.msg = format!("{}: {t}", self.name(if matches!(self.phase, Phase::Handoff(_)) { 1 - self.turn } else { self.turn }));
+                    // Errou contra a CPU: segura o mar inimigo na tela para ver a água.
+                    self.show_miss = matches!(self.mode, Mode::Cpu(_)) && shooter == 0 && self.turn == 1 && self.phase == Phase::Play;
                 }
                 if matches!(self.phase, Phase::Handoff(_) | Phase::Over(_)) { Redraw::Full } else { Redraw::Part(Rect::new(0, 170, W, 1448 - 170)) }
             }
@@ -493,6 +501,11 @@ impl MiniGame for Naval {
     /// Caça e alvo: depois de acertar, tenta os vizinhos; no difícil, caça em xadrez (paridade).
     fn cpu_move(&mut self) {
         let Mode::Cpu(level) = self.mode else { return };
+        if self.show_miss {
+            // A água já ficou à vista durante o "pensando"; um respiro a mais e o seu mar aparece.
+            std::thread::sleep(std::time::Duration::from_millis(700));
+            self.show_miss = false;
+        }
         let sea = &self.seas[0];
         let hit_open: Vec<usize> = (0..N * N).filter(|&i| sea.shot[i] && sea.ship[i] != 0 && !sea.sunk(sea.ship[i])).collect();
         let mut cands: Vec<usize> = Vec::new();

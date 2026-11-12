@@ -2304,21 +2304,45 @@ impl App {
         }
         let _ = &claude_comment;
         let random = level != crate::coach::CLAUDE && (self.rng.next() % 1000) as f32 / 1000.0 < crate::coach::random_move_chance(rating);
-        let mv = if random {
-            crate::coach::random_legal(&pos, &mut self.rng)
-        } else {
-            self.engine.as_mut().and_then(|e| {
+        let ask = |app: &mut Self| {
+            app.engine.as_mut().and_then(|e| {
                 e.set_strength(rating);
                 e.play(&moves, crate::coach::think_millis(rating))
             })
         };
+        let mut mv = if random {
+            crate::coach::random_legal(&pos, &mut self.rng)
+        } else {
+            // Motor fechado (o Kindle dormiu, a partida foi retomada): abre antes de pedir.
+            if self.engine.is_none() {
+                self.ensure_engine();
+            }
+            ask(self)
+        };
+        // O motor não respondeu: reabre e tenta de novo; sem ele, um lance válido (nunca trava).
+        if mv.is_none() && !random {
+            log("treinador: o motor não respondeu; reabrindo o Stockfish");
+            self.engine = None;
+            if self.ensure_engine() {
+                mv = ask(self);
+            }
+            if mv.is_none() {
+                log("treinador: sem motor; lance válido qualquer");
+                mv = crate::coach::random_legal(&pos, &mut self.rng);
+            }
+        }
         // Ninguém joga em 0,1 s: o treinador "pensa" ao menos 0,9 a 1,8 s, mais nos níveis altos.
         let min_ms = 900 + (rating as u64).min(3000) / 4 + self.rng.next() % 400;
         let spent = think_start.elapsed().as_millis() as u64;
         if spent < min_ms {
             std::thread::sleep(Duration::from_millis(min_ms - spent));
         }
-        let san = mv.and_then(|m| self.chess.as_mut().and_then(|g| g.play_uci(&m)));
+        let mut san = mv.and_then(|m| self.chess.as_mut().and_then(|g| g.play_uci(&m)));
+        if san.is_none() {
+            // Lance recusado pela posição (não devia acontecer): joga um válido em vez de travar.
+            log("treinador: lance do motor recusado; jogando um lance válido");
+            san = crate::coach::random_legal(&pos, &mut self.rng).and_then(|m| self.chess.as_mut().and_then(|g| g.play_uci(&m)));
+        }
         self.coach_msg = match san {
             Some(s) => format!("{comment} Joguei {s}.").trim().to_string(),
             None => "Não consegui jogar.".into(),
