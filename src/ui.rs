@@ -93,7 +93,7 @@ fn chips_rect() -> Rect {
 }
 /// Bloco 0 (Ler, com a capa) ocupa a largura toda; os outros formam uma grade 2x2 abaixo.
 pub fn tile_rect(i: usize) -> Rect {
-    let (top, gap, wide_h, bottom) = (590, 26, 384, 1300);
+    let (top, gap, wide_h, bottom) = (590, 26, 300, 1300);
     let full_w = 1072 - 2 * MARGIN;
     if i == 0 {
         return Rect::new(MARGIN, top, full_w, wide_h);
@@ -377,10 +377,16 @@ fn draw_daily_art(fb: &mut Framebuffer, st: &Status) {
     crate::sprites::draw(fb, &format!("dia-{k:02}"), Rect::new(1072 - MARGIN - 360, 136, 372, 340));
 }
 
+/// Largura da capa no bloco Ler (proporção de livro, 2:3).
+fn cover_w(r: Rect) -> i32 {
+    (r.h - 50) * 2 / 3
+}
+
 /// Botão "Continuar" dentro do bloco Ler.
 pub fn continue_rect() -> Rect {
     let r = tile_rect(0);
-    Rect::new(r.x + 330, r.y + r.h - 34 - 88, r.w - 330 - 36, 88)
+    let x = r.x + 36 + cover_w(r) + 40;
+    Rect::new(x, r.y + r.h - 30 - 84, r.x + r.w - 36 - x, 84)
 }
 
 /// O que a tela inicial mostra além do fixo: livro em leitura e jogo em andamento.
@@ -401,8 +407,12 @@ fn draw_cover(fb: &mut Framebuffer, f: &Fonts, r: Rect, book: Option<&crate::dat
     fb.round_rect(Rect::new(r.x + SH, r.y + SH, r.w, r.h), 14, SHADOW);
     fb.round_rect(r, 14, INK);
     let inner = Rect::new(r.x + 4, r.y + 4, r.w - 8, r.h - 8);
-    if let Some(img) = book.and_then(|b| crate::reader::cover(&b.path, inner.w as u32, inner.h as u32)) {
-        fb.blit(inner.x, inner.y, inner.w, inner.h, img.as_raw());
+    // Capa de verdade (EPUB, AZW3/MOBI), do mesmo cache da biblioteca.
+    let (w, h) = (inner.w as u32, inner.h as u32);
+    let thumb = book.and_then(|b| crate::covers::cached(&b.path, w, h).unwrap_or_else(|| crate::covers::generate(&b.path, w, h)));
+    if let Some(t) = thumb {
+        fb.fill(inner, PAPER);
+        fb.blit(inner.x + (inner.w - t.w as i32) / 2, inner.y + (inner.h - t.h as i32) / 2, t.w as i32, t.h as i32, &t.px);
         return;
     }
     // Capa desenhada: lombada, título e um ornamento.
@@ -445,32 +455,29 @@ pub fn draw_tile(fb: &mut Framebuffer, f: &Fonts, i: usize, pressed: bool, extra
     let r = if pressed { Rect::new(r0.x, r0.y + SH, r0.w, r0.h) } else { r0 };
     if i == 0 {
         // Ler: a capa é a protagonista; título, progresso e Continuar ao lado.
-        let cover = Rect::new(r.x + 36, r.y + 30, 252, r.h - 60);
+        let cover = Rect::new(r.x + 36, r.y + 25, cover_w(r), r.h - 50);
         draw_cover(fb, f, cover, extra.book.as_ref());
-        let x = r.x + 330;
+        let x = r.x + 36 + cover_w(r) + 40;
         let tag = "Ler";
-        let tw = f.measure(Face::Strong, 26.0, tag) + 32;
-        fb.round_rect(Rect::new(x, r.y + 36, tw, 42), 21, SURFACE);
-        f.draw(fb, Face::Strong, 26.0, x + 16, r.y + 66, INK, tag);
+        let tw = f.measure(Face::Strong, 24.0, tag) + 28;
+        fb.round_rect(Rect::new(x, r.y + 26, tw, 38), 19, SURFACE);
+        f.draw(fb, Face::Strong, 24.0, x + 14, r.y + 53, INK, tag);
         let Some(book) = extra.book.as_ref() else {
-            f.draw(fb, Face::Display, 48.0, x, r.y + 150, INK, "Biblioteca");
-            for (k, l) in crate::chat::wrap_words(f, Face::Body, 28.0, "Seus livros e o Verso One, sem distração.", r.x + r.w - 36 - x).iter().take(2).enumerate() {
-                f.draw(fb, Face::Body, 28.0, x, r.y + 196 + k as i32 * 38, MUTED, l);
+            f.draw(fb, Face::Display, 46.0, x, r.y + 126, INK, "Biblioteca");
+            for (k, l) in crate::chat::wrap_words(f, Face::Body, 27.0, "Seus livros e o Verso One, sem distração.", r.x + r.w - 36 - x).iter().take(2).enumerate() {
+                f.draw(fb, Face::Body, 27.0, x, r.y + 170 + k as i32 * 36, MUTED, l);
             }
             return;
         };
         let (title, author) = split_title(&book.title);
         let room = r.x + r.w - 36 - x;
-        let lines = crate::chat::wrap_words(f, Face::Display, 44.0, title, room);
-        let n = lines.len().min(2) as i32;
-        for (k, l) in lines.iter().take(2).enumerate() {
-            let l = if k == 1 && lines.len() > 2 { crate::apps::fit(f, Face::Display, 44.0, &format!("{l}…"), room) } else { l.clone() };
-            f.draw(fb, Face::Display, 44.0, x, r.y + 128 + k as i32 * 50, INK, &l);
-        }
+        // Título numa linha só (o bloco é baixo); o resto vai para a capa.
+        let n = 1;
+        f.draw(fb, Face::Display, 42.0, x, r.y + 114, INK, &crate::apps::fit(f, Face::Display, 42.0, title, room));
         // Autor e progresso numa linha só, para o botão nunca cobrir nada.
         let pct = book.progress.map(|p| format!("{}% lido", (p * 100.0).round() as i32)).unwrap_or_else(|| "ainda não começou".into());
         let meta = if author.is_empty() { pct } else { format!("{author} · {pct}") };
-        let py = r.y + 128 + n * 50 - 6;
+        let py = r.y + 114 + n * 40;
         f.draw(fb, Face::Body, 27.0, x, py, MUTED, &crate::apps::fit(f, Face::Body, 27.0, &meta, room));
         if let Some(p) = book.progress {
             let bar = Rect::new(x, py + 16, room, 14);

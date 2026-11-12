@@ -228,8 +228,13 @@ fn round_radius(t: Target, r: Rect) -> i32 {
         Target::Tile(_) => 40,
         Target::Row(_) | Target::Bar | Target::Header => 0,
         Target::Item(_) => 0,
-        Target::Night | Target::OpenSettings | Target::Wifi => 32,
-        _ => r.h.min(r.w) / 2,
+        Target::Night => 32,
+        Target::OpenSettings | Target::Wifi => 28,
+        Target::Key(_) => 18,
+        // Cartas (alvo mais alto que largo, como o monte do UNO): canto de carta.
+        Target::Mini(_) if r.h > r.w => r.w / 9,
+        // Botões e cartões do sistema: o mesmo raio do desenho (meia altura, até 40).
+        _ => (r.h.min(r.w) / 2).min(40),
     }
 }
 

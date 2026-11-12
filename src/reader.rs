@@ -325,52 +325,6 @@ fn zip_text(z: &mut zip::ZipArchive<std::fs::File>, name: &str) -> Option<String
     Some(s)
 }
 
-/// Capa do EPUB (imagem do manifesto marcada como capa), em tons de cinza no tamanho pedido.
-/// Fica guardada em data/capas para não abrir o livro de novo a cada desenho.
-pub fn cover(path: &Path, w: u32, h: u32) -> Option<image::GrayImage> {
-    let key = format!("{:x}", path.to_string_lossy().bytes().fold(0xcbf29ce484222325u64, |a, b| (a ^ b as u64).wrapping_mul(0x100000001b3)));
-    let cache = crate::home_dir().join("data/capas").join(format!("{key}-{w}x{h}.png"));
-    if let Ok(img) = image::open(&cache) {
-        return Some(img.to_luma8());
-    }
-    if !path.extension().is_some_and(|e| e.eq_ignore_ascii_case("epub")) {
-        return None;
-    }
-    let mut z = zip::ZipArchive::new(std::fs::File::open(path).ok()?).ok()?;
-    let container = zip_text(&mut z, "META-INF/container.xml")?;
-    let opf_path = container.find("full-path=\"").and_then(|i| attr(&container[i - 1..], "full-path"))?;
-    let opf = zip_text(&mut z, &opf_path)?;
-    let dir = opf_path.rsplit_once('/').map(|(d, _)| d.to_string()).unwrap_or_default();
-    let cover_id = opf.split("<meta ").skip(1).map(|t| &t[..t.find('>').unwrap_or(t.len())]).find(|t| attr(t, "name").as_deref() == Some("cover")).and_then(|t| attr(t, "content"));
-    let mut href = None;
-    for tag in opf.split("<item ").skip(1) {
-        let tag = &tag[..tag.find('>').unwrap_or(tag.len())];
-        let is_img = attr(tag, "media-type").is_some_and(|m| m.starts_with("image/"));
-        let props = attr(tag, "properties").unwrap_or_default();
-        let id = attr(tag, "id").unwrap_or_default();
-        if is_img && (props.contains("cover-image") || cover_id.as_deref() == Some(id.as_str())) {
-            href = attr(tag, "href");
-            break;
-        }
-        if is_img && href.is_none() && id.to_lowercase().contains("cover") {
-            href = attr(tag, "href");
-        }
-    }
-    let name = join(&dir, &href?);
-    let mut bytes = Vec::new();
-    z.by_name(&name).ok()?.read_to_end(&mut bytes).ok()?;
-    let img = image::load_from_memory(&bytes).ok()?.to_luma8();
-    // Preenche o retângulo (corta o excesso), como uma capa na estante.
-    let (iw, ih) = img.dimensions();
-    let s = (w as f32 / iw as f32).max(h as f32 / ih as f32);
-    let (rw, rh) = ((iw as f32 * s).ceil() as u32, (ih as f32 * s).ceil() as u32);
-    let big = image::imageops::resize(&img, rw.max(w), rh.max(h), image::imageops::FilterType::Triangle);
-    let out = image::imageops::crop_imm(&big, (rw.max(w) - w) / 2, (rh.max(h) - h) / 2, w, h).to_image();
-    let _ = std::fs::create_dir_all(cache.parent()?);
-    let _ = out.save(&cache);
-    Some(out)
-}
-
 fn attr(tag: &str, name: &str) -> Option<String> {
     let i = tag.find(&format!("{name}=\""))? + name.len() + 2;
     let j = tag[i..].find('"')? + i;
