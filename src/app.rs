@@ -713,7 +713,7 @@ impl App {
             }
             Screen::ClaudeLive => vec![(Back, ui::back_rect())],
             Screen::ClaudeChat => {
-                let mut v = vec![(Back, ui::back_rect()), (Primary, crate::chat::reply_rect())];
+                let mut v = vec![(Back, ui::back_rect()), (Primary, crate::chat::reply_rect()), (Secondary, crate::chat::chat_attach_rect())];
                 if self.cur_chat.as_ref().is_some_and(|c| !c.files.is_empty()) {
                     v.push((Check, crate::chat::files_rect()));
                 }
@@ -2488,6 +2488,21 @@ impl App {
                 }
             }
             (Screen::ClaudeChat, Primary) => self.start_claude_compose(),
+            (Screen::ClaudeChat, Secondary) => {
+                // Anexar já na conversa: escolhe os arquivos e volta para escrever a resposta.
+                // Prepara a resposta sem desenhar a tela de escrever (evita piscar duas vezes).
+                self.claude_ctx = None;
+                self.claude_about = None;
+                self.claude_sugg = Self::suggestions_for(None, true);
+                self.compose_text.clear();
+                self.compose_hint = "Escreva o que quer saber dos anexos e toque em OK.".into();
+                self.kb_mode = crate::keyboard::Mode::Letters;
+                self.kb_shift = true;
+                self.attach_items = crate::chat::attach_items();
+                self.attach_sel.clear();
+                self.attach_page = 0;
+                self.go(Screen::ClaudeAttach);
+            }
             (Screen::ClaudeChat, Prev) => {
                 self.chat_page = self.chat_page.saturating_sub(1);
                 self.render(true);
@@ -3755,6 +3770,25 @@ mod raio_x {
             shot(&mut app, "claude-pergunta-com-anexo");
             app.attach_sel.clear();
             app.attach_items.clear();
+        }
+        // Conversa já feita com o Claude.
+        {
+            let c = crate::chat::Chat {
+                id: "abcdef0123456789".into(),
+                title: "Como treinar a troca de acordes".into(),
+                messages: vec![
+                    crate::chat::Msg { user: true, text: "Como eu melhoro a troca de Em para G? Ainda travo muito.".into(), context: Some("No módulo de violão do Kindle".into()) },
+                    crate::chat::Msg { user: false, text: "Boa pergunta, Pedro. A troca **Em → G** fica fácil com três passos:\n\n1. Deixe o dedo 2 como **pivô**: ele quase não sai do lugar.\n2. Treine só a mão esquerda, sem tocar, 10 vezes devagar.\n3. Depois use o treino de um minuto e tente bater o recorde.\n\n## Dica extra\nOlhe para onde o dedo vai, não para onde ele está.".into(), context: None },
+                    crate::chat::Msg { user: true, text: "E se eu ainda errar o tempo?".into(), context: None },
+                    crate::chat::Msg { user: false, text: "Diminua o andamento. Conte 1, 2, 3, 4 em voz alta e troque no 4.".into(), context: None },
+                ],
+                files: vec![("plano-de-treino.md".into(), 2300)],
+            };
+            app.chat_pages = crate::chat::paginate(&app.fonts, &c);
+            app.chat_page = 0;
+            app.cur_chat = Some(c);
+            app.go(Screen::ClaudeChat);
+            shot(&mut app, "claude-conversa");
         }
         // Revisão dos destaques com cartões de exemplo (o arquivo do Kindle não existe no PC).
         {

@@ -469,10 +469,12 @@ pub enum Line {
 impl Line {
     fn height(&self) -> i32 {
         match self {
-            Line::Label(_) => 44,
+            // Sua mensagem não tem rótulo (o balão à direita já diz); a do Claude tem o ícone.
+            Line::Label(true) => 20,
+            Line::Label(false) => 62,
             Line::Heading(_) => 62,
             Line::Code(_) => 42,
-            Line::Context(_) => 40,
+            Line::Context(_) => 44,
             Line::Blank => 22,
             _ => 52,
         }
@@ -602,9 +604,10 @@ pub fn paginate(f: &Fonts, chat: &Chat) -> Vec<Vec<Line>> {
         lines.push(Line::Label(m.user));
         if let Some(c) = m.context.as_deref().filter(|c| !c.is_empty()) {
             let first = c.lines().next().unwrap_or("");
-            lines.push(Line::Context(fit(f, Face::Body, 26.0, &format!("Com contexto: {first}"), max_w)));
+            lines.push(Line::Context(fit(f, Face::Body, 24.0, &format!("sobre: {first}"), max_w - 200)));
         }
-        lines.extend(layout_text(f, &m.text, m.user, max_w));
+        // Suas mensagens vão num balão mais estreito, à direita.
+        lines.extend(layout_text(f, &m.text, m.user, if m.user { max_w - 200 } else { max_w }));
         lines.push(Line::Blank);
         lines.push(Line::Blank);
     }
@@ -625,19 +628,36 @@ fn draw_rich(fb: &mut Framebuffer, f: &Fonts, x: i32, y: i32, size: f32, ink: u8
 
 pub fn draw_lines(fb: &mut Framebuffer, f: &Fonts, lines: &[Line], top: i32) {
     let mut y = top;
-    for l in lines {
+    let user_text = |l: &Line| matches!(l, Line::Text(_, true));
+    for (i, l) in lines.iter().enumerate() {
         let h = l.height();
         let base = y + h - 14;
+        // Começo de uma mensagem sua: o balão inteiro, alinhado à direita.
+        if user_text(l) && (i == 0 || !user_text(&lines[i - 1])) {
+            let run: Vec<&Line> = lines[i..].iter().take_while(|x| user_text(x)).collect();
+            let bh: i32 = run.iter().map(|x| x.height()).sum();
+            let bw = run.iter().map(|x| if let Line::Text(t, _) = x { f.measure(Face::Body, BODY, &t.replace("**", "")) } else { 0 }).max().unwrap_or(0) + 64;
+            let r = Rect::new(W - MARGIN - bw + 8, y - 14, bw, bh + 28);
+            fb.round_rect(r, 30, ui::SURFACE);
+        }
         match l {
             Line::Label(user) => {
-                f.draw(fb, Face::Strong, 26.0, MARGIN, base, if *user { MUTED } else { INK }, if *user { "VOCÊ" } else { "CLAUDE" });
+                if !*user {
+                    let d = 46;
+                    let x = if ui::icon_disc(fb, MARGIN - 4, y + 4, d, "claude") { MARGIN + d + 10 } else { MARGIN };
+                    f.draw(fb, Face::Strong, 28.0, x, y + 40, INK, "Claude");
+                }
             }
             Line::Text(t, user) => {
                 if *user {
-                    // Suas mensagens com um fio à esquerda.
-                    fb.fill(Rect::new(MARGIN - 20, y + 6, 5, h - 6), MUTED);
+                    // Linha dentro do balão: começa na borda esquerda dele.
+                    let run_start = (0..=i).rev().take_while(|k| user_text(&lines[*k])).last().unwrap_or(i);
+                    let run: Vec<&Line> = lines[run_start..].iter().take_while(|x| user_text(x)).collect();
+                    let bw = run.iter().map(|x| if let Line::Text(t, _) = x { f.measure(Face::Body, BODY, &t.replace("**", "")) } else { 0 }).max().unwrap_or(0) + 64;
+                    draw_rich(fb, f, W - MARGIN - bw + 8 + 32, base, BODY, INK, t);
+                } else {
+                    draw_rich(fb, f, MARGIN, base, BODY, INK, t);
                 }
-                draw_rich(fb, f, MARGIN, base, BODY, if *user { 0x44 } else { INK }, t);
             }
             Line::Heading(t) => {
                 f.draw(fb, Face::Display, 40.0, MARGIN, base, INK, t);
@@ -656,7 +676,9 @@ pub fn draw_lines(fb: &mut Framebuffer, f: &Fonts, lines: &[Line], top: i32) {
                 f.draw(fb, Face::Body, 28.0, MARGIN + 8, base, INK, t);
             }
             Line::Context(t) => {
-                f.draw(fb, Face::Body, 26.0, MARGIN, base, MUTED, t);
+                // O que foi junto (tela, jogo, livro), em cinza acima do balão.
+                let w = f.measure(Face::Body, 24.0, t);
+                f.draw(fb, Face::Body, 24.0, W - MARGIN - w, base - 8, MUTED, t);
             }
             Line::Blank => {}
         }
@@ -664,14 +686,18 @@ pub fn draw_lines(fb: &mut Framebuffer, f: &Fonts, lines: &[Line], top: i32) {
     }
 }
 
-pub fn reply_rect() -> Rect {
-    Rect::new(MARGIN + 290, 1316, W - 2 * MARGIN - 580, 100)
-}
+// Barra de baixo da conversa: ‹  Responder  + Anexar  ›
 pub fn prev_rect() -> Rect {
-    Rect::new(MARGIN, 1316, 270, 100)
+    Rect::new(MARGIN, 1316, 100, 100)
+}
+pub fn reply_rect() -> Rect {
+    Rect::new(MARGIN + 116, 1316, W - 2 * MARGIN - 116 * 2 - 236, 100)
+}
+pub fn chat_attach_rect() -> Rect {
+    Rect::new(W - MARGIN - 116 - 220, 1316, 220, 100)
 }
 pub fn next_rect() -> Rect {
-    Rect::new(W - MARGIN - 270, 1316, 270, 100)
+    Rect::new(W - MARGIN - 100, 1316, 100, 100)
 }
 /// "Arquivos · N" no alto, quando o Claude criou algum.
 pub fn files_rect() -> Rect {
@@ -688,21 +714,20 @@ pub fn draw_chat(fb: &mut Framebuffer, f: &Fonts, chat: &Chat, pages: &[Vec<Line
     if !chat.files.is_empty() {
         pill(fb, f, files_rect(), &format!("Arquivos · {}", chat.files.len()), false);
     }
-    f.draw(fb, Face::Display, 52.0, MARGIN, 250, INK, &fit(f, Face::Display, 52.0, &chat.title, W - 2 * MARGIN));
-    if pages.len() > 1 {
-        let t = format!("{} de {}", page + 1, pages.len());
-        let w = f.measure(Face::Body, 26.0, &t);
-        f.draw(fb, Face::Body, 26.0, W - MARGIN - w, 300, MUTED, &t);
-    }
+    let kicker = if pages.len() > 1 { format!("CONVERSA · PÁGINA {} DE {}", page + 1, pages.len()) } else { "CONVERSA".to_string() };
+    f.draw(fb, Face::Strong, 24.0, MARGIN, 214, MUTED, &kicker);
+    f.draw(fb, Face::Display, 50.0, MARGIN, 274, INK, &fit(f, Face::Display, 50.0, &chat.title, W - 2 * MARGIN));
+    fb.fill(Rect::new(MARGIN, 300, W - 2 * MARGIN, 2), 0xC8);
     if let Some(lines) = pages.get(page) {
         draw_lines(fb, f, lines, TEXT_TOP);
     }
     if page > 0 {
-        pill(fb, f, prev_rect(), "‹ Antes", false);
+        pill(fb, f, prev_rect(), "‹", false);
     }
     pill(fb, f, reply_rect(), "Responder", true);
+    pill(fb, f, chat_attach_rect(), "+ Anexar", false);
     if page + 1 < pages.len() {
-        pill(fb, f, next_rect(), "Depois ›", false);
+        pill(fb, f, next_rect(), "›", false);
     }
 }
 
