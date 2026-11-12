@@ -595,6 +595,7 @@ pub fn more_row(k: usize) -> Rect {
 fn draw_more(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     fb.fill(fb.screen(), PAPER);
     draw_back(fb, f, false);
+    crate::sprites::draw(fb, "cab-mais", Rect::new(1072 - MARGIN - 330, 96, 340, 290));
     f.draw(fb, Face::Display, 150.0, MARGIN - 6, 370, INK, "Mais");
     f.draw(fb, Face::Strong, 34.0, MARGIN, 446, MUTED, "Módulos extras, e os que vêm por aí");
     for (k, (name, desc, ready)) in COMING.iter().enumerate() {

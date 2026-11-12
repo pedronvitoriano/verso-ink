@@ -347,6 +347,7 @@ pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, chats: &Result<Vec<ChatInfo>, S
     ui::card(fb, r, (r.h / 2).min(40), INK, false);
     let w = f.measure(Face::Strong, 32.0, "+ Nova conversa");
     f.draw(fb, Face::Strong, 32.0, r.x + (r.w - w) / 2, r.y + 54, PAPER, "+ Nova conversa");
+    crate::sprites::draw(fb, "cab-claude", Rect::new(W - MARGIN - 290, 176, 300, 260));
     f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Claude");
     f.draw(fb, Face::Strong, 30.0, MARGIN, 420, MUTED, "CONVERSAS");
     match chats {

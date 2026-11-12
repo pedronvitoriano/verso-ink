@@ -548,6 +548,7 @@ pub fn draw_focus_live(fb: &mut Framebuffer, f: &Fonts, p: Pomodoro, offset_min:
 pub fn draw_focus(fb: &mut Framebuffer, f: &Fonts, p: Pomodoro, done_today: u32, st: &Status) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
+    crate::sprites::draw(fb, "cab-foco", Rect::new(W - MARGIN - 330, 96, 340, 280));
     let today = match done_today {
         0 => "Nenhum foco concluído hoje".to_string(),
         1 => "1 foco concluído hoje".to_string(),
