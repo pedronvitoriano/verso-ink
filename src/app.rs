@@ -3868,6 +3868,15 @@ mod raio_x {
             app.attach_sel.clear();
             app.attach_items.clear();
         }
+        // Lista de conversas do Claude com exemplos.
+        app.chats = Ok(vec![
+            crate::chat::ChatInfo { id: "a".into(), title: "Como treinar a troca de acordes".into(), updated: 0, count: 6, files: 1 },
+            crate::chat::ChatInfo { id: "b".into(), title: "Resumo do capítulo 3 de Perfil de três reis".into(), updated: 0, count: 2, files: 0 },
+            crate::chat::ChatInfo { id: "c".into(), title: "Ideias para o post de amanhã".into(), updated: 0, count: 8, files: 2 },
+        ]);
+        app.screen = Screen::Claude;
+        app.render(false);
+        shot(&mut app, "claude-lista");
         // Conversa já feita com o Claude.
         {
             let c = crate::chat::Chat {

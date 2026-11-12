@@ -391,14 +391,15 @@ pub fn send_with(id: Option<&str>, message: &str, context: Option<&str>, anexos:
 
 // ---------- Telas ----------
 
+/// Barra "Pergunte ao Claude…" (nova conversa), no alto da lista.
 pub fn new_rect() -> Rect {
-    Rect::new(W - MARGIN - 330, 76, 330, 84)
+    Rect::new(MARGIN, 330, W - 2 * MARGIN, 110)
 }
 pub fn chat_row(i: usize) -> Rect {
-    Rect::new(MARGIN - 16, 470 + i as i32 * 124, W - 2 * MARGIN + 32, 120)
+    Rect::new(MARGIN, 520 + i as i32 * 124, W - 2 * MARGIN, 108)
 }
 pub fn live_rect() -> Rect {
-    Rect::new(MARGIN, 1250, W - 2 * MARGIN, 110)
+    Rect::new(MARGIN, 1300, W - 2 * MARGIN, 100)
 }
 pub const ROWS: usize = 6;
 
@@ -407,6 +408,7 @@ fn ago(secs: i64) -> String {
     match now - secs {
         s if s < 3600 => format!("há {} min", (s / 60).max(1)),
         s if s < 86_400 => format!("há {} h", s / 3600),
+        s if s < 2 * 86_400 => "ontem".to_string(),
         s => format!("há {} dias", s / 86_400),
     }
 }
@@ -414,40 +416,46 @@ fn ago(secs: i64) -> String {
 pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, chats: &Result<Vec<ChatInfo>, String>, live: usize) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
+    crate::sprites::draw(fb, "cab-claude", Rect::new(W - MARGIN - 250, 70, 260, 226));
+    f.draw(fb, Face::Display, 120.0, MARGIN - 6, 290, INK, "Claude");
+    // Barra de pergunta: o jeito mais rápido de começar.
     let r = new_rect();
-    ui::card(fb, r, (r.h / 2).min(40), INK, false);
-    let w = f.measure(Face::Strong, 32.0, "+ Nova conversa");
-    f.draw(fb, Face::Strong, 32.0, r.x + (r.w - w) / 2, r.y + 54, PAPER, "+ Nova conversa");
-    crate::sprites::draw(fb, "cab-claude", Rect::new(W - MARGIN - 290, 176, 300, 260));
-    f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Claude");
-    f.draw(fb, Face::Strong, 30.0, MARGIN, 420, MUTED, "CONVERSAS");
+    ui::card(fb, r, r.h / 2, PAPER, false);
+    let d = r.h - 28;
+    let tx = if ui::icon_disc(fb, r.x + 14, r.y + 14, d, "claude") { r.x + 14 + d + 20 } else { r.x + 36 };
+    f.draw(fb, Face::Body, 36.0, tx, r.y + r.h / 2 + 13, MUTED, "Pergunte ao Claude…");
+    let plus = Rect::new(r.x + r.w - 14 - d, r.y + 14, d, d);
+    fb.round_rect(plus, d / 2, INK);
+    let pw = f.measure(Face::Display, 44.0, "+");
+    f.draw(fb, Face::Display, 44.0, plus.x + (d - pw) / 2, plus.y + d / 2 + 16, PAPER, "+");
+    f.draw(fb, Face::Strong, 26.0, MARGIN, 496, MUTED, "CONVERSAS");
     match chats {
         Err(e) => {
             for (k, l) in [e.as_str(), "As conversas ficam na VPS e aparecem aqui."].iter().enumerate() {
-                f.draw(fb, Face::Body, 36.0, MARGIN, 520 + k as i32 * 56, INK, l);
+                f.draw(fb, Face::Body, 32.0, MARGIN, 580 + k as i32 * 48, INK, l);
             }
         }
         Ok(v) if v.is_empty() => {
-            f.draw(fb, Face::Body, 36.0, MARGIN, 520, INK, "Nenhuma conversa ainda. Toque em Nova conversa.");
+            f.draw(fb, Face::Body, 32.0, MARGIN, 580, INK, "Nenhuma conversa ainda. Toque na barra acima.");
         }
         Ok(v) => {
             for (i, c) in v.iter().take(ROWS).enumerate() {
                 let r = chat_row(i);
-                fb.fill(Rect::new(MARGIN, r.y, W - 2 * MARGIN, 3), INK);
-                f.draw(fb, Face::Display, 44.0, MARGIN, r.y + 62, INK, &fit(f, Face::Display, 44.0, &c.title, W - 2 * MARGIN));
+                ui::card(fb, r, 26, PAPER, false);
+                let d = 60;
+                let tx = if ui::icon_disc(fb, r.x + 20, r.y + (r.h - d) / 2, d, "claude") { r.x + 20 + d + 20 } else { r.x + 28 };
+                f.draw(fb, Face::Strong, 32.0, tx, r.y + 48, INK, &fit(f, Face::Strong, 32.0, &c.title, r.x + r.w - 40 - tx));
                 let files = if c.files > 0 { format!(" · {} arquivo{}", c.files, if c.files == 1 { "" } else { "s" }) } else { String::new() };
-                f.draw(fb, Face::Body, 28.0, MARGIN + 2, r.y + 102, MUTED, &format!("{} · {} mensagens{files}", ago(c.updated), c.count));
+                let n = c.count / 2;
+                f.draw(fb, Face::Body, 25.0, tx, r.y + 86, MUTED, &format!("{} · {n} pergunta{}{files}", ago(c.updated), if n == 1 { "" } else { "s" }));
             }
         }
     }
-    for (k, l) in wrap_words(f, Face::Body, 26.0, "Dica: em qualquer tela, deslize de cima para baixo para perguntar ao Claude sobre ela.", W - 2 * MARGIN).iter().take(2).enumerate() {
-        f.draw(fb, Face::Body, 26.0, MARGIN, 1180 + k as i32 * 34, MUTED, l);
-    }
     let lr = live_rect();
-    ui::card(fb, lr, (lr.h / 2).min(40), PAPER, false);
+    ui::card(fb, lr, lr.h / 2, if live > 0 { INK } else { PAPER }, false);
     let label = if live == 0 { "Sessões no PC ao vivo".to_string() } else { format!("Sessões no PC ao vivo · {live}") };
-    let lw = f.measure(Face::Strong, 36.0, &label);
-    f.draw(fb, Face::Strong, 36.0, lr.x + (lr.w - lw) / 2, lr.y + 68, INK, &label);
+    let lw = f.measure(Face::Strong, 34.0, &label);
+    f.draw(fb, Face::Strong, 34.0, lr.x + (lr.w - lw) / 2, lr.y + 62, if live > 0 { PAPER } else { INK }, &label);
 }
 
 /// Uma linha já quebrada para a tela.
