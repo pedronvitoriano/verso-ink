@@ -179,6 +179,10 @@ pub enum EdAction {
     Dismiss(String),
     /// Pede uma edição nova à VPS.
     Regen,
+    /// Abre (ou fecha) as escolhas de um cartão de e-mail.
+    Open(String),
+    /// Ação num e-mail: (id, "rascunho" | "lembrar" | "ignorar").
+    Mail(String, &'static str),
     Prev,
     Next,
 }
@@ -276,10 +280,31 @@ fn kind_icon(kind: &str) -> &'static str {
 }
 
 /// Bloco da edição já medido: o que desenhar e a altura.
+/// Cartão de e-mail aberto (com as três escolhas à vista).
+static OPEN: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+pub fn toggle_open(id: &str) {
+    let mut o = OPEN.lock().unwrap();
+    *o = if o.as_deref() == Some(id) { None } else { Some(id.to_string()) };
+}
+
+/// Ação num e-mail da edição: a VPS registra (e o PC escreve o rascunho, se for o caso).
+pub fn mail_action(id: &str, acao: &str) -> Result<(), String> {
+    chat::call("POST", "/edicao/email", Some(&format!("{{\"id\": {}, \"acao\": {}}}", chat::json_str(id), chat::json_str(acao))), 20)?;
+    drop_item(id);
+    *OPEN.lock().unwrap() = None;
+    Ok(())
+}
+
+/// Some da edição guardada no Kindle até a próxima sincronização.
+fn drop_item(id: &str) {
+    let _ = std::fs::write(data("avisos_dispensados.txt"), format!("{}\n{id}", std::fs::read_to_string(data("avisos_dispensados.txt")).unwrap_or_default()));
+}
+
 enum Block {
     Headline(Vec<String>),
     Head(String, String),
-    Card { kind: String, lines: Vec<String>, action: Option<(String, EdAction)>, critical: bool },
+    Card { kind: String, lines: Vec<String>, action: Option<(String, EdAction)>, critical: bool, choices: Vec<(&'static str, EdAction)> },
     Tail,
 }
 
@@ -292,13 +317,14 @@ fn block_h(b: &Block) -> i32 {
     match b {
         Block::Headline(l) => 60 + l.len() as i32 * 54 + 30,
         Block::Head(..) => 78,
-        Block::Card { lines, .. } => (2 * CARD_PAD + lines.len() as i32 * LINE).max(110) + 16,
+        Block::Card { lines, choices, .. } => (2 * CARD_PAD + lines.len() as i32 * LINE).max(110) + 16 + if choices.is_empty() { 0 } else { 100 },
         Block::Tail => 230,
     }
 }
 
 fn blocks(f: &Fonts, e: &Edition) -> Vec<Block> {
     let gone = dismissed();
+    let open = OPEN.lock().unwrap().clone();
     let mut v = vec![Block::Headline(chat::wrap_words(f, Face::Display, 44.0, &e.headline, W - 2 * MARGIN - 64))];
     for s in &e.sections {
         let items: Vec<&Item> = s.items.iter().filter(|i| !i.id.as_ref().is_some_and(|id| gone.contains(id))).collect();
@@ -307,6 +333,19 @@ fn blocks(f: &Fonts, e: &Edition) -> Vec<Block> {
         }
         v.push(Block::Head(s.title.clone(), s.kind.clone()));
         for it in items {
+            // E-mail: um toque abre as escolhas (rascunho, amanhã, ignorar).
+            if let ("email", Some(id)) = (s.kind.as_str(), &it.id) {
+                let is_open = open.as_deref() == Some(id.as_str());
+                let action = Some((if is_open { "Fechar" } else { "Decidir" }.to_string(), EdAction::Open(id.clone())));
+                let choices = if is_open {
+                    vec![("Rascunho", EdAction::Mail(id.clone(), "rascunho")), ("Amanhã", EdAction::Mail(id.clone(), "lembrar")), ("Ignorar", EdAction::Mail(id.clone(), "ignorar"))]
+                } else {
+                    Vec::new()
+                };
+                let text_w = W - 2 * MARGIN - 2 * CARD_PAD - 84 - 196;
+                v.push(Block::Card { kind: s.kind.clone(), lines: chat::wrap_words(f, Face::Body, 29.0, &it.text, text_w), action, critical: false, choices });
+                continue;
+            }
             let action = match (s.kind.as_str(), &it.url, &it.id) {
                 ("noticia", Some(u), _) => Some(("Ler".to_string(), EdAction::Read(u.clone()))),
                 ("aviso", _, Some(id)) => Some(("Dispensar".to_string(), EdAction::Dismiss(id.clone()))),
@@ -314,7 +353,7 @@ fn blocks(f: &Fonts, e: &Edition) -> Vec<Block> {
                 _ => Some(("Perguntar".to_string(), EdAction::Ask(format!("{}: {}", s.title, it.text)))),
             };
             let text_w = W - 2 * MARGIN - 2 * CARD_PAD - 84 - if action.is_some() { 196 } else { 0 };
-            v.push(Block::Card { kind: s.kind.clone(), lines: chat::wrap_words(f, Face::Body, 29.0, &it.text, text_w), action, critical: it.critical });
+            v.push(Block::Card { kind: s.kind.clone(), lines: chat::wrap_words(f, Face::Body, 29.0, &it.text, text_w), action, critical: it.critical, choices: Vec::new() });
         }
     }
     v.push(Block::Tail);
@@ -392,11 +431,25 @@ pub fn draw_edition(fb: &mut Framebuffer, f: &Fonts, e: Option<&Edition>, page: 
                 let x = if ui::icon_disc(fb, MARGIN, y + 14, d, kind_icon(kind)) { MARGIN + d + 16 } else { MARGIN };
                 f.draw(fb, Face::Display, 38.0, x, y + 54, INK, title);
             }
-            Block::Card { kind, lines, action, critical } => {
-                let r = Rect::new(MARGIN, y, W - 2 * MARGIN, h - 16);
+            Block::Card { kind, lines, action, critical, choices } => {
+                let extra = if choices.is_empty() { 0 } else { 100 };
+                let full = Rect::new(MARGIN, y, W - 2 * MARGIN, h - 16);
+                let r = Rect::new(MARGIN, y, W - 2 * MARGIN, h - 16 - extra);
+                if !choices.is_empty() {
+                    // Cartão aberto: as três escolhas embaixo, dentro do mesmo cartão.
+                    ui::card(fb, full, 26, ui::SURFACE, false);
+                    let bw = (full.w - 2 * CARD_PAD - 2 * 16) / 3;
+                    for (k, (label, act)) in choices.iter().enumerate() {
+                        let br = Rect::new(full.x + CARD_PAD + k as i32 * (bw + 16), full.y + full.h - 96, bw, 72);
+                        ui::button(fb, f, br, label, k == 0);
+                        hits.push((br, act.clone()));
+                    }
+                }
                 let fill = if *critical { INK } else { PAPER };
                 let ink = if *critical { PAPER } else { INK };
-                ui::card(fb, r, 26, fill, false);
+                if choices.is_empty() {
+                    ui::card(fb, r, 26, fill, false);
+                }
                 // Marca do tipo à esquerda (um traço), texto e a ação à direita.
                 fb.round_rect(Rect::new(r.x + CARD_PAD, r.y + CARD_PAD, 6, r.h - 2 * CARD_PAD), 3, if *critical { PAPER } else { 0x88 });
                 let _ = kind;

@@ -12,6 +12,7 @@ Configuração: ~/.config/verso-ink/url e token (os mesmos dos outros scripts).
 """
 import json
 import os
+import re
 import subprocess
 import time
 import urllib.request
@@ -32,6 +33,23 @@ ALLOWED = ",".join([
     "Bash(ls:*)", "Bash(wc:*)", "Bash(node:*)", "Bash(python3:*)",
 ])
 BLOCKED = "Bash(git push:*),Bash(gh:*),Bash(rm -rf:*),Bash(curl:*)"
+
+# Google pelo Claude do PC (conectores do claude.ai): só leitura no resumo; o rascunho de resposta
+# pode criar rascunho, nunca enviar. Tudo o que escreve ou apaga fica bloqueado de vez.
+G = "mcp__claude_ai_Gmail__"
+C = "mcp__claude_ai_Google_Calendar__"
+GOOGLE_READ = [G + t for t in ("search_threads", "get_thread", "get_message", "list_labels", "list_drafts", "get_draft")] + [C + t for t in ("list_calendars", "list_events", "get_event", "search_events")]
+GOOGLE_BLOCKED = ",".join([G + t for t in ("send_message", "reply", "forward", "trash_message", "trash_thread", "delete_draft", "delete_label", "mark_message_spam", "mark_thread_spam", "update_draft", "label_message", "label_thread", "unlabel_message", "unlabel_thread", "update_message_labels", "create_label", "update_label", "untrash_message", "untrash_thread")] + [C + t for t in ("create_event", "delete_event", "update_event", "respond_to_event")])
+DIGEST_HOUR = 4  # a partir das 4h30 de Manaus, uma vez por dia
+MANAUS = -4 * 3600
+
+DIGEST_PROMPT = """Você prepara a parte de agenda e e-mail da Edição da manhã do Pedro, que ele lê no Kindle.
+Hoje é {day} (fuso de Manaus, UTC-4). Use só as ferramentas de leitura do Gmail e do Google Calendar; não crie, envie, apague nem altere nada.
+1. Agenda: os compromissos de HOJE em todas as agendas dele (inclusive o dia inteiro).
+2. E-mails: das últimas 36 horas, só os que pedem algo dele ou importam de verdade (pessoas, trabalho, cobranças, prazos, entrevistas, contas). Ignore promoções, newsletters, notificações automáticas e redes sociais. No máximo 6, do mais importante ao menos.
+Responda SÓ com um JSON válido, sem cercas de código:
+{{"agenda": [{{"hora": "09:00 ou dia todo", "titulo": "...", "onde": "local ou vazio"}}], "emails": [{{"id": "threadId do Gmail", "de": "nome curto de quem mandou", "assunto": "...", "resumo": "o que é e o que pede, até 150 caracteres", "acao": "responder|ler|pagar|decidir|nenhuma"}}]}}
+Português do Brasil, direto. Listas vazias se não houver nada."""
 
 RULES = (
     "Você é um agente rodando sozinho, sem ninguém olhando, a pedido do Pedro pelo Kindle. "
@@ -77,6 +95,45 @@ def api(method, path, body=None, timeout=20):
         return json.loads(r.read() or b"null")
 
 
+def local_day(ts=None):
+    return time.strftime("%Y-%m-%d", time.gmtime((ts or time.time()) + MANAUS))
+
+
+def claude_json(prompt, allowed, blocked, cwd=None, timeout=600):
+    """Roda o claude -p e devolve (texto, ok)."""
+    cmd = [CLAUDE, "-p", prompt, "--output-format", "json", "--allowedTools", ",".join(allowed), "--disallowedTools", blocked]
+    try:
+        r = subprocess.run(cmd, cwd=cwd or str(HOME), capture_output=True, text=True, timeout=timeout)
+        out = json.loads(r.stdout)
+        return out.get("result") or "", not out.get("is_error")
+    except subprocess.TimeoutExpired:
+        return "passou do tempo", False
+    except (json.JSONDecodeError, OSError) as e:
+        return f"falhou: {e}", False
+
+
+def google_digest():
+    """Resumo de agenda e e-mails de hoje, mandado à ponte. Uma vez por dia, a partir das 4h30."""
+    day = local_day()
+    hour = time.gmtime(time.time() + MANAUS)
+    if (hour.tm_hour, hour.tm_min) < (DIGEST_HOUR, 30) or conf("google_dia") == day:
+        return
+    text, ok = claude_json(DIGEST_PROMPT.format(day=day), GOOGLE_READ, GOOGLE_BLOCKED + "," + BLOCKED)
+    m = re.search(r"\{.*\}", text, re.S)
+    try:
+        data = json.loads(m.group(0)) if ok and m else None
+    except json.JSONDecodeError:
+        data = None
+    if not isinstance(data, dict):
+        print(f"missoes: resumo do Google falhou: {text[:200]}", flush=True)
+        if "limit" in text.lower():
+            return  # tenta de novo na próxima volta
+        data = {"agenda": [], "emails": [], "erro": "não consegui ler o Google hoje"}
+    data["day"] = day
+    api("POST", "/google", data, timeout=30)
+    (CONF / "google_dia").write_text(day)
+
+
 def projects():
     out = []
     for root in ROOTS:
@@ -96,6 +153,8 @@ def cwd_for(m, known):
 
 
 def run(m, known):
+    if m.get("kind") == "rascunho":
+        return draft(m)
     cwd = cwd_for(m, known)
     prompt = f"{RULES}\n\nMissão: {m['title']}\n{m['prompt']}"
     cmd = [CLAUDE, "-p", prompt, "--output-format", "json", "--permission-mode", "acceptEdits", "--allowedTools", ALLOWED, "--disallowedTools", BLOCKED]
@@ -116,6 +175,22 @@ def run(m, known):
     return {"status": "pronta" if ok else "falhou", "result": text[:20000], "minutes": mins}
 
 
+def draft(m):
+    """Rascunho de resposta a um e-mail: fica nos rascunhos do Gmail, nunca é enviado."""
+    t0 = time.time()
+    prompt = (
+        f"{RULES}\n\nMissão: escrever um rascunho de resposta ao e-mail da conversa do Gmail com threadId {m.get('thread', '')} "
+        f"({m.get('title', '')}). Leia a conversa (get_thread), escreva uma resposta curta, educada e direta no tom do Pedro, em português "
+        "(ou na língua do e-mail), e crie-a como RASCUNHO na mesma conversa com create_draft. NÃO envie. "
+        "Se faltar uma informação que só o Pedro tem, deixe um [colchete] no lugar. No relatório: para quem é, o assunto e o texto do rascunho."
+    )
+    text, ok = claude_json(prompt, GOOGLE_READ + [G + "create_draft"], GOOGLE_BLOCKED + "," + BLOCKED, timeout=600)
+    mins = max(1, round((time.time() - t0) / 60))
+    if not ok and "limit" in text.lower():
+        return {"status": "limite", "result": text[:500], "minutes": mins}
+    return {"status": "pronta" if ok else "falhou", "result": text[:20000] or "(sem relatório)", "minutes": mins}
+
+
 def main():
     known = projects()
     last_projects = 0
@@ -125,6 +200,7 @@ def main():
                 known = projects()
                 api("POST", "/missoes/projetos", {"projects": [p["name"] for p in known]})
                 last_projects = time.time()
+            google_digest()
             m = api("POST", "/missoes/proxima", {})
             if m and m.get("id"):
                 res = run(m, known)

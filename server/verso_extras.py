@@ -356,7 +356,7 @@ class Extras:
                 r["status"] = "rodando"
                 r["started"] = int(now)
                 self.write(self.base / "missoes" / f"{r['id']}.json", r)
-                return {"id": r["id"], "title": r["title"], "prompt": r["prompt"], "project": r["project"]}
+                return {k: r.get(k, "") for k in ("id", "title", "prompt", "project", "kind", "thread")}
         return {}
 
     def finish_mission(self, mid, res):
@@ -386,6 +386,95 @@ class Extras:
 
     def set_projects(self, names):
         self.write(self.base / "projetos.json", {"projects": [str(n)[:80] for n in names][:80], "time": int(time.time())})
+
+    # ---------- Agenda e e-mail (o Claude do PC lê o Google e manda o resumo) ----------
+
+    def set_google(self, req):
+        day = str(req.get("day", ""))[:10]
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", day):
+            return None, "dia inválido"
+        clip = lambda v, n: str(v or "").strip()[:n]
+        agenda = [{"hora": clip(a.get("hora"), 20), "titulo": clip(a.get("titulo"), 120), "onde": clip(a.get("onde"), 80)} for a in req.get("agenda", []) if isinstance(a, dict) and a.get("titulo")][:12]
+        emails = [{"id": clip(e.get("id"), 40), "de": clip(e.get("de"), 60), "assunto": clip(e.get("assunto"), 120), "resumo": clip(e.get("resumo"), 200), "acao": clip(e.get("acao"), 20)} for e in req.get("emails", []) if isinstance(e, dict) and e.get("id")][:8]
+        g = {"day": day, "agenda": agenda, "emails": emails, "erro": clip(req.get("erro"), 120), "time": int(time.time())}
+        self.write(self.base / "google.json", g)
+        # A edição de hoje já saiu? Encaixa a agenda e os e-mails nela.
+        ed = self.read(self.base / "edicoes" / f"{day}.json")
+        if ed:
+            ed["secoes"] = self.with_google(ed.get("secoes", []), day)
+            self.write(self.base / "edicoes" / f"{day}.json", ed)
+        return {"ok": True}, None
+
+    def google_sections(self, day):
+        g = self.read(self.base / "google.json", {})
+        gone = set(self.read(self.base / "emails_feitos.json", {}).get("ids", []))
+        secs = []
+        if g.get("day") == day and g.get("agenda"):
+            items = []
+            for a in g["agenda"]:
+                onde = f" ({a['onde']})" if a.get("onde") else ""
+                items.append({"texto": f"{a['hora']} · {a['titulo']}{onde}" if a.get("hora") else a["titulo"] + onde})
+            secs.append({"titulo": "Agenda de hoje", "tipo": "agenda", "itens": items})
+        mails = []
+        # Lembretes de e-mails adiados para hoje (ou antes) vêm primeiro.
+        for r in self.read(self.base / "lembretes.json", {}).get("itens", []):
+            if r.get("due", "") <= day and r["id"] not in gone:
+                mails.append({"texto": "Lembrete: " + r["texto"], "id": "mail:" + r["id"], "thread": r["id"]})
+        if g.get("day") == day:
+            for e in g.get("emails", []):
+                if e["id"] in gone or any(m["thread"] == e["id"] for m in mails):
+                    continue
+                mails.append({"texto": f"{e['de']}: {e['assunto']}. {e['resumo']}", "id": "mail:" + e["id"], "thread": e["id"]})
+        if mails:
+            secs.append({"titulo": "E-mails que importam", "tipo": "email", "itens": mails})
+        return secs
+
+    def with_google(self, secs, day):
+        """Troca as seções de agenda e e-mail pelas do Google, logo depois das dos agentes e avisos."""
+        rest = [x for x in secs if x.get("tipo") not in ("agenda", "email")]
+        at = 0
+        while at < len(rest) and rest[at].get("tipo") in ("aviso", "agente"):
+            at += 1
+        return rest[:at] + self.google_sections(day) + rest[at:]
+
+    def email_action(self, req):
+        """Ações do cartão de e-mail na edição: rascunho (o PC escreve), amanhã (lembrete) ou ignorar."""
+        tid = str(req.get("id", "")).removeprefix("mail:")[:40]
+        acao = str(req.get("acao", ""))
+        if not re.match(r"^[A-Za-z0-9_-]{4,40}$", tid) or acao not in ("rascunho", "lembrar", "ignorar"):
+            return None, "pedido inválido"
+        day = time.strftime("%Y-%m-%d", time.gmtime(time.time() + MANAUS))
+        g = self.read(self.base / "google.json", {})
+        mail = next((e for e in g.get("emails", []) if e["id"] == tid), None)
+        rems = self.read(self.base / "lembretes.json", {"itens": []})
+        rem = next((r for r in rems["itens"] if r["id"] == tid), None)
+        texto = f"{mail['de']}: {mail['assunto']}" if mail else (rem["texto"] if rem else "e-mail")
+        out = {"ok": True}
+        if acao == "rascunho":
+            now = int(time.time())
+            mid = new_id()
+            rec = {"id": mid, "template": "rascunho", "kind": "rascunho", "thread": tid, "title": f"Rascunho para {texto[:60]}", "prompt": "", "project": "", "status": "na fila", "created": now, "not_before": now, "when": "agora"}
+            self.write(self.base / "missoes" / f"{mid}.json", rec)
+            out["mission"] = mid
+        elif acao == "lembrar":
+            tomorrow = time.strftime("%Y-%m-%d", time.gmtime(time.time() + MANAUS + 86400))
+            rems["itens"] = [r for r in rems["itens"] if r["id"] != tid] + [{"id": tid, "texto": texto, "due": tomorrow}]
+            self.write(self.base / "lembretes.json", rems)
+        if acao != "lembrar":
+            rems["itens"] = [r for r in rems["itens"] if r["id"] != tid]
+            self.write(self.base / "lembretes.json", rems)
+        # Sai da edição de hoje (o lembrete volta amanhã pela lista de lembretes).
+        feitos = self.read(self.base / "emails_feitos.json", {"ids": []})
+        if acao != "lembrar":
+            feitos["ids"] = (feitos["ids"] + [tid])[-300:]
+            self.write(self.base / "emails_feitos.json", feitos)
+        ed = self.read(self.base / "edicoes" / f"{day}.json")
+        if ed:
+            for sec in ed.get("secoes", []):
+                sec["itens"] = [i for i in sec.get("itens", []) if i.get("id") != "mail:" + tid]
+            ed["secoes"] = [x for x in ed["secoes"] if x.get("itens")]
+            self.write(self.base / "edicoes" / f"{day}.json", ed)
+        return out, None
 
     # ---------- Edição da manhã ----------
 
@@ -425,15 +514,17 @@ class Extras:
         prompt = f"""Monte a Edição da manhã do Pedro para hoje ({day}), que ele lê no Kindle (e-ink) ao acordar e onde cada item vira um cartão com uma ação.
 Responda SÓ com um JSON válido, sem cercas de código, neste formato:
 {{"manchete": "uma frase que resume o dia", "secoes": [{{"titulo": "...", "tipo": "agente|agenda|email|tarefa|noticia", "itens": [{{"texto": "...", "url": "https://... (só notícias)", "projeto": "nome (só agentes)"}}]}}]}}
-Seções, nesta ordem, só as que tiverem conteúdo (NÃO inclua avisos; o sistema põe sozinho):
+Seções, nesta ordem, só as que tiverem conteúdo (NÃO inclua avisos, agenda nem e-mails; o sistema põe sozinho):
 1. "Os agentes durante a noite" (tipo agente) — um item por sessão: o que fez, se terminou, onde parou e se precisa dele. Linguagem comum.
-2. "Agenda de hoje" (tipo agenda) e "E-mails que importam" (tipo email) — use as ferramentas do Google se estiverem disponíveis; se não estiverem, omita.
-3. "Brain e tarefas" (tipo tarefa) — no máximo 5 pendências do resumo do Brain abaixo.
-4. "Na sua área" (tipo noticia) — 3 a 5 notícias de hoje sobre IA, desenvolvimento de software e tecnologia no Brasil, pesquisadas na web; texto com uma linha de resumo e a fonte entre parênteses; "url" com o link da matéria.
+2. "Brain e tarefas" (tipo tarefa) — no máximo 5 pendências do resumo do Brain abaixo.
+3. "Na sua área" (tipo noticia) — 3 a 5 notícias de hoje sobre IA, desenvolvimento de software e tecnologia no Brasil, pesquisadas na web; texto com uma linha de resumo e a fonte entre parênteses; "url" com o link da matéria.
 Cada "texto" tem no máximo 200 caracteres. Português do Brasil, direto, sem emoji.
 
 [Avisos ativos, para a manchete levar em conta]
 {chr(10).join(notices) or "nenhum"}
+
+[Agenda e e-mails de hoje, só para a manchete levar em conta]
+{json.dumps(self.read(self.base / "google.json", {}), ensure_ascii=False)[:3000] if self.read(self.base / "google.json", {}).get("day") == day else "ainda não chegaram"}
 
 [Sessões dos agentes nas últimas 14 horas]
 {chr(10).join(agents) or "nenhuma sessão registrada"}
@@ -464,7 +555,7 @@ Cada "texto" tem no máximo 200 caracteres. Português do Brasil, direto, sem em
         avisos = [{"texto": a["text"], "id": a["id"], "critico": a["level"] == "critico"} for a in self.notices()]
         if avisos:
             secs.insert(0, {"titulo": "Avisos", "tipo": "aviso", "itens": avisos})
-        ed["secoes"] = secs
+        ed["secoes"] = self.with_google(secs, day)
         ed["dia"] = day
         ed["gerada"] = now
         self.write(self.base / "edicoes" / f"{day}.json", ed)
