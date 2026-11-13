@@ -51,10 +51,10 @@ impl Case {
         Self { people, places, objects, motives, time: times[0].clone(), culprit, object, motive, object_place, motive_place }
     }
     fn testimony(&self, i: usize) -> String {
-        format!("{} diz que estava no local {} às {}.", self.people[i].name, self.places[i], self.time)
+        format!("{} diz que estava {} às {}.", self.people[i].name, em(&self.places[i]), self.time)
     }
     fn evidence(&self, i: usize) -> String {
-        let mut s = format!("O registro do local {} {} a presença de {} às {}.", self.places[i], if i == self.culprit { "desmente" } else { "confirma" }, self.people[i].name, self.time);
+        let mut s = format!("O registro {} {} a presença de {} às {}.", de(&self.places[i]), if i == self.culprit { "desmente" } else { "confirma" }, self.people[i].name, self.time);
         if i == self.object_place { s.push_str(&format!(" O objeto usado foi {}.", self.objects[self.object])); }
         if i == self.motive_place { s.push_str(&format!(" Uma carta revela o motivo: {}.", self.motives[self.motive])); }
         s
@@ -69,6 +69,25 @@ pub struct Detetive {
     people_seen: u32, places_seen: u32, hours_used: u32, detail: String, note_page: usize,
     accused: usize, object: usize, motive: usize, result: u32,
     streak: u32, best: u32, last_win: i64,
+    /// Quem está falando no depoimento aberto (para o retrato).
+    face: Option<usize>,
+}
+
+/// Retrato do suspeito (assets/sprites/suspeito-<nome>.png), se houver.
+fn portrait(fb: &mut Framebuffer, name: &str, r: Rect) -> bool {
+    crate::sprites::draw(fb, &format!("suspeito-{}", crate::apps::fold(name)), r)
+}
+
+/// Lugar feminino? (para "na Biblioteca" / "no Jardim").
+fn feminine(place: &str) -> bool {
+    let p = crate::apps::fold(place);
+    ["biblioteca", "cozinha", "garagem", "varanda", "sala", "adega", "estufa", "capela", "despensa", "lavanderia"].iter().any(|f| p.starts_with(f)) || (p.ends_with('a') && !p.ends_with("ema"))
+}
+fn em(place: &str) -> String {
+    format!("{} {place}", if feminine(place) { "na" } else { "no" })
+}
+fn de(place: &str) -> String {
+    format!("{} {place}", if feminine(place) { "da" } else { "do" })
 }
 
 fn spend_hour(used: &mut u32) -> bool {
@@ -86,7 +105,7 @@ fn path() -> std::path::PathBuf {
 impl Detetive {
     pub fn new() -> Self {
         let day = crate::fases::today();
-        let mut g = Self { case: Case::generate(day), day, page: Page::Menu, return_page: Page::People, people_seen: 0, places_seen: 0, hours_used: 0, detail: String::new(), note_page: 0, accused: 0, object: 0, motive: 0, result: 0, streak: 0, best: 0, last_win: i64::MIN };
+        let mut g = Self { case: Case::generate(day), day, page: Page::Menu, return_page: Page::People, people_seen: 0, places_seen: 0, hours_used: 0, detail: String::new(), note_page: 0, accused: 0, object: 0, motive: 0, result: 0, streak: 0, best: 0, last_win: i64::MIN, face: None };
         let data = std::fs::read_to_string(path()).unwrap_or_default();
         let mut saved_day = i64::MIN;
         for line in data.lines() {
@@ -137,6 +156,7 @@ impl Detetive {
         let bits = if person { &mut self.people_seen } else { &mut self.places_seen };
         *bits |= mask;
         self.detail = if person { self.case.testimony(i) } else { self.case.evidence(i) };
+        self.face = person.then_some(i);
         self.return_page = if person { Page::People } else { Page::Places };
         self.page = Page::Detail;
         self.store();
@@ -211,8 +231,17 @@ impl MiniGame for Detetive {
         f.draw(fb, Face::Display, 52.0, MARGIN, 320, INK, title);
         match self.page {
             Page::People | Page::Places | Page::AccusePerson | Page::AccuseObject | Page::AccuseMotive => {
+                let people = matches!(self.page, Page::People | Page::AccusePerson);
                 for (i, label) in self.list_labels().iter().enumerate() {
-                    minigame::pill(fb, f, Self::row(i), &crate::apps::fit(f, Face::Strong, 31.0, label, W - 2 * MARGIN - 60), false);
+                    let r = Self::row(i);
+                    minigame::pill(fb, f, r, &crate::apps::fit(f, Face::Strong, 31.0, label, W - 2 * MARGIN - 60), false);
+                    // Pessoas: o rosto à esquerda do nome.
+                    if people {
+                        if let Some(p) = self.case.people.get(i) {
+                            let side = r.h - 16;
+                            portrait(fb, &p.name, Rect::new(r.x + 14, r.y + 6, side, side));
+                        }
+                    }
                 }
                 if self.page == Page::People || self.page == Page::Places {
                     let hint = if self.hours() == 0 { "Sem horas: consulte o caderno ou acuse." } else if self.page == Page::People { "Cada interrogatório custa 1 hora." } else { "Cada visita custa 1 hora." };
@@ -223,6 +252,10 @@ impl MiniGame for Detetive {
                 } else { minigame::pill(fb, f, Self::button(0, 1), "Voltar", false); }
             }
             Page::Detail => {
+                // Depoimento: o rosto de quem fala, grande, embaixo do texto.
+                if let Some(p) = self.face.and_then(|i| self.case.people.get(i)) {
+                    portrait(fb, &p.name, Rect::new((W - 360) / 2, 850, 360, 360));
+                }
                 ui::card(fb, Rect::new(MARGIN, 370, W - 2 * MARGIN, 430), 28, PAPER, false);
                 Self::paragraph(fb, f, &self.detail, 435, 36.0);
                 f.draw(fb, Face::Body, 30.0, MARGIN + 32, 740, MUTED, "As descobertas ficam no caderno.");
@@ -241,7 +274,8 @@ impl MiniGame for Detetive {
             }
             Page::Result => {
                 ui::card(fb, Rect::new(MARGIN, 370, W - 2 * MARGIN, 790), 28, PAPER, false);
-                let text = format!("{} mentiu: disse que estava no local {} às {}, mas o registro desmente o álibi. No local {}, a pista revelou que o objeto usado foi {}. No local {}, uma carta revelou o motivo: {}.", self.case.people[self.case.culprit].name, self.case.places[self.case.culprit], self.case.time, self.case.places[self.case.object_place], self.case.objects[self.case.object], self.case.places[self.case.motive_place], self.case.motives[self.case.motive]);
+                let cap = |t: String| { let mut c = t.chars(); c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default() };
+                let text = format!("{} mentiu: disse que estava {} às {}, mas o registro desmente o álibi. {}, a pista revelou que o objeto usado foi {}. {}, uma carta revelou o motivo: {}.", self.case.people[self.case.culprit].name, em(&self.case.places[self.case.culprit]), self.case.time, cap(em(&self.case.places[self.case.object_place])), self.case.objects[self.case.object], cap(em(&self.case.places[self.case.motive_place])), self.case.motives[self.case.motive]);
                 Self::paragraph(fb, f, &text, 440, 32.0);
                 let answer = format!("Sua acusação: {}, {} e {}.", self.case.people[self.accused].name, self.case.objects[self.object], self.case.motives[self.motive]);
                 Self::paragraph(fb, f, &answer, 950, 30.0);

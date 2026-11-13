@@ -145,9 +145,34 @@ fn grade_ok(k: u32, kind: Kind, g: u8) -> bool {
     }
 }
 
+/// Banco de grades grandes já com solução única e nota de dificuldade: "n nota reinos solução".
+const BANK: &str = include_str!("../assets/coroas-banco.txt");
+
+fn from_bank(k: u32, n: usize, kind: Kind) -> Option<(Vec<u8>, Vec<usize>)> {
+    let fits: Vec<(Vec<u8>, Vec<usize>)> = BANK
+        .lines()
+        .filter_map(|l| {
+            let mut it = l.split_whitespace();
+            let (bn, g, reg, sol) = (it.next()?.parse::<usize>().ok()?, it.next()?.parse::<u8>().ok()?, it.next()?, it.next()?);
+            (bn == n && grade_ok(k, kind, g)).then(|| (dec_reg(reg), dec_sol(sol)))
+        })
+        .filter(|(reg, sol)| reg.len() == n * n && sol.len() == n)
+        .collect();
+    if fits.is_empty() {
+        return None;
+    }
+    // A mesma fase sempre dá a mesma grade; fases diferentes, grades diferentes.
+    let i = (k as u64).wrapping_mul(2654435761) as usize % fits.len();
+    Some(fits[i].clone())
+}
+
 /// Gera a grade da fase `k` dentro de `budget`; se não achar a dificuldade ideal, fica com a mais próxima.
 pub fn generate_fase(k: u32, budget: std::time::Duration) -> (Vec<u8>, Vec<usize>) {
     let (n, kind) = fase_spec(k);
+    // Tabuleiros grandes vêm do banco feito no PC (no Kindle, criar um 12×12 levava até 9 s).
+    if let Some(p) = from_bank(k, n, kind) {
+        return p;
+    }
     let t = std::time::Instant::now();
     let mut best: Option<(i32, Vec<u8>, Vec<usize>)> = None;
     for _ in 0..300 {
@@ -1259,6 +1284,46 @@ mod tempo {
                 super::generate(n);
             }
             eprintln!("{n}x{n}: {:?} por grade", t.elapsed() / 5);
+        }
+    }
+}
+
+#[cfg(test)]
+mod banco {
+    use super::*;
+
+    /// Gera o banco no PC: `cargo test --release gerar_banco_coroas -- --ignored`.
+    #[test]
+    #[ignore]
+    fn gerar_banco_coroas() {
+        let mut out = String::new();
+        for n in 9..=12usize {
+            let mut per: std::collections::HashMap<u8, usize> = Default::default();
+            let t = std::time::Instant::now();
+            while t.elapsed() < std::time::Duration::from_secs(70) {
+                let (reg, sol) = generate(n);
+                let g = crate::coroas_logic::grade(n, &reg);
+                let c = per.entry(g).or_default();
+                if *c >= 30 {
+                    continue;
+                }
+                *c += 1;
+                out.push_str(&format!("{n} {g} {} {}\n", enc_reg(&reg), enc_sol(&sol)));
+            }
+            eprintln!("n={n}: {per:?}");
+        }
+        std::fs::write(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/coroas-banco.txt"), out).unwrap();
+    }
+
+    /// Cada grade do banco é válida: reinos conexos, uma coroa por linha, coluna e reino, solução única.
+    #[test]
+    fn banco_valido() {
+        for l in BANK.lines() {
+            let v: Vec<&str> = l.split_whitespace().collect();
+            let n: usize = v[0].parse().unwrap();
+            let (reg, sol) = (dec_reg(v[2]), dec_sol(v[3]));
+            assert_eq!(reg.len(), n * n);
+            assert!(other_solution(n, &reg, &sol).is_none(), "grade do banco com outra solução");
         }
     }
 }
