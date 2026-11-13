@@ -54,6 +54,7 @@ mod organizacao;
 mod calculadora;
 mod lembretes;
 mod lembretes_ui;
+mod caderno;
 mod claude_ui;
 mod clock;
 mod update;

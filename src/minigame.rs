@@ -19,6 +19,8 @@ pub enum Redraw {
 
 pub trait MiniGame {
     fn draw(&self, fb: &mut Framebuffer, f: &Fonts);
+    /// Toques contínuos para módulos que desenham diretamente com o dedo.
+    fn touch(&mut self, _touch: crate::input::Touch) -> Option<Redraw> { None }
     /// Alvos de toque (id do jogo, retângulo). O botão Início é do app.
     fn targets(&self) -> Vec<(u32, Rect)>;
     fn tap(&mut self, id: u32, x: i32, y: i32) -> Redraw;

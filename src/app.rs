@@ -1485,7 +1485,7 @@ impl App {
         };
         let what = match self.screen {
             Screen::Mini => {
-                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else if self.mini_back == Screen::ChessHub { "Puzzle do dia".to_string() } else if self.mini_back == Screen::Home { "Aprender".to_string() } else if self.mini_slot == Some(106) { "Diário".to_string() } else if self.mini_slot == Some(107) { "Hábitos e tarefas".to_string() } else if self.mini_slot == Some(108) { "Calculadora".to_string() } else if self.mini_slot == Some(109) { "Lembretes".to_string() } else { "Receitas".to_string() }
+                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else if self.mini_back == Screen::ChessHub { "Puzzle do dia".to_string() } else if self.mini_back == Screen::Home { "Aprender".to_string() } else if self.mini_slot == Some(106) { "Diário".to_string() } else if self.mini_slot == Some(107) { "Hábitos e tarefas".to_string() } else if self.mini_slot == Some(108) { "Calculadora".to_string() } else if self.mini_slot == Some(109) { "Lembretes".to_string() } else if self.mini_slot == Some(110) { "Caderno".to_string() } else { "Receitas".to_string() }
             }
             Screen::Sudoku | Screen::SudokuWon => "Sudoku".into(),
             Screen::Chess | Screen::ChessEnd | Screen::ChessReview => "Xadrez".into(),
@@ -1540,7 +1540,7 @@ impl App {
         match self.screen {
             Screen::Mini => {
                 let name = apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("jogo");
-                let name = if self.mini_back == Screen::Games { name } else if self.mini_back == Screen::ChessHub { "Puzzle do dia" } else if self.mini_back == Screen::Home { "Aprender" } else if self.mini_slot == Some(106) { "Diário" } else if self.mini_slot == Some(107) { "Hábitos e tarefas" } else if self.mini_slot == Some(108) { "Calculadora" } else if self.mini_slot == Some(109) { "Lembretes" } else { "Receitas" };
+                let name = if self.mini_back == Screen::Games { name } else if self.mini_back == Screen::ChessHub { "Puzzle do dia" } else if self.mini_back == Screen::Home { "Aprender" } else if self.mini_slot == Some(106) { "Diário" } else if self.mini_slot == Some(107) { "Hábitos e tarefas" } else if self.mini_slot == Some(108) { "Calculadora" } else if self.mini_slot == Some(109) { "Lembretes" } else if self.mini_slot == Some(110) { "Caderno" } else { "Receitas" };
                 parts.push(format!("Pedro está em {name}, no Kindle."));
                 if let Some(g) = &self.mini {
                     let c = g.context();
@@ -3087,6 +3087,12 @@ impl App {
                 self.mini_back = Screen::Module(Module::Mais);
                 self.go(Screen::Mini);
             }
+            (Screen::Module(Module::Mais), Row(11)) => {
+                self.mini = Some(self.mini_cache.remove(&110).unwrap_or_else(|| Box::new(crate::caderno::Caderno::new())));
+                self.mini_slot = Some(110);
+                self.mini_back = Screen::Module(Module::Mais);
+                self.go(Screen::Mini);
+            }
             (Screen::Edicao | Screen::Artigos | Screen::Retrato | Screen::Terminal, Back) => self.go(Screen::Module(Module::Mais)),
             (Screen::Edicao, Row(k)) => {
                 if let Some((_, act)) = self.ed_hits.get(k).cloned() {
@@ -3753,6 +3759,20 @@ impl App {
         } else {
             t
         };
+        // A folha recebe o movimento completo antes dos gestos de navegação.
+        if self.screen == Screen::Mini {
+            if let Some(redraw) = self.mini.as_mut().and_then(|g| g.touch(t)) {
+                match redraw {
+                    crate::minigame::Redraw::Part(rect) => {
+                        if let Some(g) = &self.mini { g.draw(&mut self.fb, &self.fonts); }
+                        let wave = if matches!(t, Touch::Up(_, _)) { Wave::Quality } else { Wave::Fast };
+                        self.fb.refresh(rect, wave, false);
+                    }
+                    other => self.apply_mini_redraw(other),
+                }
+                return;
+            }
+        }
         match t {
             Touch::Down(x, y) => {
                 self.swipe_from = Some((x, y));
@@ -4453,6 +4473,39 @@ mod raio_x {
         assert!(crate::lembretes_ui::pendentes().is_empty());
         std::fs::write(home.join("data/dia.txt"), plano_lembretes).unwrap();
         std::fs::remove_file(arquivo_lembretes).unwrap();
+        app.go(Screen::Module(Module::Mais));
+        shot(&mut app, "mais-com-caderno");
+        app.activate(Target::Row(11), 0);
+        shot(&mut app, "caderno-vazio");
+        // Percorre o mesmo caminho dos eventos reais do sensor, incluindo movimento e soltura.
+        for path in [
+            &[(200, 600), (260, 470), (320, 600), (380, 470), (440, 600)][..],
+            &[(500, 570), (550, 510), (610, 570), (660, 510), (720, 570)][..],
+            &[(230, 780), (320, 700), (410, 790), (500, 700), (590, 790), (680, 700), (770, 780)][..],
+        ] {
+            app.on_touch(Touch::Down(path[0].0, path[0].1));
+            for &(x, y) in &path[1..] { app.on_touch(Touch::Move(x, y)); }
+            let &(x, y) = path.last().unwrap();
+            app.on_touch(Touch::Up(x, y));
+        }
+        let primeira = home.join("data/caderno/pagina-0001.png");
+        assert!(primeira.exists());
+        shot(&mut app, "caderno-desenho");
+        app.mini_tap(801, 0);
+        app.on_touch(Touch::Down(310, 595));
+        app.on_touch(Touch::Move(335, 565));
+        app.on_touch(Touch::Up(335, 565));
+        shot(&mut app, "caderno-borracha");
+        app.mini_tap(811, 0);
+        assert!(home.join("data/caderno/pagina-0002.png").exists());
+        shot(&mut app, "caderno-nova-pagina");
+        app.mini_tap(810, 0);
+        shot(&mut app, "caderno-pagina-anterior");
+        app.mini_tap(802, 0);
+        app.mini_tap(802, 0);
+        let limpa = image::open(&primeira).unwrap().to_luma8();
+        assert!(limpa.pixels().all(|p| p.0[0] == crate::ui::PAPER));
+        shot(&mut app, "caderno-limpo");
         // Revisão de um erro real: coordenadas, alternativa e cobertura da análise.
         app.saved_games = vec![crate::coach::Saved {
             file: home.join("data/xadrez/partidas/exemplo.txt"),

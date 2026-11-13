@@ -814,7 +814,7 @@ pub fn draw_back(fb: &mut Framebuffer, f: &Fonts, pressed: bool) {
 
 /// Ideias de módulos futuros (da conversa de concepção); entram aqui conforme forem feitos.
 /// Módulos do Mais: (nome, descrição, pronto?). Os prontos abrem ao toque.
-pub const COMING: [(&str, &str, bool); 11] = [
+pub const COMING: [(&str, &str, bool); 12] = [
     ("Edição da manhã", "Os agentes da noite, avisos e notícias", true),
     ("Missões", "Mande os agentes do PC trabalharem por você", true),
     ("Artigos", "Links mandados do celular, para ler depois", true),
@@ -826,6 +826,7 @@ pub const COMING: [(&str, &str, bool); 11] = [
     ("Hábitos e tarefas", "Marque o dia e acompanhe sequências", true),
     ("Calculadora", "Contas, conversões e divisão", true),
     ("Lembretes", "Um aviso na hora escolhida", true),
+    ("Caderno", "Desenhe e escreva com o dedo", true),
 ];
 
 pub fn more_row(k: usize) -> Rect {
