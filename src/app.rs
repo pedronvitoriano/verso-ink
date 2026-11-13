@@ -4118,6 +4118,17 @@ mod raio_x {
             app.activate(Target::Game(i), 0);
             let name = crate::apps::fold(apps::GAMES[i].0).replace(' ', "-");
             shot(&mut app, &format!("jogo-{name}-menu"));
+            if name == "historias" {
+                // Gerar história: a escolha do tamanho.
+                if let Some(g) = app.mini.as_mut() {
+                    g.tap(730, 0, 0);
+                }
+                app.render(false);
+                shot(&mut app, "historias-gerar-tamanho");
+                if let Some(g) = app.mini.as_mut() {
+                    g.tap(749, 0, 0);
+                }
+            }
             if app.screen == Screen::Mini {
                 // Primeira opção do menu (fase 1 / contra a CPU / primeira história).
                 if let Some((id, _)) = app.mini.as_ref().and_then(|g| g.targets().into_iter().find(|(id, _)| *id == 900)) {

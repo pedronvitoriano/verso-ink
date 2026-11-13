@@ -65,6 +65,9 @@ fn break_loops(s: &mut Story) {
         }
     }
 }
+/// Escolha especial do livro: escreve o próximo capítulo.
+const NEXT: &str = "@proximo";
+const BOOK_CHAPTERS: u32 = 8;
 const TEXT_TOP: i32 = 250;
 const BODY: f32 = 36.0;
 const LINE: i32 = 54;
@@ -226,6 +229,10 @@ pub struct Historias {
     want_text: bool,
     /// O texto pedido é o tema de uma história nova (e não o rumo da atual).
     want_new: bool,
+    /// Escolhendo o tamanho da história a gerar (antes de pedir o tema).
+    picking: bool,
+    /// Tamanho escolhido: 0 conto, 1 novela, 2 livro.
+    size: u8,
     /// Recado na leitura (erro ao gerar, por exemplo).
     note: Option<String>,
     list: Vec<(PathBuf, Story)>,
@@ -250,7 +257,7 @@ fn wrap(f: &Fonts, face: Face, size: f32, text: &str, max_w: i32) -> Vec<String>
 
 impl Historias {
     pub fn new() -> Self {
-        Historias { list: load_all(), read: None, hits: RefCell::new(Vec::new()), want_text: false, want_new: false, note: None, list_page: 0 }
+        Historias { list: load_all(), read: None, hits: RefCell::new(Vec::new()), want_text: false, want_new: false, picking: false, size: 0, note: None, list_page: 0 }
     }
 
     fn open(&mut self, k: usize) {
@@ -439,13 +446,14 @@ impl MiniGame for Historias {
     }
 
     fn at_menu(&self) -> bool {
-        self.read.is_none()
+        self.read.is_none() && !self.picking
     }
 
     fn draw(&self, fb: &mut Framebuffer, f: &Fonts) {
         fb.fill(fb.screen(), PAPER);
         ui::draw_back(fb, f, false);
         match &self.read {
+            None if self.picking => self.draw_sizes(fb, f),
             None => self.draw_list(fb, f),
             Some(r) => self.draw_reading(fb, f, r),
         }
@@ -496,19 +504,38 @@ impl MiniGame for Historias {
                 Redraw::None
             }
             730 => {
+                self.picking = true;
+                Redraw::Full
+            }
+            740..=742 => {
+                self.size = (id - 740) as u8;
+                self.picking = false;
                 self.want_text = true;
                 self.want_new = true;
-                Redraw::None
+                Redraw::Full
+            }
+            749 => {
+                self.picking = false;
+                Redraw::Full
             }
             i => {
                 let Some(c) = self.visible_choices().get(i as usize).cloned() else { return Redraw::None };
-                self.go_to(&c.to);
+                if c.to == NEXT {
+                    // Livro: o próximo capítulo é escrito agora pelo Verso.
+                    self.note = self.next_chapter().err();
+                } else {
+                    self.go_to(&c.to);
+                }
                 Redraw::Full
             }
         }
     }
 
     fn back(&mut self) -> bool {
+        if self.picking {
+            self.picking = false;
+            return true;
+        }
         if self.read.is_some() {
             self.read = None;
             return true;
@@ -551,27 +578,107 @@ Responda SÓ com o texto da história neste formato (sem comentários, sem cerca
 A história sempre anda para a frente: nenhuma escolha volta a um trecho anterior. \
 Nomes de trecho em minúsculas, sem acento e sem espaço. Trecho final não tem escolhas. Toda escolha leva a um trecho que existe."
         );
-        self.generate(&prompt, Some(&context))
+        self.generate(&prompt, Some(&context), "")
     }
 
     /// História nova do zero, sobre o tema pedido (vazio: o Verso escolhe).
     fn new_story(&mut self, theme: &str) -> Result<(), String> {
         let theme = theme.trim();
         let about = if theme.is_empty() { "um tema e um gênero que você escolher (surpreenda)".to_string() } else { format!("«{theme}»") };
+        let shape = match self.size {
+            0 => "um CONTO: trechos de 80 a 160 palavras, de 10 a 14 trechos, de 3 a 5 finais diferentes e marcantes".to_string(),
+            1 => "uma NOVELA: trechos de 120 a 220 palavras, de 30 a 45 trechos em 3 ou 4 partes, de 5 a 8 finais diferentes e marcantes, personagens com nome e reviravoltas".to_string(),
+            _ => format!("o CAPÍTULO 1 de {BOOK_CHAPTERS} de um LIVRO: trechos de 150 a 260 palavras, de 12 a 16 trechos com nomes começando por cap1_ (o primeiro se chama inicio), personagens com nome e motivação. O capítulo termina em 2 ou 3 pontos de virada, cada um com uma única escolha \"* Continuar no capítulo 2 -> {NEXT}\"; pode ter também 1 ou 2 finais antecipados (FIM)"),
+        };
         let prompt = format!(
             "Escreva uma história interativa NOVA sobre {about}. \
-Português do Brasil, prosa literária enxuta e viva (trechos de 60 a 140 palavras), de 9 a 14 trechos, 2 ou 3 escolhas por trecho, de 3 a 5 finais diferentes e marcantes. \
+Português do Brasil, prosa literária viva, com diálogos. Tamanho: {shape}. 2 ou 3 escolhas por trecho. \
 A história SEMPRE anda para a frente: nenhuma escolha volta a um trecho anterior (nada de \"tente de novo\" ou \"recomeçar\"); um erro vira um final próprio. \
 Use marcas para lembrar escolhas: a linha +nome marca algo, e uma escolha com [nome] só aparece com a marca ([!nome], sem ela). \
 Responda SÓ com o texto da história neste formato (sem comentários, sem cercas de código):\n\
 # Título\n@ Uma frase de resumo\n\n== inicio\nTexto do trecho.\n\n+marca\n* Texto da escolha -> nome_do_trecho\n* [marca] Escolha só com a marca -> outro_trecho\n\n== nome_do_trecho\n...\n\n== um_final\nTexto do final.\n\nFIM\n\
 Nomes de trecho em minúsculas, sem acento e sem espaço. Trecho final termina com a linha FIM e não tem escolhas. Toda escolha leva a um trecho que existe."
         );
-        self.generate(&prompt, None)
+        let meta = if self.size >= 2 { format!("% livro {BOOK_CHAPTERS} 1\n") } else { String::new() };
+        self.generate(&prompt, None, &meta)
+    }
+
+    /// Escreve o próximo capítulo do livro aberto, a partir do ponto de virada atual, e o
+    /// acrescenta ao mesmo arquivo.
+    fn next_chapter(&mut self) -> Result<(), String> {
+        let r = self.read.as_ref().ok_or("Abra uma história antes.")?;
+        let (path, story) = &self.list[r.k];
+        let src = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+        let (total, cur) = src
+            .lines()
+            .find_map(|l| l.strip_prefix("% livro ").map(|m| {
+                let v: Vec<u32> = m.split_whitespace().filter_map(|x| x.parse().ok()).collect();
+                (v.first().copied().unwrap_or(BOOK_CHAPTERS), v.get(1).copied().unwrap_or(1))
+            }))
+            .unwrap_or((BOOK_CHAPTERS, 1));
+        let n = cur + 1;
+        let here = story.passages.get(&r.at).map(|p| p.paragraphs.join("\n\n")).unwrap_or_default();
+        let flags: Vec<&str> = r.flags.iter().map(String::as_str).collect();
+        // O resumo do que veio antes: a apresentação e o fim de cada trecho já escrito, curto.
+        let earlier: String = story.blurb.clone();
+        let last = n >= total;
+        let ending = if last {
+            "Este é o ÚLTIMO capítulo: todos os caminhos terminam em finais (de 4 a 7 finais diferentes, cada um com a linha FIM)".to_string()
+        } else {
+            format!("O capítulo termina em 2 ou 3 pontos de virada, cada um com uma única escolha \"* Continuar no capítulo {} -> {NEXT}\"; pode ter 1 final antecipado (FIM)", n + 1)
+        };
+        let context = format!("Livro \"{}\" ({earlier}). Marcas que o leitor tem: {:?}. Trecho onde o leitor parou (fim do capítulo {cur}):\n{here}", story.title, flags);
+        let prompt = format!(
+            "Escreva o CAPÍTULO {n} de {total} deste livro interativo, continuando exatamente do trecho do contexto, com os mesmos personagens e o mesmo tom. \
+Português do Brasil, prosa literária viva com diálogos, trechos de 150 a 260 palavras, de 12 a 16 trechos. O primeiro trecho se chama cap{n}_inicio e todos os nomes começam por cap{n}_. \
+2 ou 3 escolhas por trecho; use as marcas do leitor ([marca] e [!marca]) para mudar cenas; pode criar marcas novas (+nome). {ending}. \
+A história sempre anda para a frente: nenhuma escolha volta a um trecho anterior. \
+Responda SÓ com os trechos, sem título e sem cercas de código, no formato:\n== cap{n}_inicio\nTexto.\n\n* Escolha -> cap{n}_outro\n\n== cap{n}_outro\n...\n\
+Trecho final termina com a linha FIM. Toda escolha leva a um trecho que existe neste capítulo."
+        );
+        let id = crate::chat::send(None, &prompt, Some(&context))?;
+        let chat = crate::chat::open(&id)?;
+        let reply = chat.messages.iter().rev().find(|m| !m.user).map(|m| m.text.clone()).ok_or("O Verso não respondeu.")?;
+        let body: String = reply.lines().filter(|l| !l.trim_start().starts_with("```") && !l.starts_with("# ") && !l.starts_with("@ ")).collect::<Vec<_>>().join("\n");
+        let start = format!("cap{n}_inicio");
+        if !body.contains(&format!("== {start}")) {
+            return Err("O capítulo não veio no formato certo. Toque de novo para tentar.".into());
+        }
+        // Os pontos de virada passam a apontar para o começo do novo capítulo.
+        let updated = src.replace(&format!("% livro {total} {cur}"), &format!("% livro {total} {n}")).replace(&format!("-> {NEXT}"), &format!("-> {start}"));
+        let path = path.clone();
+        std::fs::write(&path, format!("{}\n\n{body}\n", updated.trim_end())).map_err(|e| e.to_string())?;
+        let k = r.k;
+        self.list = load_all();
+        let k = self.list.iter().position(|(p, _)| *p == path).unwrap_or(k);
+        let flags = self.read.as_ref().map(|r| r.flags.clone()).unwrap_or_default();
+        self.read = Some(Reading { k, at: start.clone(), flags, page: 0 });
+        self.go_to(&start);
+        Ok(())
+    }
+
+    fn draw_sizes(&self, fb: &mut Framebuffer, f: &Fonts) {
+        f.draw(fb, Face::Display, 100.0, MARGIN - 4, 320, INK, "Gerar história");
+        f.draw(fb, Face::Strong, 30.0, MARGIN, 392, MUTED, "De que tamanho? Depois você diz o tema.");
+        let opts = [
+            ("Conto", "10 a 14 trechos · uns 15 minutos"),
+            ("Novela", "30 a 45 trechos · uma noite de leitura"),
+            ("Livro", "8 capítulos, escritos enquanto você lê"),
+        ];
+        let mut hits = Vec::new();
+        for (k, (t, d)) in opts.iter().enumerate() {
+            let r = Rect::new(MARGIN, 460 + k as i32 * 190, W - 2 * MARGIN, 160);
+            ui::card(fb, r, 30, PAPER, false);
+            f.draw(fb, Face::Display, 56.0, r.x + 36, r.y + 76, INK, t);
+            f.draw(fb, Face::Body, 30.0, r.x + 38, r.y + 128, MUTED, d);
+            hits.push((740 + k as u32, r));
+        }
+        hits.push((749, ui::back_rect()));
+        *self.hits.borrow_mut() = hits;
     }
 
     /// Manda o pedido ao Verso, confere o formato, tira loops, salva e abre a história.
-    fn generate(&mut self, prompt: &str, context: Option<&str>) -> Result<(), String> {
+    fn generate(&mut self, prompt: &str, context: Option<&str>, meta: &str) -> Result<(), String> {
         let id = crate::chat::send(None, prompt, context)?;
         let chat = crate::chat::open(&id)?;
         let reply = chat.messages.iter().rev().find(|m| !m.user).map(|m| m.text.clone()).ok_or("O Verso não respondeu.")?;
@@ -581,7 +688,7 @@ Nomes de trecho em minúsculas, sem acento e sem espaço. Trecho final termina c
         // Escolhas para trechos que não existem saem; o que ficar sem saída vira final.
         let names: BTreeSet<String> = new.passages.keys().cloned().collect();
         for p in new.passages.values_mut() {
-            p.choices.retain(|c| names.contains(&c.to));
+            p.choices.retain(|c| names.contains(&c.to) || c.to == NEXT);
             if p.choices.is_empty() {
                 p.end = true;
             }
@@ -592,7 +699,7 @@ Nomes de trecho em minúsculas, sem acento e sem espaço. Trecho final termina c
         let slug: String = crate::apps::fold(&new.title).chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '-' }).collect();
         let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
         let path = dir().join(format!("{}-{stamp}.txt", slug.trim_matches('-')));
-        std::fs::write(&path, &body).map_err(|e| e.to_string())?;
+        std::fs::write(&path, format!("{meta}{body}")).map_err(|e| e.to_string())?;
         self.list = load_all();
         let k = self.list.iter().position(|(p, _)| *p == path).ok_or("História salva, mas não abriu.")?;
         self.open(k);
