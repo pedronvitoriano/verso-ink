@@ -1100,13 +1100,18 @@ pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status, claud
     }
     f.draw(fb, Face::Display, 120.0, MARGIN - 4, 330, INK, "Luz e tela");
     // Bateria e rede, à vista sem voltar para a Início.
+    // Sem leitura da bateria (só no PC), mostra só a rede.
     let bat = match (st.battery, st.charging) {
-        (Some(b), true) => format!("Bateria {b}% · carregando"),
-        (Some(b), false) => format!("Bateria {b}%"),
-        (None, _) => "Bateria: sem leitura".to_string(),
+        (Some(b), true) => Some(format!("Bateria {b}% · carregando")),
+        (Some(b), false) => Some(format!("Bateria {b}%")),
+        (None, _) => None,
     };
-    let net = if plane { "modo avião" } else if st.wifi { "Wi-Fi conectado" } else { "sem Wi-Fi" };
-    f.draw(fb, Face::Strong, 30.0, MARGIN, 392, MUTED, &format!("{bat} · {net}"));
+    let net = if plane { "Modo avião" } else if st.wifi { "Wi-Fi conectado" } else { "Sem Wi-Fi" };
+    let status_line = match bat {
+        Some(b) => format!("{b} · {}", net.to_lowercase()),
+        None => net.to_string(),
+    };
+    f.draw(fb, Face::Strong, 30.0, MARGIN, 392, MUTED, &status_line);
     draw_light_level(fb, f, l);
     draw_light_minus(fb, false);
     draw_light_plus(fb, false);
@@ -1114,7 +1119,7 @@ pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status, claud
     draw_night(fb, f, l, false);
     draw_plane(fb, f, plane, false);
     let rows = [
-        (wifi_row_rect(), "Wi-Fi", if st.wifi { "Conectado · trocar de rede" } else { "Sem rede · conectar" }),
+        (wifi_row_rect(), "Wi-Fi", if plane { "Desligado pelo modo avião" } else if st.wifi { "Conectado · trocar de rede" } else { "Sem rede · conectar" }),
         (settings_row_rect(), "Ajustes do sistema", "Bateria, cópia, reiniciar"),
     ];
     for ((r, title, sub), icon_name) in rows.into_iter().zip(["wifi", "luz"]) {

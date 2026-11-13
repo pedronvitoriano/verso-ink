@@ -604,6 +604,10 @@ impl App {
                         };
                         let b = crate::chess::Buttons { left: ("‹ Anterior", false), right: ("Próximo ›", false), note: Some(note.as_str()), peek: true };
                         crate::chess::draw(fb, f, &v, sp, &b);
+                        if let crate::chess::Mode::Coach { level, .. } = g.mode {
+                            let c = crate::coach::coach(level);
+                            crate::chess_ui::draw_coach_line(fb, f, &format!("{} ({})", c.name, c.rating), "Revendo a partida. Toque em Partida para voltar.", crate::coach::Mood::Normal);
+                        }
                         return;
                     }
                     let b = crate::chess::Buttons { left: (left.0.as_str(), left.1), right: (right.0.as_str(), right.1), note: note.as_deref(), peek: false };

@@ -206,6 +206,11 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, on: bool, cur: Option<&str>, nets: 
     if page > 0 {
         ui::button(fb, f, nav_rect(0), "‹ Anteriores", false);
     }
+    if pages > 1 {
+        let t = format!("{} de {pages}", page + 1);
+        let w = f.measure(Face::Strong, 30.0, &t);
+        f.draw(fb, Face::Strong, 30.0, (W - w) / 2, nav_rect(0).y + 56, MUTED, &t);
+    }
     if page + 1 < pages {
         let rest = nets.len() - (page + 1) * ROWS;
         ui::button(fb, f, nav_rect(1), &format!("Mais {rest} rede{} ›", if rest == 1 { "" } else { "s" }), true);

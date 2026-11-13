@@ -310,8 +310,8 @@ impl Velha {
             Some(0) => format!("Deu velha: empate. {placar}{empates}"),
             Some(p) => format!("{} {}! {placar}{empates}", self.name(p), if self.cpu && p == 1 { "venceu" } else { "vence" }),
             None => {
-                let vez = if self.cpu && self.turn() == 1 { "Sua vez".to_string() } else { format!("Vez de {}", self.name(self.turn())) };
-                format!("{vez} · {placar}{empates}")
+                let vez = if self.cpu && self.turn() == 1 { "Sua vez".to_string() } else if self.cpu { "Vez da CPU".to_string() } else { format!("Vez do {}", self.name(self.turn())) };
+                format!("{vez} · Placar: {placar}{empates}")
             }
         }
     }
@@ -485,7 +485,7 @@ impl MiniGame for Velha {
             let (a, b) = wins();
             let y = minigame::menu_row(OPTIONS.len()).y + 40;
             f.draw(fb, Face::Strong, 30.0, MARGIN, y + 20, INK, &format!("Vitórias contra a CPU: {a} no clássico · {b} no super"));
-            f.draw(fb, Face::Body, 28.0, MARGIN, y + 66, MUTED, "No super, a casa onde você joga escolhe a velha do outro.");
+            f.draw(fb, Face::Body, 28.0, MARGIN, y + 66, MUTED, "No super, a casa que você marca manda o outro para a velha daquele lugar.");
             minigame::menu_art(fb, "Velha", y + 110);
             return;
         }
@@ -501,13 +501,14 @@ impl MiniGame for Velha {
             minigame::pill(fb, f, minigame::bottom_button(1, 2), "Jogar de novo", true);
         } else {
             minigame::pill(fb, f, minigame::bottom_button(0, 2), "Desfazer", false);
-            minigame::pill(fb, f, minigame::bottom_button(1, 2), "Menu", false);
+            minigame::pill(fb, f, minigame::bottom_button(1, 2), "Recomeçar", false);
             if self.kind == Kind::Super {
                 let hint = match self.big.next {
                     Some(s) if self.big.small[s] == 0 => "Jogue na velha destacada.",
                     _ => "Livre: jogue em qualquer velha que ainda está em jogo.",
                 };
-                minigame::hint(fb, f, hint);
+                let w = f.measure(Face::Strong, 32.0, hint);
+                f.draw(fb, Face::Strong, 32.0, (W - w) / 2, 1290, INK, hint);
             }
         }
     }
@@ -519,7 +520,7 @@ impl MiniGame for Velha {
         let mut v: Vec<(u32, Rect)> = if self.result().is_some() {
             vec![(801, minigame::bottom_button(0, 2)), (802, minigame::bottom_button(1, 2))]
         } else {
-            vec![(800, minigame::bottom_button(0, 2)), (801, minigame::bottom_button(1, 2))]
+            vec![(800, minigame::bottom_button(0, 2)), (803, minigame::bottom_button(1, 2))]
         };
         let human = !self.cpu || self.turn() == 1;
         if self.result().is_none() && human {
@@ -542,9 +543,14 @@ impl MiniGame for Velha {
                 self.menu = true;
                 Redraw::Full
             }
-            802 => {
+            802 | 803 => {
+                // Jogar de novo / recomeçar: mesma modalidade, placar mantido.
                 let (k, c) = (self.kind, self.cpu);
+                let first = self.first;
                 self.start(k, c, true);
+                if id == 803 {
+                    self.first = first;
+                }
                 Redraw::Full
             }
             800 => {

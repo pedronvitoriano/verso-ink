@@ -1077,16 +1077,18 @@ pub fn draw_compose(fb: &mut Framebuffer, f: &Fonts, c: &Compose) {
 
 /// Botões de contexto e mídia da pergunta ao Verso.
 pub fn image_rect() -> Rect {
-    Rect::new(MARGIN + 250, 76, 190, 84)
+    // Mesma linha e mesmo espaço (20 px) depois do Voltar.
+    Rect::new(MARGIN - 16 + 230 + 20, 72, 190, 88)
 }
 
 pub fn brain_rect() -> Rect {
-    Rect::new(MARGIN + 452, 76, 190, 84)
+    let r = image_rect();
+    Rect::new(r.x + r.w + 20, 72, 190, 88)
 }
 
 /// Botão "Anexar" da pergunta ao Verso.
 pub fn attach_rect() -> Rect {
-    Rect::new(W - MARGIN - 250, 76, 250, 84)
+    Rect::new(W - MARGIN + 16 - 230, 72, 230, 88)
 }
 
 /// Anexos possíveis: livros e artigos (arquivo), destaques de um livro (texto), cifras e fotos.

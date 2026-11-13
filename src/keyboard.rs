@@ -58,7 +58,7 @@ pub fn layout(mode: Mode, shift: bool) -> Vec<Key> {
             r.push(("⌫".to_string(), Action::Backspace, 1.5));
             r
         }],
-        Mode::Symbols => vec![row_chars("[]{}#%^*+=", false), row_chars("_\\|~<>€£·", false), {
+        Mode::Symbols => vec![row_chars("[]{}#%^*+=", false), row_chars("_\\|~<>€£§", false), {
             let mut r = vec![("123".to_string(), Action::Mode(Mode::Numbers), 1.5)];
             r.extend(row_chars(".,?!'", false));
             r.push(("⌫".to_string(), Action::Backspace, 1.5));
