@@ -9,7 +9,9 @@ T="$RUN/tunel"
 mkdir -p "$T/.ssh"
 cp "$H/settings/tunel/id" "$T/id" && chmod 600 "$T/id"
 cp "$H/settings/tunel/.ssh/known_hosts" "$T/.ssh/known_hosts" 2>/dev/null
-HOST="$(cat "$H/settings/tunel/host" 2>/dev/null || echo usuario@servidor)"
+# Endereço do servidor (usuario@host) só no aparelho, fora do repositório (que é público).
+HOST="$(cat "$H/settings/tunel/host" 2>/dev/null)"
+[ -n "$HOST" ] || { log "túnel: falta settings/tunel/host"; exit 0; }
 REMOTE_PORT="$(cat "$H/settings/tunel/porta" 2>/dev/null || echo 22230)"
 export HOME="$T"
 echo $$ >/tmp/verso-ink-tunel.pid
