@@ -608,15 +608,16 @@ impl App {
                             let c = crate::coach::coach(level);
                             crate::chess_ui::draw_coach_line(fb, f, &format!("{} ({})", c.name, c.rating), "Revendo a partida. Toque em Voltar à partida quando quiser.", crate::coach::Mood::Normal);
                         }
-                        return;
+                    } else {
+                        // (Sem return aqui: o fim do render é que atualiza a tela do e-ink.)
+                        let b = crate::chess::Buttons { left: (left.0.as_str(), left.1), right: (right.0.as_str(), right.1), note: note.as_deref(), peek: false };
+                        crate::chess::draw(fb, f, g, sp, &b);
+                        if let crate::chess::Mode::Coach { level, .. } = g.mode {
+                            let c = crate::coach::coach(level);
+                            crate::chess_ui::draw_coach_line(fb, f, &format!("{} ({})", c.name, c.rating), &self.coach_msg, self.coach_mood);
+                        }
+                        crate::chess::draw_clocks(fb, f, g);
                     }
-                    let b = crate::chess::Buttons { left: (left.0.as_str(), left.1), right: (right.0.as_str(), right.1), note: note.as_deref(), peek: false };
-                    crate::chess::draw(fb, f, g, sp, &b);
-                    if let crate::chess::Mode::Coach { level, .. } = g.mode {
-                        let c = crate::coach::coach(level);
-                        crate::chess_ui::draw_coach_line(fb, f, &format!("{} ({})", c.name, c.rating), &self.coach_msg, self.coach_mood);
-                    }
-                    crate::chess::draw_clocks(fb, f, g);
                 }
             }
             Screen::ChessEnd => {
@@ -3967,6 +3968,27 @@ mod raio_x {
     use super::*;
 
     /// Percorre as telas e salva cada uma (raio-x visual):
+    #[test]
+    fn lances_anteriores_responde_ao_toque_contra_treinador() {
+        use crate::input::Touch;
+        let mut app = App::new(Framebuffer::memory());
+        let mut g = crate::chess::Game::new_coach(2, true);
+        for m in ["e2e4", "e7e5", "g1f3"] {
+            let _ = g.play_uci(m);
+        }
+        app.chess = Some(g);
+        app.go(Screen::Chess);
+        let r = crate::chess::peek_rect(false);
+        let (x, y) = (r.x + r.w / 2, r.y + r.h / 2);
+        app.on_touch(Touch::Down(x, y));
+        app.on_touch(Touch::Up(x, y));
+        assert_eq!(app.chess_peek, Some(2), "o toque em Lances anteriores não entrou na revisão");
+        let p = crate::chess::undo_rect();
+        app.on_touch(Touch::Down(p.x + 20, p.y + 20));
+        app.on_touch(Touch::Up(p.x + 20, p.y + 20));
+        assert_eq!(app.chess_peek, Some(1));
+    }
+
     #[test]
     fn acordar_volta_para_onde_estava() {
         let mut app = App::new(Framebuffer::memory());
