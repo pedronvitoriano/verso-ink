@@ -58,7 +58,7 @@ pub fn draw_today(fb: &mut Framebuffer, f: &Fonts, items: &[Item], done: &HashSe
             "Seu dia ainda está vazio.",
             "Escreva prioridades, tarefas, lembretes e",
             "hábitos pelo PC (tools/dia.sh) ou peça ao",
-            "Claude, e eles aparecem aqui.",
+            "Verso, e eles aparecem aqui.",
         ];
         for (k, l) in lines.iter().enumerate() {
             f.draw(fb, if k == 0 { Face::Display } else { Face::Body }, if k == 0 { 52.0 } else { 38.0 }, MARGIN, 470 + k as i32 * 66, INK, l);

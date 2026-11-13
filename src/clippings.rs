@@ -1,13 +1,16 @@
-//! Destaques e notas do Kindle ("My Clippings.txt"), agrupados por livro.
+//! Destaques e notas do Kindle e do KOReader, agrupados por livro.
 
-use crate::apps::fit;
+use crate::apps::{self, fit};
 use crate::fb::{Framebuffer, Rect};
 use crate::text::{Face, Fonts};
 use crate::ui::{self, INK, MUTED, PAPER};
+use std::path::Path;
+use std::time::SystemTime;
 
 const MARGIN: i32 = 72;
 const W: i32 = 1072;
 
+#[derive(Clone)]
 pub struct Clip {
     pub text: String,
     pub note: bool,
@@ -16,6 +19,37 @@ pub struct Clip {
 pub struct BookClips {
     pub title: String,
     pub clips: Vec<Clip>,
+}
+
+#[derive(Clone, Copy, Default)]
+pub struct ImportStatus {
+    /// Só aparece quando o arquivo do Kindle está velho o bastante para a pessoa não
+    /// concluir, por engano, que a lista está sincronizada.
+    pub kindle_age_days: Option<u64>,
+    pub koreader_books: usize,
+    pub koreader_clips: usize,
+}
+
+fn add_clip(books: &mut Vec<BookClips>, title: &str, text: String, note: bool) {
+    let title: String = unicode_normalization::UnicodeNormalization::nfc(title).collect();
+    let idx = match books.iter().position(|b| b.title == title) {
+        Some(i) => i,
+        None => {
+            books.push(BookClips { title, clips: Vec::new() });
+            books.len() - 1
+        }
+    };
+    let clips = &mut books[idx].clips;
+    // Um ajuste de seleção gera um destaque que contém (ou está contido) no anterior: fica só o maior.
+    if let Some(last) = clips.last_mut() {
+        if !last.note && !note && (text.contains(&last.text) || last.text.contains(&text)) {
+            if text.len() > last.text.len() {
+                last.text = text;
+            }
+            return;
+        }
+    }
+    clips.push(Clip { text, note });
 }
 
 pub fn parse(src: &str) -> Vec<BookClips> {
@@ -30,33 +64,219 @@ pub fn parse(src: &str) -> Vec<BookClips> {
             continue;
         }
         let note = meta.contains("nota") || meta.contains("Note");
-        let title: String = unicode_normalization::UnicodeNormalization::nfc(title).collect();
-        let idx = match books.iter().position(|b| b.title == title) {
-            Some(i) => i,
-            None => {
-                books.push(BookClips { title, clips: Vec::new() });
-                books.len() - 1
-            }
-        };
-        let clips = &mut books[idx].clips;
-        // Um ajuste de seleção gera um destaque que contém (ou está contido) no anterior: fica só o maior.
-        if let Some(last) = clips.last_mut() {
-            if !last.note && !note && (text.contains(&last.text) || last.text.contains(&text)) {
-                if text.len() > last.text.len() {
-                    last.text = text;
-                }
-                continue;
-            }
-        }
-        clips.push(Clip { text, note });
+        add_clip(&mut books, title, text, note);
     }
     books.sort_by_key(|b| std::cmp::Reverse(b.clips.len()));
     books
 }
 
+fn kindle_path() -> std::path::PathBuf {
+    std::env::var_os("VERSO_INK_CLIPPINGS").map(Into::into).unwrap_or_else(|| apps::documents_dir().join("My Clippings.txt"))
+}
+
+/// Fecha uma tabela Lua sem executar o arquivo. O KOReader salva os metadados como Lua,
+/// portanto tratamos somente o pequeno subconjunto textual de `annotations` que precisamos.
+fn lua_table_end(src: &str, start: usize) -> Option<usize> {
+    let bytes = src.as_bytes();
+    if bytes.get(start) != Some(&b'{') {
+        return None;
+    }
+    let mut depth = 0i32;
+    let mut quote = None;
+    let mut escaped = false;
+    for (off, &b) in bytes[start..].iter().enumerate() {
+        let i = start + off;
+        if let Some(q) = quote {
+            if escaped {
+                escaped = false;
+            } else if b == b'\\' {
+                escaped = true;
+            } else if b == q {
+                quote = None;
+            }
+            continue;
+        }
+        match b {
+            b'\'' | b'"' => quote = Some(b),
+            b'{' => depth += 1,
+            b'}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn annotations_table(src: &str) -> Option<&str> {
+    let named = src.find("[\"annotations\"]").or_else(|| src.find("annotations"))?;
+    let after = &src[named..];
+    let eq = after.find('=')?;
+    let start = named + eq + after[eq..].find('{')?;
+    let end = lua_table_end(src, start)?;
+    Some(&src[start..=end])
+}
+
+fn direct_lua_tables(src: &str) -> Vec<&str> {
+    let bytes = src.as_bytes();
+    let mut out = Vec::new();
+    let mut depth = 0i32;
+    let mut start = None;
+    let mut quote = None;
+    let mut escaped = false;
+    for (i, &b) in bytes.iter().enumerate() {
+        if let Some(q) = quote {
+            if escaped {
+                escaped = false;
+            } else if b == b'\\' {
+                escaped = true;
+            } else if b == q {
+                quote = None;
+            }
+            continue;
+        }
+        match b {
+            b'\'' | b'"' => quote = Some(b),
+            b'{' => {
+                depth += 1;
+                if depth == 2 {
+                    start = Some(i);
+                }
+            }
+            b'}' => {
+                if depth == 2 {
+                    if let Some(begin) = start.take() {
+                        out.push(&src[begin..=i]);
+                    }
+                }
+                depth -= 1;
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+fn lua_string(value: &str) -> Option<String> {
+    let value = value.trim_start();
+    if let Some(rest) = value.strip_prefix("[[") {
+        return rest.split_once("]]" ).map(|(text, _)| text.to_string());
+    }
+    let quote = *value.as_bytes().first()?;
+    if quote != b'\'' && quote != b'"' {
+        return None;
+    }
+    let mut out = String::new();
+    let mut chars = value[1..].chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == quote as char {
+            return Some(out);
+        }
+        if ch != '\\' {
+            out.push(ch);
+            continue;
+        }
+        let escaped = chars.next()?;
+        match escaped {
+            'n' => out.push('\n'),
+            'r' => out.push('\r'),
+            't' => out.push('\t'),
+            '\\' => out.push('\\'),
+            '\'' => out.push('\''),
+            '"' => out.push('"'),
+            d if d.is_ascii_digit() => {
+                let mut digits = d.to_string();
+                for _ in 0..2 {
+                    if chars.peek().is_some_and(|c| c.is_ascii_digit()) {
+                        digits.push(chars.next().unwrap());
+                    }
+                }
+                if let Ok(code) = digits.parse::<u32>() {
+                    out.push(char::from_u32(code).unwrap_or('\u{FFFD}'));
+                }
+            }
+            other => out.push(other),
+        }
+    }
+    None
+}
+
+fn lua_field(table: &str, key: &str) -> Option<String> {
+    let quoted = format!("[\"{key}\"]");
+    let at = table.find(&quoted).or_else(|| table.find(key))?;
+    let rest = &table[at..];
+    let eq = rest.find('=')?;
+    lua_string(&rest[eq + 1..])
+}
+
+/// Lê as anotações que o KOReader persiste no `metadata.<ext>.lua` ao lado de um livro.
+/// Não interpreta Lua e não tenta adivinhar bancos externos/hashdocsettings que não estejam
+/// ligados ao arquivo presente na estante.
+pub fn parse_koreader_annotations(src: &str) -> Vec<Clip> {
+    let Some(table) = annotations_table(src) else { return Vec::new() };
+    let mut clips = Vec::new();
+    for item in direct_lua_tables(table) {
+        // O exportador oficial do KOReader só trata como destaque uma anotação que
+        // tem `drawer`; bookmarks podem ter texto/nota, mas não são trechos marcados.
+        if lua_field(item, "drawer").is_none_or(|drawer| drawer.trim().is_empty()) {
+            continue;
+        }
+        let text = lua_field(item, "text").unwrap_or_default().trim().to_string();
+        let note = lua_field(item, "note").unwrap_or_default().trim().to_string();
+        if !text.is_empty() {
+            clips.push(Clip { text, note: false });
+        }
+        if !note.is_empty() {
+            clips.push(Clip { text: note, note: true });
+        }
+    }
+    clips
+}
+
+fn scan_koreader(dir: &Path, depth: u32, books: &mut Vec<BookClips>, status: &mut ImportStatus) {
+    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            if depth > 0 && path.extension().is_none_or(|ext| ext != "sdr") {
+                scan_koreader(&path, depth - 1, books, status);
+            }
+            continue;
+        }
+        let Ok(src) = std::fs::read_to_string(apps::sidecar(&path)) else { continue };
+        let clips = parse_koreader_annotations(&src);
+        if clips.is_empty() {
+            continue;
+        }
+        let title = path.file_stem().and_then(|s| s.to_str()).map(apps::clean_title).unwrap_or_else(|| "Livro sem título".into());
+        status.koreader_books += 1;
+        status.koreader_clips += clips.len();
+        for clip in clips {
+            add_clip(books, &title, clip.text, clip.note);
+        }
+    }
+}
+
+pub fn load_with_status() -> (Vec<BookClips>, ImportStatus) {
+    let path = kindle_path();
+    let mut status = ImportStatus::default();
+    status.kindle_age_days = std::fs::metadata(&path)
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|then| SystemTime::now().duration_since(then).ok())
+        .map(|age| age.as_secs() / 86_400)
+        .filter(|&days| days >= 45);
+    let mut books = std::fs::read_to_string(path).map(|s| parse(&s)).unwrap_or_default();
+    scan_koreader(&apps::documents_dir(), 2, &mut books, &mut status);
+    books.sort_by_key(|b| std::cmp::Reverse(b.clips.len()));
+    (books, status)
+}
+
 pub fn load() -> Vec<BookClips> {
-    let path = std::env::var("VERSO_INK_CLIPPINGS").unwrap_or_else(|_| "/mnt/us/documents/My Clippings.txt".into());
-    std::fs::read_to_string(path).map(|s| parse(&s)).unwrap_or_default()
+    load_with_status().0
 }
 
 pub const BOOKS_PER_PAGE: usize = 7;
@@ -92,7 +312,7 @@ pub fn review_rect() -> Rect {
     Rect::new(W - MARGIN - 300, 236, 300, 90)
 }
 
-pub fn draw_books(fb: &mut Framebuffer, f: &Fonts, books: &[BookClips], page: usize, due: usize) {
+pub fn draw_books(fb: &mut Framebuffer, f: &Fonts, books: &[BookClips], page: usize, due: usize, import: ImportStatus) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
     f.draw(fb, Face::Display, 130.0, MARGIN - 6, 310, INK, "Destaques");
@@ -103,6 +323,15 @@ pub fn draw_books(fb: &mut Framebuffer, f: &Fonts, books: &[BookClips], page: us
     let total: usize = books.iter().map(|b| b.clips.len()).sum();
     let sub = if books.is_empty() { "Nenhum destaque ainda. Os que você marcar no Kindle aparecem aqui.".to_string() } else { format!("{total} trechos em {} livros", books.len()) };
     f.draw(fb, Face::Strong, 30.0, MARGIN, 380, MUTED, &fit(f, Face::Strong, 30.0, &sub, W - 2 * MARGIN));
+    let source = match (import.kindle_age_days, import.koreader_clips) {
+        (Some(days), n) if n > 0 => format!("Kindle sem novidades há {days} dias · {n} trechos do KOReader"),
+        (Some(days), _) => format!("Arquivo de destaques do Kindle sem novidades há {days} dias"),
+        (None, n) if n > 0 => format!("Inclui {n} trechos do KOReader em {} livro(s)", import.koreader_books),
+        _ => String::new(),
+    };
+    if !source.is_empty() {
+        f.draw(fb, Face::Body, 23.0, MARGIN, 416, MUTED, &fit(f, Face::Body, 23.0, &source, W - 2 * MARGIN));
+    }
     for (i, b) in books.iter().skip(page * BOOKS_PER_PAGE).take(BOOKS_PER_PAGE).enumerate() {
         let r = book_row(i);
         fb.fill(Rect::new(MARGIN, r.y, W - 2 * MARGIN, 3), INK);
@@ -182,5 +411,30 @@ mod tests {
         assert_eq!(b[0].clips.len(), 1);
         assert_eq!(b[0].clips[0].text, "Uma frase maior");
         assert!(b[1].clips[0].note);
+    }
+
+    #[test]
+    fn le_anotacoes_do_koreader_sem_executar_lua() {
+        let lua = r#"
+return {
+  ["annotations"] = {
+    {
+      ["drawer"] = "lighten",
+      ["text"] = "Uma linha\noutra",
+      ["note"] = "Uma nota minha",
+      ["datetime"] = "2026-11-12 08:30:00",
+    },
+    { ["drawer"] = "underline", ["text"] = "Outro destaque" },
+    { ["text"] = "Marcador sem destaque", ["note"] = "não deve aparecer" },
+  },
+}
+"#;
+        let clips = parse_koreader_annotations(lua);
+        assert_eq!(clips.len(), 3);
+        assert_eq!(clips[0].text, "Uma linha\noutra");
+        assert!(!clips[0].note);
+        assert_eq!(clips[1].text, "Uma nota minha");
+        assert!(clips[1].note);
+        assert_eq!(clips[2].text, "Outro destaque");
     }
 }

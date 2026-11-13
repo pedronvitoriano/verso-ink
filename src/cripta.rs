@@ -403,7 +403,7 @@ impl Run {
         }
         self.turns += 1;
         let d = self.dmg_to(&m);
-        let mut hit_me = |run: &mut Run, m: &Mon| {
+        let hit_me = |run: &mut Run, m: &Mon| {
             if run.stone {
                 run.stone = false;
                 return;

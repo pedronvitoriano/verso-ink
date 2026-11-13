@@ -347,7 +347,7 @@ impl Estudo {
                 let icon = [("ingles", "ingles"), ("xadrez", "xadrez"), ("rust", "rust")].iter().find(|(i, _)| i == id).map(|(_, n)| n.to_string()).unwrap_or("aprender".into());
                 match t {
                     Some(t) => (t.title.clone(), format!("{} de {} lições", t.done().len(), t.total()), Some(icon)),
-                    None => (theme.clone(), "O Claude está montando…".to_string(), Some(icon)),
+                    None => (theme.clone(), "O Verso está montando…".to_string(), Some(icon)),
                 }
             } else {
                 ("+ Novo tópico".to_string(), "Qualquer assunto".to_string(), None)
@@ -539,7 +539,7 @@ impl Estudo {
         f.draw(fb, Face::Display, 70.0, MARGIN, 420, INK, if self.error.is_some() { "Não deu agora" } else { "Preparando…" });
         let msg = match &self.error {
             Some(e) => format!("{e} As lições ficam prontas sozinhas quando houver Wi-Fi."),
-            None => "O Claude está escrevendo esta lição para você. Leva uns 30 segundos; da próxima vez ela já estará no Kindle.".to_string(),
+            None => "O Verso está escrevendo esta lição para você. Leva uns 30 segundos; da próxima vez ela já estará no Kindle.".to_string(),
         };
         for (k, l) in crate::chat::wrap_words(f, Face::Body, 34.0, &msg, W - 2 * MARGIN).iter().take(5).enumerate() {
             f.draw(fb, Face::Body, 34.0, MARGIN, 500 + k as i32 * 48, MUTED, l);

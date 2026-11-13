@@ -94,7 +94,7 @@ impl Semana {
             s.spawn(Job::Get);
         } else {
             s.view = View::Intro;
-            s.error = Some("A ponte do Claude não está configurada.".into());
+            s.error = Some("A ponte do Verso não está configurada.".into());
         }
         s
     }
@@ -164,7 +164,7 @@ impl MiniGame for Semana {
             View::Loading => {
                 f.draw(fb, Face::Display, 90.0, MARGIN - 4, 380, INK, "Semana");
                 let msg = match self.job.as_ref().map(|j| &j.0) {
-                    Some(Job::Make) => "O Claude está lendo a sua semana: aprendizado, leitura, foco, violão e o trabalho dos agentes. Leva cerca de um minuto.",
+                    Some(Job::Make) => "O Verso está lendo a sua semana: aprendizado, leitura, foco, violão e o trabalho dos agentes. Leva cerca de um minuto.",
                     Some(Job::Answer) => "Montando o plano da próxima semana com as suas respostas e guardando a nota no seu Brain.",
                     _ => "Buscando a semana…",
                 };
@@ -175,7 +175,7 @@ impl MiniGame for Semana {
                 let y = Self::lines(fb, f, Face::Strong, 32.0, 400, "Feche a semana em 3 minutos: o que foi bem, o que escapou e o plano da próxima.", 3, MUTED);
                 let st = crate::aprender::status();
                 crate::aprender::week_row(fb, f, MARGIN, y + 60, W - 2 * MARGIN, &st);
-                let steps = ["O Kindle junta os números dos últimos 7 dias.", "O Claude escreve o resumo e faz 3 perguntas.", "Você responde com toques; o plano vai para o seu Brain."];
+                let steps = ["O Kindle junta os números dos últimos 7 dias.", "O Verso escreve o resumo e faz 3 perguntas.", "Você responde com toques; o plano vai para o seu Brain."];
                 let mut yy = y + 260;
                 for (k, t) in steps.iter().enumerate() {
                     fb.round_rect(Rect::new(MARGIN, yy - 30, 44, 44), 22, INK);

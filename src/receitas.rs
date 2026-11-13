@@ -137,7 +137,7 @@ impl MiniGame for Receitas {
         match self.view {
             View::List => {
                 f.draw(fb, Face::Display, 130.0, MARGIN - 6, 310, INK, "Receitas");
-                let sub = if self.list.is_empty() { "Nenhuma receita. Mande pelo PC (tools/receita.sh) ou peça ao Claude." } else { "A tela não apaga com uma receita aberta" };
+                let sub = if self.list.is_empty() { "Nenhuma receita. Mande pelo PC (tools/receita.sh) ou peça ao Verso." } else { "A tela não apaga com uma receita aberta" };
                 f.draw(fb, Face::Strong, 28.0, MARGIN, 380, MUTED, sub);
                 for (i, (_, r)) in self.list.iter().skip(self.page * PER_PAGE).take(PER_PAGE).enumerate() {
                     let row = Self::row(i);

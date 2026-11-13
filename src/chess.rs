@@ -811,7 +811,9 @@ pub fn san(pos: &Pos, m: Move, promo: Option<Kind>) -> String {
 
 // ---------- Desenho ----------
 
-pub const SQ: i32 = 104;
+// Deixamos uma faixa real para as coordenadas: no e-ink, letras pequenas por cima
+// das peças somem justamente quando a pessoa precisa conferir um lance falado.
+pub const SQ: i32 = 98;
 pub const BX: i32 = (1072 - 8 * SQ) / 2;
 pub const BY: i32 = 446;
 
@@ -1018,22 +1020,21 @@ pub fn draw_board_frame(fb: &mut Framebuffer, b: Rect) {
     fb.round_rect(Rect::new(b.x - 10, b.y - 10, b.w + 20, b.h + 20), 18, 0x30);
 }
 
-/// Letras e números das casas, pequenos, no canto das casas da borda.
+/// Coordenadas grandes nas margens do tabuleiro. Elas nunca disputam contraste com uma
+/// peça, e acompanham a orientação de quem está jogando embaixo.
 pub fn draw_coords(fb: &mut Framebuffer, f: &Fonts, flip: bool) {
-    for k in 0..8 {
-        // Coluna (embaixo) e fileira (à esquerda), na ordem de quem está embaixo.
-        let file = if flip { 7 - k } else { k };
-        let col_sq = 56 + file; // fileira 1 vista de baixo
-        let r = square_rect(if flip { file } else { col_sq }, flip);
-        let dark = ((if flip { file } else { col_sq }) / 8 + file) % 2 == 1;
-        let t = ((b'a' + file as u8) as char).to_string();
-        f.draw(fb, Face::Strong, 19.0, r.x + r.w - 17, r.y + r.h - 6, if dark { 0xEE } else { 0x88 }, &t);
-        let rank_row = k; // linha da tela, de cima para baixo
-        let sq = if flip { (7 - rank_row) * 8 + 7 } else { rank_row * 8 };
-        let r = square_rect(sq, flip);
-        let dark = (sq / 8 + sq % 8) % 2 == 1;
-        let n = (8 - sq / 8).to_string();
-        f.draw(fb, Face::Strong, 19.0, r.x + 5, r.y + 21, if dark { 0xEE } else { 0x88 }, &n);
+    for screen_col in 0..8 {
+        let file = if flip { 7 - screen_col } else { screen_col };
+        let label = ((b'a' + file as u8) as char).to_string();
+        let x = BX + screen_col as i32 * SQ + (SQ - f.measure(Face::Strong, 30.0, &label)) / 2;
+        f.draw(fb, Face::Strong, 30.0, x, BY + 8 * SQ + 36, INK, &label);
+    }
+    for screen_row in 0..8 {
+        let rank = if flip { screen_row + 1 } else { 8 - screen_row };
+        let label = rank.to_string();
+        let x = BX - 34 - f.measure(Face::Strong, 30.0, &label);
+        let y = BY + screen_row as i32 * SQ + (SQ + 22) / 2;
+        f.draw(fb, Face::Strong, 30.0, x, y, INK, &label);
     }
 }
 
@@ -1085,6 +1086,16 @@ pub fn draw_square(fb: &mut Framebuffer, g: &Game, sp: &Sprites, i: usize) {
     }
 }
 
+/// Parte que precisa ser idêntica no primeiro desenho, nas atualizações parciais e na revisão.
+/// Centralizar evita que um redraw apague informação de navegação do tabuleiro.
+pub fn draw_position(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites) {
+    draw_board_frame(fb, board_rect());
+    for i in 0..64 {
+        draw_square(fb, g, sp, i);
+    }
+    draw_coords(fb, f, g.flipped());
+}
+
 /// Botões de baixo da partida: rótulo e se está em destaque (confirmação); vazio = não mostra.
 pub struct Buttons<'a> {
     pub left: (&'a str, bool),
@@ -1110,11 +1121,7 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites, btn: &Butto
         draw_player_card(fb, f, g, sp);
     }
     let b = board_rect();
-    draw_board_frame(fb, b);
-    for i in 0..64 {
-        draw_square(fb, g, sp, i);
-    }
-    draw_coords(fb, f, g.flipped());
+    draw_position(fb, f, g, sp);
     // Xeque e xeque-mate escritos sobre o tabuleiro, além da casa marcada.
     let stm = g.pos.white_to_move;
     if g.pos.in_check(stm) {

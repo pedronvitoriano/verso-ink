@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Instala a ponte do Claude na VPS (rodar como root na VPS). Idempotente.
+# Instala a ponte do Verso na VPS (rodar como root na VPS). Idempotente.
 #   - usuário próprio "versoink", sem sudo
-#   - Claude Code pelo instalador oficial (~versoink/.local/bin/claude)
+#   - Claude Code e Codex CLI, cada um autenticado na conta do próprio versoink
 #   - serviço systemd em 127.0.0.1:8790
 #   - nginx: caminho /verso-ink/ dentro de um site HTTPS existente ($SITE), com cópia de segurança
-# Depois: fazer o login uma vez com  su - versoink -c claude  (comando /login).
+# Depois: fazer os logins uma vez como versoink; a chave de imagens fica em arquivo separado.
 set -euo pipefail
 SITE="$(readlink -f "${SITE:-/etc/nginx/sites-enabled/jarvis}")"
 SRC="$(cd "$(dirname "$0")" && pwd)"
@@ -22,6 +22,13 @@ chmod 640 /etc/verso-ink/token
 
 if [ ! -x /home/versoink/.local/bin/claude ]; then
     su - versoink -c 'curl -fsSL https://claude.ai/install.sh | bash' >/tmp/verso-ink-claude-install.log 2>&1
+fi
+if command -v npm >/dev/null 2>&1; then
+    if [ ! -x /home/versoink/.local/bin/codex ]; then
+        su - versoink -c 'npm install --global --prefix /home/versoink/.local @openai/codex@latest' >/tmp/verso-ink-codex-install.log 2>&1
+    fi
+else
+    echo "aviso: Node.js/npm não encontrado; instale-os e rode este script de novo para ativar o Codex" >&2
 fi
 
 # Leitura dos arquivos do Kindle pelo túnel (só leitura: o Kindle força o script claude-ler.sh).
@@ -41,12 +48,14 @@ KINDLE
 chmod 755 /usr/local/bin/kindle
 cat >/etc/systemd/system/verso-ink-claude.service <<'EOF'
 [Unit]
-Description=Verso Ink: ponte do Kindle para o Claude Code
+Description=Verso Ink: ponte do Kindle para o assistente Verso
 After=network-online.target
 
 [Service]
 User=versoink
 WorkingDirectory=/home/versoink
+Environment=HOME=/home/versoink
+Environment=PATH=/home/versoink/.local/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=/usr/bin/python3 /opt/verso-ink/claude-bridge.py
 Restart=on-failure
 NoNewPrivileges=true
@@ -59,7 +68,7 @@ systemctl enable --now verso-ink-claude.service
 systemctl restart verso-ink-claude.service
 
 cat >/etc/nginx/snippets/verso-ink.conf <<'EOF'
-# Verso Ink: ponte do Kindle para o Claude (autenticação por token no próprio serviço)
+# Verso Ink: ponte do Kindle para o Verso (autenticação por token no próprio serviço)
 location /verso-ink/ {
     proxy_pass http://127.0.0.1:8790/;
     proxy_read_timeout 600s;
@@ -84,4 +93,9 @@ if ! nginx -t; then
 fi
 systemctl reload nginx
 echo "chave de leitura do Kindle: $(cat /home/versoink/.ssh/kindle_leitura.pub)"
+echo "Login do Claude: su - versoink -c /home/versoink/.local/bin/claude"
+if [ -x /home/versoink/.local/bin/codex ]; then
+    echo "Login do Codex:  su - versoink -c '/home/versoink/.local/bin/codex login --device-auth'"
+fi
+echo "Imagens: copie uma chave da OpenAI para /etc/verso-ink/openai-image-api-key (root:versoink, modo 640)."
 echo "ok"

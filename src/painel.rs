@@ -526,7 +526,7 @@ pub fn draw_edition(fb: &mut Framebuffer, f: &Fonts, e: Option<&Edition>, page: 
             }
             Block::Tail => {
                 let r1 = Rect::new(MARGIN, y + 20, W - 2 * MARGIN, 92);
-                ui::button(fb, f, r1, "Perguntar ao Claude sobre a edição", false);
+                ui::button(fb, f, r1, "Perguntar ao Verso sobre a edição", false);
                 hits.push((r1, EdAction::Ask(format!("Edição da manhã de {}:\n{}", day_label(&e.day), edition_text(e)))));
                 let r2 = Rect::new(MARGIN, y + 130, W - 2 * MARGIN, 80);
                 f.draw(fb, Face::Strong, 28.0, r2.x, r2.y + 30, MUTED, "Algo mudou desde as 6h?");
@@ -695,7 +695,7 @@ pub fn draw_photo(fb: &mut Framebuffer, f: &Fonts, list: &[PathBuf], k: usize) {
         f,
         420,
         "vazio-moldura",
-        &[if send_url().is_some() { "No celular, abra a página do endereço abaixo." } else { "No celular, abra a página Mandar para o Kindle (o endereço aparece aqui quando a ponte do Claude estiver ligada nos Ajustes)." }, "Escolha Foto e mande quantas quiser.", "Elas aparecem aqui; toque para passar, e trocam sozinhas a cada 15 minutos."],
+        &[if send_url().is_some() { "No celular, abra a página do endereço abaixo." } else { "No celular, abra a página Mandar para o Kindle (o endereço aparece aqui quando a ponte do Verso estiver ligada nos Ajustes)." }, "Escolha Foto e mande quantas quiser.", "Elas aparecem aqui; toque para passar, e trocam sozinhas a cada 15 minutos."],
         send_url(),
     );
 }
@@ -752,7 +752,7 @@ pub fn draw_articles(fb: &mut Framebuffer, f: &Fonts, list: &[(PathBuf, String, 
             f,
             450,
             "vazio-artigos",
-            &[if send_url().is_some() { "No celular, abra a página do endereço abaixo." } else { "No celular, abra a página Mandar para o Kindle (o endereço aparece aqui quando a ponte do Claude estiver ligada nos Ajustes)." }, "Cole o link de uma matéria ou post e toque em Mandar.", "O texto chega limpo, sem anúncio, para ler no leitor do Verso Ink."],
+            &[if send_url().is_some() { "No celular, abra a página do endereço abaixo." } else { "No celular, abra a página Mandar para o Kindle (o endereço aparece aqui quando a ponte do Verso estiver ligada nos Ajustes)." }, "Cole o link de uma matéria ou post e toque em Mandar.", "O texto chega limpo, sem anúncio, para ler no leitor do Verso Ink."],
             send_url(),
         );
         return;

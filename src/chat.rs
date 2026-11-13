@@ -1,4 +1,4 @@
-//! Conversas com o Claude pela ponte da VPS (server/claude-bridge.py), via curl do Kindle.
+//! Conversas com o Verso pela ponte da VPS (server/claude-bridge.py), via curl do Kindle.
 
 use crate::apps::fit;
 use crate::fb::{Framebuffer, Rect};
@@ -184,7 +184,7 @@ pub fn call(method: &str, path: &str, body: Option<&str>, timeout: u32) -> Resul
 
 /// Como `call`, mas devolve o JSON da resposta em texto (para guardar como veio).
 pub fn call_raw(method: &str, path: &str, body: Option<&str>, timeout: u32) -> Result<String, String> {
-    let (Some(base), Some(tok)) = (url(), token()) else { return Err("A ponte do Claude ainda não foi configurada.".into()) };
+    let (Some(base), Some(tok)) = (url(), token()) else { return Err("A ponte do Verso ainda não foi configurada.".into()) };
     let mut cmd = Command::new("curl");
     cmd.args(resolve_args());
     cmd.args(["-s", "-m", &timeout.to_string(), "-X", method, "-H", &format!("Authorization: Bearer {tok}"), "-w", "\n%{http_code}"]);
@@ -259,14 +259,29 @@ pub struct Msg {
     pub text: String,
     /// Contexto enviado junto (o que você estava fazendo no Kindle).
     pub context: Option<String>,
+    /// Motor técnico que escreveu a resposta, sem trocar o nome do assistente.
+    pub provider: Option<String>,
+    /// Motor que ficou indisponível e fez o Verso continuar no outro.
+    pub fallback_from: Option<String>,
+    /// A pessoa optou por acrescentar o resumo seguro do Brain.
+    pub brain: bool,
+    pub brain_sources: Vec<String>,
+}
+
+#[derive(Clone)]
+pub struct ChatFile {
+    pub name: String,
+    pub size: u64,
+    pub mime: String,
+    pub kind: String,
 }
 
 pub struct Chat {
     pub id: String,
     pub title: String,
     pub messages: Vec<Msg>,
-    /// Arquivos que o Claude criou nesta conversa: (nome, tamanho).
-    pub files: Vec<(String, u64)>,
+    /// Arquivos que o Verso criou nesta conversa.
+    pub files: Vec<ChatFile>,
 }
 
 pub fn open(id: &str) -> Result<Chat, String> {
@@ -284,6 +299,10 @@ pub fn open(id: &str) -> Result<Chat, String> {
                             user: x.get("role")?.str()? == "user",
                             text: x.get("text")?.str()?.to_string(),
                             context: x.get("context").and_then(Json::str).map(str::to_string),
+                            provider: x.get("provider").and_then(Json::str).map(str::to_string),
+                            fallback_from: x.get("fallback_from").and_then(Json::str).map(str::to_string),
+                            brain: x.get("brain").and_then(Json::bool).unwrap_or(false),
+                            brain_sources: x.get("brain_sources").map(Json::arr).unwrap_or(&[]).iter().filter_map(|s| s.str().map(str::to_string)).collect(),
                         })
                     })
                     .collect()
@@ -293,8 +312,33 @@ pub fn open(id: &str) -> Result<Chat, String> {
     })
 }
 
-fn files_of(j: &Json) -> Vec<(String, u64)> {
-    j.get("files").map(|f| f.arr().iter().filter_map(|x| Some((x.get("name")?.str()?.to_string(), x.get("size")?.num()? as u64))).collect()).unwrap_or_default()
+fn file_kind(name: &str, mime: &str) -> String {
+    let ext = name.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
+    if mime.starts_with("image/") || ["png", "jpg", "jpeg", "gif"].contains(&ext.as_str()) {
+        "image".into()
+    } else {
+        "file".into()
+    }
+}
+
+fn files_of(j: &Json) -> Vec<ChatFile> {
+    j.get("files")
+        .map(|f| {
+            f.arr()
+                .iter()
+                .filter_map(|x| {
+                    let name = x.get("name")?.str()?.to_string();
+                    let mime = x.get("mime").and_then(Json::str).unwrap_or("application/octet-stream").to_string();
+                    Some(ChatFile {
+                        kind: x.get("kind").and_then(Json::str).map(str::to_string).unwrap_or_else(|| file_kind(&name, &mime)),
+                        size: x.get("size")?.num()? as u64,
+                        name,
+                        mime,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// A ponte está configurada neste Kindle?
@@ -304,7 +348,7 @@ pub fn configured() -> bool {
 
 /// Baixa `path` da ponte para `dest` (arquivo temporário e troca no fim).
 pub fn fetch(path: &str, dest: &std::path::Path, timeout: u32) -> Result<(), String> {
-    let (Some(base), Some(tok)) = (url(), token()) else { return Err("A ponte do Claude ainda não foi configurada.".into()) };
+    let (Some(base), Some(tok)) = (url(), token()) else { return Err("A ponte do Verso ainda não foi configurada.".into()) };
     let tmp = dest.with_extension("parcial");
     let code = Command::new("curl")
         .args(resolve_args())
@@ -319,14 +363,14 @@ pub fn fetch(path: &str, dest: &std::path::Path, timeout: u32) -> Result<(), Str
     std::fs::rename(&tmp, dest).map_err(|e| e.to_string())
 }
 
-/// Pasta onde ficam os arquivos do Claude no Kindle (aparecem também na biblioteca).
+/// Pasta onde ficam os arquivos do Verso no Kindle (aparecem também na biblioteca).
 pub fn files_dir() -> std::path::PathBuf {
-    std::path::PathBuf::from("/mnt/us/documents/Claude")
+    std::path::PathBuf::from("/mnt/us/documents/Verso")
 }
 
 /// Baixa um arquivo da conversa para o Kindle e devolve onde ficou.
 pub fn download(id: &str, name: &str) -> Result<std::path::PathBuf, String> {
-    let (Some(base), Some(tok)) = (url(), token()) else { return Err("A ponte do Claude ainda não foi configurada.".into()) };
+    let (Some(base), Some(tok)) = (url(), token()) else { return Err("A ponte do Verso ainda não foi configurada.".into()) };
     if name.contains('/') || name.contains("..") {
         return Err("nome de arquivo inválido".into());
     }
@@ -350,11 +394,9 @@ pub fn download(id: &str, name: &str) -> Result<std::path::PathBuf, String> {
     Ok(dest)
 }
 
-/// Envia uma mensagem (conversa nova se `id` for None), com o contexto do que você estava
-/// fazendo no Kindle, se houver. Devolve o id da conversa.
 /// Manda um arquivo do Kindle para a ponte (anexo de uma pergunta). Devolve o id do anexo.
 pub fn upload(path: &std::path::Path, name: &str) -> Result<String, String> {
-    let (Some(base), Some(tok)) = (url(), token()) else { return Err("A ponte do Claude ainda não foi configurada.".into()) };
+    let (Some(base), Some(tok)) = (url(), token()) else { return Err("A ponte do Verso ainda não foi configurada.".into()) };
     let enc: String = name.bytes().map(|b| if b.is_ascii_alphanumeric() || b".-_ ".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect();
     let out = Command::new("curl")
         .args(resolve_args())
@@ -375,23 +417,31 @@ pub fn upload(path: &std::path::Path, name: &str) -> Result<String, String> {
 }
 
 pub fn send(id: Option<&str>, message: &str, context: Option<&str>) -> Result<String, String> {
-    send_with(id, message, context, &[])
+    send_with(id, message, context, &[], false, false)
 }
 
-/// Pergunta com anexos já enviados (ids devolvidos por `upload`).
-pub fn send_with(id: Option<&str>, message: &str, context: Option<&str>, anexos: &[String]) -> Result<String, String> {
+/// Pergunta com anexos, contexto opt-in do Brain e, se pedido, modo de geração de imagem.
+pub fn send_with(id: Option<&str>, message: &str, context: Option<&str>, anexos: &[String], brain: bool, image: bool) -> Result<String, String> {
     let path = id.map(|i| format!("/chats/{i}")).unwrap_or_else(|| "/chats".into());
     let t0 = std::time::Instant::now();
     let list: Vec<String> = anexos.iter().map(|a| json_str(a)).collect();
-    let body = format!("{{\"text\": {}, \"context\": {}, \"anexos\": [{}]}}", json_str(message), json_str(context.unwrap_or("")), list.join(","));
+    let mode = if image { "image" } else { "chat" };
+    let body = format!(
+        "{{\"text\": {}, \"context\": {}, \"anexos\": [{}], \"brain\": {}, \"mode\": {}}}",
+        json_str(message),
+        json_str(context.unwrap_or("")),
+        list.join(","),
+        if brain { "true" } else { "false" },
+        json_str(mode),
+    );
     let j = call("POST", &path, Some(&body), 330)?;
-    log(&format!("claude respondeu em {} s", t0.elapsed().as_secs()));
+    log(&format!("verso respondeu em {} s", t0.elapsed().as_secs()));
     j.get("id").and_then(Json::str).map(str::to_string).ok_or_else(|| "resposta sem conversa".into())
 }
 
 // ---------- Telas ----------
 
-/// Barra "Pergunte ao Claude…" (nova conversa), no alto da lista.
+/// Barra "Pergunte ao Verso…" (nova conversa), no alto da lista.
 pub fn new_rect() -> Rect {
     Rect::new(MARGIN, 330, W - 2 * MARGIN, 110)
 }
@@ -417,18 +467,18 @@ pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, chats: &Result<Vec<ChatInfo>, S
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
     crate::sprites::draw(fb, "cab-claude", Rect::new(W - MARGIN - 250, 70, 260, 226));
-    f.draw(fb, Face::Display, 120.0, MARGIN - 6, 290, INK, "Claude");
+    f.draw(fb, Face::Display, 120.0, MARGIN - 6, 290, INK, "Verso");
     // Barra de pergunta: o jeito mais rápido de começar.
     let r = new_rect();
     ui::card(fb, r, r.h / 2, PAPER, false);
     let d = r.h - 28;
     let tx = if ui::icon_disc(fb, r.x + 14, r.y + 14, d, "claude") { r.x + 14 + d + 20 } else { r.x + 36 };
-    f.draw(fb, Face::Body, 36.0, tx, r.y + r.h / 2 + 13, MUTED, "Pergunte ao Claude…");
+    f.draw(fb, Face::Body, 36.0, tx, r.y + r.h / 2 + 13, MUTED, "Pergunte ao Verso…");
     let plus = Rect::new(r.x + r.w - 14 - d, r.y + 14, d, d);
     fb.round_rect(plus, d / 2, INK);
     let pw = f.measure(Face::Display, 44.0, "+");
     f.draw(fb, Face::Display, 44.0, plus.x + (d - pw) / 2, plus.y + d / 2 + 16, PAPER, "+");
-    f.draw(fb, Face::Strong, 26.0, MARGIN, 496, MUTED, "CONVERSAS");
+    f.draw(fb, Face::Strong, 26.0, MARGIN, 496, MUTED, "CONVERSAS DO VERSO");
     match chats {
         Err(e) => {
             for (k, l) in [e.as_str(), "As conversas ficam na VPS e aparecem aqui."].iter().enumerate() {
@@ -453,7 +503,7 @@ pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, chats: &Result<Vec<ChatInfo>, S
     }
     let lr = live_rect();
     ui::card(fb, lr, lr.h / 2, if live > 0 { INK } else { PAPER }, false);
-    let label = if live == 0 { "Sessões no PC ao vivo".to_string() } else { format!("Sessões no PC ao vivo · {live}") };
+    let label = if live == 0 { "Agentes no PC ao vivo".to_string() } else { format!("Agentes no PC ao vivo · {live}") };
     let lw = f.measure(Face::Strong, 34.0, &label);
     f.draw(fb, Face::Strong, 34.0, lr.x + (lr.w - lw) / 2, lr.y + 62, if live > 0 { PAPER } else { INK }, &label);
 }
@@ -461,8 +511,10 @@ pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, chats: &Result<Vec<ChatInfo>, S
 /// Uma linha já quebrada para a tela.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Line {
-    /// "VOCÊ" / "CLAUDE".
+    /// "VOCÊ" / "VERSO".
     Label(bool),
+    /// Motor técnico, uso de Brain e troca de contingência, sem virar resposta do modelo.
+    Meta(String),
     /// Texto comum (com **negrito** marcado); `user` = mensagem sua.
     Text(String, bool),
     Heading(String),
@@ -480,6 +532,7 @@ impl Line {
             // Sua mensagem não tem rótulo (o balão à direita já diz); a do Claude tem o ícone.
             Line::Label(true) => 20,
             Line::Label(false) => 62,
+            Line::Meta(_) => 34,
             Line::Heading(_) => 62,
             Line::Code(_) => 42,
             Line::Context(_) => 44,
@@ -610,9 +663,34 @@ pub fn paginate(f: &Fonts, chat: &Chat) -> Vec<Vec<Line>> {
     let mut lines = Vec::new();
     for m in &chat.messages {
         lines.push(Line::Label(m.user));
+        if !m.user {
+            let mut meta = Vec::new();
+            if let Some(provider) = m.provider.as_deref() {
+                let provider = match provider {
+                    "claude" => "Claude",
+                    "codex" => "Codex",
+                    "imagem" => "Imagem",
+                    other => other,
+                };
+                meta.push(format!("Verso · {provider}"));
+            }
+            if let Some(from) = m.fallback_from.as_deref() {
+                let from = match from { "claude" => "Claude", "codex" => "Codex", other => other };
+                meta.push(format!("continuou após {from}"));
+            }
+            if !m.brain_sources.is_empty() {
+                meta.push("Brain incluído".into());
+            }
+            if !meta.is_empty() {
+                lines.push(Line::Meta(meta.join(" · ")));
+            }
+        }
         if let Some(c) = m.context.as_deref().filter(|c| !c.is_empty()) {
             let first = c.lines().next().unwrap_or("");
             lines.push(Line::Context(fit(f, Face::Body, 24.0, &format!("sobre: {first}"), max_w - 200)));
+        }
+        if m.user && m.brain {
+            lines.push(Line::Context("Brain incluído nesta pergunta".into()));
         }
         // Suas mensagens vão num balão mais estreito, à direita.
         lines.extend(layout_text(f, &m.text, m.user, if m.user { max_w - 200 } else { max_w }));
@@ -653,8 +731,11 @@ pub fn draw_lines(fb: &mut Framebuffer, f: &Fonts, lines: &[Line], top: i32) {
                 if !*user {
                     let d = 46;
                     let x = if ui::icon_disc(fb, MARGIN - 4, y + 4, d, "claude") { MARGIN + d + 10 } else { MARGIN };
-                    f.draw(fb, Face::Strong, 28.0, x, y + 40, INK, "Claude");
+                    f.draw(fb, Face::Strong, 28.0, x, y + 40, INK, "Verso");
                 }
+            }
+            Line::Meta(t) => {
+                f.draw(fb, Face::Body, 22.0, MARGIN, base, MUTED, &fit(f, Face::Body, 22.0, t, W - 2 * MARGIN));
             }
             Line::Text(t, user) => {
                 if *user {
@@ -707,7 +788,7 @@ pub fn chat_attach_rect() -> Rect {
 pub fn next_rect() -> Rect {
     Rect::new(W - MARGIN - 100, 1316, 100, 100)
 }
-/// "Arquivos · N" no alto, quando o Claude criou algum.
+/// "Arquivos · N" no alto, quando o Verso criou algum.
 pub fn files_rect() -> Rect {
     Rect::new(W - MARGIN - 300, 76, 300, 84)
 }
@@ -739,7 +820,7 @@ pub fn draw_chat(fb: &mut Framebuffer, f: &Fonts, chat: &Chat, pages: &[Vec<Line
     }
 }
 
-// ---------- Arquivos do Claude ----------
+// ---------- Arquivos do Verso ----------
 
 pub fn file_row(i: usize) -> Rect {
     Rect::new(MARGIN - 16, 400 + i as i32 * 124, W - 2 * MARGIN + 32, 120)
@@ -760,24 +841,29 @@ pub fn opens_in_reader(name: &str) -> bool {
     ["epub", "pdf", "mobi", "azw3", "cbz", "fb2", "djvu"].contains(&ext.as_str())
 }
 
+pub fn opens_as_image(file: &ChatFile) -> bool {
+    let ext = file.name.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
+    file.kind == "image" || file.mime.starts_with("image/") || ["png", "jpg", "jpeg", "gif"].contains(&ext.as_str())
+}
+
 pub fn draw_files(fb: &mut Framebuffer, f: &Fonts, chat: &Chat, note: &str) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
-    f.draw(fb, Face::Strong, 30.0, MARGIN, 240, MUTED, "ARQUIVOS DO CLAUDE");
+    f.draw(fb, Face::Strong, 30.0, MARGIN, 240, MUTED, "ARQUIVOS DO VERSO");
     f.draw(fb, Face::Display, 52.0, MARGIN, 320, INK, &fit(f, Face::Display, 52.0, &chat.title, W - 2 * MARGIN));
-    for (i, (name, size)) in chat.files.iter().take(FILE_ROWS).enumerate() {
+    for (i, file) in chat.files.iter().take(FILE_ROWS).enumerate() {
         let r = file_row(i);
         fb.fill(Rect::new(MARGIN, r.y, W - 2 * MARGIN, 3), INK);
-        f.draw(fb, Face::Display, 42.0, MARGIN, r.y + 60, INK, &fit(f, Face::Display, 42.0, name, W - 2 * MARGIN));
-        let how = if opens_in_reader(name) { "abre no KOReader" } else { "abre aqui" };
-        f.draw(fb, Face::Body, 28.0, MARGIN + 2, r.y + 100, MUTED, &format!("{} · {how} · fica em documents/Claude", human(*size)));
+        f.draw(fb, Face::Display, 42.0, MARGIN, r.y + 60, INK, &fit(f, Face::Display, 42.0, &file.name, W - 2 * MARGIN));
+        let how = if opens_as_image(file) { "abre imagem" } else if opens_in_reader(&file.name) { "abre no KOReader" } else { "abre aqui" };
+        f.draw(fb, Face::Body, 28.0, MARGIN + 2, r.y + 100, MUTED, &format!("{} · {how} · fica em documents/Verso", human(file.size)));
     }
     if !note.is_empty() {
         f.draw(fb, Face::Body, 30.0, MARGIN, 1300, INK, &fit(f, Face::Body, 30.0, note, W - 2 * MARGIN));
     }
 }
 
-/// Leitor simples de texto/Markdown (arquivos do Claude e análises).
+/// Leitor simples de texto/Markdown (arquivos do Verso e análises).
 pub fn draw_doc(fb: &mut Framebuffer, f: &Fonts, title: &str, pages: &[Vec<Line>], page: usize) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
@@ -798,7 +884,41 @@ pub fn draw_doc(fb: &mut Framebuffer, f: &Fonts, title: &str, pages: &[Vec<Line>
     }
 }
 
-// ---------- Pergunta ao Claude ----------
+/// Imagem recebida ou gerada na conversa, ajustada para a tela e-ink sem esticar.
+pub fn draw_image(fb: &mut Framebuffer, f: &Fonts, path: Option<&std::path::Path>, title: &str) {
+    fb.fill(fb.screen(), PAPER);
+    ui::draw_back(fb, f, false);
+    f.draw(fb, Face::Display, 46.0, MARGIN, 250, INK, &fit(f, Face::Display, 46.0, title, W - 2 * MARGIN));
+    let Some(path) = path else {
+        f.draw(fb, Face::Body, 32.0, MARGIN, 280, MUTED, "Não consegui abrir esta imagem.");
+        return;
+    };
+    let Ok((source_w, source_h)) = image::image_dimensions(path) else {
+        f.draw(fb, Face::Body, 32.0, MARGIN, 340, MUTED, "Não consegui ler esta imagem.");
+        return;
+    };
+    if source_w == 0 || source_h == 0 || source_w > 8192 || source_h > 8192 || u64::from(source_w) * u64::from(source_h) > 16_000_000 {
+        f.draw(fb, Face::Body, 32.0, MARGIN, 340, MUTED, "Esta imagem é grande demais para o Kindle.");
+        return;
+    }
+    let Ok(image) = image::open(path) else {
+        f.draw(fb, Face::Body, 32.0, MARGIN, 340, MUTED, "Não consegui ler esta imagem.");
+        return;
+    };
+    let gray = image.to_luma8();
+    let max_w = (W - 2 * MARGIN) as u32;
+    let image_top = 300i32;
+    let max_h = 1448u32 - image_top as u32 - 48;
+    let ratio = (max_w as f32 / gray.width() as f32).min(max_h as f32 / gray.height() as f32).min(1.0);
+    let w = ((gray.width() as f32 * ratio).round() as u32).max(1);
+    let h = ((gray.height() as f32 * ratio).round() as u32).max(1);
+    let resized = image::imageops::resize(&gray, w, h, image::imageops::FilterType::Triangle);
+    let x = (W - w as i32) / 2;
+    let y = image_top + (max_h as i32 - h as i32) / 2;
+    fb.blit(x, y, w as i32, h as i32, resized.as_raw());
+}
+
+// ---------- Pergunta ao Verso ----------
 
 /// O que a tela de pergunta mostra.
 pub struct Compose<'a> {
@@ -806,13 +926,17 @@ pub struct Compose<'a> {
     pub attach: &'a [String],
     /// Conversa em andamento (título), ou None para conversa nova.
     pub chat_title: Option<&'a str>,
-    /// Última resposta do Claude (quando continua uma conversa sem contexto novo).
+    /// Última resposta do Verso (quando continua uma conversa sem contexto novo).
     pub last_reply: Option<&'a str>,
     /// Sobre o que é: (título, detalhe), quando veio de um jogo, livro ou tela.
     pub about: Option<(&'a str, &'a str)>,
     pub suggestions: &'a [String],
     pub text: &'a str,
     pub hint: &'a str,
+    /// Usa o resumo seguro do Brain sincronizado do PC nesta pergunta.
+    pub brain: bool,
+    /// A instrução vira uma imagem, em vez de uma resposta de texto.
+    pub image: bool,
 }
 
 const CARD_Y: i32 = 288;
@@ -857,13 +981,14 @@ pub fn compose_field_rect() -> Rect {
 }
 
 /// Campo de texto (redesenhado sozinho enquanto digita).
-pub fn draw_compose_field(fb: &mut Framebuffer, f: &Fonts, text: &str, hint: &str) {
+pub fn draw_compose_field(fb: &mut Framebuffer, f: &Fonts, text: &str, hint: &str, image: bool) {
     let r = compose_field_rect();
     fb.fill(Rect::new(0, r.y - 6, W, 892 - (r.y - 6)), PAPER);
     fb.round_outline(r, 28, 4, INK, PAPER);
     let max_w = r.w - 64;
     if text.is_empty() {
-        f.draw(fb, Face::Body, 40.0, r.x + 32, r.y + 70, MUTED, "Ou escreva a sua pergunta…");
+        let placeholder = if image { "Descreva a imagem que quer criar…" } else { "Ou escreva a sua pergunta…" };
+        f.draw(fb, Face::Body, 40.0, r.x + 32, r.y + 70, MUTED, placeholder);
         fb.fill(Rect::new(r.x + 30, r.y + 30, 4, 52), INK);
     } else {
         // Até duas linhas; se passar, mostra o final.
@@ -884,9 +1009,9 @@ pub fn draw_compose_field(fb: &mut Framebuffer, f: &Fonts, text: &str, hint: &st
 pub fn draw_compose(fb: &mut Framebuffer, f: &Fonts, c: &Compose) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
-    // Cabeçalho: a marca do Claude e a pergunta.
+    // Cabeçalho: a marca do Verso e a pergunta.
     ui::icon(fb, ui::Module::Claude, MARGIN - 4, 176, 64, INK);
-    let title = if c.chat_title.is_some() { "Continue a conversa" } else { "Pergunte ao Claude" };
+    let title = if c.image { "Crie uma imagem" } else if c.chat_title.is_some() { "Continue a conversa" } else { "Pergunte ao Verso" };
     f.draw(fb, Face::Display, 58.0, MARGIN + 80, 232, INK, title);
     if let Some(t) = c.chat_title {
         let t = fit(f, Face::Body, 26.0, t, W - 2 * MARGIN - 560);
@@ -910,7 +1035,7 @@ pub fn draw_compose(fb: &mut Framebuffer, f: &Fonts, c: &Compose) {
     } else if let Some(reply) = c.last_reply {
         let r = card_rect();
         fb.round_rect(r, 30, 0xEC);
-        f.draw(fb, Face::Strong, 24.0, r.x + 32, r.y + 42, MUTED, "O CLAUDE DISSE");
+        f.draw(fb, Face::Strong, 24.0, r.x + 32, r.y + 42, MUTED, "O VERSO DISSE");
         let flat: String = reply.replace("**", "").split_whitespace().collect::<Vec<_>>().join(" ");
         let lines = wrap_words(f, Face::Body, 28.0, &flat, r.w - 64);
         let mut first = lines.first().cloned().unwrap_or_default();
@@ -920,18 +1045,23 @@ pub fn draw_compose(fb: &mut Framebuffer, f: &Fonts, c: &Compose) {
         f.draw(fb, Face::Body, 28.0, r.x + 32, r.y + 92, INK, &first);
     }
     // Perguntas prontas: um toque envia.
-    let chips = chip_rects(f, c.suggestions, has_card);
+    let chips = if c.image { Vec::new() } else { chip_rects(f, c.suggestions, has_card) };
     for (s, r) in c.suggestions.iter().zip(&chips) {
         fb.round_outline(*r, r.h / 2, 3, INK, PAPER);
         f.draw(fb, Face::Strong, 30.0, r.x + 32, r.y + 50, INK, s);
     }
-    // Espaço sobrando: a dica de chamar o Claude de qualquer tela.
+    // Espaço sobrando: dica contextual em vez de deixar um vão vazio na tela e-ink.
     let bottom = chips.iter().map(|r| r.y + r.h).max().unwrap_or(CARD_Y);
-    if !has_card && compose_field_rect().y - bottom > 110 {
+    if c.image && compose_field_rect().y - bottom > 110 {
+        f.draw(fb, Face::Body, 28.0, MARGIN, bottom + 72, MUTED, "Descreva o assunto, o estilo e o enquadramento.");
+        f.draw(fb, Face::Body, 28.0, MARGIN, bottom + 112, MUTED, "O resultado aparece em Arquivos quando ficar pronto.");
+    } else if !has_card && compose_field_rect().y - bottom > 110 {
         f.draw(fb, Face::Body, 28.0, MARGIN, bottom + 72, MUTED, "Em qualquer tela, puxe de cima para baixo: luz, Wi-Fi");
-        f.draw(fb, Face::Body, 28.0, MARGIN, bottom + 112, MUTED, "e o Claude sobre o que está nela.");
+        f.draw(fb, Face::Body, 28.0, MARGIN, bottom + 112, MUTED, "e o Verso sobre o que está nela.");
     }
-    // Anexar: no alto, à direita; os escolhidos aparecem logo acima do campo.
+    // Contextos e anexos ficam à vista: a pessoa sabe exatamente o que irá junto.
+    ui::button(fb, f, image_rect(), if c.image { "Imagem ✓" } else { "Imagem" }, c.image);
+    ui::button(fb, f, brain_rect(), if c.brain { "Brain ✓" } else { "Brain" }, c.brain);
     let ar = attach_rect();
     let label = if c.attach.is_empty() { "+ Anexar".to_string() } else { format!("Anexos · {}", c.attach.len()) };
     ui::button(fb, f, ar, &label, !c.attach.is_empty());
@@ -941,10 +1071,19 @@ pub fn draw_compose(fb: &mut Framebuffer, f: &Fonts, c: &Compose) {
         fb.fill(Rect::new(MARGIN - 8, y - 34, W - 2 * MARGIN + 16, 46), PAPER);
         f.draw(fb, Face::Strong, 26.0, MARGIN, y, INK, &t);
     }
-    draw_compose_field(fb, f, c.text, c.hint);
+    draw_compose_field(fb, f, c.text, c.hint, c.image);
 }
 
-/// Botão "Anexar" da pergunta ao Claude.
+/// Botões de contexto e mídia da pergunta ao Verso.
+pub fn image_rect() -> Rect {
+    Rect::new(MARGIN + 250, 76, 190, 84)
+}
+
+pub fn brain_rect() -> Rect {
+    Rect::new(MARGIN + 452, 76, 190, 84)
+}
+
+/// Botão "Anexar" da pergunta ao Verso.
 pub fn attach_rect() -> Rect {
     Rect::new(W - MARGIN - 250, 76, 250, 84)
 }
@@ -961,7 +1100,7 @@ pub struct AttachItem {
 pub fn attach_items() -> Vec<AttachItem> {
     let mut v = Vec::new();
     let lib = crate::apps::Library::scan("");
-    for b in lib.books.iter().filter(|b| b.size <= 16_000_000).take(40) {
+    for b in lib.books.iter().filter(|b| !b.amazon_only && b.size <= 16_000_000).take(40) {
         v.push(AttachItem { label: b.title.clone(), sub: format!("{} · {} KB", b.kind.to_uppercase(), b.size / 1024), path: Some(b.path.clone()), text: None });
     }
     for b in crate::clippings::load() {
@@ -1060,9 +1199,9 @@ mod render {
         let f = Fonts::new();
         let s = |v: &[&str]| v.iter().map(|x| x.to_string()).collect::<Vec<_>>();
         let cases = [
-            ("pergunta-uno", Compose { attach: &[], chat_title: None, last_reply: None, about: Some(("UNO", "Mesa: 7 azul · sua mão: 8 cartas")), suggestions: &s(&["Qual a melhor jogada agora?", "Que cor eu escolho?", "Explique o acúmulo"]), text: "", hint: "Toque numa pergunta pronta, ou escreva e toque em OK." }),
-            ("pergunta-nova", Compose { attach: &[], chat_title: None, last_reply: None, about: None, suggestions: &s(&["Resuma o livro que estou lendo", "Organize meu dia", "Um desafio de lógica", "Me ensine algo em 2 minutos"]), text: "", hint: "Toque numa pergunta pronta, ou escreva e toque em OK." }),
-            ("pergunta-continua", Compose { attach: &[], chat_title: Some("Ola"), last_reply: Some("Olá, Pedro! Em que posso ajudar hoje? Posso ler seus livros e ajudar nos jogos."), about: None, suggestions: &s(&["Explique melhor", "Dê um exemplo", "Resuma em tópicos"]), text: "quero saber sobre o livro", hint: "Toque numa pergunta pronta, ou escreva e toque em OK." }),
+            ("pergunta-uno", Compose { attach: &[], chat_title: None, last_reply: None, about: Some(("UNO", "Mesa: 7 azul · sua mão: 8 cartas")), suggestions: &s(&["Qual a melhor jogada agora?", "Que cor eu escolho?", "Explique o acúmulo"]), text: "", hint: "Toque numa pergunta pronta, ou escreva e toque em OK.", brain: true, image: false }),
+            ("pergunta-nova", Compose { attach: &[], chat_title: None, last_reply: None, about: None, suggestions: &s(&["Resuma o livro que estou lendo", "Organize meu dia", "Um desafio de lógica", "Me ensine algo em 2 minutos"]), text: "", hint: "Descreva a imagem e toque em OK.", brain: false, image: true }),
+            ("pergunta-continua", Compose { attach: &[], chat_title: Some("Ola"), last_reply: Some("Olá, Pedro! Em que posso ajudar hoje? Posso ler seus livros e ajudar nos jogos."), about: None, suggestions: &s(&["Explique melhor", "Dê um exemplo", "Resuma em tópicos"]), text: "quero saber sobre o livro", hint: "Toque numa pergunta pronta, ou escreva e toque em OK.", brain: true, image: false }),
         ];
         for (name, c) in cases {
             let mut fb = Framebuffer::memory();
@@ -1070,5 +1209,13 @@ mod render {
             crate::keyboard::draw(&mut fb, &f, &crate::keyboard::layout(crate::keyboard::Mode::Letters, true));
             fb.save_pgm(&out.join(format!("{name}.pgm")));
         }
+        // Uma imagem gerada abre sem depender do leitor de texto ou do KOReader.
+        let source = out.join(".imagem-fonte.png");
+        let sample = image::GrayImage::from_fn(320, 480, |x, y| image::Luma([if (x / 32 + y / 32) % 2 == 0 { 0x40 } else { 0xD0 }]));
+        sample.save(&source).unwrap();
+        let mut fb = Framebuffer::memory();
+        draw_image(&mut fb, &f, Some(&source), "imagem-gerada.png");
+        fb.save_pgm(&out.join("imagem-gerada.pgm"));
+        std::fs::remove_file(source).unwrap();
     }
 }

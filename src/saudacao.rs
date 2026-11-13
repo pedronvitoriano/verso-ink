@@ -58,7 +58,7 @@ impl Act {
             Act::Jogo => "Voltar ao jogo ›",
             Act::Ler => "Continuar lendo ›",
             Act::Foco => "Começar um foco ›",
-            Act::Claude => "Chamar o Claude ›",
+            Act::Claude => "Chamar o Verso ›",
             Act::Hoje => "Ver o meu dia ›",
             Act::Jogar => "Escolher um jogo ›",
             Act::Colecao => "Ver a coleção ›",
@@ -257,7 +257,7 @@ fn candidates(c: &Context) -> Vec<C> {
                 ("Tarde pede um foco. Um pomodoro, {nome}?", Foco),
                 ("Depois do almoço, uma partida leve de xadrez?", Jogar),
                 ("Calor de Manaus lá fora; aqui, só papel e tinta.", Ler),
-                ("Dúvida no meio da tarde? O Claude está acordado.", Claude),
+                ("Dúvida no meio da tarde? O Verso está acordado.", Claude),
             ]);
             if weekend {
                 v.extend([("Tarde livre, {nome}. Uma partida ou um capítulo?", Jogar), ("Tarde de domingo combina com violão, {nome}.", Aula)]);
@@ -273,7 +273,7 @@ fn candidates(c: &Context) -> Vec<C> {
                 ("A tela não brilha, os olhos agradecem. Boa noite, {nome}.", Ler),
             ]);
             if !weekend && c.weekday == 5 {
-                v.extend([("Sexta à noite, {nome}! O fim de semana começou.", Jogar), ("Sexta! Uma partida contra o Claude para comemorar?", Jogar)]);
+                v.extend([("Sexta à noite, {nome}! O fim de semana começou.", Jogar), ("Sexta! Uma partida contra o Verso para comemorar?", Jogar)]);
             }
         }
     }

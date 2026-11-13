@@ -63,8 +63,8 @@ fn ago(secs: i64) -> String {
 pub fn draw(fb: &mut Framebuffer, f: &Fonts, sessions: &[Session]) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
-    f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Claude");
-    f.draw(fb, Face::Strong, 30.0, MARGIN, 400, MUTED, "Ao vivo do seu PC");
+    f.draw(fb, Face::Display, 116.0, MARGIN - 6, 330, INK, "Agentes no PC");
+    f.draw(fb, Face::Strong, 30.0, MARGIN, 400, MUTED, "Ao vivo · Claude Code");
     let now = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
     if sessions.is_empty() {
         let lines = [

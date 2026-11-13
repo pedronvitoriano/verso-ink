@@ -28,7 +28,7 @@ impl Module {
             Module::Ler => "Ler",
             Module::Jogar => "Jogar",
             Module::Foco => "Foco",
-            Module::Claude => "Claude",
+            Module::Claude => "Verso",
             Module::Violao => "Aprender",
             Module::Mais => "Mais",
         }
@@ -36,9 +36,9 @@ impl Module {
     pub fn subtitle(self) -> &'static str {
         match self {
             Module::Ler => "Biblioteca e Verso One",
-            Module::Jogar => "Xadrez, sudoku e mais 14",
+            Module::Jogar => "Xadrez, sudoku e mais 15",
             Module::Foco => "Pomodoro e o seu dia",
-            Module::Claude => "Conversa ao vivo",
+            Module::Claude => "Conversa, arquivos e contexto",
             Module::Violao => "Violão, partitura e mais",
             Module::Mais => "Edição, artigos e mais",
         }
@@ -48,10 +48,10 @@ impl Module {
             Module::Ler => [
                 "Seus EPUB, PDF e quadrinhos,",
                 "com o motor do Verso One",
-                "e o que o Claude escrever para você.",
+                "e o que o Verso escrever para você.",
             ],
             Module::Jogar => [
-                "Xadrez contra o Claude,",
+                "Xadrez contra o Verso,",
                 "sudoku e ficção interativa,",
                 "tudo funcionando sem Wi-Fi.",
             ],
@@ -751,16 +751,15 @@ pub fn draw_footer(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
     let wifi = if st.wifi { "Wi-Fi conectado" } else { "Sem Wi-Fi" };
     let w = f.measure(Face::Strong, 26.0, wifi);
     let has = crate::sprites::exists("icone-wifi");
-    let cw = w + 48 + if has { 46 } else { 0 };
-    let r = Rect::new(1072 - MARGIN - cw, 1350, cw, 62);
-    fb.round_rect(r, 31, INK);
-    fb.round_rect(Rect::new(r.x + 3, r.y + 3, r.w - 6, r.h - 6), 28, PAPER);
-    let mut tx = r.x + 24;
+    // Estado não é botão: no rodapé ele fica discreto, sem a sombra reservada para ações.
+    let cw = w + if has { 46 } else { 0 };
+    let x = 1072 - MARGIN - cw;
+    let mut tx = x;
     if has {
-        crate::sprites::draw(fb, "icone-wifi", Rect::new(r.x + 18, r.y + 12, 38, 38));
+        crate::sprites::draw(fb, "icone-wifi", Rect::new(x, 1359, 34, 34));
         tx += 46;
     }
-    f.draw(fb, Face::Strong, 26.0, tx, r.y + 41, if st.wifi { INK } else { MUTED }, wifi);
+    f.draw(fb, Face::Strong, 26.0, tx, 1387, if st.wifi { INK } else { MUTED }, wifi);
 }
 
 pub fn draw_home(fb: &mut Framebuffer, f: &Fonts, st: &Status, sum: &crate::data::Summary, game: Option<&(usize, String)>) {
@@ -808,7 +807,7 @@ pub const COMING: [(&str, &str, bool); 7] = [
     ("Porta-retrato", "Fotos do celular em tons de cinza", true),
     ("Receitas", "Aberta na cozinha, sem apagar", true),
     ("Terminal", "Comandos de um toque no Linux do Kindle", true),
-    ("Semana", "Fechamento com o Claude e o plano da próxima", true),
+    ("Semana", "Fechamento com o Verso e o plano da próxima", true),
 ];
 
 pub fn more_row(k: usize) -> Rect {
@@ -1091,7 +1090,7 @@ pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status, claud
         card(fb, r, r.h / 2, INK, false);
         let d = r.h - 20;
         let tx = if icon_disc(fb, r.x + 10, r.y + 10, d, "claude") { r.x + 10 + d + 14 } else { r.x + 30 };
-        let t = "Perguntar ao Claude";
+        let t = "Perguntar ao Verso";
         let mut size = 30.0;
         while f.measure(Face::Strong, size, t) > r.x + r.w - 28 - tx && size > 20.0 {
             size -= 1.0;

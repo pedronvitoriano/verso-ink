@@ -165,7 +165,7 @@ static VELHA: [Page; 3] = [
 
 static HISTORIAS: [Page; 2] = [
     p("Você escolhe", "Leia o trecho e toque numa das escolhas embaixo. Algumas só aparecem se você pegou ou descobriu algo antes. Há mais de um final.", "", ""),
-    p("Novas histórias", "Escreva as suas em data/historias, em texto simples (o formato está no começo do arquivo de exemplo), ou peça ao Claude. O ponto onde você parou fica salvo.", "", ""),
+    p("Novas histórias", "Escreva as suas em data/historias, em texto simples (o formato está no começo do arquivo de exemplo), ou peça ao Verso. O ponto onde você parou fica salvo.", "", ""),
 ];
 
 // ---------- Visto / não visto ----------

@@ -269,7 +269,7 @@ impl Historias {
             let w = f.measure(Face::Strong, 28.0, &t);
             f.draw(fb, Face::Strong, 28.0, (W - w) / 2, 1356, MUTED, &t);
         } else {
-            let tip = "Durante a leitura, \"Seguir outro rumo\" cria uma história nova com o Claude.";
+            let tip = "Durante a leitura, \"Seguir outro rumo\" cria uma história nova com o Verso.";
             f.draw(fb, Face::Body, 26.0, MARGIN, 1356, MUTED, &crate::apps::fit(f, Face::Body, 26.0, tip, W - 2 * MARGIN));
         }
         *self.hits.borrow_mut() = hits;
@@ -485,7 +485,7 @@ Nomes de trecho em minúsculas, sem acento e sem espaço. Trecho final não tem 
         );
         let id = crate::chat::send(None, &prompt, Some(&context))?;
         let chat = crate::chat::open(&id)?;
-        let reply = chat.messages.iter().rev().find(|m| !m.user).map(|m| m.text.clone()).ok_or("O Claude não respondeu.")?;
+        let reply = chat.messages.iter().rev().find(|m| !m.user).map(|m| m.text.clone()).ok_or("O Verso não respondeu.")?;
         let body: String = reply.lines().filter(|l| !l.trim_start().starts_with("```")).collect::<Vec<_>>().join("\n");
         let mut new = parse(&body);
         // Escolhas para trechos que não existem saem; o que ficar sem saída vira final.

@@ -15,6 +15,8 @@ pub enum Screen {
     Module(Module),
     Light,
     Library,
+    /// Livro KFX/AZW protegido: explica o handoff para o Kindle original.
+    AmazonBook,
     Focus,
     Settings,
     LowBattery,
@@ -49,6 +51,8 @@ pub enum Screen {
     Reader,
     ReaderToc,
     ClaudeDoc,
+    /// Imagem criada ou anexada pelo Verso, aberta sem passar por um leitor de texto.
+    ClaudeImage,
     Update,
     Wifi,
     WifiPass,
@@ -114,10 +118,14 @@ pub enum Target {
     Phrase,
     Help,
     Ctx,
+    /// Alterna geração de imagem no compositor do Verso.
+    Image,
 }
 
 /// Código de saída que pede ao `session.sh` para abrir um livro no KOReader e voltar.
 pub const EXIT_OPEN_BOOK: i32 = 42;
+/// Qualquer saída diferente de 42 encerra a sessão e devolve ao Kindle original.
+pub const EXIT_OPEN_AMAZON: i32 = 44;
 pub const OPEN_FILE: &str = "/tmp/verso-ink.open-file";
 
 /// Toque em andamento numa casa de minijogo.
@@ -140,7 +148,7 @@ pub struct App {
     /// Dedo numa casa de minijogo: para segurar e arrastar.
     gesture: Option<Gesture>,
     swipe_from: Option<(i32, i32)>,
-    /// Anexos da pergunta ao Claude: o que dá para anexar, os escolhidos e a página.
+    /// Anexos da pergunta ao Verso: o que dá para anexar, os escolhidos e a página.
     attach_items: Vec<crate::chat::AttachItem>,
     attach_sel: Vec<usize>,
     attach_page: usize,
@@ -157,6 +165,7 @@ pub struct App {
     pub status: Status,
     light: ui::Light,
     lib: Library,
+    amazon_title: String,
     pub pomo: Pomodoro,
     sys: SysInfo,
     confirm: Option<(u8, Instant)>,
@@ -233,6 +242,7 @@ pub struct App {
     /// Tutorial: jogo, página, para onde voltar e se abre o jogo ao terminar.
     tut: (usize, usize, Screen, bool),
     clips: Vec<crate::clippings::BookClips>,
+    clip_import: crate::clippings::ImportStatus,
     /// Destaques para revisar hoje.
     clip_due: usize,
     clip_page: usize,
@@ -249,8 +259,12 @@ pub struct App {
     chats: Result<Vec<crate::chat::ChatInfo>, String>,
     cur_chat: Option<crate::chat::Chat>,
     chat_pages: Vec<Vec<crate::chat::Line>>,
-    /// Pergunta ao Claude a partir de uma tela: contexto que vai junto e para onde voltar.
+    /// Pergunta ao Verso a partir de uma tela: contexto que vai junto e para onde voltar.
     claude_ctx: Option<String>,
+    /// O resumo seguro do Brain é opt-in e visível antes de enviar.
+    brain_on: bool,
+    /// A próxima mensagem vira imagem, não resposta textual.
+    image_mode: bool,
     /// Leitor próprio: livro aberto, fontes (carregadas na primeira vez) e página do sumário.
     reader: Option<crate::reader::Reader>,
     rfonts: Option<crate::reader::RFonts>,
@@ -259,8 +273,10 @@ pub struct App {
     /// Cartão "vai junto" (título, detalhe) e perguntas prontas da tela de pergunta.
     claude_about: Option<(String, String)>,
     claude_sugg: Vec<String>,
-    /// Leitor de texto (arquivo do Claude, análise): título, páginas, página atual, aviso.
+    /// Leitor de texto (arquivo do Verso, análise): título, páginas, página atual, aviso.
     doc: (String, Vec<Vec<crate::chat::Line>>, usize),
+    /// Arquivo de mídia da conversa aberto em tela cheia.
+    chat_image: Option<(String, std::path::PathBuf)>,
     files_note: String,
     chat_page: usize,
     claude_stamp: u64,
@@ -393,6 +409,7 @@ impl App {
             status: read_status(),
             light: read_light(),
             lib: Library::empty(),
+            amazon_title: String::new(),
             pomo: Pomodoro::Idle,
             sys: SysInfo { wifi_on: true, connected: false, essid: None, ip: None, firmware: String::new() },
             confirm: None,
@@ -450,6 +467,7 @@ impl App {
             wifi_back: Screen::Settings,
             tut: (0, 0, Screen::Games, false),
             clips: Vec::new(),
+            clip_import: Default::default(),
             clip_due: 0,
             clip_page: 0,
             clip_book: 0,
@@ -466,6 +484,8 @@ impl App {
             cur_chat: None,
             chat_pages: Vec::new(),
             claude_ctx: None,
+            brain_on: true,
+            image_mode: false,
             reader: None,
             rfonts: None,
             toc_page: 0,
@@ -473,6 +493,7 @@ impl App {
             claude_about: None,
             claude_sugg: Vec::new(),
             doc: (String::new(), Vec::new(), 0),
+            chat_image: None,
             files_note: String::new(),
             chat_page: 0,
             claude_stamp: 0,
@@ -523,6 +544,7 @@ impl App {
             Screen::Module(m) => ui::draw_module(fb, f, m, st),
             Screen::Light => ui::draw_light(fb, f, &self.light, st, light_claude, !self.wifi_on, light_home),
             Screen::Library => apps::draw_library(fb, f, &self.lib, st),
+            Screen::AmazonBook => apps::draw_amazon_book(fb, f, &self.amazon_title),
             Screen::Focus => apps::draw_focus(fb, f, self.pomo, data::focus_today(st.offset_min), st),
             Screen::Settings => apps::draw_settings(fb, f, &self.sys, st, self.confirm.map(|c| c.0)),
             Screen::LowBattery => ui::draw_low_battery(fb, f, st),
@@ -585,13 +607,11 @@ impl App {
             }
             Screen::ChessInsights => {
                 if let Some(g) = self.saved_games.first() {
-                    // Dica de treino: a frase mais acionável dos insights (motivo recorrente).
                     let lines = crate::coach::insights(g, &self.saved_games[1..]);
-                    let tip = lines.iter().find(|l| l.contains("Antes de jogar") || l.contains("Olhe sempre") || l.contains("Procure xeques")).cloned();
-                    crate::chess_ui::draw_insights(fb, f, g, &self.saved_games[1..], tip.as_deref());
+                    crate::chess_ui::draw_insights(fb, f, g, &self.saved_games[1..], &lines);
                 }
             }
-            Screen::Clips => crate::clippings::draw_books(fb, f, &self.clips, self.clip_page, self.clip_due),
+            Screen::Clips => crate::clippings::draw_books(fb, f, &self.clips, self.clip_page, self.clip_due, self.clip_import),
             Screen::Mini => {
                 if let Some(g) = &self.mini {
                     g.draw(fb, f);
@@ -615,6 +635,8 @@ impl App {
                     suggestions: &self.claude_sugg,
                     text: &self.compose_text,
                     hint: &self.compose_hint,
+                    brain: self.brain_on,
+                    image: self.image_mode,
                 };
                 crate::chat::draw_compose(fb, f, &c);
                 self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
@@ -640,6 +662,10 @@ impl App {
                 }
             }
             Screen::ClaudeDoc => crate::chat::draw_doc(fb, f, &self.doc.0, &self.doc.1, self.doc.2),
+            Screen::ClaudeImage => {
+                let title = self.chat_image.as_ref().map(|(t, _)| t.as_str()).unwrap_or("Imagem");
+                crate::chat::draw_image(fb, f, self.chat_image.as_ref().map(|(_, p)| p.as_path()), title);
+            }
             Screen::Edicao => self.ed_hits = crate::painel::draw_edition(fb, f, crate::painel::edition().as_ref(), self.ed_page, &self.panel_note),
             Screen::Missoes => self.m_hits = crate::painel::draw_missions(fb, f, self.missions.as_ref(), &self.mstage, &self.panel_note),
             Screen::MissaoText => {
@@ -798,6 +824,7 @@ impl App {
                 }
                 v
             }
+            Screen::AmazonBook => vec![(Back, ui::back_rect()), (Primary, apps::amazon_open_rect())],
             Screen::Focus => {
                 let mut v = vec![(Back, ui::back_rect()), (Secondary, apps::focus_secondary_rect())];
                 if !matches!(self.pomo, Pomodoro::Running { .. }) {
@@ -877,6 +904,7 @@ impl App {
                 }
                 v
             }
+            Screen::ClaudeImage => vec![(Back, ui::back_rect())],
             Screen::Achados => vec![(Back, ui::back_rect())],
             Screen::ClaudeAttach => {
                 let mut v = vec![(Back, ui::back_rect()), (Primary, crate::chat::attach_done_rect())];
@@ -891,12 +919,19 @@ impl App {
                 v
             }
             Screen::ClaudeCompose => {
-                let mut v = vec![(Back, ui::back_rect()), (Secondary, crate::chat::attach_rect())];
+                let mut v = vec![
+                    (Back, ui::back_rect()),
+                    (Secondary, crate::chat::attach_rect()),
+                    (Check, crate::chat::brain_rect()),
+                    (Image, crate::chat::image_rect()),
+                ];
                 if self.claude_about.is_some() {
                     v.push((Ctx, crate::chat::context_rect()));
                 }
-                let has_card = self.claude_about.is_some() || self.cur_chat.is_some();
-                v.extend(crate::chat::chip_rects(&self.fonts, &self.claude_sugg, has_card).into_iter().enumerate().map(|(k, r)| (Level(k), r)));
+                if !self.image_mode {
+                    let has_card = self.claude_about.is_some() || self.cur_chat.is_some();
+                    v.extend(crate::chat::chip_rects(&self.fonts, &self.claude_sugg, has_card).into_iter().enumerate().map(|(k, r)| (Level(k), r)));
+                }
                 v.extend(self.keys.iter().enumerate().map(|(i, k)| (Key(i as u8), k.rect)));
                 v
             }
@@ -1152,6 +1187,15 @@ impl App {
         self.exit_code = Some(EXIT_OPEN_BOOK);
     }
 
+    /// Volta para a estante da Amazon sem tentar abrir um KFX protegido em outro leitor.
+    fn open_amazon_book(&mut self) {
+        apps::draw_opening_amazon(&mut self.fb, &self.fonts, &self.amazon_title);
+        self.fb.present(Wave::Quality, true);
+        self.fb.wait();
+        log(&format!("abrindo Kindle original para: {}", self.amazon_title));
+        self.exit_code = Some(EXIT_OPEN_AMAZON);
+    }
+
     fn hit(&self, x: i32, y: i32) -> Option<Target> {
         self.targets().into_iter().find(|(_, r)| r.contains(x, y)).map(|(t, _)| t)
     }
@@ -1181,6 +1225,9 @@ impl App {
     fn fill_covers(&mut self) {
         for i in 0..self.lib.visible().len() {
             let b = &self.lib.visible()[i];
+            if b.amazon_only {
+                continue;
+            }
             if crate::covers::cached(&b.path, apps::THUMB_W, apps::THUMB_H).is_some() {
                 continue;
             }
@@ -1289,7 +1336,7 @@ impl App {
             };
         }
         if self.screen == Screen::ClaudeCompose {
-            crate::chat::draw_compose_field(&mut self.fb, &self.fonts, &self.compose_text, &self.compose_hint);
+            crate::chat::draw_compose_field(&mut self.fb, &self.fonts, &self.compose_text, &self.compose_hint, self.image_mode);
             let r = crate::chat::compose_field_rect();
             self.fb.refresh(Rect::new(0, r.y - 6, 1072, 892 - (r.y - 6)), Wave::Fast, false);
         } else {
@@ -1329,6 +1376,7 @@ impl App {
                 | Screen::ClaudeCompose
                 | Screen::ClaudeFiles
                 | Screen::ClaudeDoc
+                | Screen::ClaudeImage
                 | Screen::Compose
                 | Screen::WifiPass
                 | Screen::LibSearch
@@ -1406,6 +1454,7 @@ impl App {
             Self::suggestions_for(Some(&what), false)
         };
         self.claude_ctx = Some(self.screen_context());
+        self.image_mode = false;
         self.claude_return = Some(self.screen);
         self.cur_chat = None;
         self.open_compose();
@@ -1495,13 +1544,19 @@ impl App {
         parts.join("\n")
     }
 
-    /// Baixa e abre um arquivo do Claude: livro/PDF no KOReader, texto aqui mesmo.
+    /// Baixa e abre um arquivo do Verso: imagem na tela, livro/PDF no KOReader, texto aqui mesmo.
     fn open_claude_file(&mut self, i: usize) {
-        let Some((id, name)) = self.cur_chat.as_ref().and_then(|c| c.files.get(i).map(|f| (c.id.clone(), f.0.clone()))) else { return };
+        let Some((id, file)) = self.cur_chat.as_ref().and_then(|c| c.files.get(i).map(|f| (c.id.clone(), f.clone()))) else { return };
+        let name = file.name.clone();
         self.files_note = format!("Baixando {name}…");
         self.render(false);
         self.fb.wait();
         match crate::chat::download(&id, &name) {
+            Ok(path) if crate::chat::opens_as_image(&file) => {
+                self.files_note.clear();
+                self.chat_image = Some((name, path));
+                self.go(Screen::ClaudeImage);
+            }
             Ok(path) if crate::chat::opens_in_reader(&name) => {
                 self.files_note.clear();
                 self.open_book(path, name);
@@ -1524,6 +1579,7 @@ impl App {
     fn start_claude_compose(&mut self) {
         self.claude_ctx = None;
         self.claude_about = None;
+        self.image_mode = false;
         self.claude_sugg = Self::suggestions_for(None, self.cur_chat.is_some());
         self.open_compose();
     }
@@ -1603,8 +1659,14 @@ impl App {
             self.compose_hint = "Escreva alguma coisa antes do OK.".into();
             return self.render(false);
         }
+        let image = self.image_mode;
+        if image && !self.attach_sel.is_empty() {
+            self.compose_hint = "Para criar uma imagem, tire os anexos desta pergunta.".into();
+            return self.render(false);
+        }
         let id = self.cur_chat.as_ref().map(|c| c.id.clone());
-        self.update_msg = ("Claude".into(), vec!["Pensando… pode levar até um minuto.".into(), "".into(), text.chars().take(80).collect()], None);
+        let waiting = if image { "Criando a imagem… pode levar até dois minutos." } else { "Pensando… pode levar até um minuto." };
+        self.update_msg = ("Verso".into(), vec![waiting.into(), "".into(), text.chars().take(80).collect()], None);
         self.screen = Screen::Update;
         self.render(true);
         self.fb.wait();
@@ -1612,7 +1674,7 @@ impl App {
         let mut ids = Vec::new();
         for i in self.attach_sel.clone() {
             let Some((path, name)) = self.attach_items.get(i).and_then(crate::chat::attach_file) else { continue };
-            self.update_msg = ("Claude".into(), vec![format!("Mandando {name}…"), "".into(), text.chars().take(80).collect()], None);
+            self.update_msg = ("Verso".into(), vec![format!("Mandando {name}…"), "".into(), text.chars().take(80).collect()], None);
             self.render(true);
             match crate::chat::upload(&path, &name) {
                 Ok(id) => ids.push(id),
@@ -1624,13 +1686,14 @@ impl App {
             }
         }
         if !ids.is_empty() {
-            self.update_msg = ("Claude".into(), vec!["Lendo os anexos e pensando… pode levar até um minuto.".into(), "".into(), text.chars().take(80).collect()], None);
+            self.update_msg = ("Verso".into(), vec!["Lendo os anexos e pensando… pode levar até um minuto.".into(), "".into(), text.chars().take(80).collect()], None);
             self.render(true);
         }
-        match crate::chat::send_with(id.as_deref(), &text, self.claude_ctx.as_deref(), &ids) {
+        match crate::chat::send_with(id.as_deref(), &text, self.claude_ctx.as_deref(), &ids, self.brain_on, image) {
             Ok(new_id) => {
                 self.compose_text.clear();
                 self.claude_ctx = None;
+                self.image_mode = false;
                 self.attach_sel.clear();
                 self.attach_items.clear();
                 self.open_chat(&new_id);
@@ -2021,7 +2084,7 @@ impl App {
         }
         self.fb.fill(self.fb.screen(), ui::PAPER);
         ui::draw_field_header(&mut self.fb, &self.fonts, "UM MOMENTO", "Escrevendo…");
-        let hint = "O Claude está escrevendo a continuação. Leva até um minuto.";
+        let hint = "O Verso está escrevendo a continuação. Leva até um minuto.";
         self.fonts.draw(&mut self.fb, crate::text::Face::Body, 32.0, 72, 460, ui::MUTED, hint);
         self.fb.refresh(self.fb.screen(), Wave::Quality, true);
         self.fb.wait();
@@ -2248,22 +2311,39 @@ impl App {
         let san = crate::chess::san(&before, last, promo);
         let moves = g.moves.clone();
         let rating = crate::coach::coach(level).rating;
-        if let Some((pre, best)) = self.pre_eval.take() {
+        let analysis = self.pre_eval.take().and_then(|(pre, best)| {
             self.say("Analisando o seu lance…");
-            let after = self.engine.as_mut().and_then(|e| e.analyse(&moves, 600)).map(|a| a.score.neg()).unwrap_or(pre);
+            self.engine.as_mut().and_then(|e| e.analyse(&moves, 600)).map(|a| (pre, best, a.score.neg()))
+        });
+        if let Some((pre, best, after)) = analysis {
             let loss = (pre.cp() - after.cp()).max(0);
             let class = crate::coach::Class::from_loss(loss, uci == best);
             let best_san = crate::coach::best_san(&before, &best);
             let why = if class as u8 >= crate::coach::Class::Inaccuracy as u8 { crate::coach::explain(&before, last, &best, user_white, pre) } else { String::new() };
             log(&format!("lance {san}: {} (perda {loss})", class.name()));
-            self.records.push(crate::coach::Record { ply, san: san.clone(), class, loss, best_uci: best, best_san, why: why.clone() });
-            crate::coach::save_current(&self.records);
+            self.records.push(crate::coach::Record { ply, san: san.clone(), analyzed: true, class, loss, best_uci: best, best_san, why: why.clone() });
             self.coach_msg = if crate::coach::should_comment(rating, class) {
                 format!("{}: {why}", class.name())
             } else {
                 crate::coach::praise(rating, class).map(str::to_string).unwrap_or_else(|| format!("{san}. Agora é minha vez."))
             };
+        } else {
+            // Uma resposta ausente do Stockfish não pode virar um "bom lance" artificial.
+            // Guardamos a lacuna para a cobertura ficar transparente na revisão.
+            log(&format!("lance {san}: análise indisponível"));
+            self.records.push(crate::coach::Record {
+                ply,
+                san: san.clone(),
+                analyzed: false,
+                class: crate::coach::Class::Good,
+                loss: 0,
+                best_uci: String::new(),
+                best_san: String::new(),
+                why: String::new(),
+            });
+            self.coach_msg = format!("{san}. Não consegui analisar este lance agora; ele não entra na precisão.");
         }
+        crate::coach::save_current(&self.records);
         if self.chess.as_ref().is_some_and(|g| g.result().is_some()) {
             return self.finish_coach_game(None);
         }
@@ -2378,7 +2458,7 @@ impl App {
                 Some((m, c))
             }
             Err(e) => {
-                log(&format!("xadrez com o Claude: {e}; o Stockfish joga"));
+                log(&format!("xadrez com o Verso: {e}; o Stockfish joga"));
                 None
             }
         }
@@ -2389,15 +2469,32 @@ impl App {
         let Some(g) = self.chess.as_ref() else { return };
         let user_white = matches!(g.mode, crate::chess::Mode::Coach { user_white: true, .. });
         let moves: Vec<String> = g.moves.iter().map(|m| crate::chat::json_str(m)).collect();
+        let records: Vec<String> = self
+            .records
+            .iter()
+            .map(|r| {
+                format!(
+                    "{{\"ply\": {}, \"san\": {}, \"class\": {}, \"loss\": {}, \"best\": {}, \"why\": {}, \"analyzed\": {}}}",
+                    r.ply,
+                    crate::chat::json_str(&r.san),
+                    crate::chat::json_str(r.class.name()),
+                    r.loss,
+                    crate::chat::json_str(&r.best_san),
+                    crate::chat::json_str(&r.why),
+                    if r.analyzed { "true" } else { "false" },
+                )
+            })
+            .collect();
         let result = self.end_info.0.clone();
         let body = format!(
-            "{{\"moves\": [{}], \"evals\": [], \"color\": \"{}\", \"result\": {}, \"coach\": \"Claude\"}}",
+            "{{\"moves\": [{}], \"records\": [{}], \"color\": \"{}\", \"result\": {}, \"coach\": \"Verso\"}}",
             moves.join(", "),
+            records.join(", "),
             if user_white { "w" } else { "b" },
             crate::chat::json_str(&result)
         );
         self.fb.fill(self.fb.screen(), ui::PAPER);
-        ui::draw_field_header(&mut self.fb, &self.fonts, "XADREZ", "O Claude está analisando…");
+        ui::draw_field_header(&mut self.fb, &self.fonts, "XADREZ", "O Verso está analisando…");
         self.fonts.draw(&mut self.fb, crate::text::Face::Body, 32.0, 72, 460, ui::MUTED, "Os lances que decidiram a partida e o que treinar. Leva até um minuto.");
         self.fb.refresh(self.fb.screen(), Wave::Quality, true);
         self.fb.wait();
@@ -2406,7 +2503,7 @@ impl App {
             Err(e) => format!("Não consegui a análise agora: {e}"),
         };
         let lines = crate::chat::layout_text(&self.fonts, &text, false, 1072 - 144);
-        self.doc = ("Análise do Claude".into(), crate::chat::pages_of(lines), 0);
+        self.doc = ("Análise do Verso".into(), crate::chat::pages_of(lines), 0);
         self.doc_back = Screen::ChessEnd;
         self.go(Screen::ClaudeDoc);
     }
@@ -2469,9 +2566,7 @@ impl App {
 
     fn redraw_chess(&mut self) {
         let (Some(g), Some(sp)) = (&self.chess, &self.sprites) else { return };
-        for i in 0..64 {
-            crate::chess::draw_square(&mut self.fb, g, sp, i);
-        }
+        crate::chess::draw_position(&mut self.fb, &self.fonts, g, sp);
         crate::chess::draw_status(&mut self.fb, &self.fonts, g, sp);
         if self.coach_level().is_some() {
             let msg = self.coach_msg.clone();
@@ -2559,7 +2654,9 @@ impl App {
                 self.claude_stamp = crate::claude_ui::stamp();
             }
             Screen::Clips => {
-                self.clips = crate::clippings::load();
+                let (clips, import) = crate::clippings::load_with_status();
+                self.clips = clips;
+                self.clip_import = import;
                 self.clip_due = crate::revisao::due_count();
                 self.clip_page = 0;
             }
@@ -2640,6 +2737,7 @@ impl App {
             (Screen::Coaches | Screen::ChessEnd | Screen::ChessGames | Screen::ChessClock, Back) => self.go(Screen::ChessHub),
             (Screen::ChessReview, Back) => self.go(Screen::ChessGames),
             (Screen::ChessInsights, Back) => self.go(Screen::ChessReview),
+            (Screen::AmazonBook, Back) => self.go(Screen::Library),
             (Screen::Clips, Back) => self.go(Screen::Library),
             (Screen::ClipBook, Back) => self.go(Screen::Clips),
             (Screen::Compose, Back) => self.go(Screen::Today),
@@ -2654,6 +2752,10 @@ impl App {
             (Screen::ClaudeDoc, Back) => {
                 let back = std::mem::replace(&mut self.doc_back, Screen::ClaudeFiles);
                 self.go(back);
+            }
+            (Screen::ClaudeImage, Back) => {
+                self.chat_image = None;
+                self.go(Screen::ClaudeFiles);
             }
             (Screen::ClaudeCompose, Secondary) => {
                 self.attach_items = crate::chat::attach_items();
@@ -2683,6 +2785,19 @@ impl App {
                 self.claude_ctx = None;
                 self.claude_about = None;
                 self.claude_sugg = Self::suggestions_for(None, self.cur_chat.is_some());
+                self.render(false);
+            }
+            (Screen::ClaudeCompose, Check) => {
+                self.brain_on = !self.brain_on;
+                self.render(false);
+            }
+            (Screen::ClaudeCompose, Image) => {
+                self.image_mode = !self.image_mode;
+                self.compose_hint = if self.image_mode {
+                    "Descreva a imagem. Anexos não entram na criação.".into()
+                } else {
+                    "Escreva a sua pergunta e toque em OK.".into()
+                };
                 self.render(false);
             }
             (Screen::ClaudeCompose, Level(k)) => {
@@ -2970,6 +3085,10 @@ impl App {
                 }
             }
             (Screen::Calendar, Back) => self.go(Screen::Today),
+            (Screen::Achados, Back) => {
+                self.achado_new = None;
+                self.go(Screen::Home);
+            }
             (_, Back) => self.go(Screen::Home),
             (Screen::Home, Header) => self.go(Screen::Light),
             // "Continuar" do jogo na tela inicial: abre a partida direto.
@@ -2978,17 +3097,16 @@ impl App {
                 self.activate(Game(i), x);
             }
             (Screen::Home, Phrase) => self.phrase_action(),
-            (Screen::Achados, Back) => {
-                self.achado_new = None;
-                self.go(Screen::Home);
-            }
             (Screen::Home, Continue) => {
                 let Some(b) = data::last_book() else { return };
                 if !b.path.exists() {
                     self.go(Screen::Library);
                     return;
                 }
-                if crate::reader::supported(&b.path) {
+                if apps::is_amazon_only(&b.path) {
+                    self.amazon_title = b.title;
+                    self.go(Screen::AmazonBook);
+                } else if crate::reader::supported(&b.path) {
                     self.open_reader(b.path, b.title);
                 } else {
                     self.open_book(b.path, b.title);
@@ -3052,6 +3170,11 @@ impl App {
             }
             (Screen::Library, Row(i)) => {
                 let Some(b) = self.lib.visible().get(i) else { return };
+                if b.amazon_only {
+                    self.amazon_title = b.title.clone();
+                    self.go(Screen::AmazonBook);
+                    return;
+                }
                 let (path, title) = (b.path.clone(), b.title.clone());
                 if crate::reader::supported(&path) {
                     self.open_reader(path, title);
@@ -3059,6 +3182,7 @@ impl App {
                     self.open_book(path, title);
                 }
             }
+            (Screen::AmazonBook, Primary) => self.open_amazon_book(),
             (Screen::Library, Clips) => self.go(Screen::Clips),
             (Screen::Clips, Clips) => {
                 self.mini = Some(Box::new(crate::revisao::Revisao::new()));
@@ -3786,6 +3910,32 @@ mod raio_x {
         assert_eq!(app.wake_screen(), Screen::Home);
     }
 
+    #[test]
+    fn redraw_do_xadrez_mantem_as_coordenadas_na_margem() {
+        let mut app = App::new(Framebuffer::memory());
+        app.chess = Some(crate::chess::Game::new_coach(0, true));
+        app.sprites = Some(crate::chess::Sprites::new());
+        app.go(Screen::Chess);
+        app.redraw_chess();
+        // A faixa à esquerda fica fora das casas; se o redraw apagar os números, ela volta branca.
+        let mut ink = 0;
+        for y in crate::chess::BY..crate::chess::BY + 8 * crate::chess::SQ {
+            for x in crate::chess::BX - 52..crate::chess::BX - 14 {
+                ink += usize::from(app.fb.get(x, y) < 0x80);
+            }
+        }
+        assert!(ink > 120, "coordenadas sumiram depois do redraw ({ink} pixels escuros)");
+    }
+
+    #[test]
+    fn livro_amazon_sai_para_o_kindle_original_sem_passar_pelo_koreader() {
+        let mut app = App::new(Framebuffer::memory());
+        app.amazon_title = "Livro da loja".into();
+        app.go(Screen::AmazonBook);
+        app.activate(Target::Primary, 0);
+        assert_eq!(app.exit_code, Some(EXIT_OPEN_AMAZON));
+    }
+
     /// Cada lição do curso de partitura, a pergunta dela respondida e os treinos:
     /// `VERSO_INK_SHOTS=pasta cargo test curso_de_partitura -- --ignored --test-threads=1`
     #[test]
@@ -3831,7 +3981,10 @@ mod raio_x {
         let home = std::env::temp_dir().join(format!("verso-ink-raiox-{}", std::process::id()));
         std::fs::create_dir_all(home.join("data/tutoriais")).unwrap();
         std::fs::create_dir_all(home.join("settings")).unwrap();
+        let documents = home.join("documents");
+        std::fs::create_dir_all(&documents).unwrap();
         std::env::set_var("VERSO_INK_HOME", &home);
+        std::env::set_var("VERSO_INK_DOCUMENTS", &documents);
         // Arte do repositório (sprites e rostos), como no Kindle.
         let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets");
         for d in ["sprites", "treinadores"] {
@@ -3843,6 +3996,7 @@ mod raio_x {
         }
         // Um livro e um jogo para o "Continuar" da tela inicial.
         std::fs::write(home.join("livro.pdf"), "").unwrap();
+        std::fs::write(documents.join("Livro da Amazon.kfx"), "protegido").unwrap();
         std::fs::write(home.join("data/last_book"), format!("{}\nPerfil de três reis - Gene Edwards PDF\n", home.join("livro.pdf").display())).unwrap();
         std::fs::write(home.join("data/ultimo_jogo"), "1").unwrap();
         // Relógio 5+3 nas partidas, para a tela da partida mostrar os dois mostradores.
@@ -3875,6 +4029,9 @@ mod raio_x {
             app.go(s);
             shot(&mut app, name);
         }
+        app.go(Screen::Library);
+        app.activate(Target::Row(0), 0);
+        shot(&mut app, "ler-livro-amazon");
         app.cur_chat = None;
         app.start_claude_compose();
         shot(&mut app, "claude-pergunta");
@@ -3938,6 +4095,32 @@ mod raio_x {
                 shot(&mut app, "jogo-xadrez-treinador-partida");
             }
         }
+        // Revisão de um erro real: coordenadas, alternativa e cobertura da análise.
+        app.saved_games = vec![crate::coach::Saved {
+            file: home.join("data/xadrez/partidas/exemplo.txt"),
+            when: 0,
+            level: 0,
+            user_white: true,
+            result: "derrota".into(),
+            rating_before: 100,
+            rating_after: 88,
+            moves: ["e2e4", "e7e5", "d1h5", "b8c6"].into_iter().map(str::to_string).collect(),
+            records: vec![crate::coach::Record {
+                ply: 2,
+                san: "Dh5".into(),
+                analyzed: true,
+                class: crate::coach::Class::Mistake,
+                loss: 180,
+                best_uci: "d2d4".into(),
+                best_san: "d4".into(),
+                why: "Depois do lance, sua dama em h5 ficou desprotegida.".into(),
+            }],
+        }];
+        app.review_k = 0;
+        app.go(Screen::ChessReview);
+        shot(&mut app, "xadrez-revisao-erro");
+        app.go(Screen::ChessInsights);
+        shot(&mut app, "xadrez-insights-erro");
         // Painel: edição de exemplo, artigos e fotos vazios, terminal e um pedido de permissão.
         std::fs::write(
             home.join("data/edicao.json"),
@@ -4088,12 +4271,12 @@ mod raio_x {
                 id: "abcdef0123456789".into(),
                 title: "Como treinar a troca de acordes".into(),
                 messages: vec![
-                    crate::chat::Msg { user: true, text: "Como eu melhoro a troca de Em para G? Ainda travo muito.".into(), context: Some("No módulo de violão do Kindle".into()) },
-                    crate::chat::Msg { user: false, text: "Boa pergunta, Pedro. A troca **Em → G** fica fácil com três passos:\n\n1. Deixe o dedo 2 como **pivô**: ele quase não sai do lugar.\n2. Treine só a mão esquerda, sem tocar, 10 vezes devagar.\n3. Depois use o treino de um minuto e tente bater o recorde.\n\n## Dica extra\nOlhe para onde o dedo vai, não para onde ele está.".into(), context: None },
-                    crate::chat::Msg { user: true, text: "E se eu ainda errar o tempo?".into(), context: None },
-                    crate::chat::Msg { user: false, text: "Diminua o andamento. Conte 1, 2, 3, 4 em voz alta e troque no 4.".into(), context: None },
+                    crate::chat::Msg { user: true, text: "Como eu melhoro a troca de Em para G? Ainda travo muito.".into(), context: Some("No módulo de violão do Kindle".into()), provider: None, fallback_from: None, brain: false, brain_sources: vec![] },
+                    crate::chat::Msg { user: false, text: "Boa pergunta, Pedro. A troca **Em → G** fica fácil com três passos:\n\n1. Deixe o dedo 2 como **pivô**: ele quase não sai do lugar.\n2. Treine só a mão esquerda, sem tocar, 10 vezes devagar.\n3. Depois use o treino de um minuto e tente bater o recorde.\n\n## Dica extra\nOlhe para onde o dedo vai, não para onde ele está.".into(), context: None, provider: Some("claude".into()), fallback_from: None, brain: false, brain_sources: vec![] },
+                    crate::chat::Msg { user: true, text: "E se eu ainda errar o tempo?".into(), context: None, provider: None, fallback_from: None, brain: true, brain_sources: vec!["Resumo seguro".into()] },
+                    crate::chat::Msg { user: false, text: "Diminua o andamento. Conte 1, 2, 3, 4 em voz alta e troque no 4.".into(), context: None, provider: Some("codex".into()), fallback_from: Some("claude".into()), brain: false, brain_sources: vec![] },
                 ],
-                files: vec![("plano-de-treino.md".into(), 2300)],
+                files: vec![crate::chat::ChatFile { name: "plano-de-treino.md".into(), size: 2300, mime: "text/markdown".into(), kind: "file".into() }],
             };
             app.chat_pages = crate::chat::paginate(&app.fonts, &c);
             app.chat_page = 0;

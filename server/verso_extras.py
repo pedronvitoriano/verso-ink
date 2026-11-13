@@ -23,7 +23,7 @@ menos a página /enviar, que só pede o token no próprio navegador):
     GET  /aprovacoes                   -> pedidos pendentes (para o Kindle)
     GET  /aprovacoes/<id>              -> {"status": "pendente"|"permitido"|"negado"}
     POST /aprovacoes/<id>              JSON {"decision": "permitir"|"negar"} (do Kindle)
-    POST /brain                        JSON {"text"}: resumo do Brain mandado pelo PC (para a Edição)
+    POST /brain                        JSON {"active", "adequacies"}: resumo agregado seguro do Brain
     GET  /edicao                       -> a Edição da manhã mais recente
     POST /edicao/gerar                 gera agora (em segundo plano)
 """
@@ -365,10 +365,10 @@ class Extras:
         if not r:
             return None
         if res.get("status") == "limite":
-            # Limite de uso do Claude: de volta à fila, nova tentativa em 30 minutos.
+            # Limite de uso de um provedor: de volta à fila, nova tentativa em 30 minutos.
             r["status"] = "na fila"
             r["not_before"] = int(time.time()) + 1800
-            r["note"] = "esperando o limite de uso do Claude"
+            r["note"] = "esperando o limite de uso do Verso"
             self.write(p, r)
             return r
         r["status"] = "pronta" if res.get("status") == "pronta" else "falhou"
@@ -654,7 +654,7 @@ Responda SÓ com JSON válido, sem cercas: {{"dica": "..."}}"""
             by.setdefault(r["project"], set()).add(time.strftime("%Y-%m-%d", time.gmtime(r["time"] + MANAUS)))
         work = [f"- {p}: {len(d)} dia(s) com sessões de agente" for p, d in sorted(by.items(), key=lambda x: -len(x[1]))[:8]]
         missions = [f"- {r['title']} ({r['status']})" for r in self.missions() if r.get("finished", 0) >= since][:12]
-        brain = self.read(self.base / "brain.json", {}).get("text", "")
+        brain = self.brain_summary()
         prompt = f"""Você faz o fechamento da semana do Pedro (dev full-stack, aprendendo violão e partitura, lê no Kindle), para ele ler no Kindle no domingo e responder com toques.
 Dados do Kindle nos últimos 7 dias (JSON): {json.dumps(kindle, ensure_ascii=False)[:3000]}
 Trabalho dos agentes por projeto:
@@ -752,8 +752,15 @@ outros: {json.dumps(others, ensure_ascii=False)}"""
 
     # ---------- Edição da manhã ----------
 
-    def set_brain(self, text):
-        self.write(self.base / "brain.json", {"text": str(text)[:20000], "time": int(time.time())})
+    def set_brain(self, text, aggregate=False):
+        self.write(
+            self.base / "brain.json",
+            {"schema": "aggregate-v1" if aggregate else "legacy", "text": str(text)[:20000], "time": int(time.time())},
+        )
+
+    def brain_summary(self):
+        data = self.read(self.base / "brain.json", {})
+        return str(data.get("text", "")) if data.get("schema") == "aggregate-v1" else ""
 
     def edition(self):
         eds = sorted((self.base / "edicoes").glob("*.json"))
@@ -784,7 +791,7 @@ outros: {json.dumps(others, ensure_ascii=False)}"""
             if r.get("finished", 0) >= since:
                 agents.append(f"- missão \"{r['title']}\" ({r['status']}, {r.get('minutes', 0)} min): {r.get('summary', '')[:300]}")
         notices = [f"- [{a['level']}] {a['text']}" for a in self.notices()]
-        brain = self.read(self.base / "brain.json", {}).get("text", "")
+        brain = self.brain_summary()
         prompt = f"""Monte a Edição da manhã do Pedro para hoje ({day}), que ele lê no Kindle (e-ink) ao acordar e onde cada item vira um cartão com uma ação.
 Responda SÓ com um JSON válido, sem cercas de código, neste formato:
 {{"manchete": "uma frase que resume o dia", "secoes": [{{"titulo": "...", "tipo": "agente|agenda|email|tarefa|noticia", "itens": [{{"texto": "...", "url": "https://... (só notícias)", "projeto": "nome (só agentes)"}}]}}]}}

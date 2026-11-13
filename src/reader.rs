@@ -1067,7 +1067,7 @@ fn draw_menu(fb: &mut Framebuffer, f: &crate::text::Fonts, r: &Reader) {
     ui::button(fb, f, menu_btn(1), "A−", false);
     ui::button(fb, f, menu_btn(2), "A+", false);
     ui::button(fb, f, menu_btn(3), "Sumário", false);
-    ui::button(fb, f, menu_btn(4), "Perguntar ao Claude", true);
+    ui::button(fb, f, menu_btn(4), "Perguntar ao Verso", true);
     // Título do livro entre o botão da biblioteca e os da letra.
     let (x0, x1) = (menu_btn(0).x + menu_btn(0).w + 24, menu_btn(1).x - 24);
     let title = crate::apps::fit(f, Face::Display, 34.0, &r.book.title, x1 - x0);

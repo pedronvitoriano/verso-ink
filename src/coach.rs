@@ -24,7 +24,7 @@ pub const CLAUDE: usize = 99;
 
 pub fn coach(i: usize) -> Coach {
     if i == CLAUDE {
-        return Coach { rating: 2000, name: "Claude", style: "Joga e conversa com você a cada lance" };
+        return Coach { rating: 2000, name: "Verso", style: "Joga e conversa com você a cada lance" };
     }
     let i = i.min(LADDER - 1);
     let rating = 100 + i as u32 * 100;
@@ -149,6 +149,9 @@ impl Class {
 pub struct Record {
     pub ply: usize,
     pub san: String,
+    /// Só é verdade quando as duas avaliações do motor chegaram. Nunca usamos um palpite
+    /// de precisão para preencher uma falha de análise.
+    pub analyzed: bool,
     pub class: Class,
     pub loss: i32,
     pub best_uci: String,
@@ -264,7 +267,7 @@ pub fn save_game(level: usize, user_white: bool, result: &str, ratings: (u32, u3
     let when = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     let mut s = format!("{when} {level} {} {result} {} {}\n{}\n", if user_white { "w" } else { "b" }, ratings.0, ratings.1, moves.join(" "));
     for r in records {
-        s.push_str(&format!("{}|{}|{}|{}|{}|{}|{}\n", r.ply, r.san, r.class.code(), r.loss, r.best_uci, r.best_san, r.why.replace('|', "/")));
+        s.push_str(&format!("{}|{}|{}|{}|{}|{}|{}|{}\n", r.ply, r.san, r.class.code(), r.loss, r.best_uci, r.best_san, r.why.replace('|', "/"), if r.analyzed { "a" } else { "i" }));
     }
     let _ = std::fs::write(dir().join("partidas").join(format!("{when}.txt")), s);
 }
@@ -276,10 +279,14 @@ pub fn load_saved(file: &std::path::Path) -> Option<Saved> {
     let moves = lines.next().unwrap_or("").split_whitespace().map(str::to_string).collect();
     let records = lines
         .filter_map(|l| {
-            let f: Vec<&str> = l.splitn(7, '|').collect();
+            let f: Vec<&str> = l.splitn(8, '|').collect();
             Some(Record {
                 ply: f.first()?.parse().ok()?,
                 san: f.get(1)?.to_string(),
+                // O formato antigo não registrava se a segunda avaliação do motor chegou.
+                // Não há como distinguir, depois, um diagnóstico real de um fallback: mantemos
+                // os lances, mas não os usamos para precisão, alternativa ou tendência.
+                analyzed: f.get(7).is_some_and(|v| *v == "a"),
                 class: Class::from_code(f.get(2)?.parse().ok()?),
                 loss: f.get(3)?.parse().ok()?,
                 best_uci: f.get(4)?.to_string(),
@@ -309,7 +316,7 @@ pub fn list_saved() -> Vec<Saved> {
 }
 
 fn record_line(r: &Record) -> String {
-    format!("{}|{}|{}|{}|{}|{}|{}", r.ply, r.san, r.class.code(), r.loss, r.best_uci, r.best_san, r.why.replace('|', "/"))
+    format!("{}|{}|{}|{}|{}|{}|{}|{}", r.ply, r.san, r.class.code(), r.loss, r.best_uci, r.best_san, r.why.replace('|', "/"), if r.analyzed { "a" } else { "i" })
 }
 
 /// Análises da partida em andamento (para continuar depois sem perder a revisão).
@@ -334,23 +341,40 @@ pub fn clear_current() {
 
 /// Precisão estimada (0–100) a partir da perda média por lance.
 pub fn accuracy(records: &[Record]) -> u32 {
-    if records.is_empty() {
+    let analyzed: Vec<&Record> = records.iter().filter(|r| r.analyzed).collect();
+    if analyzed.is_empty() {
         return 0;
     }
-    let sum: f32 = records.iter().map(|r| 100.0 * (-(r.loss.clamp(0, 1000) as f32) / 250.0).exp()).sum();
-    (sum / records.len() as f32).round() as u32
+    let sum: f32 = analyzed.iter().map(|r| 100.0 * (-(r.loss.clamp(0, 1000) as f32) / 250.0).exp()).sum();
+    (sum / analyzed.len() as f32).round() as u32
+}
+
+pub fn analyzed_count(g: &Saved) -> usize {
+    g.records.iter().filter(|r| r.analyzed).count()
+}
+
+/// Quantos lances foram feitos pela pessoa, inclusive os que o motor não conseguiu medir.
+pub fn player_move_count(g: &Saved) -> usize {
+    let parity = if g.user_white { 0 } else { 1 };
+    g.moves.iter().enumerate().filter(|(ply, _)| *ply % 2 == parity).count()
 }
 
 /// Frases de diagnóstico para a revisão, tiradas dos números da partida (e das anteriores).
 pub fn insights(g: &Saved, previous: &[Saved]) -> Vec<String> {
     let mut out = Vec::new();
-    let count = |c: Class| g.records.iter().filter(|r| r.class == c).count();
+    let count = |c: Class| g.records.iter().filter(|r| r.analyzed && r.class == c).count();
     let (b, m, i) = (count(Class::Blunder), count(Class::Mistake), count(Class::Inaccuracy));
-    out.push(format!("Precisão estimada: {}%. {} erros graves, {} erros e {} imprecisões.", accuracy(&g.records), b, m, i));
+    let analyzed = analyzed_count(g);
+    let total = player_move_count(g);
+    if analyzed == 0 {
+        out.push(format!("O motor não mediu nenhum dos {total} lances desta partida; não há precisão nem alternativa confiável para mostrar."));
+    } else {
+        out.push(format!("Precisão estimada: {}% em {analyzed} de {total} lances analisados. {} erros graves, {} erros e {} imprecisões.", accuracy(&g.records), b, m, i));
+    }
     // Fase com mais deslizes.
     let phase = |r: &Record| if r.ply < 20 { 0 } else if r.ply < 60 { 1 } else { 2 };
     let mut by = [0usize; 3];
-    for r in g.records.iter().filter(|r| r.class as u8 >= Class::Mistake as u8) {
+    for r in g.records.iter().filter(|r| r.analyzed && r.class as u8 >= Class::Mistake as u8) {
         by[phase(r)] += 1;
     }
     if by.iter().any(|&n| n > 0) {
@@ -358,9 +382,9 @@ pub fn insights(g: &Saved, previous: &[Saved]) -> Vec<String> {
         out.push(format!("Seus erros se concentraram {}.", ["na abertura", "no meio-jogo", "no final"][k]));
     }
     // Motivo mais comum.
-    let hang = g.records.iter().filter(|r| r.class as u8 >= Class::Mistake as u8 && (r.why.contains("sem defesa") || r.why.contains("desprotegido"))).count();
-    let missed = g.records.iter().filter(|r| r.class as u8 >= Class::Mistake as u8 && r.why.starts_with("Dava para capturar")).count();
-    let mates = g.records.iter().filter(|r| r.why.starts_with("Havia mate")).count();
+    let hang = g.records.iter().filter(|r| r.analyzed && r.class as u8 >= Class::Mistake as u8 && (r.why.contains("sem defesa") || r.why.contains("desprotegido"))).count();
+    let missed = g.records.iter().filter(|r| r.analyzed && r.class as u8 >= Class::Mistake as u8 && r.why.starts_with("Dava para capturar")).count();
+    let mates = g.records.iter().filter(|r| r.analyzed && r.why.starts_with("Havia mate")).count();
     if hang >= 2 {
         out.push(format!("Em {hang} lances você deixou peças sem defesa. Antes de jogar, pergunte: o que o adversário pode capturar agora?"));
     }
@@ -370,14 +394,14 @@ pub fn insights(g: &Saved, previous: &[Saved]) -> Vec<String> {
     if mates >= 1 {
         out.push(format!("Houve {mates} chance(s) de mate que passaram. Procure xeques primeiro."));
     }
-    if let Some(worst) = g.records.iter().max_by_key(|r| r.loss) {
+    if let Some(worst) = g.records.iter().filter(|r| r.analyzed).max_by_key(|r| r.loss) {
         if worst.loss >= 150 {
             out.push(format!("O lance que mais pesou foi {} (lance {}). Melhor era {}.", worst.san, worst.ply / 2 + 1, worst.best_san));
         }
     }
     // Tendência contra as últimas partidas.
-    let prev: Vec<u32> = previous.iter().filter(|p| p.file != g.file).take(5).map(|p| accuracy(&p.records)).collect();
-    if !prev.is_empty() {
+    let prev: Vec<u32> = previous.iter().filter(|p| p.file != g.file && analyzed_count(p) > 0).take(5).map(|p| accuracy(&p.records)).collect();
+    if analyzed > 0 && !prev.is_empty() {
         let avg = prev.iter().sum::<u32>() / prev.len() as u32;
         let now = accuracy(&g.records);
         out.push(if now > avg + 3 {
@@ -412,5 +436,60 @@ mod tests {
         let (m, _) = chess::parse_uci("d1h5").unwrap();
         let why = explain(&g.pos, m, "d2d3", true, Score::Cp(30));
         assert!(why.contains("dama em h5"), "{why}");
+    }
+
+    #[test]
+    fn partidas_antigas_e_lances_sem_motor_nao_fingem_precisao() {
+        let dir = std::env::temp_dir().join(format!("verso-ink-coach-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        let legacy = dir.join("legacy.txt");
+        std::fs::write(&legacy, "1 0 w vitória 100 110\ne2e4\n0|e4|0|0|e2e4|e4|\n").unwrap();
+        assert!(!load_saved(&legacy).unwrap().records[0].analyzed);
+        let unavailable = dir.join("unavailable.txt");
+        std::fs::write(&unavailable, "1 0 w vitória 100 110\ne2e4\n0|e4|1|0||||i\n").unwrap();
+        let game = load_saved(&unavailable).unwrap();
+        assert!(!game.records[0].analyzed);
+        assert_eq!(accuracy(&game.records), 0);
+        assert_eq!(analyzed_count(&game), 0);
+        let verified = dir.join("verified.txt");
+        std::fs::write(&verified, "1 0 w vitória 100 110\ne2e4\n0|e4|0|0|e2e4|e4||a\n").unwrap();
+        assert!(load_saved(&verified).unwrap().records[0].analyzed);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn tendencia_ignora_partidas_sem_medicao_confirmada() {
+        fn saved(file: &str, analyzed: bool, loss: i32) -> Saved {
+            Saved {
+                file: file.into(),
+                when: 0,
+                level: 0,
+                user_white: true,
+                result: "derrota".into(),
+                rating_before: 100,
+                rating_after: 90,
+                moves: vec!["e2e4".into()],
+                records: vec![Record {
+                    ply: 0,
+                    san: "e4".into(),
+                    analyzed,
+                    class: Class::Mistake,
+                    loss,
+                    best_uci: "d2d4".into(),
+                    best_san: "d4".into(),
+                    why: String::new(),
+                }],
+            }
+        }
+        let current_without_motor = saved("current", false, 0);
+        let valid_previous = saved("previous", true, 20);
+        let notes = insights(&current_without_motor, &[valid_previous]);
+        assert!(notes.iter().any(|line| line.contains("não mediu")));
+        assert!(!notes.iter().any(|line| line.contains("média recente")));
+
+        let current_measured = saved("current-measured", true, 20);
+        let unavailable_previous = saved("previous-unavailable", false, 0);
+        let notes = insights(&current_measured, &[unavailable_previous]);
+        assert!(!notes.iter().any(|line| line.contains("média recente")));
     }
 }

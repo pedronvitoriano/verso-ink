@@ -18,6 +18,9 @@ pub struct Book {
     pub title: String,
     pub kind: String,
     pub size: u64,
+    /// KFX/AZW protegido continua pertencendo ao leitor da Amazon. Ele aparece na estante,
+    /// mas não tentamos fingir que o leitor próprio ou o KOReader consegue abri-lo.
+    pub amazon_only: bool,
     /// Última leitura no KOReader (o arquivo de progresso muda ao ler); senão, quando o arquivo chegou.
     touched: SystemTime,
     /// Fração lida (0..1) segundo o KOReader.
@@ -47,9 +50,15 @@ pub fn fold(s: &str) -> String {
 }
 
 /// Arquivo de progresso do KOReader ao lado do livro.
-fn sidecar(path: &Path) -> PathBuf {
+pub fn sidecar(path: &Path) -> PathBuf {
     let ext = path.extension().and_then(|x| x.to_str()).unwrap_or("");
     PathBuf::from(format!("{}.sdr", path.with_extension("").display())).join(format!("metadata.{ext}.lua"))
+}
+
+/// Raiz que o Kindle monta para a biblioteca. A variável também deixa os importadores
+/// verificáveis no PC sem apontar para uma cópia pessoal do aparelho.
+pub fn documents_dir() -> PathBuf {
+    std::env::var_os("VERSO_INK_DOCUMENTS").map(PathBuf::from).unwrap_or_else(|| "/mnt/us/documents".into())
 }
 
 fn sort_file() -> PathBuf {
@@ -61,6 +70,15 @@ pub const THUMB_W: u32 = 112;
 pub const THUMB_H: u32 = 152;
 const OPENABLE: [&str; 9] = ["epub", "pdf", "azw3", "mobi", "cbz", "fb2", "djvu", "txt", "cbr"];
 const STORE: [&str; 3] = ["kfx", "azw", "azw1"];
+
+/// Um arquivo comprado na Amazon que o Kindle abre no leitor original, não no KOReader.
+/// Mantemos este teste em um único lugar porque o mesmo título pode reaparecer no
+/// "Continuar" de uma versão anterior do Verso Ink.
+pub fn is_amazon_only(path: &Path) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| STORE.contains(&ext.to_ascii_lowercase().as_str()))
+}
 
 /// Nomes gravados com UTF-8 lido como Latin-1 ("BÃ­blia" → "Bíblia").
 fn fix_mojibake(s: &str) -> String {
@@ -95,7 +113,7 @@ fn is_system_junk(name: &str) -> bool {
 }
 
 /// "Perfil de três reis - Gene Edwards PDF_E6IQT5TU…KWBM" → "Perfil de três reis - Gene Edwards PDF"
-fn clean_title(stem: &str) -> String {
+pub fn clean_title(stem: &str) -> String {
     let mut t = stem.to_string();
     if let Some(i) = t.rfind('_') {
         let tail = &t[i + 1..];
@@ -129,8 +147,18 @@ fn scan_dir(dir: &Path, depth: u32, lib: &mut Library) {
         }
         let ext = path.extension().and_then(|x| x.to_str()).unwrap_or("").to_ascii_lowercase();
         let name = path.file_stem().and_then(|x| x.to_str()).unwrap_or("").to_string();
-        if STORE.contains(&ext.as_str()) {
+        if is_amazon_only(&path) && !is_system_junk(&name) && !name.starts_with('.') {
+            let added = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
             lib.store_only += 1;
+            lib.all.push(Book {
+                title: clean_title(&name),
+                kind: ext.to_ascii_uppercase(),
+                size: meta.len(),
+                touched: added,
+                progress: None,
+                amazon_only: true,
+                path,
+            });
         } else if OPENABLE.contains(&ext.as_str()) && !is_system_junk(&name) && !name.starts_with('.') {
             let added = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
             let read = std::fs::metadata(sidecar(&path)).and_then(|m| m.modified()).ok();
@@ -140,6 +168,7 @@ fn scan_dir(dir: &Path, depth: u32, lib: &mut Library) {
                 size: meta.len(),
                 touched: read.map_or(added, |r| r.max(added)),
                 progress: crate::data::book_progress(&path),
+                amazon_only: false,
                 path,
             });
         }
@@ -153,7 +182,7 @@ impl Library {
     pub fn scan(query: &str) -> Self {
         let mut lib = Library::empty();
         lib.sort = if std::fs::read_to_string(sort_file()).is_ok_and(|s| s.trim() == "titulo") { Sort::Title } else { Sort::Recent };
-        scan_dir(Path::new("/mnt/us/documents"), 2, &mut lib);
+        scan_dir(&documents_dir(), 2, &mut lib);
         lib.query = query.to_string();
         lib.apply();
         lib
@@ -248,10 +277,10 @@ fn wrap(f: &Fonts, face: Face, size: f32, text: &str, max_w: i32, max_lines: usi
 }
 /// Botão "Destaques" no topo da tela Ler.
 pub fn lib_search_rect() -> Rect {
-    Rect::new(W - MARGIN - 230, 236, 230, 84)
+    Rect::new(W - MARGIN - 230, 250, 230, 78)
 }
 pub fn lib_sort_rect() -> Rect {
-    Rect::new(W - MARGIN - 230 - 24 - 230, 236, 230, 84)
+    Rect::new(W - MARGIN - 230 - 16 - 230, 250, 230, 78)
 }
 pub fn clips_rect() -> Rect {
     Rect::new(W - MARGIN - 250, 76, 250, 84)
@@ -379,16 +408,39 @@ fn pill(fb: &mut Framebuffer, f: &Fonts, r: Rect, label: &str, filled: bool, _si
     ui::button(fb, f, r, label, filled);
 }
 
+/// Controles da estante têm papéis distintos: só a busca recebe o peso de ação primária.
+/// Isso evita que navegação, filtro e estado pareçam ser o mesmo botão no e-ink.
+fn library_control(fb: &mut Framebuffer, f: &Fonts, r: Rect, label: &str, primary: bool) {
+    if primary {
+        fb.round_rect(r, r.h / 2, INK);
+        let w = f.measure(Face::Strong, 30.0, label);
+        f.draw(fb, Face::Strong, 30.0, r.x + (r.w - w) / 2, r.y + 49, PAPER, label);
+    } else {
+        fb.round_rect(r, r.h / 2, 0xE8);
+        fb.round_outline(r, r.h / 2, 3, INK, 0xE8);
+        let w = f.measure(Face::Strong, 30.0, label);
+        f.draw(fb, Face::Strong, 30.0, r.x + (r.w - w) / 2, r.y + 49, INK, label);
+    }
+}
+
+fn library_link(fb: &mut Framebuffer, f: &Fonts, r: Rect, label: &str) {
+    let label = format!("{label} ›");
+    let w = f.measure(Face::Strong, 30.0, &label);
+    let x = r.x + r.w - w;
+    f.draw(fb, Face::Strong, 30.0, x, r.y + 51, INK, &label);
+    fb.fill(Rect::new(x, r.y + 62, w, 3), INK);
+}
+
 pub fn draw_library(fb: &mut Framebuffer, f: &Fonts, lib: &Library, st: &Status) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
-    pill(fb, f, clips_rect(), "Destaques", false, 32.0);
-    f.draw(fb, Face::Display, 150.0, MARGIN - 6, 330, INK, "Ler");
+    library_link(fb, f, clips_rect(), "Destaques");
+    f.draw(fb, Face::Display, 92.0, MARGIN - 4, 260, INK, "Ler");
     let n = lib.books.len();
     let has_any = !lib.all.is_empty();
     if has_any {
-        pill(fb, f, lib_search_rect(), if lib.query.is_empty() { "Buscar" } else { "Limpar" }, !lib.query.is_empty(), 32.0);
-        pill(fb, f, lib_sort_rect(), if lib.sort == Sort::Recent { "Recentes" } else { "A–Z" }, false, 32.0);
+        library_control(fb, f, lib_sort_rect(), if lib.sort == Sort::Recent { "Recentes" } else { "A–Z" }, false);
+        library_control(fb, f, lib_search_rect(), if lib.query.is_empty() { "Buscar" } else { "Limpar" }, true);
     }
     let plural = |k: usize| if k == 1 { "1 livro".to_string() } else { format!("{k} livros") };
     let mut summary = if !lib.query.is_empty() {
@@ -397,11 +449,12 @@ pub fn draw_library(fb: &mut Framebuffer, f: &Fonts, lib: &Library, st: &Status)
         match n {
             0 => "Nenhum livro para abrir ainda".to_string(),
             _ if lib.sort == Sort::Title => format!("{}, de A a Z", plural(n)),
+            1 => "1 livro, lido por último primeiro".to_string(),
             _ => format!("{}, lidos por último primeiro", plural(n)),
         }
     };
     if lib.store_only > 0 && lib.query.is_empty() {
-        summary.push_str(&format!(" · {} da loja só no Kindle original", lib.store_only));
+        summary.push_str(&format!(" · {} abrem no Kindle original", lib.store_only));
     }
     let summary = fit(f, Face::Strong, 30.0, &summary, W - 2 * MARGIN);
     f.draw(fb, Face::Strong, 30.0, MARGIN, 400, MUTED, &summary);
@@ -421,11 +474,15 @@ pub fn draw_library(fb: &mut Framebuffer, f: &Fonts, lib: &Library, st: &Status)
     for (i, b) in lib.visible().iter().enumerate() {
         let r = lib_row_rect(i);
         let c = cover_rect(i);
-        match crate::covers::cached(&b.path, THUMB_W, THUMB_H) {
-            Some(thumb) => draw_cover(fb, f, c, b, thumb.as_ref()),
-            None => {
-                // Ainda não extraída: moldura clara enquanto a capa é preparada.
-                fb.round_rect(c, 10, 0xE6);
+        if b.amazon_only {
+            draw_cover(fb, f, c, b, None);
+        } else {
+            match crate::covers::cached(&b.path, THUMB_W, THUMB_H) {
+                Some(thumb) => draw_cover(fb, f, c, b, thumb.as_ref()),
+                None => {
+                    // Ainda não extraída: moldura clara enquanto a capa é preparada.
+                    fb.round_rect(c, 10, 0xE6);
+                }
             }
         }
         let tx = c.x + c.w + 28;
@@ -435,7 +492,11 @@ pub fn draw_library(fb: &mut Framebuffer, f: &Fonts, lib: &Library, st: &Status)
             f.draw(fb, Face::Display, 42.0, tx, top + k as i32 * 50, INK, l);
         }
         let meta_y = top + (lines.len() as i32 - 1) * 50 + 46;
-        let meta = format!("{} · {}", b.kind, human_size(b.size));
+        let meta = if b.amazon_only {
+            format!("{} · abre no Kindle original", b.kind)
+        } else {
+            format!("{} · {}", b.kind, human_size(b.size))
+        };
         f.draw(fb, Face::Body, 28.0, tx + 2, meta_y, MUTED, &meta);
         if let Some(p) = b.progress {
             // Progresso do KOReader: barra curta depois do tipo e tamanho.
@@ -461,6 +522,43 @@ pub fn draw_library(fb: &mut Framebuffer, f: &Fonts, lib: &Library, st: &Status)
     } else {
         ui::draw_footer(fb, f, st);
     }
+}
+
+pub fn amazon_open_rect() -> Rect {
+    Rect::new(MARGIN, 800, W - 2 * MARGIN, 100)
+}
+
+/// Explicação honesta do handoff: o livro continua visível, sem prometer abertura impossível
+/// de um KFX protegido fora do Kindle original.
+pub fn draw_amazon_book(fb: &mut Framebuffer, f: &Fonts, title: &str) {
+    fb.fill(fb.screen(), PAPER);
+    ui::draw_back(fb, f, false);
+    f.draw(fb, Face::Strong, 30.0, MARGIN, 230, MUTED, "BIBLIOTECA AMAZON");
+    f.draw(fb, Face::Display, 68.0, MARGIN, 330, INK, &fit(f, Face::Display, 68.0, title, W - 2 * MARGIN));
+    let card = Rect::new(MARGIN, 430, W - 2 * MARGIN, 292);
+    fb.round_rect(card, 30, 0xE8);
+    fb.round_outline(card, 30, 3, INK, 0xE8);
+    let tag = Rect::new(card.x + 34, card.y + 30, 174, 46);
+    fb.round_rect(tag, 23, INK);
+    f.draw(fb, Face::Strong, 24.0, tag.x + 27, tag.y + 31, PAPER, "KINDLE");
+    f.draw(fb, Face::Strong, 30.0, card.x + 34, card.y + 126, INK, "ABRE NO KINDLE ORIGINAL");
+    let lines = ["Este arquivo está protegido pela Amazon.", "O Kindle original é o app que pode abri-lo."];
+    let mut y = card.y + 180;
+    for line in lines {
+        for wrapped in wrap(f, Face::Body, 32.0, line, card.w - 68, 2) {
+            f.draw(fb, Face::Body, 32.0, card.x + 34, y, INK, &wrapped);
+            y += 44;
+        }
+    }
+    ui::button(fb, f, amazon_open_rect(), "Abrir Kindle original", true);
+    f.draw(fb, Face::Body, 28.0, MARGIN, 950, MUTED, "Procure este título na sua estante do Kindle.");
+}
+
+pub fn draw_opening_amazon(fb: &mut Framebuffer, f: &Fonts, title: &str) {
+    fb.fill(fb.screen(), PAPER);
+    f.draw(fb, Face::Display, 40.0, MARGIN, 150, INK, "Verso Ink");
+    f.draw(fb, Face::Strong, 36.0, MARGIN, 600, MUTED, "ABRINDO O KINDLE ORIGINAL");
+    f.draw(fb, Face::Body, 32.0, MARGIN, 660, INK, &fit(f, Face::Body, 32.0, title, W - 2 * MARGIN));
 }
 
 /// Momento de passagem: o KOReader leva alguns segundos para abrir.
@@ -732,5 +830,23 @@ mod tests {
         assert_eq!(usable_title("BÃ\u{AD}blia Sagrada â???? NVI"), None);
         assert_eq!(usable_title("Livro de teste com capa").as_deref(), Some("Livro de teste com capa"));
         assert!(is_system_junk("KPPMainAppV2_6215_002-juno_16020101_muscat_wario-409747_crash_Nov_11_07.21.53_2026"));
+    }
+
+    #[test]
+    fn livro_kfx_fica_visivel_mas_marcado_para_amazon() {
+        let dir = std::env::temp_dir().join(format!("verso-ink-kfx-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("Um livro da loja.kfx"), "protegido").unwrap();
+        let mut lib = Library::empty();
+        scan_dir(&dir, 0, &mut lib);
+        lib.apply();
+        assert_eq!(lib.store_only, 1);
+        assert_eq!(lib.books.len(), 1);
+        assert!(lib.books[0].amazon_only);
+        assert_eq!(lib.books[0].kind, "KFX");
+        assert!(is_amazon_only(&lib.books[0].path));
+        assert!(is_amazon_only(std::path::Path::new("/mnt/us/documents/antigo.AZW1")));
+        assert!(!is_amazon_only(std::path::Path::new("/mnt/us/documents/aberto.epub")));
+        let _ = std::fs::remove_dir_all(dir);
     }
 }
