@@ -37,6 +37,7 @@ cp "target/$TARGET/release/verso-ink" "$STAGE/verso-ink/bin/"
 # Rostos dos treinadores (gerados e reduzidos por tools/rostos.sh).
 [ -d assets/treinadores ] && cp -r assets/treinadores "$STAGE/verso-ink/"
 [ -d assets/sprites ] && cp -r assets/sprites "$STAGE/verso-ink/"
+[ -d assets/dict ] && cp -r assets/dict "$STAGE/verso-ink/"
 
 tar -C "$STAGE" -cf - verso-ink extensions |
     "${KSSH[@]}" \
