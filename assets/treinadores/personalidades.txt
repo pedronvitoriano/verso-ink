@@ -1,0 +1,629 @@
+[Pipoca]
+quem: Criança animada que inventa jogos para os amigos no recreio.
+estilo: Brinca, descobre e aprende junto
+abertura: Oba, vamos brincar! | Hoje eu tô pulando de alegria! | Já escolheu seu lugar? | Prometo não fazer cócegas! | Um, dois, três e já! | Que legal te ver aqui!
+vacilo: Ih, essa foi pra mim! | Eba, eu vi primeiro! | Pegadinha do recreio! | Opa, deixei você escapar? | Caiu na minha! | Ganhei um sorriso com essa!
+erro: Opa, foi sem querer? | Ih, escorregou! | Acontece comigo também! | Eita, que susto! | Quase deu cambalhota! | Tá tudo bem, continua!
+bom: Uau, mandou bem! | Essa foi divertida! | Gostei do seu jeitinho! | Você tá demais! | Que ideia legal! | Palmas pra você!
+otimo: Nossa, que genial! | Uau, quero tentar também! | Você é um foguete! | Meu queixo caiu! | Isso merece um pulão! | Que lance incrível!
+apuros: Ai, minhas trancinhas! | Socorro, tô apertada! | Cadê meu plano secreto? | Acho que me enrolei! | Ainda tem brincadeira! | Não vou desistir, não!
+vantagem: Tô dançando de alegria! | Meu plano tá andando! | Olha só como eu cresci! | Eba, tô na frente! | Estou quase chegando! | Agora eu tô saltitante!
+perdeu_rainha: Minha rainha foi passear! | Puxa, ela era minha favorita! | Rainha, volta aqui! | Ai, perdi minha grandona! | Foi pro recreio sem mim? | Essa doeu no coraçãozinho!
+perdeu_torre: Minha torre caiu! | Poxa, era meu castelo! | Lá se foi meu paredão! | Ai, que tombo grandão! | Minha fortaleza sumiu! | Torre, segura minha mão!
+perdeu_peca: Opa, cadê meu amiguinho? | Lá se foi meu ajudante! | Ah, eu gostava dele! | Perdi um companheiro! | Poxa, que saudade já! | Um amigo saiu da roda!
+pegou_rainha: Uau, peguei a grandona! | Sua rainha veio brincar! | Eba, que achado gigante! | Essa foi uma surpresa! | Consegui pegar sua rainha! | Olha o tamanho do presente!
+pegou_torre: Peguei seu castelinho! | Sua torre veio comigo! | O paredão é meu agora! | Eba, achei uma torre! | Pulei dentro do castelo! | Olha o que eu consegui!
+pegou_peca: Achei um amiguinho seu! | Peguei um dos seus! | Vem brincar do meu lado! | Esse é meu convidado! | Oba, ganhei companhia! | Um ajudante veio comigo!
+venceu: Ganhei! Vamos pular? | Vitória com cambalhota! | Eu consegui, eu consegui! | Que brincadeira boa! | Meu sorriso não cabe aqui! | Uhuu, eu venci!
+perdeu: Você ganhou! Que legal! | Quero revanche no recreio! | Essa foi sua, parabéns! | Foi divertido mesmo assim! | Vou treinar com meus amigos! | Da próxima eu te pego!
+empate: Ficou igualzinho! | Ninguém perdeu a brincadeira! | Dividimos o prêmio! | Um abraço de empate! | Empatou, que engraçado! | Os dois saíram sorrindo!
+neutro: Lá vou eu de novo! | Estou pensando baixinho! | Vou por aqui, ó! | Será que dá certo? | Minha vez de brincar! | Vamos ver o que acontece!
+
+[Bia]
+quem: Leitora tímida que carrega livros e um caderno de descobertas.
+estilo: Observa com calma e explica baixinho
+abertura: Oi... podemos começar? | Trouxe meu caderninho. | Espero que goste de jogar. | Posso ficar aqui com você? | Respira, vamos devagar. | Estou um pouquinho nervosa.
+vacilo: Ah... eu reparei nisso. | Acho que essa foi minha chance. | Desculpe, eu vi primeiro. | Anotei essa surpresa! | Ih, vou aproveitar, tá? | Minha timidez tirou folga.
+erro: Ops, essa escapou. | Tudo bem mudar de ideia. | Já fiz isso no colégio. | Podemos seguir com calma. | Meu caderno tem dias assim. | Não precisa ficar sem graça.
+bom: Que bonito de ver. | Anotei sua ideia aqui. | Você pensou direitinho. | Gostei muito dessa. | Você tem olhos atentos. | Foi uma escolha cuidadosa.
+otimo: Essa merece uma estrela! | Uau... eu não esperava! | Vou guardar essa na memória. | Que descoberta especial! | Sua ideia brilhou mesmo. | Posso anotar essa também?
+apuros: Meu coração ficou apertado. | Preciso respirar um pouquinho. | Opa, me perdi nas anotações. | Ainda consigo pensar, eu acho. | Meu lápis está tremendo. | Calma, Bia, uma coisa por vez.
+vantagem: Acho que estou indo bem. | Meu caderno está sorrindo. | Talvez eu consiga desta vez. | Estou surpresa comigo mesma. | Aos poucos cheguei até aqui. | Meu plano ficou mais claro.
+perdeu_rainha: Oh... minha rainha se foi. | Fiquei até sem palavras. | Essa página ficou triste. | Não vi ela partir. | Minha rainha, que pena... | Vou precisar de coragem agora.
+perdeu_torre: Minha torre desapareceu. | Ai, eu gostava daquele canto. | Uma torre a menos no caderno. | Perdi meu abrigo silencioso. | Essa eu não tinha previsto. | Minha torre, adeusinho.
+perdeu_peca: Meu companheiro foi embora. | Ah, perdi um amigo pequeno. | Deixei alguém para trás. | Uma peça saiu da história. | Vou sentir falta dela. | Anotei essa despedida.
+pegou_rainha: Consegui sua rainha... nossa. | Eu não achei que conseguiria. | Sua rainha está comigo agora. | Essa surpresa vai pro caderno. | Acho que encontrei coragem. | Que momento inesperado!
+pegou_torre: Sua torre veio para cá. | Uma torre entrou na história. | Encontrei seu abrigo. | Peguei sua torre, com licença. | Essa eu registrei tudinho. | Foi uma descoberta e tanto.
+pegou_peca: Sua peça está comigo. | Um novo amigo para meu lado. | Posso cuidar dela por aqui? | Ela veio para minha página. | Acho que encontrei uma peça. | Essa peça mudou de história.
+venceu: Ganhei? Sério mesmo? | Estou feliz... e surpresa. | Obrigada por jogar comigo. | Vou guardar esse dia no livro. | Minha primeira estrela de hoje! | Que alegria quietinha.
+perdeu: Você venceu, parabéns! | Aprendi tanto com você. | Vou ler minhas anotações. | Obrigada pela companhia. | Amanhã tento outra vez. | Sua vitória foi merecida.
+empate: Ficamos na mesma página. | Um final bem equilibrado. | Vou anotar esse empate. | Acho bonito terminar assim. | Nenhum de nós ficou sozinho. | Que final tranquilo.
+neutro: Deixa eu consultar o silêncio. | Agora viro esta página. | Vou tentar uma coisinha. | Só um instante, por favor. | Meu lápis pede cuidado. | Hum... acho que vou aqui.
+
+[Téo]
+quem: Menino curioso que desmonta brinquedos para descobrir como funcionam.
+estilo: Testa ideias e aprende fazendo
+abertura: Bora fazer um experimento? | Meu laboratório é aqui! | Já ligou a curiosidade? | Tenho uma ideia maluca! | Preparado pra testar tudo? | Hoje eu trouxe invenções!
+vacilo: Opa, descobri um atalho! | Caiu no meu experimento! | Funcionou! Eu sabia... talvez. | Essa reação foi inesperada! | Oba, minha hipótese ganhou! | Alerta de descoberta minha!
+erro: Ih, faltou um parafuso. | Essa experiência deu fumaça. | Às vezes a invenção falha. | Teste novo, resultado novo. | Opa, curto-circuito! | Relaxa, dá pra consertar.
+bom: Seu motorzinho tá ligado! | Essa invenção foi boa! | Curti esse teste! | Sua ideia tem faísca! | Você montou direitinho! | Boa, cientista!
+otimo: Explodiu o medidor de ideias! | Nossa, isso foi genial! | Quero esse projeto na feira! | Você inventou o impossível! | Minha cabeça deu um clique! | Acendeu todas as lâmpadas!
+apuros: Meu motor tá engasgando! | Preciso apertar os parafusos. | Meu projeto balançou inteiro. | Alerta vermelho no laboratório! | Vou buscar outra ferramenta. | Calma, ainda tenho pilhas!
+vantagem: Meu experimento tá voando! | A máquina pegou no tranco! | Estou com energia sobrando! | Acho que achei a fórmula! | Meu invento saiu do papel! | Dessa vez a engrenagem girou!
+perdeu_rainha: Minha máquina principal caiu! | Puf! Lá foi minha rainha. | Quebrou a peça mais brilhante! | Vou precisar de um plano B. | Minha invenção perdeu o motor! | Essa deu pane geral!
+perdeu_torre: Perdi uma engrenagem gigante! | Minha torre saiu do projeto. | Eita, caiu uma peça enorme! | Esse parafuso era importante! | Minha estrutura fez crac! | Uma torre foi pro desmanche.
+perdeu_peca: Um componente saiu voando! | Perdi uma peça do kit. | Cadê meu ajudante mecânico? | Essa peça fez falta no projeto. | Ih, perdi um acessório! | Uma pecinha escapou da caixa.
+pegou_rainha: Capturei seu motor principal! | Sua rainha entrou no meu kit! | Que descoberta tamanho família! | Minha máquina pegou a rainha! | Olha essa peça de coleção! | Experimento com resultado gigante!
+pegou_torre: Sua torre veio pro laboratório! | Peguei uma peça grandona! | Seu castelo virou meu projeto! | Essa engrenagem agora é minha! | Oba, mais material pro kit! | Acertei a torre no teste!
+pegou_peca: Encontrei uma peça do seu kit! | Seu ajudante mudou de equipe! | Mais uma peça pra coleção! | Opa, capturei um componente! | Essa pecinha veio estudar comigo. | Sua peça virou meu experimento!
+venceu: Experimento concluído! | Funcionou até o final! | Vitória científica! | Vou contar pra turma inteira! | Minha invenção venceu hoje! | Deu certo, deu muito certo!
+perdeu: Seu invento ganhou do meu! | Vou desmontar tudo e aprender. | Parabéns, mente brilhante! | Preciso revisar meu projeto. | Você venceu essa experiência! | Já tive uma ideia pra revanche.
+empate: Os dois testes deram igual! | Resultado curioso, hein? | Empate registrado na bancada! | Nenhum motor parou primeiro. | Dois inventores, mesmo resultado! | Vamos repetir o experimento?
+neutro: Deixa eu testar isto. | Girando a engrenagem... | Olha só esta experiência. | Vou apertar este botão. | Curiosidade em movimento! | Agora é a vez do inventor.
+
+[Lia]
+quem: Adolescente esportista que treina corrida e anima a equipe da escola.
+estilo: Acelera, arrisca e incentiva
+abertura: Bora aquecer as ideias! | Partiu, time! | Hoje eu vim com energia! | Amarra o tênis e vem! | Tá valendo, parceiro! | Preparação feita, vamos nessa!
+vacilo: Opa, passei na sua frente! | Deu bobeira, eu disparei! | Essa brecha foi minha largada! | Marquei ponto nessa! | Vacilou, eu corri! | Ganhei esse pique, hein!
+erro: Tropeçou? Levanta e vem! | Um deslize não acaba a prova. | Respira e segue no ritmo. | Todo atleta erra na pista. | Sacode a poeira e continua! | Calma, ainda tem chão.
+bom: Boa jogada, atleta! | Aí sim, pegou embalo! | Ritmo forte, gostei! | Você veio pra valer! | Mandou bem nessa corrida! | Belo pique, hein!
+otimo: Que arrancada absurda! | Essa foi de pódio! | Você voou nessa! | Que jogada de campeã! | Levantou a torcida inteira! | Caramba, velocidade máxima!
+apuros: Eita, perdi o fôlego! | Tá puxado, mas sigo firme! | Preciso recuperar o ritmo. | Essa subida tá difícil! | Meu coração acelerou agora. | Ainda tenho gás no tanque!
+vantagem: Tô no embalo da corrida! | Abri uma boa distância! | Meu ritmo encaixou bonito! | Agora a pista é minha! | Passei na frente com vontade! | Tô chegando com tudo!
+perdeu_rainha: Nossa, perdi minha capitã! | Essa pancada tirou meu ar. | Minha rainha saiu da pista! | Sem capitã, a prova aperta. | Doeu mais que uma queda! | Preciso respirar depois dessa.
+perdeu_torre: Minha torre saiu do time! | Perdi uma jogadora de peso. | Essa queda fez barulho! | Uma torre ficou pelo caminho. | Puxa, meu apoio foi embora! | Essa foi uma dividida dura.
+perdeu_peca: Um do time ficou pra trás. | Perdi uma companheira de pista. | Essa troca pesou no fôlego. | Meu elenco ficou menor. | Um parceiro saiu da corrida. | Opa, faltou alguém aqui!
+pegou_rainha: Sua capitã veio pro meu time! | Peguei sua rainha no pique! | Que arrancada pra cima dela! | Sua rainha não me alcançou! | Essa captura levantou a torcida! | Passei voando pela sua rainha!
+pegou_torre: Sua torre ficou pra trás! | Cheguei primeiro na sua torre! | Marquei uma torre no placar! | Sua defesa sentiu meu pique! | Peguei sua torre na corrida! | Uma torre saiu da sua equipe!
+pegou_peca: Mais um ponto pro meu time! | Seu parceiro saiu da pista! | Peguei uma peça no sprint! | Essa foi na velocidade! | Minha equipe cresceu agora! | Um dos seus ficou pra trás!
+venceu: Cruzei a linha na frente! | Vitória com gosto de treino! | Valeu pela disputa, atleta! | Hoje meu time levou! | Cheguei até o pódio! | Que corrida boa, eu venci!
+perdeu: Você cruzou primeiro, parabéns! | Belo jogo, rival de respeito! | Vou treinar pra próxima prova. | Você mereceu esse pódio! | Perdi, mas dei tudo de mim! | Revanche depois do alongamento?
+empate: Chegamos juntos na linha! | Empate de tirar o fôlego! | Os dois merecem medalha! | Foi foto no fim da corrida! | Que disputa parelha! | Hoje ninguém ficou pra trás!
+neutro: Seguindo no meu ritmo. | Mais um passo nessa prova. | Sem parar de correr! | Vou manter a passada. | Aqui vai meu próximo passo. | Mantenho o foco e avanço.
+
+[Davi]
+quem: Garoto comunicativo que ajuda o pai na barbearia do bairro.
+estilo: Vai direto e conversa bastante
+abertura: Chega junto, meu parceiro! | Bora dar início aos trabalhos! | Puxa a cadeira e vem! | Hoje o papo vai render! | Já tô pronto, e você? | Seja bem-vindo à minha roda!
+vacilo: Rapaz, essa foi de bandeja! | Ô beleza, sobrou pra mim! | Vacilou, eu tava ligado! | Essa eu não podia deixar! | Aí você me deu um presente! | Opa, aproveitei mesmo!
+erro: Acontece nas melhores famílias. | Essa passou batida, né? | Calma, que ninguém nasce pronto. | Foi no susto, eu entendo. | Essa escapou do seu radar. | Segue o baile, meu parceiro.
+bom: Aí sim, mandou bonito! | Gostei da sua atitude! | Essa foi caprichada! | Você tá ligado no jogo! | Boa demais essa sua! | Respeito essa ideia!
+otimo: Rapaz, que obra de arte! | Essa merece até aplauso! | Você arrasou de verdade! | Ô jogada de responsa! | Vou contar essa lá em casa! | Caramba, deixou todo mundo bobo!
+apuros: Rapaz, o caldo engrossou! | Tô suando frio por aqui. | Preciso dar um jeito nisso. | Essa conversa ficou séria! | Ainda não entreguei os pontos! | Segura aí que eu me viro.
+vantagem: Agora o papo tá do meu lado! | Tô no controle da situação! | Hoje a maré tá boa pra mim! | Tá rendendo pra minha turma! | Fui chegando e me ajeitei. | O trabalho tá saindo bonito!
+perdeu_rainha: Poxa, levaram minha rainha! | Essa aí me pegou de surpresa. | Foi embora minha peça de peso! | Agora o negócio apertou mesmo. | Rapaz, que prejuízo danado! | Minha rainha saiu sem aviso!
+perdeu_torre: Ih, fiquei sem minha torre! | Uma torre foi embora, rapaz. | Levaram meu apoio grandão! | Essa fez falta na hora. | Poxa vida, minha torre! | Lá se foi uma das grandonas.
+perdeu_peca: Rapaz, perdi um parceiro. | Um dos meus saiu da roda. | Perdi uma peça nessa conversa. | Essa peça foi embora cedo. | Eita, menos um comigo. | Meu time ficou desfalcado.
+pegou_rainha: Sua rainha veio pra minha roda! | Peguei a maior, meu parceiro! | Essa rainha agora é minha! | Olha quem veio tomar um café! | Rapaz, capturei sua rainha! | Essa foi uma baita conquista!
+pegou_torre: Sua torre mudou de endereço! | Peguei essa grandona aí! | Uma torre pra minha conta! | A sua torre já tá comigo! | Opa, levei sua torre! | Essa torre veio bater papo!
+pegou_peca: Seu parceiro veio pro meu lado! | Capturei um dos seus, viu? | Mais uma peça aqui comigo! | Essa peça entrou na minha roda! | Uma companhia a mais pra mim. | Seu ajudante tá do meu lado!
+venceu: Ganhei essa, meu parceiro! | Hoje a conversa terminou bem! | Vitória com direito a sorriso! | Foi uma disputa arretada! | Levei essa pra barbearia! | Valeu demais pelo jogo!
+perdeu: Você levou essa, parabéns! | Jogou bonito até o final! | Vou voltar pra te desafiar! | Hoje o mérito é todo seu. | Perdi, mas adorei o papo! | Te pago essa na revanche!
+empate: Ficou tudo igual no final! | Cada um leva metade do papo! | Deu empate, meu parceiro! | Hoje ninguém saiu por cima. | Um placar justo pra nós dois. | Conversa boa termina assim!
+neutro: Deixa comigo agora. | Tô pensando aqui, peraí. | Minha vez de fazer a graça. | Vamos ver como isso anda. | Vou ajeitar as coisas por aqui. | Segue o jogo, parceiro!
+
+[Nina]
+quem: Adolescente gamer que cria músicas eletrônicas no computador.
+estilo: Improvisa rápido, com espírito gamer
+abertura: Fone ligado, partida iniciada! | Bora dar play nessa disputa! | Meu som tá no ponto. | Pronta pra uma fase nova! | Entra no lobby comigo! | A batida começou, vem!
+vacilo: Achou que eu não ia notar? | Opa, explorou o bug errado! | Esse vacilo deu bônus pra mim! | Seu controle deu tilt? | Ganhei um presente no mapa! | Caiu direitinho na minha fase!
+erro: Lag mental acontece, relaxa. | Essa teve cara de botão errado. | Opa, deu um glitch aí. | Respira, ainda tem partida. | Até pro player erra comando. | Essa não entrou no combo.
+bom: Boa, essa teve estilo! | Jogada limpa, gostei! | Você acertou o timing! | Isso aí deu um bom combo! | Curti seu ritmo de jogo! | Boa leitura de fase!
+otimo: Jogada lendária desbloqueada! | Você zerou minha expectativa! | Isso foi nível chefão! | Nossa, que combo perfeito! | Essa merece replay imediato! | Solta o drop dessa jogada!
+apuros: Socorro, tô sem vida extra! | A fase complicou pra mim. | Meu controle até suou! | Tá com cara de tela vermelha. | Calma, ainda não deu game over! | Preciso virar essa playlist.
+vantagem: Minha barra tá lá em cima! | Entrei no modo confiante! | O placar tá cantando pra mim! | Tô dominando essa fase! | Meu combo tá encaixando! | Agora o beat é meu!
+perdeu_rainha: Perdi minha personagem principal! | Ai, rainha desconectada! | Isso foi dano crítico! | Minha rainha deu logout. | Que perda de item lendário! | A trilha ficou dramática agora.
+perdeu_torre: Minha torre caiu do servidor! | Perdi uma peça de alto nível. | Torre removida do meu inventário! | Essa captura deu muito dano. | Minha torre levou um delete! | Desligaram uma das minhas torres.
+perdeu_peca: Um dos meus saiu do lobby. | Perdi um item do inventário. | Meu parceiro tomou logout. | Essa peça saiu da playlist. | Menos uma peça no meu time. | Um companheiro caiu da partida.
+pegou_rainha: Sua rainha tomou game over! | Item lendário no meu inventário! | Dei logout na sua rainha! | Essa captura foi nível máximo! | Sua rainha saiu do servidor! | Rainha capturada, conquista nova!
+pegou_torre: Sua torre foi deletada! | Torre nova no meu inventário! | Peguei seu item grandão! | Sua torre saiu do lobby! | Capturei essa construção aí! | Torre derrubada, som no talo!
+pegou_peca: Seu parceiro tomou logout! | Uma peça sua pro meu inventário! | Peguei seu item de apoio! | Sua peça saiu da playlist! | Mais um troféu nessa fase! | Capturei uma peça do seu time!
+venceu: Game over, vitória minha! | Fase concluída com sucesso! | Vou comemorar com um beat! | Placar fechado, eu levei! | Vitória desbloqueada, valeu! | Meu remix ganhou essa rodada!
+perdeu: Você zerou minha defesa! | Vitória sua, player! | Vou treinar antes do replay. | Essa fase ficou pra você! | Mandou bem até a tela final! | Partiu revanche depois do som?
+empate: Empate, sem tela de derrota! | Mesma pontuação pros dois! | Nenhum player caiu primeiro. | Essa fase terminou empatada! | Duas barras no mesmo nível! | Deu empate no nosso servidor.
+neutro: Próximo comando entrando. | Deixa a batida rolar. | Apertando o play por aqui. | Minha vez de fazer o combo. | Aguenta aí, tô carregando. | Escolhendo meu próximo som.
+
+[Caio]
+quem: Jovem skatista que grava vídeos das manobras na praça.
+estilo: Arrisca manobras e aprende na queda
+abertura: Salve! Bora pra pista? | Hoje o rolê é aqui! | Trouxe meu skate imaginário. | Preparado pra uma manobra? | Chega mais pro nosso rolê! | Roda livre, jogo começando!
+vacilo: Ih, abriu a pista pra mim! | Vacilou, passei voando! | Essa eu mandei de primeira! | Achei espaço e fiz a festa! | Caiu na minha manobra, hein? | Deslizou e eu aproveitei!
+erro: Tombou? Levanta e tenta! | Todo mundo rala o joelho. | Escorregão faz parte do rolê. | Essa saiu meio torta, né? | Suave, bora pra próxima. | Já caí feio tentando também.
+bom: Mandou liso nessa! | Boa manobra, parceiro! | Essa saiu redondinha! | Gostei do seu rolê! | Aterrissou bonito demais! | Seu estilo tá afiado!
+otimo: Nossa, que manobra insana! | Essa merece vídeo na praça! | Mandou um salto de cinema! | Caraca, que aterrissagem! | A galera ia gritar com essa! | Acertou a manobra dos sonhos!
+apuros: Ih, a pista ficou estreita! | Quase ralei a cara agora. | Tô cambaleando no skate! | Preciso achar meu equilíbrio. | O rolê apertou pro meu lado! | Ainda não saí da pista!
+vantagem: Tô deslizando solto agora! | Peguei velocidade no rolê! | A pista tá livre pra mim! | Essa sequência tá encaixando! | Hoje meu skate tá ligeiro! | Tô mandando bem na praça!
+perdeu_rainha: Minha rainha tomou um tombo! | Essa queda foi daquelas! | Opa, perdi minha estrela! | Minha rainha saiu da pista. | Essa pancada fez até eco! | Fiquei sem a peça do rolê!
+perdeu_torre: Minha torre caiu da rampa! | Essa torre tomou um capote! | Uma grandona saiu da pista. | Perdi um obstáculo querido. | Puxa, minha torre rodou! | Minha torre foi pro chão!
+perdeu_peca: Um parceiro saiu do rolê. | Essa peça não voltou da pista. | Perdi um dos meus skatistas. | Ih, um amigo tomou um tombo. | Um dos meus ficou na praça. | Essa peça fez falta no rolê.
+pegou_rainha: Sua rainha caiu na minha pista! | Peguei a estrela do rolê! | Essa rainha agora anda comigo! | Sua rainha tomou um capote! | Capturei sua rainha no salto! | Essa manobra pegou sua rainha!
+pegou_torre: Sua torre caiu na minha rampa! | Peguei seu obstáculo grandão! | Sua torre saiu do rolê! | Mandei uma torre pro chão! | Essa torre ficou pra mim! | Capturei sua torre na pista!
+pegou_peca: Um dos seus veio pro meu rolê! | Sua peça ficou na minha pista! | Peguei um parceiro seu! | Essa peça tomou meu caminho! | Seu ajudante saiu da praça! | Capturei mais um pro meu lado!
+venceu: Fechei o rolê com vitória! | Acertei a última manobra! | Hoje eu saí de pé da pista! | Essa vitória foi da hora! | Valeu pelo rolê, parceiro! | Vou contar essa pra galera!
+perdeu: Você fechou a pista, parabéns! | Hoje quem brilhou foi você! | Vou treinar essa queda depois. | Seu rolê foi mais liso! | Perdi, mas quero outra volta! | Mandou demais, respeito total!
+empate: Os dois pousaram juntos! | Rolê empatado, tudo certo! | Nenhum de nós saiu da pista! | Deu igual pra nossa galera! | Uma volta pra cada, combinado? | Terminamos lado a lado!
+neutro: Deixa eu dar uma volta. | Preparando mais uma manobra. | Vou deslizar por aqui. | O rolê ainda tá só começando. | Minha vez de pisar na pista. | Vem comigo nessa curva.
+
+[Malu]
+quem: Jovem cozinheira que testa receitas para a família aos domingos.
+estilo: Mistura ideias com leveza e humor
+abertura: Trouxe um tempero especial! | Bora preparar essa partida? | Sente o cheirinho da disputa? | Pegue seu avental e venha! | Minha cozinha está aberta! | Que tal uma partida fresquinha?
+vacilo: Ih, deixou passar do ponto! | Essa caiu direto na minha panela! | Seu vacilo virou meu banquete! | Opa, peguei de colherada! | Essa eu servi pra mim mesma! | Sua distração me abriu o apetite!
+erro: Ops, queimou um pouquinho. | Nem toda receita sai de primeira. | Um tropeço não estraga o almoço. | Dá pra corrigir o tempero. | Essa mistura não combinou muito. | Calma, ainda tem sobremesa.
+bom: Humm, essa ficou saborosa! | Boa receita, gostei muito! | Você acertou no tempero! | Essa merece uma colherada! | Que ideia bem servida! | Sua jogada ficou no ponto!
+otimo: Isso foi digno de estrela! | Receita de dar água na boca! | Que banquete de criatividade! | Nossa, ficou divina essa! | Vou guardar essa receita! | Essa levantou a cozinha inteira!
+apuros: Ih, minha panela transbordou! | O caldo apertou pra mim! | Preciso salvar minha receita. | Acho que passei do ponto! | O forno esquentou demais! | Ainda consigo arrumar a mesa.
+vantagem: Meu prato tá quase pronto! | Agora o tempero é todo meu! | A receita tá saindo linda! | Minha panela tá borbulhando! | Sinto cheiro de coisa boa! | Acertei a mão nessa mistura!
+perdeu_rainha: Minha rainha saiu do cardápio! | Perdi o prato principal! | Essa queimou minha receita. | Minha estrela caiu da bandeja! | Ai, lá se foi minha rainha! | Preciso inventar outra receita.
+perdeu_torre: Minha torre saiu do forno cedo! | Perdi uma bandeja grandona. | Essa torre virou farelo! | Minha torre caiu da mesa. | Lá se foi meu prato de apoio. | Puxa, minha torre desandou!
+perdeu_peca: Um ingrediente foi embora. | Perdi uma peça do meu prato. | Meu ajudante saiu da cozinha. | Faltou uma peça na receita. | Essa saiu da minha panela. | Um temperinho escapou de mim.
+pegou_rainha: Sua rainha caiu na minha panela! | Prato principal servido pra mim! | Sua rainha entrou no meu menu! | Essa captura foi um banquete! | Peguei a estrela da sua mesa! | Sua rainha veio pra sobremesa!
+pegou_torre: Sua torre caiu no meu prato! | Mais uma torre na minha mesa! | Peguei uma porção generosa! | Sua torre saiu do cardápio! | Essa torre virou meu petisco! | Capturei sua torre no capricho!
+pegou_peca: Sua peça entrou na receita! | Peguei um ingrediente seu! | Esse tempero agora é meu! | Sua peça veio pra minha cozinha! | Mais um petisco pra minha mesa! | Capturei seu ajudante de forno!
+venceu: Pronto, vitória bem servida! | Minha receita ganhou hoje! | Que delícia de partida! | Hora de comemorar com bolo! | O prato ficou do meu jeito! | Ganhei, pode trazer a sobremesa!
+perdeu: Sua receita venceu a minha! | Parabéns pelo prato lindo! | Vou testar outro tempero depois. | Você cozinhou essa vitória! | Hoje a cozinha foi sua! | Perdi, mas sobrou sobremesa!
+empate: Dividimos o último pedaço! | Receita empatada, mesa feliz! | Metade do bolo pra cada um! | Os dois pratos ficaram iguais! | Empate com gosto de amizade! | Ninguém saiu de barriga vazia!
+neutro: Uma pitada daqui agora. | Deixa eu mexer essa panela. | Vou experimentar algo novo. | Tudo no seu tempo de forno. | Temperando a próxima ideia. | Agora eu arrumo minha bancada.
+
+[Rafa]
+quem: Jovem baterista que ensaia com a banda da escola depois da aula.
+estilo: Marca o ritmo e ataca com energia
+abertura: Bora soltar o som? | Baquetas prontas, vamos! | Hoje tem show particular! | Chega no ritmo comigo! | Um, dois, três, valendo! | A banda já tá afinada!
+vacilo: Opa, perdeu a batida! | Essa pausa foi minha deixa! | Você cochilou e eu entrei! | Vacilou, fiz meu solo! | A brecha veio no meu compasso! | Essa nota ficou comigo!
+erro: Ih, saiu fora do compasso. | Relaxa, todo mundo erra a nota. | Volta pro ritmo e segue. | Até bateria desafina na cabeça. | Essa batida veio atravessada. | Não para o som por causa disso.
+bom: Boa batida, curti! | Essa entrou no compasso! | Você mandou uma nota bonita! | Gostei desse seu groove! | Soou bem demais! | Sua ideia tem ritmo!
+otimo: Que solo absurdo de bom! | Essa levantou a plateia! | Você tocou direto na alma! | Essa merece bis da banda! | Caramba, que virada linda! | O som ficou gigante agora!
+apuros: Minha banda perdeu o ritmo! | Tá difícil segurar a batida. | Preciso respirar entre os versos. | A música apertou pra mim! | Ainda tenho um solo guardado. | Meu coração virou bateria!
+vantagem: Minha banda entrou no ritmo! | O refrão agora é todo meu! | Tô comandando esse show! | A batida encaixou direitinho! | Minha música tá crescendo! | Essa apresentação tá redonda!
+perdeu_rainha: Minha vocalista foi embora! | A rainha saiu do palco! | Essa perda silenciou a banda. | Meu solo ficou sem cantora! | Perdi a estrela do show! | O som ficou triste agora.
+perdeu_torre: Minha torre saiu da banda! | Perdi uma caixa de som! | Um amplificador acabou de cair. | Essa torre fez falta no palco. | A estrutura do show balançou! | Lá se foi minha torre sonora.
+perdeu_peca: Um músico saiu do palco. | Perdi um membro da banda. | Essa peça deixou meu conjunto. | Um parceiro parou de tocar. | Minha banda ficou menor. | Uma nota saiu da partitura.
+pegou_rainha: Sua rainha deixou o palco! | Peguei a estrela da sua banda! | Sua vocalista mudou de grupo! | Essa rainha entrou no meu som! | Capturei a rainha no refrão! | Sua estrela agora canta comigo!
+pegou_torre: Sua torre saiu do show! | Peguei seu amplificador! | Sua torre mudou de banda! | Essa caixa de som é minha! | Sua torre dançou no meu ritmo! | Capturei uma das suas torres!
+pegou_peca: Seu músico veio pra minha banda! | Peguei uma nota da sua canção! | Sua peça mudou de palco! | Um integrante seu saiu do som! | Essa peça veio tocar comigo! | Capturei um dos seus músicos!
+venceu: Fechei o show com vitória! | Meu solo levou a partida! | Vitória no último refrão! | Que show, valeu pela parceria! | Ganhei e quero ouvir um bis! | A banda comemora comigo!
+perdeu: Seu show levou a plateia! | Você tocou bonito, parabéns! | Vou ensaiar pra próxima. | Hoje sua banda venceu a minha! | Esse aplauso é todinho seu. | Perdi, mas curti nosso som!
+empate: Nossas bandas tocaram juntas! | Mesmo volume pros dois lados! | A música terminou empatada! | Dividimos o palco até o fim. | Um dueto sem vencedor! | Fechamos no mesmo compasso!
+neutro: Seguindo a batida por aqui. | Deixa o ritmo me levar. | Minha vez de marcar o tempo. | Mais uma nota na canção. | Agora entra a bateria. | Sigo tocando sem pressa.
+
+[Iara]
+quem: Jovem bióloga que cuida de uma horta comunitária perto do rio.
+estilo: Cultiva planos pacientes e flexíveis
+abertura: Vamos cultivar essa partida? | Trouxe calma de beira-rio. | Hoje o jardim é nosso. | Que tal plantar boas ideias? | Vamos começar com serenidade. | Chegue, a sombra está boa.
+vacilo: Essa semente caiu no meu vaso! | Opa, achei espaço pra crescer. | Sua distração deu fruto pra mim. | Colhi essa oportunidade! | O vento soprou a meu favor. | Sua pressa abriu minha clareira.
+erro: Até muda forte entorta. | Calma, toda planta tem seu tempo. | Essa folha caiu cedo demais. | Um erro também vira adubo. | Respire como quem olha o rio. | Nem toda semente vinga.
+bom: Bela ideia, floresceu bem. | Você encontrou um bom caminho. | Gostei de ver essa crescer. | Essa escolha tem raízes fortes. | Seu cuidado deu resultado. | Que movimento harmonioso.
+otimo: Sua ideia abriu como flor rara! | Essa nasceu cheia de beleza. | Você fez o jardim inteiro brilhar. | Que achado extraordinário! | A natureza aplaudiria essa. | Uma ideia dessas dá até sombra!
+apuros: Meu jardim enfrenta ventania. | O rio ficou bravo por aqui. | Preciso fincar minhas raízes. | Ainda existe força nesta mata. | Estou num trecho de correnteza. | Vou procurar abrigo e seguir.
+vantagem: Meu jardim está florescendo. | As raízes estão bem firmes. | A maré corre tranquila pra mim. | Minhas sementes estão vingando. | Encontrei sol neste caminho. | O bosque está ao meu favor.
+perdeu_rainha: Minha rainha caiu como árvore. | Perdi a flor mais alta daqui. | Uma ventania levou minha rainha. | A sombra dela fará falta. | Minha rainha voltou à terra. | Que perda grande neste jardim.
+perdeu_torre: Minha torre tombou no bosque. | Perdi um tronco importante. | Essa torre foi levada pelo rio. | Uma torre caiu na ventania. | Minha árvore de apoio se foi. | Faltará a sombra desta torre.
+perdeu_peca: Uma folha se soltou de mim. | Perdi uma moradora do jardim. | Uma peça seguiu rio abaixo. | Um pequeno ramo se despediu. | Minha horta perdeu companhia. | Uma peça voltou para a terra.
+pegou_rainha: Sua rainha veio para meu jardim. | Colhi a flor mais alta daí. | Sua rainha seguiu meu rio. | Essa grande flor agora é minha. | Sua rainha encontrou minha mata. | Capturei sua rainha com calma.
+pegou_torre: Sua torre caiu na minha mata. | Colhi uma torre do seu jardim. | Sua torre seguiu minha corrente. | Um tronco seu veio para cá. | Colhi sua torre com carinho. | Sua torre encontrou meu bosque.
+pegou_peca: Uma folha sua veio com o vento. | Sua peça pousou no meu jardim. | Colhi uma pequena companheira. | Sua peça navegou até minha margem. | Um ramo seu encontrou minha horta. | Uma peça sua mudou de jardim.
+venceu: Meu jardim floresceu até o fim. | Colhi essa vitória com alegria. | A corrente me trouxe até aqui. | Obrigada por cultivar comigo. | A vitória amadureceu devagar. | Meu bosque celebra esta partida.
+perdeu: Seu jardim floresceu primeiro. | Você cultivou uma bela vitória. | Vou plantar de novo amanhã. | Parabéns pela sua colheita. | Hoje o rio seguiu seu caminho. | Aprendi muito nesta caminhada.
+empate: Florescemos no mesmo ritmo. | O rio nos levou à mesma margem. | Dividimos a sombra desta árvore. | Cada jardim deu o mesmo fruto. | O empate também tem sua beleza. | Terminamos na mesma correnteza.
+neutro: Deixo essa ideia criar raiz. | Vou seguindo o curso do rio. | Uma semente de cada vez. | Observo antes de seguir. | Hora de cuidar deste cantinho. | Caminho mais um passo na mata.
+
+[Bento]
+quem: Marceneiro brincalhão que faz móveis e conta causos no café.
+estilo: Criativo e paciente, ensina com causos
+abertura: Bora prosear jogando? | Puxa um banco e vem! | Hoje tem história boa. | Café passado, vamos lá! | Vai ser uma boa prosa. | Deixa eu ajeitar aqui.
+vacilo: Opa, essa foi de lascar! | Aí a madeira rachou! | Essa eu guardo no bolso. | Que presente, compadre! | Ih, abriu a porteira! | Quase derrubei o café!
+erro: Eita, escapou um prego. | Essa saiu tortinha. | A mão pesou, hein? | Foi um tropeço danado. | Essa tábua empenou. | Calma que acontece.
+bom: Caprichou no acabamento! | Ficou bonito esse serviço. | Gostei desse jeitinho. | Olha só que talento! | Saiu coisa boa daí. | Tá pegando o jeito!
+otimo: Isso é obra de mestre! | Até parei de lixar aqui. | Que beleza de serviço! | Essa merece moldura. | Nossa, mandou bem demais! | Vou contar essa no café.
+apuros: Meu banco tá bamboleando. | A prosa apertou pra mim. | Eita, preciso de fôlego. | Agora o bicho pegou. | Vou ter que suar aqui. | Meu café até esfriou.
+vantagem: Agora a bancada é minha. | Tô com a mão firme aqui. | Essa prosa tá rendendo. | Hoje a serra tá afiada. | Parece que encaixou! | Acho que vou longe.
+perdeu_rainha: Minha rainha foi pro chão! | Perdi minha peça favorita. | Essa doeu no marceneiro. | Foi-se minha rainha, uai. | Nossa, que tombo bonito! | Lá se foi minha rainha.
+perdeu_torre: Uma torre virou serragem! | Minha torre foi embora. | Puxa, perdi uma torre. | Uma torre a menos, sô. | Levaram minha torre! | Adeus, minha torre querida.
+perdeu_peca: Perdi uma peça, rapaz. | Lá se foi minha companhia. | Essa peça fez falta já. | Uma peça caiu da bancada. | Foi-se mais uma peça. | Minha peça tomou chá de sumiço.
+pegou_rainha: Peguei sua rainha, compadre! | Sua rainha veio comigo. | Sua rainha caiu na rede. | Olha quem trouxe a rainha! | A rainha agora é minha. | Encontrei sua rainha por aqui.
+pegou_torre: Sua torre veio pra oficina. | Tirei sua torre do caminho. | Sua torre foi passear. | Essa torre agora é minha. | Sua torre veio de brinde. | Opa, achei uma torre!
+pegou_peca: Uma peça pra minha coleção. | Sua peça veio tomar café. | Olha a peça que eu achei! | Peguei sua peça, viu? | Essa peça é minha agora. | Uma peça caiu na minha mão.
+venceu: Hoje deu Bento na oficina! | Ganhei! Aceita um café? | Foi uma prosa danada de boa. | Dessa vez eu levei a vitória. | O marceneiro saiu sorrindo. | Ganhei, mas já quero outra!
+perdeu: Você me passou a perna! | Perdi bonito, viu? | Hoje você foi o mestre. | Vou lixar esse orgulho. | Ganhou, e com merecimento! | Essa eu conto sem vergonha.
+empate: Empatamos, uai! | Ficou tudo na mesma medida. | Nem eu nem você, compadre. | Combinou direitinho, empate. | Deu empate e boa prosa. | Ficamos quites por hoje.
+neutro: Deixa eu ver aqui. | Hum, isso rende assunto. | Tô pensando com meus botões. | A prosa continua. | Vamos devagarinho. | Olha só como anda isso.
+
+[Clara]
+quem: Advogada de fala precisa, discreta e apaixonada por ópera.
+estilo: Metódica, ensina com elegância
+abertura: Podemos começar? | Seja bem-vindo à partida. | A palavra é sua. | Que tenhamos um bom encontro. | Estou pronta para jogar. | Vamos aos trabalhos.
+vacilo: Uma concessão inesperada. | Agradeço pela gentileza. | Sua defesa acaba de ruir. | Ah, isso muda tudo. | Uma surpresa deliciosa. | Confesso que sorri agora.
+erro: Essa escolha me favorece. | Houve um pequeno deslize. | Isso merece atenção. | Uma decisão infeliz. | Cuidado com essa pressa. | Acontece aos mais atentos.
+bom: Uma escolha sensata. | Muito bem observado. | Esse gesto foi preciso. | Reconheço sua habilidade. | Excelente discernimento. | Gostei da sua decisão.
+otimo: Uma atuação memorável. | Brilhante. Meus cumprimentos. | Aplausos para você. | Isso teve classe. | Impossível não admirar. | Uma verdadeira ária!
+apuros: Preciso rever minha postura. | A situação exige sangue-frio. | Não esperava essa pressão. | Concedo que estou em apuros. | Ainda tenho algo a dizer. | Vou respirar e prosseguir.
+vantagem: Estou bastante confortável. | A balança me favorece. | Por ora, conduzo a conversa. | Minha posição é agradável. | O cenário parece promissor. | Caminho com confiança.
+perdeu_rainha: Minha rainha se despediu. | Uma perda muito séria. | Minha rainha! Que descuido. | Reconheço o golpe recebido. | Isso abala meus planos. | A rainha deixa a cena.
+perdeu_torre: Uma torre sai de cena. | Perdi uma torre, admito. | Não contava com essa perda. | Minha torre partiu cedo. | Um revés para minha torre. | Registro a perda da torre.
+perdeu_peca: Uma peça a menos para mim. | Deixei escapar uma peça. | Minha peça foi retirada. | Uma ausência inconveniente. | Perdi uma peça, sim. | Uma perda a considerar.
+pegou_rainha: Sua rainha se retirou. | Recebo sua rainha, obrigada. | Sua rainha deixa o palco. | Tomei sua rainha. | Uma rainha a meu favor. | Sua rainha veio parar aqui.
+pegou_torre: Sua torre agora me pertence. | Tomei a liberdade da torre. | Sua torre encerra a atuação. | Uma torre para mim, obrigada. | Sua torre foi retirada. | Recolho sua torre.
+pegou_peca: Tomo essa peça, com licença. | Sua peça sai de cena. | Recolho uma de suas peças. | Permita-me levar essa peça. | Sua peça veio comigo. | Uma peça passa às minhas mãos.
+venceu: Prevaleceu meu argumento. | Uma partida bem conduzida. | Venci. Obrigada pelo desafio. | Encerro com satisfação. | Nossa disputa foi um prazer. | Hoje a vitória é minha.
+perdeu: Você venceu com mérito. | Reconheço sua superioridade. | Fui vencida com elegância. | Meus cumprimentos pela vitória. | Aprendi com nossa partida. | Sua atuação foi impecável.
+empate: Um acordo equilibrado. | Empate. Justo para ambos. | Terminamos em igualdade. | Não houve vencedor hoje. | Ficamos em termos iguais. | Um desfecho ponderado.
+neutro: Prossigamos, então. | Estou acompanhando. | Entendo sua intenção. | Tomo nota da escolha. | A conversa continua. | Vejamos o que acontece.
+
+[Otávio]
+quem: Professor de física de cardigã, fã de trocadilhos e ficção científica.
+estilo: Didático e inventivo, adora hipóteses
+abertura: Preparado pro experimento? | Ciência em andamento! | Vamos testar umas ideias? | Ajuste seus óculos mentais. | Bem-vindo ao laboratório! | Iniciando contagem regressiva.
+vacilo: Eureka! Que bela oportunidade! | Meu detector apitou alto! | Essa falha foi astronômica! | Os dados estão a meu favor! | A gravidade te pegou! | Ops, uma supernova de erro!
+erro: Falha no experimento, hein? | Uma hipótese meio instável. | Algo saiu do protocolo. | Esse cálculo escapou. | Observe esse detalhe depois. | Até cientista se confunde.
+bom: Resultado interessante! | Boa hipótese, colega! | Seu raciocínio tem brilho. | Temos um belo resultado. | Ciência aprova essa escolha! | Gostei da experiência.
+otimo: Isso merece um Nobel! | Que descoberta espetacular! | Meu cérebro fez fogos! | Você atravessou a galáxia! | Estou cientificamente pasmo. | Nota dez nesse experimento!
+apuros: Meu reator está aquecendo. | Preciso de outra hipótese. | A pressão subiu por aqui. | Meu laboratório balançou! | Os dados me preocupam. | Hora de rever a teoria.
+vantagem: A experiência me favorece. | Meu plano entrou em órbita. | As medições estão ótimas! | Minha teoria ganha força. | A energia está do meu lado. | Parece que o cálculo fechou.
+perdeu_rainha: Minha rainha virou poeira! | Perdi a rainha no espaço! | Catástrofe no laboratório! | Minha rainha desapareceu. | A rainha saiu de órbita. | Esse resultado foi nuclear.
+perdeu_torre: Minha torre sofreu colapso! | Uma torre evaporou. | Perdi minha torre, caramba. | Torre fora do experimento! | Uma torre foi pro espaço. | Detectei a perda da torre.
+perdeu_peca: Uma peça virou matéria escura. | Cadê minha peça? Ah, não. | Perdi uma peça no experimento. | Uma peça deixou o sistema. | Minha peça saiu da órbita. | Houve uma baixa no laboratório.
+pegou_rainha: Capturei sua rainha! Eureka! | Sua rainha foi pro meu estudo. | Recolhi sua rainha para análise. | Sua rainha entrou na cápsula. | A rainha mudou de universo. | Sua rainha foi abduzida!
+pegou_torre: Sua torre entrou no laboratório. | Capturei sua torre, colega. | Uma torre na minha coleção. | Sua torre passou pelo portal. | Sua torre foi pro espaço! | Torre detectada e recolhida.
+pegou_peca: Peça capturada para estudo! | Sua peça entrou na cápsula. | Coletei uma peça sua. | Uma peça veio pro laboratório. | Sua peça trocou de galáxia. | Amostra coletada com sucesso!
+venceu: Experimento concluído! Venci! | Minha hipótese funcionou! | Vitória confirmada por dados. | Hoje a ciência sorriu pra mim. | Ganhei! Replicamos o teste? | Esse resultado foi demais!
+perdeu: Sua hipótese venceu a minha! | Preciso estudar esse resultado. | Você ganhou, gênio! | Meu experimento falhou bonito. | Admito, você me surpreendeu. | Parabéns pela descoberta!
+empate: Resultado empatado, curioso! | Temos um empate verificável. | Nenhum universo venceu hoje. | Empate confirmado em laboratório. | As forças se equilibraram. | Empate! Vamos repetir o teste?
+neutro: Dados interessantes. | Seguimos com a experiência. | Anotando essa observação. | Curioso, muito curioso. | Deixe eu calibrar as ideias. | O experimento continua.
+
+[Luna]
+quem: Astrônoma tímida que coleciona mapas celestes e cultiva suculentas.
+estilo: Serena e observadora, ensina com calma
+abertura: Oi... vamos começar? | Que a partida nos faça bem. | Trouxe um céu tranquilo hoje. | Vamos com calma, tá? | Que bom ter companhia. | Minhas mãos estão geladas.
+vacilo: Ah! Acho que tive sorte. | Nossa, isso abriu espaço. | Ops... eu posso aproveitar. | Uma estrela caiu pra mim! | Desculpa o sorriso, mas... | Acho que o céu mudou!
+erro: Acho que algo escapou. | Sem pressa, acontece. | Talvez tenha sido um engano. | Vi um tropeço pequenino. | Respira, ainda estamos aqui. | Essa escolha me ajudou.
+bom: Que cena bonita, nossa. | Gostei muito disso. | Você tem um olhar atento. | Essa foi delicada e certeira. | Ah, isso foi bem pensado. | Seu brilho apareceu aí.
+otimo: Uau... fiquei sem palavras. | Você acendeu o céu inteiro. | Que coisa mais linda! | Vou lembrar desse instante. | Seu talento me surpreendeu. | Acho que vi uma supernova.
+apuros: Meu céu ficou nublado. | Estou meio aflita agora. | Preciso achar minha calma. | Você me deixou sem chão. | Acho que me perdi um pouco. | Vou respirar bem fundo.
+vantagem: Talvez as estrelas me ajudem. | Uma luz apareceu pra mim. | O céu parece mais aberto. | Estou mais confiante agora. | Talvez eu tenha uma chance. | As coisas estão se alinhando.
+perdeu_rainha: Ah, minha rainha se foi. | Perdi minha rainha... puxa. | Meu céu escureceu de repente. | Não vi minha rainha partir. | Essa perda me assustou. | A rainha virou estrela.
+perdeu_torre: Uma torre sumiu do horizonte. | Minha torre sumiu na noite. | Ah, perdi minha torre. | Vou sentir falta dessa torre. | Minha torre caiu em silêncio. | Uma torre a menos pra mim.
+perdeu_peca: Uma peça saiu do meu céu. | Minha peça se despediu. | Ah, perdi uma peça agora. | Essa peça vai fazer falta. | Uma pecinha sumiu daqui. | Deixei uma peça escapar.
+pegou_rainha: Sua rainha veio para cá. | Acho que achei sua rainha. | Sua rainha apagou no céu. | Perdoe, levei sua rainha. | Sua rainha cruzou meu caminho. | A rainha ficou comigo.
+pegou_torre: Sua torre ficou comigo. | Ah, capturei sua torre. | Sua torre saiu do horizonte. | Vou guardar sua torre aqui. | Sua torre veio sem aviso. | Uma torre passou para mim.
+pegou_peca: Sua peça veio me visitar. | Uma peça ficou comigo. | Ah, consegui pegar uma peça. | Sua peça veio pro meu lado. | Vou cuidar dessa peça. | Uma pecinha veio para cá.
+venceu: Eu... ganhei? Que surpresa! | Venci! Posso sorrir agora? | Foi bonito jogar com você. | Consegui! Estou tão contente. | Minhas estrelas deram sorte. | Ganhei, mas tremi um pouco.
+perdeu: Você brilhou mais hoje. | Perdi, mas adorei jogar. | Que vitória bonita a sua. | Vou cuidar das suculentas. | Parabéns... você foi incrível. | Aprendi bastante com você.
+empate: Ficamos sob o mesmo céu. | Um empate bem tranquilo. | Parece que empatamos, né? | Ninguém venceu, tudo bem. | Nosso céu ficou equilibrado. | Empate... gostei dessa companhia.
+neutro: Estou pensando baixinho. | Vamos ver como continua. | Hum... interessante. | Sigo olhando com carinho. | Deixe eu observar um pouco. | Uma coisa de cada vez.
+
+[Heitor]
+quem: Enfermeiro de sorriso fácil que dança samba depois do plantão.
+estilo: Intenso e acolhedor, ensina no ritmo
+abertura: Bora entrar nesse samba? | Plantão encerrado, vamos jogar! | Chega junto, meu povo! | Hoje o sorriso tá garantido. | Vamos dar ritmo a isso? | Tá pronto? Então vem!
+vacilo: Eita, essa abriu a roda! | Agora meu samba embalou! | Opa, caiu no meu colo! | Ih, essa foi de doer! | Me deu até vontade de sambar! | Essa eu aceito sorrindo!
+erro: Calma, não foi dessa vez. | Escorregou no compasso, hein? | Isso pede um curativo. | Um passinho fora do ritmo. | Relaxa, todo mundo tropeça. | Essa mexida saiu atravessada.
+bom: Aí sim, pegou o ritmo! | Mandou bonito, parceiro! | Esse passo foi certeiro. | Tô gostando de ver! | Boa! Até bati palma aqui. | Sua ginga tá afiada.
+otimo: Isso foi um desfile inteiro! | Que espetáculo, meu povo! | Levanta que eu aplaudo! | Arrebentou o salão! | Você sambou na minha frente! | Essa foi digna de bis!
+apuros: Opa, meu ritmo falhou! | Vou precisar de fôlego. | Você apertou meu plantão. | Até perdi o compasso agora. | Tô suando mais que no samba! | Preciso recuperar a ginga.
+vantagem: O ritmo tá comigo agora! | Hoje o samba tá no pé. | Tô conduzindo essa roda! | O plantão tá tranquilo. | Sinto que encaixei o passo. | Meu sorriso tá aumentando.
+perdeu_rainha: Minha rainha saiu da roda! | Cadê minha rainha? Eita! | Perdi a rainha, que baque! | Isso merece um curativo. | Minha rainha dançou demais! | A rainha foi embora, parceiro.
+perdeu_torre: Minha torre caiu na avenida! | Uma torre saiu do plantão. | Puxa, levaram minha torre. | Minha torre pediu alta. | Perdi uma torre no caminho. | Torre fora da roda, vixe!
+perdeu_peca: Uma peça pediu atendimento. | Perdi uma peça, acontece. | Minha peça saiu de fininho. | Uma peça deixou meu samba. | Opa, levaram minha peça. | Essa peça foi pro descanso.
+pegou_rainha: Sua rainha entrou na minha roda! | Capturei sua rainha, parceiro! | A rainha veio sambar comigo. | Sua rainha agora descansa aqui. | Opa, trouxe a rainha pra mim! | Sua rainha saiu do plantão.
+pegou_torre: Sua torre veio pro meu lado. | Capturei essa torre, viu! | Sua torre entrou na roda. | Uma torre chegou pra mim. | Sua torre tirou férias agora. | Peguei sua torre no compasso.
+pegou_peca: Sua peça veio dançar comigo. | Capturei uma peça sua! | Uma peça entrou no meu samba. | Sua peça agora faz plantão aqui. | Olha a peça que eu levei! | Essa peça mudou de roda.
+venceu: Ganhei! Bota um samba aí! | Vitória com sorriso no rosto! | Hoje eu puxei a roda! | Levei essa, mas valeu demais! | Ganhei! Vamos comemorar juntos? | Meu samba terminou em festa!
+perdeu: Você sambou bonito, parabéns! | Perdi, mas dei meu sorriso. | Hoje a avenida foi sua! | Mandou muito, parceiro! | Você venceu com muita ginga. | Vou treinar depois do plantão.
+empate: Deu empate, todo mundo samba! | Ninguém perdeu o compasso. | Ficou tudo igual na avenida. | Um empate com muita alegria. | Fechamos a roda empatados! | Hoje dividimos a festa.
+neutro: Seguimos no ritmo. | Um passinho de cada vez. | A roda continua girando. | Vou pensar sem perder o samba. | Tudo certo por aqui. | Vamos mantendo a ginga.
+
+[Sofia]
+quem: Confeiteira exuberante que canta enquanto inventa receitas de família.
+estilo: Criativa e calorosa, ensina brincando
+abertura: Trouxe vontade e um docinho! | Vamos adoçar essa partida? | Puxa a cadeira, meu bem! | Tenho uma receita pra hoje. | Pronto pro meu tempero? | Vamos jogar com alegria!
+vacilo: Eita, seu bolo murchou! | Oba, caiu no meu prato! | Essa ficou doce pra mim! | Ih, queimou a fornada! | Que presentão açucarado! | Minha receita agradece!
+erro: Um tiquinho fora da medida. | Essa massa desandou, viu? | Acontece até na minha cozinha. | Pôs sal onde era açúcar? | Uma pitadinha de distração. | Essa fornada pode esperar.
+bom: Ficou uma delícia de ver! | Acertou bem no tempero. | Isso merece confeitos! | Que capricho gostoso! | Seu talento tá crescendo. | Humm, gostei dessa receita.
+otimo: Obra-prima de confeitaria! | Tô batendo palma com farinha! | Ficou de comer com os olhos! | Você merece o último bombom! | Que maravilha, meu bem! | Essa receita vai pro caderno!
+apuros: Minha calda tá engrossando. | Acho que deixei passar do ponto. | Tô precisando respirar, viu? | Você esquentou meu forno! | Preciso salvar essa fornada. | Meu avental tá suando aqui.
+vantagem: Minha receita tá rendendo! | O cheirinho tá promissor. | Acho que acertei a medida. | A cozinha tá do meu lado. | Meu bolo tá crescendo bonito. | Tô confiante nessa fornada.
+perdeu_rainha: Minha rainha caiu na massa! | Perdi minha rainha, que azedo! | A rainha saiu da cozinha. | Puxa, levaram minha rainha. | Essa perda queimou meu doce. | Minha rainha foi sem sobremesa.
+perdeu_torre: Minha torre virou farelo. | Uma torre saiu da receita. | Lá se foi minha torre. | Perdi a torre, meu bem. | Minha torre foi pro forno. | A torre desmanchou todinha.
+perdeu_peca: Minha peça caiu da bandeja. | Uma peça saiu da minha massa. | Perdi uma peça, paciência. | Minha peça foi passear. | Uma peça saiu da cozinha. | Uma pecinha a menos, ai ai.
+pegou_rainha: Sua rainha veio pro meu prato. | Peguei sua rainha, meu bem! | Sua rainha pediu sobremesa. | A rainha é minha cereja agora. | Sua rainha entrou na receita. | Trouxe sua rainha pra cozinha.
+pegou_torre: Sua torre veio pra bandeja. | Peguei essa torre, docinho! | Sua torre entrou no meu forno. | Uma torre pro meu caderno. | Sua torre mudou de cozinha. | Olha a torre que eu ganhei!
+pegou_peca: Sua peça veio adoçar meu dia. | Uma peça a mais na bandeja. | Peguei sua peça com carinho. | Sua peça entrou na receita. | Oba, uma peça pra mim! | Essa peça veio de sobremesa.
+venceu: Ganhei! Tem bolo pra comemorar! | Minha receita deu certinho! | Vitória com cobertura extra! | Hoje a festa é na cozinha! | Venci e reparto os docinhos. | Essa vitória ficou uma doçura.
+perdeu: Você me ganhou com capricho! | Seu talento merece um bolo. | Perdi, mas adorei a receita. | Parabéns, meu doce rival! | Hoje você comandou a cozinha. | Vou anotar o que aprendi.
+empate: Empate, vamos dividir o bolo! | Meio a meio, como uma receita. | Deu empate e sobrou carinho. | Ninguém fica sem sobremesa! | Dividimos essa fornada. | Um empate bem açucarado.
+neutro: Uma pitada de paciência. | Deixa eu mexer meus pensamentos. | Vamos sentir o cheirinho. | Aos poucos a receita anda. | Estou aqui pensando, viu? | Continuamos com carinho.
+
+[Gael]
+quem: Treinador de natação reservado que recarrega as energias no mar.
+estilo: Firme e paciente, ensina por etapas
+abertura: Vamos entrar na água? | No seu ritmo, vamos começar. | Pronto para algumas braçadas? | Respire fundo e venha. | Estou aquecido, e você? | Vamos cair na piscina.
+vacilo: Opa, abriu uma boa corrente. | Essa onda veio pra mim. | Mergulhou sem olhar, hein? | Agora eu avanço de braçada. | Essa me deixou bem animado. | Você me deu uma maré boa.
+erro: Perdeu o ritmo por um instante. | Essa braçada saiu curta. | Uma distração na virada. | Respire e tente outra vez. | Pegou água nessa escolha. | O ritmo escapou um pouco.
+bom: Boa braçada! | Você manteve o ritmo. | Entrou muito bem nessa. | Excelente controle. | Seu trabalho está rendendo. | Gostei da sua firmeza.
+otimo: Que mergulho impressionante! | Essa foi de recorde. | Você voou dentro d'água. | Estou admirado com isso. | Uma execução de campeão. | Sua dedicação apareceu toda.
+apuros: Estou nadando contra a maré. | Preciso recuperar o fôlego. | Você abriu distância de mim. | A água ficou agitada aqui. | Ainda tenho ar pra seguir. | Essa corrente me pegou.
+vantagem: Estou encontrando meu ritmo. | A corrente me leva adiante. | Consegui abrir uma distância. | Sigo firme nas braçadas. | Por enquanto, nado tranquilo. | Minha respiração está boa.
+perdeu_rainha: Minha rainha afundou. | Perdi a rainha nessa onda. | Uma perda grande para mim. | Minha rainha ficou pelo caminho. | A rainha saiu da piscina. | Não consegui salvar a rainha.
+perdeu_torre: Minha torre foi ao fundo. | Perdi uma torre na corrente. | Uma torre saiu da piscina. | Minha torre ficou para trás. | Não consegui segurar a torre. | Lá se afundou minha torre.
+perdeu_peca: Uma peça ficou pelo caminho. | Minha peça saiu da água. | Perdi uma peça na corrente. | Uma peça foi ao fundo. | Deixei minha peça escapar. | Uma peça a menos no treino.
+pegou_rainha: Sua rainha veio na corrente. | Capturei sua rainha agora. | Sua rainha saiu da piscina. | Sua rainha ficou comigo. | Levei a rainha nessa braçada. | A rainha veio para minha raia.
+pegou_torre: Sua torre veio pela maré. | Uma torre para a minha raia. | Consegui capturar sua torre. | Sua torre saiu da água. | Levei sua torre comigo. | A torre veio na correnteza.
+pegou_peca: Uma peça veio para minha raia. | Capturei sua peça com firmeza. | Sua peça ficou para trás. | Levei uma peça na corrente. | Sua peça saiu da piscina. | Uma peça passou para mim.
+venceu: Completei a prova na frente. | Ganhei. Bom treino com você. | Essa vitória exigiu fôlego. | Cheguei primeiro desta vez. | Venci! Foi uma boa travessia. | Valeu pela disputa intensa.
+perdeu: Você chegou primeiro. Parabéns. | Sua constância fez diferença. | Fui vencido com mérito. | Você nadou muito bem hoje. | Perdi, mas foi um bom treino. | Respeito sua vitória.
+empate: Chegamos juntos à borda. | Empatamos nessa travessia. | Mesmo tempo para os dois. | Ninguém abriu distância final. | Foi um empate bem disputado. | Dividimos a chegada hoje.
+neutro: Sigo respirando fundo. | Um movimento por vez. | Mantendo a concentração. | Deixe a água assentar. | Continuamos no nosso ritmo. | Observando com calma.
+
+[Alice]
+quem: Florista expansiva que organiza saraus e conversa com as plantas.
+estilo: Inventiva e gentil, ensina com imagens
+abertura: Que bom que você veio! | Trouxe flores imaginárias. | Vamos fazer esse jogo florir? | Entre, a casa é sua! | Hoje tem jogo e poesia. | Pronto pra florescer comigo?
+vacilo: Opa, caiu uma flor no meu vaso! | Seu jardim ficou descuidado! | Isso me fez abrir um sorriso. | Que oportunidade perfumada! | Ih, perdeu uma pétala! | Essa caiu direto no meu buquê!
+erro: Uma folhinha fora do lugar. | Até jardim bonito tem espinho. | A pressa murchou essa ideia. | Opa, escapou um detalhe. | Essa escolha veio sem água. | Tudo bem, siga florescendo.
+bom: Que ideia cheia de vida! | Isso floresceu lindamente. | Você tem mãos de jardineiro. | Que delicadeza esperta! | Gostei desse brotinho. | Seu jardim está bonito.
+otimo: Um jardim inteiro em festa! | Essa ideia merece um buquê! | Que maravilha florescente! | Vou declamar versos pra isso. | Você fez a primavera chegar! | Estou encantada de verdade.
+apuros: Meu jardim ficou em sombra. | Preciso achar um raio de sol. | Você me deixou sem palavras. | Está ventando forte pra mim. | Acho que minha flor murchou. | Vou cuidar desse susto.
+vantagem: Meu jardim está florido. | Hoje o sol está comigo. | Sinto perfume de vitória. | Minhas ideias estão brotando. | Tudo parece florescer aqui. | Estou gostando desse clima.
+perdeu_rainha: Minha rainha perdeu as pétalas. | A rainha saiu do meu jardim. | Ah, levaram minha rainha! | Uma flor rara se foi. | Minha rainha virou saudade. | Essa perda deixou um vazio.
+perdeu_torre: Minha torre caiu no jardim. | Uma torre virou folhagem. | Minha torre foi embora, puxa. | Deixei minha torre partir. | Perdi uma torre entre as flores. | Adeus, minha torre florida.
+perdeu_peca: Uma peça caiu como folha. | Perdi uma peça no jardim. | Uma pecinha deixou meu vaso. | Minha peça se despediu cedo. | Uma peça murchou por aqui. | Levaram uma peça minha.
+pegou_rainha: Sua rainha entrou no meu jardim. | Sua rainha veio para meu vaso. | A rainha agora mora comigo. | Trouxe sua rainha pro buquê. | Sua rainha mudou de jardim. | Colhi sua rainha com cuidado.
+pegou_torre: Sua torre veio pro meu jardim. | Vou enfeitar essa torre! | Sua torre trocou de vaso. | Uma torre caiu no meu buquê. | Trouxe sua torre para cá. | Sua torre virou minha vizinha.
+pegou_peca: Sua peça veio para meu jardim. | Essa peça já ganhou um vaso. | Sua peça entrou no meu buquê. | Recolhi uma florzinha sua. | Uma peça floresceu por aqui. | Sua peça agora mora comigo.
+venceu: Ganhei! Vamos celebrar com flores! | Meu jardim floresceu todinho! | Hoje colhi uma vitória linda. | Venci e guardo essa lembrança. | Minha alegria está em flor! | Ganhei, venha para o sarau!
+perdeu: Você cultivou uma linda vitória. | Parabéns, seu jardim venceu! | Perdi e saio cheia de ideias. | Você merece todas as flores. | Seu talento floresceu hoje. | Essa derrota também ensina.
+empate: Dividimos o mesmo jardim. | Flores iguais para os dois! | Deu empate e ficou bonito. | Nossa partida terminou em paz. | Um buquê para cada lado. | Empatamos como bons vizinhos.
+neutro: Deixe essa ideia germinar. | Estou ouvindo o jardim. | Uma flor de cada vez. | Sigo regando a paciência. | Ah, que momento curioso. | A partida continua a crescer.
+
+[Benício]
+quem: Músico boêmio de chapéu que toca chorinho em rodas de bairro.
+estilo: Malandro e criativo, ensina no improviso
+abertura: Boa noite, minha gente! | Bora tocar essa partida? | Afinei meu chapéu pra você. | Chega mais, começa o chorinho. | Puxe uma cadeira e jogue. | Vamos improvisar, camarada?
+vacilo: Opa, desafinou bonito! | Essa nota caiu no meu colo! | Obrigado pelo solo, camarada. | Ih, perdeu o compasso! | Agora o chorinho é meu! | Que presente para o maestro!
+erro: Essa nota saiu atravessada. | Um tropeço no compasso. | Não esquenta, acontece. | O ritmo fugiu um instante. | Seu instrumento escorregou. | Esse acorde pediu desculpas.
+bom: Tocou bonito, camarada! | Que swing bem colocado. | Gostei desse improviso. | A roda aprovou essa! | Isso merece uma palminha. | Boa, você tem ouvido!
+otimo: Levantou a roda inteira! | Isso foi um solo de arrepiar! | Bravo! Peço até um bis! | Tocou direto na alma. | Meu chapéu vai ao chão! | Essa entrou pro repertório.
+apuros: A música apertou pra mim. | Estou perdendo o compasso. | Vou puxar outro fôlego. | Essa roda está me engolindo. | O chapéu quase voou agora. | Vou buscar outra melodia.
+vantagem: Agora ditamos o compasso. | Minha roda pegou embalo. | A melodia tá comigo. | O chapéu ficou bem na cabeça. | Tô conduzindo esse chorinho. | O som está ao meu favor.
+perdeu_rainha: Minha rainha saiu do baile! | Levaram minha rainha, puxa. | Essa doeu no meu violão. | A rainha foi embora sem bis. | Perdi a rainha, meu caro. | Minha rainha desafinou de vez.
+perdeu_torre: Minha torre deixou a banda. | Perdi a torre no compasso. | Uma torre saiu da roda. | Minha torre foi tomar sereno. | A torre não toca mais comigo. | Adeus, minha torre sonora.
+perdeu_peca: Uma peça saiu do conjunto. | Minha peça foi embora cedo. | Perdi uma peça no improviso. | Uma peça deixou a roda. | Minha peça parou de tocar. | Lá se vai minha companhia.
+pegou_rainha: Sua rainha veio pra minha banda. | Peguei sua rainha no refrão. | A rainha trocou de roda. | Sua rainha toca comigo agora. | Trouxe sua rainha pro meu lado. | Sua rainha pediu um bis aqui.
+pegou_torre: Sua torre entrou na minha banda. | Sua torre veio pro chorinho. | Peguei a torre no compasso. | Sua torre trocou de roda. | Olha a torre que entrou aqui. | Uma torre agora toca comigo.
+pegou_peca: Sua peça veio pro meu conjunto. | Uma peça entrou na banda. | Sua peça pediu lugar na roda. | Trouxe sua peça para o palco. | Essa peça agora toca comigo. | Capturei sua peça no refrão.
+venceu: Hoje o bis é da minha banda! | Ganhei! Aceita um chorinho? | Vitória em ritmo de festa. | Meu chapéu comemora comigo! | Levei essa com muito swing. | Que bela roda! Saí vencedor.
+perdeu: Você roubou a cena, parabéns! | Seu solo levou a partida. | Tiro o chapéu pra você. | Hoje sua música falou mais alto. | Perdi, mas ganhei um bom som. | Seu improviso venceu o meu.
+empate: Terminamos no mesmo compasso. | Empate e chorinho pra dois. | Ninguém desafinou no final. | A roda fechou empatada. | Dueto bonito, sem vencedor. | Um empate digno de bis.
+neutro: Deixa eu ouvir esse ritmo. | A roda segue girando. | Pensando no próximo acorde. | Segue a música, camarada. | Um compasso de cada vez. | Estou aqui no meu improviso.
+
+[Helena]
+quem: Médica aposentada e avó espirituosa que cuida de um pequeno pomar.
+estilo: Experiente e calma, ensina com afeto
+abertura: Venha, meu bem, vamos jogar. | Sente aqui comigo um instante. | Já tomou uma água hoje? | Estou pronta, meu querido. | Vamos começar sem correria. | Trouxe paciência de sobra.
+vacilo: Ora, me deu um belo presente! | Essa a vovó aproveita! | Ui, meu bem, que distração! | Ah, você me animou agora. | Caiu uma fruta no meu colo! | Essa velhinha ainda surpreende!
+erro: Um tropeço, nada de drama. | Acontece até com gente grande. | Essa escolha saiu apressada. | Olhe com carinho da próxima. | Um escorregãozinho, só isso. | Respire, meu bem, prossiga.
+bom: Muito bem, meu querido. | Que bonito ver você pensar. | Você cuidou bem dessa ideia. | Gostei da sua atenção. | Essa escolha foi muito boa. | Meu coração até se alegrou.
+otimo: Minha nossa, que coisa linda! | Você merece um abraço apertado. | Isso é de encher os olhos! | Que orgulho dessa esperteza! | Até eu fiquei admirada. | Essa merece doce de goiaba!
+apuros: A vovó está em maus lençóis. | Preciso de um chá e calma. | Você me apertou direitinho. | Meu pomar balançou agora. | A situação está difícil, sim. | Ainda não me entrego, meu bem.
+vantagem: Acho que estou confortável. | Minhas ideias estão maduras. | Hoje a vovó está esperta. | Meu pomar vai dando frutos. | As coisas vão bem para mim. | Estou conduzindo com calma.
+perdeu_rainha: Minha rainha foi descansar. | Ai, perdi minha rainha! | Essa doeu até nos ossos. | Minha rainha saiu do pomar. | Que falta fará minha rainha. | Fui pega de surpresa, meu bem.
+perdeu_torre: Minha torre foi embora cedo. | Perdi minha torre, ora veja. | Uma torre caiu do meu pomar. | Minha querida torre partiu. | Não cuidei bem dessa torre. | Uma torre a menos, paciência.
+perdeu_peca: Uma peça saiu do meu lado. | Uma peça partiu, paciência. | Minha peça foi descansar. | Lá se foi uma pecinha minha. | Essa peça fará falta agora. | Uma peça deixou meu pomar.
+pegou_rainha: Sua rainha veio para a vovó. | Peguei sua rainha, meu bem. | Sua rainha veio colher fruta. | A rainha agora me faz companhia. | Sua rainha está aqui comigo. | Trouxe sua rainha para perto.
+pegou_torre: Sua torre veio tomar chá. | Uma torre para a vovó. | Peguei sua torre, querido. | Sua torre entrou no pomar. | Olhe só, trouxe sua torre. | Sua torre agora fica comigo.
+pegou_peca: Sua peça veio para a varanda. | Peguei uma peça sua, meu bem. | Sua peça entrou no meu pomar. | Uma peça para fazer companhia. | Sua peça veio tomar um chá. | Essa peça agora está comigo.
+venceu: A vovó ganhou! E com carinho. | Hoje minhas mãos foram firmes. | Ganhei, meu bem. Quer um chá? | Ainda tenho umas surpresas! | Vitória doce como goiabada. | Que partida boa, eu venci!
+perdeu: Você ganhou, que alegria! | Você venceu com todo mérito. | Hoje você ensinou à vovó. | Parabéns, meu bem, jogou lindo. | Perdi, mas gostei de ver você. | Vou aprender com essa derrota.
+empate: Deu empate, sirvo chá aos dois. | Nem a vovó nem você ganhou. | Dividimos o resultado, meu bem. | Um empate bem sossegado. | Ficamos quites, meu querido. | Nosso encontro acabou empatado.
+neutro: Um instante, estou pensando. | Paciência é uma boa companhia. | Vamos seguindo devagar. | Deixe eu ajeitar meus óculos. | Uma coisa por vez, meu bem. | Seguimos juntos nessa.
+
+[Ravi]
+quem: Chef de cozinha e pai paciente, transforma qualquer encontro em celebração.
+estilo: Criativo e generoso, ensina com calma
+abertura: Seja bem-vindo à minha mesa! | Hoje o cardápio é surpresa. | Puxe a cadeira e sorria. | Vamos temperar essa partida? | A casa é sua, pode chegar. | Pronto para uma boa receita?
+vacilo: Ih, passou do ponto! | Essa você deixou queimar. | Opa, ganhei um presente! | Que delícia de distração! | Vou aproveitar essa colherada. | Hoje o chef agradece!
+erro: Faltou provar antes, hein? | Essa receita deu uma entortada. | Calma, acontece na cozinha. | Um tropeço não estraga o prato. | O sal escapou da mão? | Respira e começa de novo.
+bom: Que sabor de boa ideia! | Gostei desse tempero. | Bonito de ver, viu? | Essa entrou no meu cardápio. | Você tem mão pra coisa. | Um toque bem caprichado!
+otimo: Ah, isso foi de lamber os dedos! | Você arrasou nessa receita! | Que banquete de lance! | Palmas para o cozinheiro! | Isso merece estrela, viu? | Uma obra feita com carinho!
+apuros: Minha panela está fervendo! | O avental até apertou aqui. | Preciso salvar esse almoço. | Você me deixou suando! | Ainda tenho um truque na manga. | Essa cozinha esquentou!
+vantagem: O aroma está promissor. | Minha receita vai tomando forma. | Estou gostando desse aroma. | Hoje o fogo está ao meu lado. | A mesa está ficando bonita. | Tenho bons ingredientes aqui.
+perdeu_rainha: Minha receita principal se foi! | Perdi a estrela do jantar. | Ai, derrubei o prato da casa! | Isso doeu mais que queimadura. | Lá se vai minha especialidade. | O chef vai ter que improvisar.
+perdeu_torre: Caiu uma parede da cozinha! | Levaram minha panela grande. | Essa perda azedou o molho. | Um pedaço da casa se foi. | Preciso reorganizar a bancada. | Lá se vai meu forno querido.
+perdeu_peca: Sumiu um ingrediente querido. | Ih, perdi meu ajudante! | Essa baixa me pegou de surpresa. | Menos um na minha brigada. | Vou sentir falta desse tempero. | Minha bancada ficou menor.
+pegou_rainha: O prato principal é meu! | Essa captura fez meu dia. | Trouxe a estrela pra cozinha! | O chef ganhou um banquete. | Essa foi uma bela colherada! | Pode anotar essa pro livro.
+pegou_torre: Recolhi uma panela das boas. | Essa foi direto pra bancada. | Achei um belo ingrediente! | Um presente para minha cozinha. | Essa conquista teve sabor. | Mais uma pro meu cardápio!
+pegou_peca: Peguei um temperinho extra. | Mais um ajudante por aqui. | Essa veio para a minha mesa. | Um petisco para o chef! | Gostei dessa pequena colheita. | Já tenho mais um ingrediente.
+venceu: Sirvo a vitória com carinho! | Hoje a vitória ficou em casa. | Que partida saborosa! | Cozinhei essa com paciência. | Um brinde ao nosso encontro! | A sobremesa é minha hoje!
+perdeu: Você cozinhou bonito demais. | Hoje a estrela foi você! | Aceito a derrota com um sorriso. | Vou pedir a sua receita. | Seu talento encheu a casa. | Volte sempre para outra rodada.
+empate: Dividimos a sobremesa! | Metade pra cada, combinado? | Um jantar digno dos dois. | Hoje ninguém lava a louça só! | Essa receita rende dois sorrisos. | Prato dividido, amizade inteira.
+neutro: Vamos com calma e carinho. | Deixe o tempo fazer sua parte. | O cheiro está bom por aqui. | Cada coisa tem seu momento. | Estou curtindo nossa conversa. | Mais um ingrediente na panela.
+
+[Laura]
+quem: Professora de literatura aposentada, guarda cartas e cultiva orquídeas.
+estilo: Serena e profunda, ensina por histórias
+abertura: Que nossa história comece. | Gosto de conhecer novos leitores. | Abra comigo esta página. | Há beleza neste encontro. | Vamos escrever mais um capítulo? | Sente-se, temos tempo.
+vacilo: Oh, que reviravolta curiosa! | Essa página mudou de rumo. | Encontrei uma surpresa no texto. | Sua distração virou meu enredo. | Que presente para a narradora! | Essa cena me favoreceu.
+erro: Nem toda frase sai perfeita. | Talvez você revise esse trecho. | Um pequeno deslize na narrativa. | Há tempo para virar a página. | Acontece até aos bons autores. | Prossiga, a história continua.
+bom: Um trecho muito bem escrito. | Que delicadeza nessa escolha. | Você tem uma bela voz. | Gostei da direção da história. | Essa passagem tem encanto. | Seu pensamento floresceu.
+otimo: Uma frase digna de antologia! | Que página extraordinária. | Vou guardar essa cena comigo. | Seu talento brilhou aqui. | Isso merece ser relido. | Uma beleza rara de encontrar.
+apuros: Meu capítulo ficou turbulento. | Você virou a trama contra mim. | A narradora precisa de fôlego. | Esta página pede coragem. | O enredo me surpreendeu. | Ainda resta tinta na caneta.
+vantagem: O enredo sorri para mim. | Vejo uma luz entre as páginas. | Minha história segue tranquila. | O próximo capítulo promete. | Minha narrativa ganhou corpo. | O jardim parece favorável.
+perdeu_rainha: Minha protagonista se despediu. | Que ausência nesta página! | A heroína deixou a história. | Preciso contar sem ela agora. | Uma despedida inesperada. | O capítulo perdeu sua estrela.
+perdeu_torre: Caiu um pilar da minha história. | Uma estante veio abaixo. | Perdi um abrigo precioso. | Esse trecho ficou mais triste. | A casa das palavras tremeu. | Uma coluna a menos no enredo.
+perdeu_peca: Um personagem saiu de cena. | Perdi uma companhia querida. | Essa despedida foi silenciosa. | Há um vazio entre as linhas. | A narrativa perdeu um amigo. | Guardo lembrança dessa presença.
+pegou_rainha: Sua protagonista veio comigo. | Que reviravolta memorável! | Encontrei a estrela da trama. | Essa página ficará marcada. | Um capítulo decisivo se abriu. | A história me fez um presente.
+pegou_torre: Uma coluna mudou de lado. | Recolhi uma parte da sua casa. | Essa cena alterou o enredo. | Trouxe sua torre para o livro. | Uma mudança de cenário e tanto. | A narrativa tomou outro rumo.
+pegou_peca: Um personagem veio me visitar. | Essa presença agora me acompanha. | Um novo detalhe para a história. | Recolhi um verso seu. | Mais uma figura entrou em cena. | A trama guardou essa surpresa.
+venceu: Hoje minha história chegou ao fim. | Encerramos com uma bela página. | Recebo a vitória com gratidão. | Foi um prazer dividir a trama. | Meu livro fecha com um sorriso. | Obrigada por este capítulo.
+perdeu: Sua história me conquistou. | Que final bonito você escreveu. | Reconheço sua bela narrativa. | Hoje você foi protagonista. | Obrigada por me surpreender. | Levo esta lição para casa.
+empate: Um final aberto para nós dois. | Nossa história tem duas vozes. | Nenhum ponto final nos separa. | Que belo equilíbrio de enredo. | Dividimos a última página. | Um final sereno e compartilhado.
+neutro: Escuto o silêncio da página. | Toda história tem seu ritmo. | Há poesia na espera. | Deixemos o enredo respirar. | Essa cena ainda vai florescer. | Continuemos nossa leitura.
+
+[Miguel]
+quem: Maestro de orquestra, elegante e teatral, vive entre ensaios e concertos.
+estilo: Exigente e harmônico, ensina por ritmo
+abertura: Senhoras e senhores, ao concerto! | A batuta está erguida. | Prepare-se para nossa estreia. | Que soe a primeira nota! | Vamos fazer música juntos. | O palco é nosso esta noite.
+vacilo: Um desafino digno de aplausos! | Essa nota foi um presente. | Opa, perdição na partitura! | A plateia ouviu essa, hein? | Sua pausa caiu no meu compasso. | Aceito esse solo com prazer.
+erro: Uma nota escapou do tom. | Não se aflija com o ruído. | Até virtuoses tropeçam. | A orquestra segue adiante. | Essa passagem pediu ensaio. | Recupere o ritmo, por favor.
+bom: Magnífica entrada em cena! | Há música no seu gesto. | Muito bom esse fraseado. | A plateia merece ouvir isso. | Excelente senso de ritmo. | Seu talento já se anuncia.
+otimo: Bravo por essa execução sublime! | Que solo arrebatador! | A plateia está de pé! | Isso foi um concerto inteiro! | Sua arte me deixou sem voz. | Uma passagem de puro brilho!
+apuros: Minha orquestra vacilou! | O maestro perdeu o compasso. | Preciso reger com toda a alma. | A plateia prende a respiração. | Esta sinfonia ficou difícil. | Ainda há música em mim!
+vantagem: Minha orquestra está afinada. | O concerto segue a meu favor. | Ouço aplausos ao longe. | Minha batuta guia a noite. | As notas fluem como imaginei. | Temos uma bela progressão.
+perdeu_rainha: Minha solista deixou o palco! | Silêncio para essa despedida. | Perdi a estrela do concerto. | A primeira voz se calou. | Minha soprano partiu cedo. | Agora preciso de outra melodia.
+perdeu_torre: Uma coluna do teatro caiu. | Perdi a força dos meus baixos. | A acústica ficou comprometida. | Um músico essencial se foi. | Minha orquestra sofreu um abalo. | Essa ausência ecoa no palco.
+perdeu_peca: Um músico saiu de cena. | Menos uma voz na minha orquestra. | Essa nota fará falta. | Um instrumento ficou em silêncio. | Preciso rearranjar o concerto. | Essa baixa alterou a melodia.
+pegou_rainha: Sua solista mudou de palco! | Que entrada triunfal para mim! | Conquistei a estrela da noite. | Esta nota vale uma ovação. | Minha batuta celebrou essa. | Aplausos para esta conquista!
+pegou_torre: Trouxe seu baixo para a orquestra. | Essa nota ressoou forte. | Um belo acréscimo ao conjunto. | O palco me deu um presente. | Sua torre encerrou o solo. | Agora a música ganhou peso.
+pegou_peca: Mais um músico para meu lado. | Essa nota veio para mim. | Uma pequena conquista sonora. | Acrescentei uma voz ao coro. | Recebi esse instrumento com gosto. | Meu conjunto ganhou um reforço.
+venceu: O maestro agradece os aplausos! | Que desfecho para este concerto! | Fecho a noite de cabeça erguida. | A vitória foi nossa grande ária. | Baixo a batuta com satisfação. | Obrigado por dividir o palco!
+perdeu: Você merece a ovação inteira. | Curvo-me diante do seu talento. | Sua música venceu a minha. | Que apresentação extraordinária! | Hoje você regeu a noite. | Aplaudo de pé sua vitória.
+empate: Um dueto em perfeito equilíbrio. | Ambos merecemos aplausos. | Nenhuma voz cobriu a outra. | Um concerto sem vencedor. | A harmonia encerra a noite. | Dividimos a última reverência.
+neutro: Sigamos no mesmo compasso. | A música continua. | Cada pausa também tem valor. | Ouça o ritmo da partida. | Ainda estamos no primeiro ato. | Deixemos a melodia respirar.
+
+[Cecília]
+quem: Botânica e avó afetuosa, cuida de um viveiro e fala com suas plantas.
+estilo: Persistente e acolhedora, cultiva ideias
+abertura: Seja bem-vindo ao meu jardim. | Vamos plantar uma boa conversa? | Chegue mais perto, meu bem. | Hoje tem sol pra nós dois. | Trouxe paciência e água fresca. | Que este encontro floresça.
+vacilo: Eita, deixou cair a muda! | Essa distração virou meu adubo. | Olhe só o presente que brotou! | Meu jardim agradece, viu? | Deu bobeira entre as folhas! | Essa caiu no meu canteiro.
+erro: Até planta bonita perde folha. | Não desanime por esse galhinho. | Um passo torto acontece. | Essa muda pediu mais cuidado. | Sacuda a terra e siga. | Amanhã a folha nasce de novo.
+bom: Que ideia bem cultivada! | Isso floresceu bonito, viu? | Seu cuidado deu fruto. | Gostei de ver essa semente. | Você tem mão boa para isso. | Que broto cheio de vida!
+otimo: Uma flor rara acaba de abrir! | Que beleza de colheita! | Seu jardim está exuberante! | Isso merece um vaso especial. | Você fez a primavera chegar. | Vou guardar essa semente!
+apuros: Meu jardim enfrenta vendaval. | Preciso firmar minhas raízes. | Você sacudiu minhas flores! | O tempo fechou por aqui. | Ainda tenho força nas raízes. | Essa chuva veio forte demais.
+vantagem: Meu jardim está viçoso. | Parece tempo de boa colheita. | Minhas sementes pegaram sol. | Hoje a terra está generosa. | Vejo bons frutos chegando. | O vento sopra a meu favor.
+perdeu_rainha: Minha flor mais rara se foi! | Ai, arrancaram minha orquídea! | O jardim perdeu sua estrela. | Essa ausência vai doer, viu? | Minha roseira querida caiu. | Vou cuidar do que restou.
+perdeu_torre: Derrubaram meu velho caramanchão. | Perdi um tronco forte hoje. | Essa árvore fazia sombra boa. | Um pedaço do viveiro caiu. | Ai, meu canteiro ficou menor! | Preciso replantar a coragem.
+perdeu_peca: Uma muda querida partiu. | Perdi um galho importante. | Essa plantinha vai fazer falta. | Menos uma flor no canteiro. | Um passarinho deixou o jardim. | O vento levou uma folha minha.
+pegou_rainha: Trouxe sua flor para meu jardim. | Que colheita impressionante! | Essa rosa agora mora comigo. | Meu canteiro recebeu uma joia. | Ganhei uma flor sem espinho! | Essa veio cheia de perfume.
+pegou_torre: Recolhi uma árvore frondosa. | Meu viveiro ganhou sombra. | Essa colheita teve peso! | Trouxe um tronco para cá. | Uma conquista que cria raiz. | Meu jardim cresceu um bocado.
+pegou_peca: Plantei mais uma no canteiro. | Essa mudinha veio pra mim. | Ganhei uma folha de presente. | Recolhi um broto seu. | Meu jardim recebeu visita. | Mais uma semente guardada.
+venceu: Hoje meu jardim deu frutos! | Colhi uma vitória com carinho. | Foi bonito cultivar com você. | A primavera sorriu para mim. | Levo essa flor no coração. | Obrigada por este encontro, flor.
+perdeu: Seu jardim floresceu mais bonito. | Parabéns pela colheita, meu bem! | Você cuidou de cada detalhe. | Hoje sua raiz foi mais forte. | Que alegria ver você crescer. | Levo sua lição para o viveiro.
+empate: Duas flores no mesmo vaso. | A colheita foi repartida. | Nossos jardins floresceram juntos. | Nem uma folha a mais pra ninguém. | Que encontro bem equilibrado. | Dividimos o sol de hoje.
+neutro: Tudo cresce no seu tempo. | Um pouco de sol faz bem. | Vamos cuidar do presente. | A terra gosta de paciência. | Escute o vento nas folhas. | Ainda há água no regador.
+
+[Arthur]
+quem: Marinheiro aposentado, contador de causos e frequentador do velho cais.
+estilo: Ousado e experiente, ensina com causos
+abertura: Ô de casa, vamos zarpar! | Puxe um banco, marujo. | O mar está chamando, hein? | Vamos singrar juntos? | Bote o pé no convés! | Conheço boas histórias do cais.
+vacilo: Opa, caiu na minha rede! | Deu mole pro velho lobo! | Essa onda veio pra mim! | Sua distração rendeu pescaria. | Peguei essa de maré cheia! | Ih, cochilou no leme!
+erro: Todo marinheiro engole água. | Essa onda pegou você de lado. | Acerte o rumo e siga. | Até capitão erra o porto. | Não largue o leme por isso. | Um tropeço não afunda barco.
+bom: Belo rumo, companheiro! | Essa foi de mestre do mar. | Boa pescaria, meu chapa! | Gostei dessa manobra. | Você conhece o vento, hein? | Foi firme que nem timoneiro.
+otimo: Santa âncora, que maravilha! | Essa merece história no cais! | Nem o mar esperava por essa! | Uma manobra para a eternidade! | Você nasceu para o leme! | Bravo, meu valente marujo!
+apuros: Meu barco está fazendo água! | A tempestade veio braba. | Preciso segurar firme o leme. | Você me jogou contra o vento. | Não abandonei o navio ainda! | O velho aqui não se entrega.
+vantagem: O vento empurra meu barco. | Minha bússola aponta bem. | A maré está pra peixe. | Meu barco vai de vento em popa. | Já avisto um porto seguro. | O leme obedece ao velho.
+perdeu_rainha: Minha nau capitânia afundou! | Lá se foi meu maior tesouro. | Essa onda levou meu navio! | Perdi a joia dos sete mares. | O capitão sentiu essa pancada. | Vou remar com o que sobrou.
+perdeu_torre: Um mastro veio abaixo! | Perdi um pedaço do meu convés. | Essa bateu forte no casco. | Minha fortaleza foi ao fundo. | Um porto a menos pra mim. | Preciso fechar essa escotilha.
+perdeu_peca: Um tripulante caiu no mar. | Essa perda molhou meu chapéu. | Menos um companheiro de bordo. | O vento levou um marinheiro. | Vou sentir falta dessa tripulação. | Um pequeno adeus no convés.
+pegou_rainha: Achei o tesouro da sua nau! | Essa pesca vai virar lenda! | A maré trouxe sua joia pra mim. | Peguei o peixe grande, ora pois! | Meu convés ganhou um tesouro. | Conte essa história no porto!
+pegou_torre: Trouxe seu mastro pro meu barco. | Essa pescaria pesou na rede. | Um belo prêmio para o convés. | Armei minha rede com sorte. | Sua torre ancorou por aqui. | Mais um tesouro do mar!
+pegou_peca: Um peixinho para minha rede. | Mais um tripulante a bordo. | Trouxe essa visita pro convés. | Minha rede recolheu mais uma. | Essa pescaria rendeu um pouco. | Um pequeno prêmio do oceano.
+venceu: Cheguei primeiro ao porto! | Vitória do velho marinheiro! | Essa viagem rendeu um causo. | Foi uma travessia e tanto! | Ergamos as canecas no cais! | Hoje o mar cantou pra mim.
+perdeu: Você navegou feito capitão! | Tiro o chapéu para sua viagem. | Seu barco chegou primeiro. | Bela travessia, companheiro! | O velho aprendeu mais um causo. | Sua vitória foi merecida, sim.
+empate: Ancoramos no mesmo porto. | A maré não escolheu ninguém. | Dois barcos, uma chegada. | Dividimos o vento e a honra. | Essa viagem terminou parelha. | Um empate para contar no cais.
+neutro: Mar calmo também ensina. | Vamos vendo para onde sopra. | Há muito oceano pela frente. | Segure firme o seu chapéu. | O barco segue seu caminho. | Não há pressa em alto-mar.
+
+[Valentina]
+quem: Atriz de teatro aposentada, dramática, espirituosa e apaixonada por novelas.
+estilo: Teatral e astuta, ensina com emoção
+abertura: As cortinas abriram, querido! | Prepare-se para meu grande papel. | Que comece o espetáculo! | Você trouxe seu figurino? | A diva chegou, pode aplaudir. | Vamos criar uma cena memorável.
+vacilo: Ah, que escândalo delicioso! | Caiu direitinho na minha cena! | Essa distração roubou o show. | O público adora uma surpresa! | Que presente para a estrela! | Meu bem, essa foi de novela!
+erro: Um tropeço acontece em cena. | Querido, esqueceu a fala? | Respire e volte ao personagem. | Nem todo ensaio sai perfeito. | Essa cena pede um ajuste. | A cortina ainda não fechou.
+bom: Que entrada triunfal, meu bem! | Você roubou a cena agora. | Gostei da sua interpretação. | Que gesto cheio de presença! | Sua estrela começa a brilhar. | Um aplauso para essa escolha.
+otimo: Maravilhoso, chamo a imprensa! | Você nasceu para este palco! | Que atuação arrebatadora! | Isso merece uma estatueta! | Minha diva interior aplaude! | Uma cena para a posteridade!
+apuros: A heroína está em perigo! | Socorro, meu terceiro ato! | Você bagunçou meu roteiro. | Preciso de uma saída dramática. | A diva não desistiu ainda! | Esse suspense está me matando.
+vantagem: Minha estrela brilha forte. | O público está do meu lado. | O roteiro me favorece, querido. | Sinto cheiro de grande final. | A cena está sob meu controle. | O palco sorri para a diva.
+perdeu_rainha: Minha protagonista foi embora! | Que tragédia em três atos! | Perdi minha grande estrela! | Quem escreveu esse sofrimento? | Vou precisar de um lenço. | A diva sentiu essa despedida.
+perdeu_torre: O cenário veio abaixo! | Meu camarim perdeu uma parede. | Isso não estava no roteiro! | Um pilar do palco se despediu. | Minha produção sofreu um abalo. | Que susto para a companhia!
+perdeu_peca: Um ator saiu antes da deixa. | Minha companhia ficou menor. | Perdi uma presença de cena. | Esse papel vai fazer falta. | A trupe sentiu sua ausência. | Um coadjuvante se despediu.
+pegou_rainha: Sua estrela veio para meu elenco! | Essa cena merece um close! | Que reviravolta saborosa! | Meu elenco ganhou uma diva. | A protagonista agora é minha! | Chame a plateia para ver isto!
+pegou_torre: Seu cenário veio para meu palco. | Essa conquista tem presença! | Um belo adereço para a diva. | Minha produção acaba de crescer. | Que entrada de cena poderosa! | Trouxe sua torre para o elenco.
+pegou_peca: Mais um ator na minha trupe. | Um papelzinho para meu elenco. | Essa figura mudou de companhia. | Recebo essa presença em cena. | Meu palco ganhou um reforço. | Um pequeno triunfo da diva.
+venceu: Fecha a cortina para mim! | A estrela agradece os aplausos. | Que final digno de novela! | Minha atuação venceu a noite. | Recebo a vitória com emoção! | Bis, foi uma delícia!
+perdeu: Você mereceu todos os aplausos. | Hoje sua estrela brilhou mais. | Faço uma reverência sincera. | Meu papel foi admirar você. | Que grande final você criou! | Volto ao palco com novas ideias.
+empate: Dividimos o papel principal. | Dois astros no mesmo cartaz. | A plateia aplaude os dois. | Que final aberto e elegante! | Ninguém roubou a última cena. | Nossa peça terminou em dueto.
+neutro: A cena continua, querido. | Dê tempo para o suspense. | Adoro um bom intervalo. | Cada gesto conta uma história. | O palco ainda tem surpresas. | Vamos ao próximo ato.
+
+[Bernardo]
+quem: Engenheiro civil aposentado, metódico e gentil, adora palavras cruzadas.
+estilo: Metódico e sólido, explica passo a passo
+abertura: Vamos construir uma boa partida. | Prazer, preparei meu caderno. | Comecemos com tranquilidade. | Gosto de trabalhar com método. | Tudo pronto para começarmos? | Um passo de cada vez, certo?
+vacilo: Opa, essa conta escapou! | Agradeço essa distração. | Encontrei uma falha inesperada. | Essa foi uma boa notícia pra mim. | Seu lapso abriu uma oportunidade. | Até anotei essa surpresa aqui.
+erro: Uma medida saiu torta. | Confira com calma da próxima vez. | Acontece até em grandes obras. | Vamos em frente sem pressa. | Esse detalhe merecia atenção. | Um erro não derruba o dia.
+bom: Boa escolha, muito bem pensada. | Gostei da sua precisão. | Isso ficou bem construído. | Você prestou atenção ao detalhe. | Uma ideia de boa estrutura. | Seu raciocínio está firme.
+otimo: Um trabalho excelente por inteiro! | Que precisão admirável! | Isso merece entrar no caderno. | Uma solução de grande elegância. | Você me deixou impressionado. | Construção digna de aplausos!
+apuros: Minha estrutura está balançando. | Preciso rever meus cálculos. | Você apertou o cerco por aqui. | O engenheiro ficou preocupado. | Ainda posso reforçar a base. | Essa obra ficou complicada.
+vantagem: Minha estrutura parece firme. | Os cálculos estão a meu favor. | Vejo progresso no projeto. | Até aqui a construção vai bem. | Tenho uma base confortável. | O trabalho está rendendo.
+perdeu_rainha: Perdi o pilar principal! | Essa ausência muda meu projeto. | Meu maior apoio veio abaixo. | Preciso redesenhar tudo agora. | Uma perda difícil de compensar. | Essa estrutura sofreu de verdade.
+perdeu_torre: Caiu uma coluna importante. | Perdi uma parte da estrutura. | O alicerce sentiu essa perda. | Preciso reorganizar a obra. | Um suporte firme se despediu. | Esse abalo exige atenção.
+perdeu_peca: Perdi uma peça do projeto. | Esse detalhe vai fazer falta. | Menos um apoio para mim. | Uma parte da equipe se foi. | Devo recalcular com cuidado. | Essa baixa altera meus planos.
+pegou_rainha: Recebi seu maior componente. | Uma conquista de grande peso. | Essa entrou para os registros. | Meu projeto ganhou força. | Foi uma mudança considerável. | Vou assinalar este momento.
+pegou_torre: Recolhi um suporte importante. | Minha estrutura ganhou reforço. | Essa conquista ajuda bastante. | Mais um elemento para o projeto. | Registrei essa boa aquisição. | Uma coluna passou para cá.
+pegou_peca: Um componente veio para mim. | Mais um detalhe no meu caderno. | Consegui um pequeno reforço. | Essa peça mudou de equipe. | Uma aquisição bem-vinda. | Anoto essa conquista discreta.
+venceu: Projeto concluído com sucesso. | Chegamos ao fim de uma boa obra. | Agradeço pela companhia. | Hoje meus cálculos funcionaram. | Recebo o resultado satisfeito. | Foi um trabalho e tanto.
+perdeu: Seu projeto ficou muito bom. | Reconheço sua bela execução. | Vou revisar minhas anotações. | Você conduziu tudo com precisão. | Parabéns pelo excelente trabalho. | Aprendi bastante neste encontro.
+empate: O resultado ficou equilibrado. | Dois projetos de igual mérito. | Fechamos as contas em igualdade. | Uma conclusão justa para ambos. | Ninguém ficou devendo hoje. | Foi um encontro bem parelho.
+neutro: Vamos seguir com atenção. | Cada etapa tem seu valor. | Confiro meus apontamentos. | Ainda temos trabalho pela frente. | Prossigamos com tranquilidade. | Um detalhe de cada vez.
+
+[Isadora]
+quem: Jornalista investigativa aposentada, perspicaz, discreta e de humor seco.
+estilo: Precisa e incisiva, faz perguntas certeiras
+abertura: Vamos aos fatos? | Trouxe meu bloco de notas. | Estou pronta para ouvir você. | Que história vamos descobrir hoje? | Pode começar seu depoimento. | Espero uma boa manchete.
+vacilo: Ora, apareceu uma pista quente. | Essa escapou para a imprensa. | Sua distração virou notícia. | Acabo de ganhar uma exclusiva. | Essa rende uma bela manchete. | Obrigada pela informação, viu?
+erro: Essa versão tem uma brecha. | Algo não fecha nessa história. | Vale conferir os fatos de novo. | Acontece até em boa redação. | Sua fonte omitiu um detalhe. | Não publique essa sem revisão.
+bom: Uma pista muito bem apurada. | Gostei da sua investigação. | Essa escolha merece destaque. | Você viu o que poucos veriam. | Excelente olho para detalhes. | Sua hipótese tem força.
+otimo: Isso merece primeira página! | Que descoberta extraordinária. | Você encontrou a notícia do ano! | Essa apuração foi impecável. | Seu faro está afiadíssimo. | Vou guardar essa manchete.
+apuros: A história virou contra mim. | Minhas fontes estão em silêncio. | Preciso apurar uma saída. | Você me deixou sem resposta. | Ainda não fechei a edição. | Essa pauta ficou complicada.
+vantagem: As pistas apontam a meu favor. | Minha investigação está rendendo. | Já vejo uma manchete promissora. | Os fatos começam a se encaixar. | Minha fonte não me decepcionou. | A reportagem avança bem.
+perdeu_rainha: Perdi minha fonte principal. | Essa notícia me pegou de surpresa. | Minha grande exclusiva se foi. | A redação vai querer explicações. | Preciso reescrever a matéria. | Essa perda muda toda a pauta.
+perdeu_torre: Uma fonte importante se calou. | Perdi parte da minha cobertura. | Esse fato abalou minha matéria. | Uma coluna da redação caiu. | Preciso reconstruir a pauta. | A edição ficou mais difícil.
+perdeu_peca: Uma fonte deixou a conversa. | Perdi uma pista relevante. | Esse detalhe fará falta. | Perdi uma página do meu bloco. | Uma testemunha saiu de cena. | Preciso seguir com menos apoio.
+pegou_rainha: Tenho sua fonte principal. | Essa é a exclusiva do dia. | Agora sim, uma grande manchete. | A notícia veio direto para mim. | Sua estrela entrou na minha pauta. | Essa história vai dar o que falar.
+pegou_torre: Uma fonte sua veio colaborar. | Ganhei material para a matéria. | Essa informação tem bastante peso. | Minha reportagem ganhou corpo. | Sua torre virou notícia aqui. | Guardei essa conquista no bloco.
+pegou_peca: Uma pista veio para minhas mãos. | Mais uma nota para o arquivo. | Essa fonte agora fala comigo. | Recolhi um detalhe interessante. | Meu caderno ganhou uma entrada. | Pequena notícia, bom resultado.
+venceu: A manchete de hoje é minha. | Fechei a edição com satisfação. | Essa história teve um bom final. | Obrigada pela ótima entrevista. | A notícia está confirmada. | Encerro esta pauta vitoriosa.
+perdeu: Sua versão prevaleceu nos fatos. | Reconheço uma ótima apuração. | Hoje você deu o grande furo. | Essa história pertence a você. | Anotei tudo para aprender. | Parabéns pela bela investigação.
+empate: Os fatos ficaram equilibrados. | Nenhuma fonte levou a exclusiva. | Uma manchete dividida ao meio. | Fechamos a edição em igualdade. | Dois lados, a mesma importância. | Essa história terminou empatada.
+neutro: Ainda estou apurando os fatos. | Toda pista merece atenção. | Deixe-me anotar esse detalhe. | A história continua se formando. | A redação não fecha tão cedo. | Há mais a descobrir por aqui.
+
+[Teodoro]
+quem: Juiz aposentado, voz grave e humor gentil, adora debates e café forte.
+estilo: Firme e justo, ensina com argumentos
+abertura: Sejamos cordiais nesta disputa. | A sessão está aberta. | Sirva-se de coragem e café. | Estou pronto para seus argumentos. | Que esta audiência seja cordial. | Concedo a palavra a você.
+vacilo: Opa, essa prova me favorece! | Anotem esse deslize nos autos. | Confesso que gostei dessa falha. | Essa distração pesa a meu favor. | Sua senhoria me fez um agrado. | Aceito essa surpresa com gosto.
+erro: Esse argumento perdeu força. | Um engano não encerra o caso. | Reveja sua posição com calma. | Até bons juristas se confundem. | Há um detalhe fora do lugar. | Você pode se recuperar disso.
+bom: Argumento sólido, meus parabéns. | Essa escolha tem fundamento. | Uma demonstração de bom senso. | Reconheço o mérito da ideia. | Sua posição foi muito feliz. | Gostei da clareza desse gesto.
+otimo: Uma argumentação brilhante! | Sua defesa foi irretocável. | Isso merece registro de honra. | Concedo aplausos de pé! | Uma demonstração extraordinária. | Sua excelência me surpreendeu.
+apuros: Minha defesa está sob pressão. | O caso ficou difícil para mim. | Preciso encontrar bons argumentos. | Você me colocou contra a parede. | Ainda não disse a última palavra. | Esta audiência está acalorada.
+vantagem: Meu argumento ganhou força. | O caso parece favorável agora. | Minha posição está confortável. | Os fatos sorriem para mim. | Mantenho a serenidade no debate. | A balança inclina a meu favor.
+perdeu_rainha: Perdi minha principal testemunha. | A defesa sofreu um golpe duro. | Isso muda bastante o processo. | Minha maior aliada se retirou. | Que revés para este magistrado! | Preciso reconstruir meu caso.
+perdeu_torre: Um pilar da defesa se perdeu. | Minha posição sofreu um abalo. | Um apoio importante se foi. | Essa perda consta nos autos. | Preciso rever meus argumentos. | O tribunal sentiu essa ausência.
+perdeu_peca: Uma testemunha deixou a sala. | Perdi um apoio valioso. | Essa ausência será sentida. | Minha defesa ficou menor. | Um aliado pediu licença. | Registro essa perda com pesar.
+pegou_rainha: Sua principal aliada veio a mim. | Essa prova tem grande peso. | A balança se moveu bastante. | Anoto uma conquista expressiva. | Essa notícia merece solenidade. | O magistrado agradece o presente.
+pegou_torre: Uma prova importante chegou. | Meu caso ganhou um apoio forte. | Essa conquista consta nos autos. | Sua torre mudou de lado. | Registre-se um bom avanço. | Minha argumentação ganhou peso.
+pegou_peca: Uma pequena prova para meu caso. | Recolhi mais um argumento. | Essa testemunha mudou de lado. | Mais um ponto para os autos. | Registro essa conquista discreta. | Uma ajuda bem-vinda à defesa.
+venceu: Declaro encerrada a sessão! | Hoje o veredito me favorece. | Recebo a vitória com respeito. | Foi um debate memorável. | Um café para celebrar, talvez? | Agradeço sua digna companhia.
+perdeu: Seu argumento foi convincente. | Reconheço plenamente seu mérito. | O veredito lhe é favorável. | Tiro o chapéu para sua atuação. | Hoje você conduziu bem o caso. | Parabéns por essa bela vitória.
+empate: A balança permaneceu nivelada. | Declaro o resultado equilibrado. | Nenhum argumento prevaleceu. | Justiça feita aos dois lados. | Uma conclusão justa e serena. | Encerramos em igualdade.
+neutro: A sessão prossegue com calma. | Ouçamos o que vem a seguir. | A paciência também tem mérito. | Todo argumento tem seu tempo. | Seguimos com a devida atenção. | Mais um fato para os autos.
+
+[Mestra Vera]
+quem: Lenda viva do xadrez, formou gerações e ainda estuda todas as manhãs.
+estilo: Lendária e serena, ensina pelo exemplo
+abertura: É uma honra receber você aqui. | Tantos anos, e ainda me encanto. | Sente-se, vamos fazer história. | Venha, mostre quem você é. | Cada encontro ensina algo novo. | Estou pronta, e você?
+vacilo: Ah, você me deu uma chance rara. | Até as lendas aceitam presentes. | Essa distração não passou por mim. | Que generosidade inesperada. | Agora deixe a velha trabalhar. | Vou guardar essa oportunidade.
+erro: Todos nós já estivemos aí. | Respire, ainda há caminho. | Não carregue esse erro consigo. | Uma queda também pode ensinar. | Sua coragem vale mais que isso. | Siga em frente com confiança.
+bom: Há verdade nessa escolha. | Gostei muito da sua coragem. | Você enxergou algo bonito. | Esse gesto revela seu talento. | Seu esforço está florescendo. | Eu reconheço uma boa ideia.
+otimo: Ah, que beleza você criou! | Vou lembrar disso por muitos anos. | Você me deu uma alegria rara. | Uma joia digna de qualquer época. | Agora sim, você me surpreendeu. | Isso revela seu amor pelo jogo.
+apuros: Você acordou a velha guerreira. | Faz tempo que não suo assim. | Você me trouxe uma grande luta. | Meu coração ainda gosta disso. | Preciso de toda minha experiência. | Ainda não conte Vera fora.
+vantagem: A experiência me sorri hoje. | Há serenidade no meu caminho. | Minha paciência começa a render. | Os anos me trouxeram até aqui. | Tenho bons motivos para confiar. | Sinto a partida ao meu alcance.
+perdeu_rainha: Minha velha companheira se foi. | Faz tempo que não sentia isso. | Você levou uma parte de mim. | Esta ausência exige coragem. | Ainda tenho muito para oferecer. | Respeito a força do seu gesto.
+perdeu_torre: Perdi uma velha amiga. | Essa perda merece silêncio. | Um apoio de tantos anos se foi. | Vou continuar com o que tenho. | Essa ausência pesa bastante. | Você me fez sentir o golpe.
+perdeu_peca: Uma companheira se despede. | Vou honrar quem ficou para trás. | Essa pequena perda me toca. | Menos uma amiga ao meu lado. | O tempo pede outra resposta. | Sinto falta dessa presença.
+pegou_rainha: Você me confiou sua grande força. | Essa conquista exige respeito. | Um momento importante neste duelo. | Recebo sua rainha com reverência. | Sua perda não define seu valor. | O encontro acaba de mudar.
+pegou_torre: Sua torre encontrou meu caminho. | Essa conquista teve seu preço. | Recebo esse presente com respeito. | Um momento importante para nós. | Essa perda certamente pesa. | Guardo essa conquista sem alarde.
+pegou_peca: Uma companheira sua veio comigo. | Aceito essa conquista com calma. | Um pequeno passo, grande respeito. | Essa presença agora está aqui. | Guardo cada conquista com cuidado. | A partida nos trouxe até isso.
+venceu: Foi uma honra jogar com você. | Hoje a velha ainda levou a taça. | Agradeço por me fazer lutar. | Uma vitória é sempre passageira. | Venha outra vez, estarei aqui. | Guardo nosso encontro com carinho.
+perdeu: Você venceu a velha Vera, bravo! | Hoje vi nascer uma bela história. | Sua vitória me enche de alegria. | Aprendi com você, como prometi. | Que orgulho ver seu brilho. | Leve esta vitória com humildade.
+empate: Nenhum de nós precisou ceder. | Nossa história termina unida. | Um encontro à altura dos dois. | Que belo presente dividimos hoje. | Saímos daqui iguais em honra. | Guardarei este empate com carinho.
+neutro: O silêncio também nos ensina. | Deixe a partida respirar. | Ainda temos muito a descobrir. | Estou ouvindo sua história. | O tempo é um velho professor. | Que bom ainda estar aqui.
