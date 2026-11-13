@@ -114,6 +114,10 @@ Para imagens, guarde uma chave de API da OpenAI somente no secret manager da VPS
 essa chave em `settings/`, Git, Brain ou no chat. O endpoint `/health` informa se Claude, Codex e imagens estão
 prontos, sem revelar credenciais.
 
+A ponte também oferece backup dos dados do Kindle (`/backup`, até 50 MB, com as 14 cópias mais recentes),
+agenda de hoje e amanhã (`/agenda`) e cotações (`/cotacoes`). Para ativar a agenda, salve a URL iCal secreta
+em `/etc/verso-ink/agenda-ical-url` com dono `root:versoink` e modo `640`; ela não é devolvida ao Kindle.
+
 Os nomes locais antigos `claude_url`, `claude_token` e `claude_resolve` continuam por compatibilidade: apontam
 para a ponte do **Verso**, não definem qual motor será usado.
 

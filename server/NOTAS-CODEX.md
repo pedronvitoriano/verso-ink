@@ -1,0 +1,7 @@
+# Decisões da ponte
+
+- Backup: o limite de entrada é 50.000.000 bytes; a validação verifica gzip e tar sem extrair arquivos, rejeita caminhos inseguros e links e limita o conteúdo descompactado a 1 GB. A gravação é temporária e depois renomeada, com retenção dos 14 nomes mais recentes. Dois envios no mesmo segundo recebem conflito para evitar sobrescrita.
+- Agenda: o arquivo configurável contém apenas a URL privada. O conteúdo iCal fica em memória por 15 minutos; erros são genéricos. A interpretação cobre eventos de dia inteiro e com horário em São Paulo ou UTC e recorrências diárias e semanais simples, não toda a especificação iCalendar. Para limitar o processamento, aceita até 2 MB, 1.000 eventos e 2.000 ocorrências; duração recorrente máxima de 366 dias.
+- Cotações: os cinco valores são obtidos juntos e armazenados em memória por uma hora. Em falha, o último resultado válido é devolvido com `antigo: true`; sem cache válido, a ponte retorna erro.
+- A instalação prepara a pasta de backup do usuário padrão e permite o tamanho de upload no nginx. Com `VERSO_INK_DATA` personalizado, a pasta correspondente fica ao lado desse diretório e precisa ser gravável pelo serviço.
+- A nota [Backups e recuperação](</home/pedro/dev/aions-brain/Brain/05 Resources/Padrões/Infraestrutura e operação/Backups e recuperação.md>) recomenda comprovar a restauração: validar o arquivo recebido não substitui um teste de restauração em ambiente apropriado.
