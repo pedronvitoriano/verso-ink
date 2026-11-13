@@ -66,8 +66,8 @@ amazon_pids() {
     # junto, senão o relógio dela aparece por cima do Verso Ink a cada minuto.
     pgrep pillowd 2>/dev/null
     # No firmware 5.16 o relógio e a bateria do alto são de um terceiro processo, o
-    # JunoStatusBarDrawer (nome cortado em 15 letras): sem congelá-lo, o relógio volta por cima.
-    pgrep -x JunoStatusBarDr 2>/dev/null
+    # JunoStatusBarDrawer (o -x do pgrep do BusyBox não o acha): sem congelá-lo, o relógio volta por cima.
+    pgrep JunoStatusBar 2>/dev/null
 }
 
 # Congelada de verdade só se o Java ainda existe: com ele morto, sobrar o pillowd não basta
