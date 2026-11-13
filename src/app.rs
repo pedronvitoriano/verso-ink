@@ -1466,7 +1466,7 @@ impl App {
         };
         let what = match self.screen {
             Screen::Mini => {
-                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else { "Receitas".to_string() }
+                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else if self.mini_back == Screen::ChessHub { "Puzzle do dia".to_string() } else { "Receitas".to_string() }
             }
             Screen::Sudoku | Screen::SudokuWon => "Sudoku".into(),
             Screen::Chess | Screen::ChessEnd | Screen::ChessReview => "Xadrez".into(),
@@ -1521,7 +1521,7 @@ impl App {
         match self.screen {
             Screen::Mini => {
                 let name = apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("jogo");
-                let name = if self.mini_back == Screen::Games { name } else { "Receitas" };
+                let name = if self.mini_back == Screen::Games { name } else if self.mini_back == Screen::ChessHub { "Puzzle do dia" } else { "Receitas" };
                 parts.push(format!("Pedro está em {name}, no Kindle."));
                 if let Some(g) = &self.mini {
                     let c = g.context();
@@ -3392,6 +3392,12 @@ impl App {
                 self.go(Screen::Coaches);
             }
             (Screen::ChessHub, Game(4)) => self.start_coach_game(crate::coach::CLAUDE),
+            (Screen::ChessHub, Game(5)) => {
+                self.mini = Some(self.mini_cache.remove(&103).unwrap_or_else(|| Box::new(crate::puzzle_dia::PuzzleDia::new(crate::offset_min()))));
+                self.mini_slot = Some(103);
+                self.mini_back = Screen::ChessHub;
+                self.go(Screen::Mini);
+            }
             (Screen::ChessHub, Game(2)) => {
                 self.engine = None;
                 let g = crate::chess::Game::new();
@@ -4216,6 +4222,18 @@ mod raio_x {
                 shot(&mut app, "treinador-reacao-rainha");
                 app.coach_mood = crate::coach::Mood::Normal;
             }
+        }
+        app.go(Screen::ChessHub);
+        shot(&mut app, "xadrez-central-com-puzzle");
+        app.mini_back = Screen::ChessHub;
+        for (g, name) in [
+            (crate::puzzle_dia::PuzzleDia::print_vazio(), "puzzle-vazio"),
+            (crate::puzzle_dia::PuzzleDia::print_partida(), "puzzle-partida"),
+            (crate::puzzle_dia::PuzzleDia::print_fim(), "puzzle-fim"),
+        ] {
+            app.mini = Some(Box::new(g));
+            app.go(Screen::Mini);
+            shot(&mut app, name);
         }
         // Revisão de um erro real: coordenadas, alternativa e cobertura da análise.
         app.saved_games = vec![crate::coach::Saved {
