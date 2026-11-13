@@ -17,7 +17,9 @@
 use crate::data::today;
 use crate::home_dir;
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::io::Write;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Kind {
@@ -162,6 +164,51 @@ pub fn toggle(day: i64, key: &str) -> bool {
     now_on
 }
 
+/// Marca sem desmarcar uma confirmação já registrada; erros preservam o arquivo original.
+/// As demais linhas são mantidas como estavam, inclusive linhas desconhecidas.
+pub fn confirmar(day: i64, key: &str) -> std::io::Result<()> {
+    let path = home_dir().join("data/dias").join(format!("{day}.txt"));
+    confirmar_em(&path, key)
+}
+
+fn ler_marcacoes(path: &Path) -> std::io::Result<String> {
+    match std::fs::read_to_string(path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
+        result => result,
+    }
+}
+
+fn confirmar_em(path: &Path, key: &str) -> std::io::Result<()> {
+    if key.trim().is_empty() || key.contains(['\r', '\n', '\0']) {
+        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Chave de lembrete inválida"));
+    }
+    let original = ler_marcacoes(path)?;
+    if original.lines().any(|line| line == key) { return Ok(()); }
+    let mut updated = original.clone();
+    if !updated.is_empty() && !updated.ends_with('\n') { updated.push('\n'); }
+    updated.push_str(key);
+    updated.push('\n');
+    if let Some(dir) = path.parent() { std::fs::create_dir_all(dir)?; }
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let (tmp, mut file) = loop {
+        let n = NEXT.fetch_add(1, Ordering::Relaxed);
+        let tmp = path.with_extension(format!("tmp-{}-{n}", std::process::id()));
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&tmp) {
+            Ok(file) => break (tmp, file),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e),
+        }
+    };
+    let result = (|| {
+        file.write_all(updated.as_bytes())?;
+        file.sync_all()?;
+        if ler_marcacoes(path)? != original { return Err(std::io::Error::other("Marcações mudaram; tente novamente")); }
+        std::fs::rename(&tmp, path)
+    })();
+    if result.is_err() { let _ = std::fs::remove_file(tmp); }
+    result
+}
+
 /// Dia completo: todas as prioridades e tarefas daquele dia marcadas (e havia alguma).
 pub fn day_complete(items: &[Item], day: i64, done: &HashSet<String>) -> bool {
     let todo: Vec<_> = items.iter().filter(|i| matches!(i.kind, Kind::Priority | Kind::Task) && i.on(day)).collect();
@@ -244,6 +291,41 @@ pub fn reading_streak(offset_min: i64) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn confirmar_preserva_linhas_e_nao_desmarca_na_repeticao() {
+        let dir = std::env::temp_dir().join(format!("verso-dia-confirma-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("20000.txt");
+        std::fs::write(&path, "# linha livre\r\n* Hábito\ntexto sem marcador").unwrap();
+        confirmar_em(&path, "@ Remédio").unwrap();
+        let expected = "# linha livre\r\n* Hábito\ntexto sem marcador\n@ Remédio\n";
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), expected);
+        confirmar_em(&path, "@ Remédio").unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), expected);
+        assert!(confirmar_em(&path, "@ Quebra\nde linha").is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), expected);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+    #[test]
+    fn confirmar_cria_arquivo_e_recusa_falhas_sem_apagar_dados() {
+        let dir = std::env::temp_dir().join(format!("verso-dia-falha-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let path = dir.join("dias/1.txt");
+        confirmar_em(&path, "@ Consulta").unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "@ Consulta\n");
+        std::fs::write(&path, [0xff, 0xfe]).unwrap();
+        assert!(confirmar_em(&path, "@ Outro").is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), [0xff, 0xfe]);
+        assert!(confirmar_em(&path.join("arquivo"), "@ Outro").is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), [0xff, 0xfe]);
+        // Nome de arquivo válido, mas temporário longo demais: falha de escrita sem dano.
+        let long = dir.join("a".repeat(250));
+        std::fs::write(&long, "* Guardado\n").unwrap();
+        assert!(confirmar_em(&long, "@ Outro").is_err());
+        assert_eq!(std::fs::read_to_string(&long).unwrap(), "* Guardado\n");
+        let _ = std::fs::remove_dir_all(dir);
+    }
     #[test]
     fn le_o_formato() {
         let it = parse("# comentário\n! Relatório\n- Pão\n@ 14:30 Reunião com a equipe\n@ 25:00 inválido\n* Ler 20 min\n-\n");

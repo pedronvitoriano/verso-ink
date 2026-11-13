@@ -346,39 +346,87 @@ pub fn draw_field(fb: &mut Framebuffer, f: &Fonts, text: &str, hint: &str) {
     f.draw(fb, Face::Body, 32.0, MARGIN, r.y + r.h + 60, crate::ui::MUTED, hint);
 }
 
+const REMINDER_LINE_SIZE: f32 = 72.0;
+const REMINDER_LINES_PER_PAGE: usize = 5;
+
 pub fn reminder_ok_rect() -> Rect {
-    Rect::new(MARGIN, 1150, W - 2 * MARGIN, 120)
+    Rect::new(MARGIN, 1200, W - 2 * MARGIN, 96)
+}
+pub fn reminder_prev_rect() -> Rect { Rect::new(MARGIN, 1040, 260, 80) }
+pub fn reminder_next_rect() -> Rect { Rect::new(W - MARGIN - 260, 1040, 260, 80) }
+
+/// Quebra também palavras longas, preservando todos os caracteres imprimíveis.
+fn reminder_lines(f: &Fonts, text: &str) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut line = String::new();
+    for word in text.split_whitespace() {
+        let candidate = if line.is_empty() { word.to_string() } else { format!("{line} {word}") };
+        if f.measure(Face::Display, REMINDER_LINE_SIZE, &candidate) <= W - 2 * MARGIN {
+            line = candidate;
+            continue;
+        }
+        if !line.is_empty() { lines.push(std::mem::take(&mut line)); }
+        for ch in word.chars() {
+            let mut candidate = line.clone();
+            candidate.push(ch);
+            if f.measure(Face::Display, REMINDER_LINE_SIZE, &candidate) > W - 2 * MARGIN && !line.is_empty() {
+                lines.push(std::mem::take(&mut line));
+            }
+            line.push(ch);
+        }
+    }
+    if !line.is_empty() { lines.push(line); }
+    if lines.is_empty() { lines.push(String::new()); }
+    lines
+}
+
+pub fn reminder_page_count(f: &Fonts, text: &str) -> usize {
+    reminder_lines(f, text).len().div_ceil(REMINDER_LINES_PER_PAGE).max(1)
+}
+
+/// Desenha uma página. `page` é limitado mesmo se o texto mudar enquanto a tela estiver aberta.
+pub fn draw_reminder_page(fb: &mut Framebuffer, f: &Fonts, it: &Item, page: usize) {
+    fb.fill(fb.screen(), PAPER);
+    f.draw(fb, Face::Display, 40.0, MARGIN, 150, INK, "Verso Ink");
+    ui::bell(fb, MARGIN as f32 + 70.0, 300.0);
+    f.draw(fb, Face::Strong, 34.0, MARGIN, 560, MUTED, &format!("LEMBRETE · {}", it.time_label()));
+    let lines = reminder_lines(f, &it.text);
+    let pages = lines.len().div_ceil(REMINDER_LINES_PER_PAGE).max(1);
+    let page = page.min(pages - 1);
+    for (k, line) in lines.iter().skip(page * REMINDER_LINES_PER_PAGE).take(REMINDER_LINES_PER_PAGE).enumerate() {
+        f.draw(fb, Face::Display, REMINDER_LINE_SIZE, MARGIN, 635 + k as i32 * 90, INK, line);
+    }
+    if pages > 1 {
+        if page > 0 { ui::button(fb, f, reminder_prev_rect(), "Anterior", false); }
+        if page + 1 < pages { ui::button(fb, f, reminder_next_rect(), "Próxima", false); }
+        let label = format!("{} de {}", page + 1, pages);
+        let width = f.measure(Face::Strong, 28.0, &label);
+        f.draw(fb, Face::Strong, 28.0, (W - width) / 2, 1090, MUTED, &label);
+    }
+    ui::button(fb, f, reminder_ok_rect(), "Feito", true);
 }
 
 pub fn draw_reminder(fb: &mut Framebuffer, f: &Fonts, it: &Item) {
-    fb.fill(fb.screen(), PAPER);
-    f.draw(fb, Face::Display, 40.0, MARGIN, 150, INK, "Verso Ink");
-    // Sino: cúpula, base e badalo.
-    let (cx, top) = (MARGIN as f32 + 70.0, 300.0);
-    ui::bell(fb, cx, top);
-    f.draw(fb, Face::Strong, 34.0, MARGIN, 560, MUTED, &format!("LEMBRETE · {}", it.time_label()));
-    let mut y = 680;
-    let mut line = String::new();
-    for word in it.text.split_whitespace() {
-        let cand = if line.is_empty() { word.to_string() } else { format!("{line} {word}") };
-        if f.measure(Face::Display, 96.0, &cand) > W - 2 * MARGIN && !line.is_empty() {
-            f.draw(fb, Face::Display, 96.0, MARGIN - 4, y, INK, &line);
-            y += 110;
-            line = word.to_string();
-        } else {
-            line = cand;
-        }
-        if y > 1000 {
-            break;
-        }
+    draw_reminder_page(fb, f, it, 0);
+}
+
+#[cfg(test)]
+mod reminder_tests {
+    use super::*;
+    #[test]
+    fn quebra_texto_e_palavra_longa_sem_descartar_caracteres() {
+        let f = Fonts::new();
+        let long_word = "extraordinariamente".repeat(20);
+        let text = format!("Uma mensagem longa para ser lida com calma {long_word} e depois fechar.");
+        let lines = reminder_lines(&f, &text);
+        assert!(reminder_page_count(&f, &text) > 1);
+        assert!(lines.iter().all(|line| f.measure(Face::Display, REMINDER_LINE_SIZE, line) <= W - 2 * MARGIN));
+        let expected: String = text.chars().filter(|c| !c.is_whitespace()).collect();
+        let got: String = lines.concat().chars().filter(|c| !c.is_whitespace()).collect();
+        assert_eq!(got, expected);
+        assert_eq!(reminder_page_count(&f, "Curto"), 1);
+        assert_eq!(reminder_page_count(&f, ""), 1);
     }
-    if !line.is_empty() && y <= 1000 {
-        f.draw(fb, Face::Display, 96.0, MARGIN - 4, y, INK, &fit(f, Face::Display, 96.0, &line, W - 2 * MARGIN));
-    }
-    let r = reminder_ok_rect();
-    ui::card(fb, r, (r.h / 2).min(40), INK, false);
-    let tw = f.measure(Face::Strong, 44.0, "Feito");
-    f.draw(fb, Face::Strong, 44.0, r.x + (r.w - tw) / 2, r.y + 76, PAPER, "Feito");
 }
 
 #[cfg(test)]

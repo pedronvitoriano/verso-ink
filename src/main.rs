@@ -52,6 +52,8 @@ mod diario;
 mod flashcards;
 mod organizacao;
 mod calculadora;
+mod lembretes;
+mod lembretes_ui;
 mod claude_ui;
 mod clock;
 mod update;
@@ -174,6 +176,7 @@ fn run() -> i32 {
     if app.screen == Screen::Home {
         app.render(true);
     }
+    app.check_reminders();
     log(&format!("primeira tela em {} ms", t0.elapsed().as_millis()));
 
     // A Amazon ainda limpa a tela alguns instantes depois de parar; redesenhamos uma vez.
@@ -234,16 +237,23 @@ fn run() -> i32 {
                         sync_clock_async();
                         let back = app.wake_screen();
                         app.go(back);
+                        app.check_reminders();
                         last_touch = Instant::now();
                     }
                 } else {
                     log("botão de ligar: dormindo");
-                    go_to_sleep(&mut app, &tx);
-                    slept_at = Some(Instant::now());
+                    if go_to_sleep(&mut app, &tx) { slept_at = Some(Instant::now()); }
+                    else { last_touch = Instant::now(); }
                 }
             }
             Ok(Event::Sleep) => {
+                if app.screen == Screen::Reminder { continue; }
                 log("dormindo");
+                match lembretes::programar(app.status.offset_min) {
+                    Ok(lembretes::Proximo::Vencido) => { app.check_reminders(); continue; }
+                    Err(e) => { log(&format!("lembretes: {e}")); continue; }
+                    _ => {}
+                }
                 app.go(Screen::Sleep);
                 app.fb.wait();
                 set_wifi(false);
@@ -261,6 +271,7 @@ fn run() -> i32 {
                 // Volta para onde estava (a partida de xadrez, o livro, o jogo).
                 let back = app.wake_screen();
                 app.go(back);
+                app.check_reminders();
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {}
             Err(mpsc::RecvTimeoutError::Disconnected) => {
@@ -287,13 +298,14 @@ fn run() -> i32 {
         if plausible != clock_was_plausible {
             clock_was_plausible = plausible;
             app.last_minute = 99;
+            if plausible { app.check_reminders(); }
         }
         // Repouso por inatividade (o powerd também não faz isso sem a interface da Amazon).
-        let busy = matches!(app.pomo, apps::Pomodoro::Running { .. }) || app.mini_awake() || home_dir().join("settings/dev_keep_awake").exists();
+        let busy = matches!(app.pomo, apps::Pomodoro::Running { .. }) || app.screen == Screen::Reminder || app.mini_awake() || home_dir().join("settings/dev_keep_awake").exists();
         if app.screen != Screen::Sleep && !busy && last_touch.elapsed() >= idle_limit {
             log("inatividade: dormindo");
-            go_to_sleep(&mut app, &tx);
-            slept_at = Some(Instant::now());
+            if go_to_sleep(&mut app, &tx) { slept_at = Some(Instant::now()); }
+            else { last_touch = Instant::now(); }
         }
         if app.screen != Screen::Sleep {
             app.tick();
@@ -303,20 +315,33 @@ fn run() -> i32 {
 
 /// Desenha o repouso, desliga o Wi-Fi e suspende o kernel. A escrita em /sys/power/state
 /// só retorna quando o aparelho acorda (botão de ligar); aí avisamos o laço com Wake.
-fn go_to_sleep(app: &mut App, tx: &mpsc::Sender<Event>) {
+fn go_to_sleep(app: &mut App, tx: &mpsc::Sender<Event>) -> bool {
+    if app.screen == Screen::Reminder { return false; }
+    match lembretes::programar(app.status.offset_min) {
+        Ok(lembretes::Proximo::Vencido) => { app.check_reminders(); return false; }
+        Err(e) => { log(&format!("lembretes: {e}")); return false; }
+        _ => {}
+    }
     app.go(Screen::Sleep);
     app.fb.wait();
     set_wifi(false);
     if home_dir().join("settings/dev_keep_wifi").exists() {
-        return; // modo de teste: não suspende, para o SSH continuar
+        return true; // modo de teste: não suspende, para o SSH continuar
     }
+    let offset = app.status.offset_min;
     let tx = tx.clone();
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(1500));
+        match lembretes::programar(offset) {
+            Ok(lembretes::Proximo::Vencido) | Err(_) => { let _ = tx.send(Event::Wake); return; }
+            Ok(lembretes::Proximo::Futuro(epoch)) if epoch <= data::epoch() + 2 => { let _ = tx.send(Event::Wake); return; }
+            _ => {}
+        }
         let r = std::fs::write("/sys/power/state", "mem");
         log(&format!("voltou da suspensão ({})", if r.is_ok() { "ok" } else { "falhou" }));
         let _ = tx.send(Event::Wake);
     });
+    true
 }
 
 /// Portão do boot. Pula o Verso Ink (sai com 3) se existir o arquivo DISABLE,

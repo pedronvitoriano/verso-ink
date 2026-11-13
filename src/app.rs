@@ -176,10 +176,15 @@ pub struct App {
     sys: SysInfo,
     confirm: Option<(u8, Instant)>,
     pub last_minute: u32,
+    last_reminder_minute: i64,
     low_warned: bool,
     items: Vec<crate::day::Item>,
     today_hits: Vec<(usize, Rect)>,
     reminder: Option<crate::day::Item>,
+    reminder_once: Option<crate::lembretes_ui::Avulso>,
+    reminder_day: i64,
+    reminder_error: bool,
+    reminder_page: usize,
     /// Tela para onde voltar depois de um lembrete.
     before_reminder: Screen,
     sudoku: Option<crate::sudoku::Game>,
@@ -422,10 +427,15 @@ impl App {
             sys: SysInfo { wifi_on: true, connected: false, essid: None, ip: None, firmware: String::new() },
             confirm: None,
             last_minute: 99,
+            last_reminder_minute: i64::MIN,
             low_warned: false,
             items: Vec::new(),
             today_hits: Vec::new(),
             reminder: None,
+            reminder_once: None,
+            reminder_day: 0,
+            reminder_error: false,
+            reminder_page: 0,
             before_reminder: Screen::Home,
             sudoku: None,
             sudoku_note: String::new(),
@@ -562,7 +572,9 @@ impl App {
             }
             Screen::Reminder => {
                 if let Some(it) = &self.reminder {
-                    crate::today_ui::draw_reminder(fb, f, it);
+                    if self.reminder_page == 0 { crate::today_ui::draw_reminder(fb, f, it); }
+                    else { crate::today_ui::draw_reminder_page(fb, f, it, self.reminder_page); }
+                    if self.reminder_error { f.draw(fb, crate::text::Face::Strong, 28.0, 72, 1350, ui::INK, "Não foi possível confirmar. Tente de novo."); }
                 }
             }
             Screen::Games => {
@@ -1031,7 +1043,14 @@ impl App {
                 v.extend(self.today_hits.iter().map(|(i, r)| (Item(*i), *r)));
                 v
             }
-            Screen::Reminder => vec![(Primary, crate::today_ui::reminder_ok_rect())],
+            Screen::Reminder => {
+                let mut v = vec![(Primary, crate::today_ui::reminder_ok_rect())];
+                if let Some(it) = &self.reminder {
+                    if self.reminder_page > 0 { v.push((Prev, crate::today_ui::reminder_prev_rect())); }
+                    if self.reminder_page + 1 < crate::today_ui::reminder_page_count(&self.fonts, &it.text) { v.push((Next, crate::today_ui::reminder_next_rect())); }
+                }
+                v
+            }
             Screen::Calendar => vec![(Back, ui::back_rect())],
             Screen::Tutorial => vec![(Back, ui::back_rect()), (Prev, crate::tutorial::prev_rect()), (Next, crate::tutorial::next_rect())],
             Screen::Games => {
@@ -1466,7 +1485,7 @@ impl App {
         };
         let what = match self.screen {
             Screen::Mini => {
-                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else if self.mini_back == Screen::ChessHub { "Puzzle do dia".to_string() } else if self.mini_back == Screen::Home { "Aprender".to_string() } else if self.mini_slot == Some(106) { "Diário".to_string() } else if self.mini_slot == Some(107) { "Hábitos e tarefas".to_string() } else if self.mini_slot == Some(108) { "Calculadora".to_string() } else { "Receitas".to_string() }
+                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else if self.mini_back == Screen::ChessHub { "Puzzle do dia".to_string() } else if self.mini_back == Screen::Home { "Aprender".to_string() } else if self.mini_slot == Some(106) { "Diário".to_string() } else if self.mini_slot == Some(107) { "Hábitos e tarefas".to_string() } else if self.mini_slot == Some(108) { "Calculadora".to_string() } else if self.mini_slot == Some(109) { "Lembretes".to_string() } else { "Receitas".to_string() }
             }
             Screen::Sudoku | Screen::SudokuWon => "Sudoku".into(),
             Screen::Chess | Screen::ChessEnd | Screen::ChessReview => "Xadrez".into(),
@@ -1521,7 +1540,7 @@ impl App {
         match self.screen {
             Screen::Mini => {
                 let name = apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("jogo");
-                let name = if self.mini_back == Screen::Games { name } else if self.mini_back == Screen::ChessHub { "Puzzle do dia" } else if self.mini_back == Screen::Home { "Aprender" } else if self.mini_slot == Some(106) { "Diário" } else if self.mini_slot == Some(107) { "Hábitos e tarefas" } else if self.mini_slot == Some(108) { "Calculadora" } else { "Receitas" };
+                let name = if self.mini_back == Screen::Games { name } else if self.mini_back == Screen::ChessHub { "Puzzle do dia" } else if self.mini_back == Screen::Home { "Aprender" } else if self.mini_slot == Some(106) { "Diário" } else if self.mini_slot == Some(107) { "Hábitos e tarefas" } else if self.mini_slot == Some(108) { "Calculadora" } else if self.mini_slot == Some(109) { "Lembretes" } else { "Receitas" };
                 parts.push(format!("Pedro está em {name}, no Kindle."));
                 if let Some(g) = &self.mini {
                     let c = g.context();
@@ -2127,6 +2146,7 @@ impl App {
             g.text_input(&text);
         }
         self.go(Screen::Mini);
+        if self.mini_slot == Some(109) { self.check_reminders(); }
     }
 
     fn mini_tap(&mut self, id: u32, x: i32) {
@@ -2638,6 +2658,7 @@ impl App {
     /// passagem (teclado, atualização, pedido de permissão, tutorial) voltam para a Início.
     pub fn wake_screen(&self) -> Screen {
         match self.before_sleep {
+            Some(Screen::Reminder) if self.reminder.is_some() => Screen::Reminder,
             Some(
                 Screen::Sleep
                 | Screen::Compose
@@ -3057,6 +3078,12 @@ impl App {
                 g.resume();
                 self.mini = Some(g);
                 self.mini_slot = Some(108);
+                self.mini_back = Screen::Module(Module::Mais);
+                self.go(Screen::Mini);
+            }
+            (Screen::Module(Module::Mais), Row(10)) => {
+                self.mini = Some(self.mini_cache.remove(&109).unwrap_or_else(|| Box::new(crate::lembretes_ui::Lembretes::new())));
+                self.mini_slot = Some(109);
                 self.mini_back = Screen::Module(Module::Mais);
                 self.go(Screen::Mini);
             }
@@ -3692,11 +3719,23 @@ impl App {
                 }
             }
             (Screen::Reminder, Primary) => {
-                if let Some(it) = self.reminder.take() {
-                    crate::day::toggle(data::today(self.status.offset_min), &it.key());
-                }
+                let saved = if let Some(item) = &self.reminder_once {
+                    crate::lembretes_ui::confirmar(item).is_ok_and(|ok| ok)
+                } else if let Some(item) = &self.reminder {
+                    crate::day::confirmar(self.reminder_day, &item.key()).is_ok()
+                } else { false };
+                if !saved { self.reminder_error = true; return self.render(false); }
+                self.reminder = None;
+                self.reminder_once = None;
+                self.reminder_error = false;
                 let back = self.before_reminder;
                 self.go(back);
+                self.check_reminders();
+            }
+            (Screen::Reminder, Prev) => { self.reminder_page = self.reminder_page.saturating_sub(1); self.render(false); }
+            (Screen::Reminder, Next) => {
+                if self.reminder.as_ref().is_some_and(|it| self.reminder_page + 1 < crate::today_ui::reminder_page_count(&self.fonts, &it.text)) { self.reminder_page += 1; }
+                self.render(false);
             }
             _ => {}
         }
@@ -3874,7 +3913,35 @@ impl App {
     }
 
     /// Chamado várias vezes por segundo: relógio, Pomodoro, confirmação e bateria.
+    /// Mostra o próximo aviso pendente, inclusive logo depois de acordar.
+    pub fn check_reminders(&mut self) -> bool {
+        if matches!(self.screen, Screen::Reminder | Screen::Sleep) { return false; }
+        let now = clock::now(self.status.offset_min);
+        if !now.plausible() { return false; }
+        let once = crate::lembretes_ui::vencido(data::epoch());
+        let item = if let Some(a) = &once {
+            let local = (a.epoch + self.status.offset_min * 60).rem_euclid(86_400) / 60;
+            Some(crate::day::Item { kind: crate::day::Kind::Reminder, text: a.texto.clone(), at: Some(local as u32), days: None })
+        } else {
+            crate::day::due_reminder(&crate::day::load_items(), self.status.offset_min, now.hour * 60 + now.minute)
+        };
+        let Some(item) = item else { return false };
+        self.before_reminder = if self.screen == Screen::LowBattery { Screen::Home } else { self.screen };
+        self.reminder_day = data::today(self.status.offset_min);
+        self.reminder_once = once;
+        self.reminder = Some(item);
+        self.reminder_error = false;
+        self.reminder_page = 0;
+        self.go(Screen::Reminder);
+        true
+    }
+
     pub fn tick(&mut self) {
+        let reminder_minute = data::epoch().div_euclid(60);
+        if reminder_minute != self.last_reminder_minute {
+            self.last_reminder_minute = reminder_minute;
+            if self.check_reminders() { return; }
+        }
         if self.gesture.is_some() {
             self.check_hold();
         }
@@ -3949,16 +4016,6 @@ impl App {
             }
             if self.status.wifi {
                 crate::backup::maybe_check_update(data::today(self.status.offset_min));
-            }
-        }
-        // Lembretes: na hora (ou ao acordar, se passou), em tela cheia.
-        if !matches!(self.screen, Screen::Reminder | Screen::Sleep) && now.plausible() {
-            let items = crate::day::load_items();
-            if let Some(it) = crate::day::due_reminder(&items, self.status.offset_min, now.hour * 60 + now.minute) {
-                log(&format!("lembrete: {}", it.text));
-                self.before_reminder = if matches!(self.screen, Screen::LowBattery) { Screen::Home } else { self.screen };
-                self.reminder = Some(it);
-                return self.go(Screen::Reminder);
             }
         }
         // Aviso de bateria fraca: uma vez por descarga, só fora do carregador.
@@ -4369,6 +4426,33 @@ mod raio_x {
         app.mini_tap(902, 0);
         for id in [106, 110, 109, 110, 106, 832, 111, 107] { app.mini_tap(id, 0); }
         shot(&mut app, "calculadora-gorjeta");
+        let plano_lembretes = std::fs::read_to_string(home.join("data/dia.txt")).unwrap();
+        std::fs::write(home.join("data/dia.txt"), "").unwrap();
+        app.go(Screen::Module(Module::Mais));
+        app.activate(Target::Row(10), 0);
+        app.mini = Some(Box::new(crate::lembretes_ui::Lembretes::print_vazio()));
+        shot(&mut app, "lembretes-vazio");
+        app.mini = Some(Box::new(crate::lembretes_ui::Lembretes::print_hora()));
+        shot(&mut app, "lembretes-hora");
+        let arquivo_lembretes = home.join("data/lembretes_avulsos.txt");
+        std::fs::write(&arquivo_lembretes, format!("{}\tLigar para a família\n", data::epoch() + 3600)).unwrap();
+        app.mini = Some(Box::new(crate::lembretes_ui::Lembretes::new()));
+        shot(&mut app, "lembretes-lista");
+        let longo = "Conferir os livros que ficaram na mesa, separar os documentos da semana e levar tudo para a reunião. Lembrar também de conversar com a família sobre os próximos dias e organizar os horários antes de sair de casa.".repeat(3);
+        std::fs::write(&arquivo_lembretes, format!("{}\t{}\n{}\tSegundo aviso\n", data::epoch() - 120, longo, data::epoch() - 60)).unwrap();
+        app.go(Screen::Home);
+        assert!(app.check_reminders());
+        assert!(crate::today_ui::reminder_page_count(&app.fonts, &longo) > 1);
+        shot(&mut app, "lembrete-aviso");
+        app.activate(Target::Next, 0);
+        shot(&mut app, "lembrete-aviso-pagina-2");
+        app.activate(Target::Primary, 0);
+        assert_eq!(app.reminder.as_ref().unwrap().text, "Segundo aviso");
+        shot(&mut app, "lembrete-segundo");
+        app.activate(Target::Primary, 0);
+        assert!(crate::lembretes_ui::pendentes().is_empty());
+        std::fs::write(home.join("data/dia.txt"), plano_lembretes).unwrap();
+        std::fs::remove_file(arquivo_lembretes).unwrap();
         // Revisão de um erro real: coordenadas, alternativa e cobertura da análise.
         app.saved_games = vec![crate::coach::Saved {
             file: home.join("data/xadrez/partidas/exemplo.txt"),
