@@ -3,7 +3,7 @@
 # Uso: tools/release.sh   (usa a versão do Cargo.toml; a tag é v<versão>)
 set -euo pipefail
 cd "$(dirname "$0")/.."
-TARGET=armv7-unknown-linux-musleabi
+TARGET=armv7-unknown-linux-musleabihf
 VERSION="$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)"
 cargo test --release
 cargo build --release --target "$TARGET"

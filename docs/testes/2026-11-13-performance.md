@@ -25,3 +25,19 @@ Edição                 desenho  320.0 ms · toque   0.0 ms
 Achados                desenho  104.5 ms · toque   0.0 ms
 Aprender               desenho  218.7 ms
 ```
+
+## Depois (13/11/2026)
+
+| Medida no Kindle | Antes | Cache de glifos | + ponto flutuante em hardware (musleabihf) |
+|---|---|---|---|
+| Primeira tela no boot | 1.087 ms | 1.087 ms | **305 ms** |
+| Início | 305 ms | 201 ms | **85 ms** |
+| Jogar | 312 ms | 167 ms | **67 ms** |
+| Edição | 320 ms | 205 ms | **98 ms** |
+| Mais | 208 ms | 124 ms | **55 ms** |
+| Aprender | 219 ms | 144 ms | **64 ms** |
+| Texto 40 letras | 8,1 ms | 0,48 ms | 0,32 ms |
+| Contagem de destaques | 188 ms | 1,5 ms | 1,5 ms |
+| Cartão / traço / ícone | 6,5 / 7,8 / 13 ms | igual | 1,5 / 0,9 / 2,7 ms |
+
+A troca da divisão por deslocamento (06dcbfe) não mudou nada: o compilador já otimizava. Desenho idêntico pixel a pixel (testes `texto_com_cache_igual_ao_antigo` e `mix_igual_a_divisao_para_todos_os_valores`).

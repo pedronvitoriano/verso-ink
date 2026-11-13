@@ -7,7 +7,8 @@ cd "$(dirname "$0")/.."
 
 IP="${1:-${KINDLE_IP:-192.168.0.21}}"
 KEY="${KINDLE_KEY:-$HOME/.ssh/kindle_ed25519}"
-TARGET=armv7-unknown-linux-musleabi
+# Ponto flutuante em hardware (VFPv3 do Cortex-A9): telas 2,5 a 4x mais rápidas que o soft-float.
+TARGET=armv7-unknown-linux-musleabihf
 
 export VERSO_GIT="$(git describe --always --dirty=+)"
 cargo build --release --target "$TARGET"

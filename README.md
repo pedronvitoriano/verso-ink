@@ -22,7 +22,7 @@ desenhada direto no e-ink, sem a interface da Amazon por cima.
 
 ## Como funciona
 
-- **Um binário estático** (`armv7-unknown-linux-musleabi`, ~1,9 MB com as fontes): não depende da
+- **Um binário estático** (`armv7-unknown-linux-musleabihf`, com ponto flutuante em hardware do Cortex-A9): não depende da
   glibc do Kindle. Compilado com o `rust-lld` que vem com o Rust; nenhum compilador C é necessário.
 - **Tela**: escreve em `/dev/fb0` e pede a atualização do e-ink pelo ioctl `MXCFB_SEND_UPDATE`
   (struct de 72 bytes do Kindle "Wario"). Toque responde com a forma de onda rápida (DU) e o conteúdo
@@ -48,7 +48,7 @@ Se o Verso Ink cair a qualquer momento, a interface da Amazon volta sozinha.
 ## Requisitos
 
 - Kindle desbloqueado (testado com WinterBreak) e acesso SSH (o do KOReader serve para a primeira vez).
-- Rust com o alvo: `rustup target add armv7-unknown-linux-musleabi`.
+- Rust com o alvo: `rustup target add armv7-unknown-linux-musleabihf`.
 - Chave SSH em `~/.ssh/kindle_ed25519` (a pública vai em `/mnt/us/verso-ink/settings/SSH/authorized_keys`).
 
 ## Uso
