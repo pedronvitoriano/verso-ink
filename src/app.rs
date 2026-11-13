@@ -15,8 +15,6 @@ pub enum Screen {
     Module(Module),
     Light,
     Library,
-    /// Livro KFX/AZW protegido: explica o handoff para o Kindle original.
-    AmazonBook,
     Focus,
     Settings,
     LowBattery,
@@ -129,6 +127,8 @@ pub const EXIT_OPEN_BOOK: i32 = 42;
 /// Qualquer saída diferente de 42 encerra a sessão e devolve ao Kindle original.
 pub const EXIT_OPEN_AMAZON: i32 = 44;
 pub const OPEN_FILE: &str = "/tmp/verso-ink.open-file";
+/// Endereço do livro da loja que a sessão abre no leitor da Amazon (código 44).
+pub const OPEN_AMAZON_FILE: &str = "/tmp/verso-ink.open-amazon";
 
 /// Toque em andamento numa casa de minijogo.
 struct Gesture {
@@ -173,6 +173,7 @@ pub struct App {
     light: ui::Light,
     lib: Library,
     amazon_title: String,
+    amazon_path: Option<std::path::PathBuf>,
     pub pomo: Pomodoro,
     sys: SysInfo,
     confirm: Option<(u8, Instant)>,
@@ -488,6 +489,7 @@ impl App {
             light: read_light(),
             lib: Library::empty(),
             amazon_title: String::new(),
+            amazon_path: None,
             pomo: Pomodoro::Idle,
             sys: SysInfo { wifi_on: true, connected: false, essid: None, ip: None, firmware: String::new() },
             confirm: None,
@@ -628,7 +630,6 @@ impl App {
             Screen::Module(m) => ui::draw_module(fb, f, m, st),
             Screen::Light => ui::draw_light(fb, f, &self.light, st, light_claude, !self.wifi_on, light_home),
             Screen::Library => apps::draw_library(fb, f, &self.lib, st),
-            Screen::AmazonBook => apps::draw_amazon_book(fb, f, &self.amazon_title),
             Screen::Focus => apps::draw_focus(fb, f, self.pomo, data::focus_today(st.offset_min), st),
             Screen::Settings => apps::draw_settings(fb, f, &self.sys, st, self.confirm.map(|c| c.0)),
             Screen::LowBattery => ui::draw_low_battery(fb, f, st),
@@ -927,7 +928,6 @@ impl App {
                 }
                 v
             }
-            Screen::AmazonBook => vec![(Back, ui::back_rect()), (Primary, apps::amazon_open_rect())],
             Screen::Focus => {
                 let mut v = vec![(Back, ui::back_rect()), (Secondary, apps::focus_secondary_rect())];
                 if !matches!(self.pomo, Pomodoro::Running { .. }) {
@@ -1314,6 +1314,12 @@ impl App {
 
     /// Volta para a estante da Amazon sem tentar abrir um KFX protegido em outro leitor.
     fn open_amazon_book(&mut self) {
+        // A sessão abre este livro direto no leitor da Amazon (e não na tela inicial dela).
+        let _ = std::fs::remove_file(OPEN_AMAZON_FILE);
+        if let Some(p) = &self.amazon_path {
+            data::set_last_book(p, &self.amazon_title);
+            let _ = std::fs::write(OPEN_AMAZON_FILE, apps::amazon_reader_uri(p));
+        }
         apps::draw_opening_amazon(&mut self.fb, &self.fonts, &self.amazon_title);
         self.fb.present(Wave::Quality, true);
         self.fb.wait();
@@ -2940,7 +2946,6 @@ impl App {
             (Screen::Coaches | Screen::ChessEnd | Screen::ChessGames | Screen::ChessClock, Back) => self.go(Screen::ChessHub),
             (Screen::ChessReview, Back) => self.go(Screen::ChessGames),
             (Screen::ChessInsights, Back) => self.go(Screen::ChessReview),
-            (Screen::AmazonBook, Back) => self.go(Screen::Library),
             (Screen::Clips, Back) => self.go(Screen::Library),
             (Screen::ClipBook, Back) => self.go(Screen::Clips),
             (Screen::Compose, Back) => self.go(Screen::Today),
@@ -3349,8 +3354,10 @@ impl App {
                     return;
                 }
                 if apps::is_amazon_only(&b.path) {
+                    // Direto para o livro no leitor da Amazon, sem tela no meio.
                     self.amazon_title = b.title;
-                    self.go(Screen::AmazonBook);
+                    self.amazon_path = Some(b.path);
+                    self.open_amazon_book();
                 } else if crate::reader::supported(&b.path) {
                     self.open_reader(b.path, b.title);
                 } else {
@@ -3417,7 +3424,8 @@ impl App {
                 let Some(b) = self.lib.visible().get(i) else { return };
                 if b.amazon_only {
                     self.amazon_title = b.title.clone();
-                    self.go(Screen::AmazonBook);
+                    self.amazon_path = Some(b.path.clone());
+                    self.open_amazon_book();
                     return;
                 }
                 let (path, title) = (b.path.clone(), b.title.clone());
@@ -3427,7 +3435,6 @@ impl App {
                     self.open_book(path, title);
                 }
             }
-            (Screen::AmazonBook, Primary) => self.open_amazon_book(),
             (Screen::Library, Clips) => self.go(Screen::Clips),
             (Screen::Clips, Clips) => {
                 self.mini = Some(Box::new(crate::revisao::Revisao::new()));
@@ -4368,12 +4375,15 @@ mod raio_x {
     }
 
     #[test]
-    fn livro_amazon_sai_para_o_kindle_original_sem_passar_pelo_koreader() {
+    fn livro_amazon_abre_direto_no_leitor_do_kindle_original() {
         let mut app = App::new(Framebuffer::memory());
-        app.amazon_title = "Livro da loja".into();
-        app.go(Screen::AmazonBook);
-        app.activate(Target::Primary, 0);
+        app.amazon_title = "1984".into();
+        app.amazon_path = Some("/mnt/us/documents/1984 (Portuguese Edition)_B08XPVNQN1.kfx".into());
+        app.open_amazon_book();
         assert_eq!(app.exit_code, Some(EXIT_OPEN_AMAZON));
+        let uri = std::fs::read_to_string(OPEN_AMAZON_FILE).unwrap();
+        let _ = std::fs::remove_file(OPEN_AMAZON_FILE);
+        assert_eq!(uri, "app://com.lab126.booklet.reader/mnt/us/documents/1984%20%28Portuguese%20Edition%29_B08XPVNQN1.kfx");
     }
 
     /// Cada lição do curso de partitura, a pergunta dela respondida e os treinos:

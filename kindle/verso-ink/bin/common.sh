@@ -108,10 +108,32 @@ amazon_thaw() {
     rm -f "$AMAZON_TELA"
     for p in $(amazon_pids); do kill -CONT "$p" 2>/dev/null; done
     rm -f /tmp/verso-ink.amazon-frozen
-    # A interface não sabe que a tela foi redesenhada por nós: pede a tela inicial da Amazon,
-    # o que a faz desenhar tudo de novo.
-    lipc-set-prop com.lab126.appmgrd start app://com.lab126.KPPMainApp 2>/dev/null
+    # Indo para um livro, ele mesmo cobre a tela; senão, a tela inicial da Amazon.
+    [ -f "$AMAZON_LIVRO" ] || lipc-set-prop com.lab126.appmgrd start app://com.lab126.KPPMainApp 2>/dev/null
     log "interface da Amazon descongelada"
+}
+
+# Livro da loja escolhido no Verso Ink: abre direto no leitor da Amazon (o Verso grava o endereço).
+AMAZON_LIVRO=/tmp/verso-ink.open-amazon
+
+amazon_open_book() {
+    [ -f "$AMAZON_LIVRO" ] || return 0
+    uri="$(cat "$AMAZON_LIVRO")"
+    rm -f "$AMAZON_LIVRO"
+    # Na primeira vez a interface ainda está subindo: espera a tela inicial (até 2 min).
+    k=0
+    while [ $k -lt 120 ]; do
+        case "$(lipc-get-prop com.lab126.appmgrd activeContext 2>/dev/null)" in *KPPMainApp*) break ;; esac
+        sleep 2; k=$((k + 2))
+    done
+    # O leitor precisa do número de série para abrir livro com DRM. Visto em 13/11: o lipc-daemon
+    # trava (cada processo filho dele fica parado numa trava) e nenhum livro da loja abre.
+    if ! lipc-get-prop com.lab126.system usid >/dev/null 2>&1; then
+        log "lipcd sem resposta; reiniciando"
+        restart lipcd >>"$LOG" 2>&1
+        sleep 2
+    fi
+    lipc-set-prop com.lab126.appmgrd start "$uri" 2>>"$LOG" && log "livro aberto no leitor da Amazon"
 }
 
 # Espera a pessoa sair da tela inicial da Amazon (abrir um livro) e voltar a ela (tocar em

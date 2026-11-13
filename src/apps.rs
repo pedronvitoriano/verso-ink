@@ -80,6 +80,20 @@ pub fn is_amazon_only(path: &Path) -> bool {
         .is_some_and(|ext| STORE.contains(&ext.to_ascii_lowercase().as_str()))
 }
 
+/// Endereço que abre o arquivo direto no leitor da Amazon (`lipc-set-prop com.lab126.appmgrd start`).
+/// O caminho vai codificado: com espaço ou parêntese cru o leitor recusa ("URI Syntax").
+pub fn amazon_reader_uri(path: &Path) -> String {
+    let mut uri = String::from("app://com.lab126.booklet.reader");
+    for b in path.to_string_lossy().bytes() {
+        if b.is_ascii_alphanumeric() || b"-._~/".contains(&b) {
+            uri.push(b as char);
+        } else {
+            uri.push_str(&format!("%{b:02X}"));
+        }
+    }
+    uri
+}
+
 /// Nomes gravados com UTF-8 lido como Latin-1 ("BÃ­blia" → "Bíblia").
 fn fix_mojibake(s: &str) -> String {
     if !s.contains('Ã') && !s.contains('â') {
@@ -529,41 +543,9 @@ pub fn draw_library(fb: &mut Framebuffer, f: &Fonts, lib: &Library, st: &Status)
     }
 }
 
-pub fn amazon_open_rect() -> Rect {
-    Rect::new(MARGIN, 800, W - 2 * MARGIN, 100)
-}
-
-/// Explicação honesta do handoff: o livro continua visível, sem prometer abertura impossível
-/// de um KFX protegido fora do Kindle original.
-pub fn draw_amazon_book(fb: &mut Framebuffer, f: &Fonts, title: &str) {
-    fb.fill(fb.screen(), PAPER);
-    ui::draw_back(fb, f, false);
-    f.draw(fb, Face::Strong, 30.0, MARGIN, 230, MUTED, "BIBLIOTECA AMAZON");
-    f.draw(fb, Face::Display, 68.0, MARGIN, 330, INK, &fit(f, Face::Display, 68.0, title, W - 2 * MARGIN));
-    let card = Rect::new(MARGIN, 430, W - 2 * MARGIN, 292);
-    fb.round_rect(card, 30, 0xE8);
-    fb.round_outline(card, 30, 3, INK, 0xE8);
-    let tag = Rect::new(card.x + 34, card.y + 30, 174, 46);
-    fb.round_rect(tag, 23, INK);
-    f.draw(fb, Face::Strong, 24.0, tag.x + 27, tag.y + 31, PAPER, "KINDLE");
-    f.draw(fb, Face::Strong, 30.0, card.x + 34, card.y + 126, INK, "ABRE NO KINDLE ORIGINAL");
-    let lines = ["Este arquivo está protegido pela Amazon.", "O Kindle original é o app que pode abri-lo."];
-    let mut y = card.y + 180;
-    for line in lines {
-        for wrapped in wrap(f, Face::Body, 32.0, line, card.w - 68, 2) {
-            f.draw(fb, Face::Body, 32.0, card.x + 34, y, INK, &wrapped);
-            y += 44;
-        }
-    }
-    ui::button(fb, f, amazon_open_rect(), "Abrir Kindle original", true);
-    f.draw(fb, Face::Body, 28.0, MARGIN, 950, MUTED, "Procure este título na sua estante do Kindle.");
-}
-
+/// Livro da loja: abre direto no leitor da Amazon, com a mesma passagem dos outros livros.
 pub fn draw_opening_amazon(fb: &mut Framebuffer, f: &Fonts, title: &str) {
-    fb.fill(fb.screen(), PAPER);
-    f.draw(fb, Face::Display, 40.0, MARGIN, 150, INK, "Verso Ink");
-    f.draw(fb, Face::Strong, 36.0, MARGIN, 600, MUTED, "ABRINDO O KINDLE ORIGINAL");
-    f.draw(fb, Face::Body, 32.0, MARGIN, 660, INK, &fit(f, Face::Body, 32.0, title, W - 2 * MARGIN));
+    draw_opening_book(fb, f, title);
 }
 
 /// Momento de passagem: o KOReader leva alguns segundos para abrir.
@@ -826,6 +808,17 @@ pub fn draw_powered_off(fb: &mut Framebuffer, f: &Fonts, rebooting: bool) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn livro_da_loja_vira_endereco_do_leitor_com_o_caminho_codificado() {
+        let p = Path::new("/mnt/us/documents/1984 (Portuguese Edition)_B08XPVNQN1.kfx");
+        assert_eq!(
+            amazon_reader_uri(p),
+            "app://com.lab126.booklet.reader/mnt/us/documents/1984%20%28Portuguese%20Edition%29_B08XPVNQN1.kfx"
+        );
+        let b = Path::new("/mnt/us/documents/A Bíblia_B086.kfx");
+        assert_eq!(amazon_reader_uri(b), "app://com.lab126.booklet.reader/mnt/us/documents/A%20B%C3%ADblia_B086.kfx");
+    }
+
     use super::*;
     #[test]
     fn titulos_limpos() {

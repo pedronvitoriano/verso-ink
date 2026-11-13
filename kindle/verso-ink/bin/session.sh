@@ -60,6 +60,7 @@ while :; do
             trap - TERM
             log "interface da Amazon ligada (troca rápida)"
         fi
+        amazon_open_book
         amazon_wait_home
         amazon_freeze
         log "de volta ao Verso Ink"
