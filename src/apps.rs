@@ -286,7 +286,7 @@ pub fn clips_rect() -> Rect {
     Rect::new(W - MARGIN - 250, 76, 250, 84)
 }
 /// Jogos na tela Jogar (a ordem define o índice usado pelo app).
-pub const GAMES: [(&str, &str); 17] = [
+pub const GAMES: [(&str, &str); 18] = [
     ("Sudoku", "Três níveis, anotações e dicas"),
     ("Xadrez", "Treinadores, revisão e duas pessoas"),
     ("Coroas", "Uma por linha, coluna e reino"),
@@ -304,12 +304,13 @@ pub const GAMES: [(&str, &str); 17] = [
     ("Histórias", "Ficção interativa por escolhas"),
     ("Damas", "Regras brasileiras, CPU ou local"),
     ("Velha", "O clássico e o super, CPU ou a dois"),
+    ("Reversi", "Cerque peças contra a CPU ou a dois"),
 ];
 
 /// Seções da tela Jogar: (nome, índices em GAMES).
 pub const GAME_GROUPS: [(&str, &[usize]); 4] = [
     ("Quebra-cabeças", &[0, 2, 6, 7, 9, 10]),
-    ("Tabuleiro", &[1, 15, 3, 16, 5, 4]),
+    ("Tabuleiro", &[1, 15, 3, 16, 17, 5, 4]),
     ("Cartas", &[8, 11]),
     ("Aventura", &[12, 13, 14]),
 ];
@@ -317,7 +318,7 @@ pub const GAME_GROUPS: [(&str, &[usize]); 4] = [
 /// Disposição da tela Jogar: quatro seções, cartões em duas colunas. Devolve (jogo, retângulo)
 /// e (título da seção, y da linha de base).
 pub fn games_layout() -> (Vec<(usize, Rect)>, Vec<(&'static str, usize, i32)>) {
-    let (gap, head, card_h, row_gap) = (20, 48, 76, 13);
+    let (gap, head, card_h, row_gap) = (20, 44, 68, 8);
     let w = (W - 2 * MARGIN - gap) / 2;
     let mut cards = Vec::new();
     let mut heads = Vec::new();

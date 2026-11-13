@@ -4134,6 +4134,10 @@ mod raio_x {
                 if let Some((id, _)) = app.mini.as_ref().and_then(|g| g.targets().into_iter().find(|(id, _)| *id == 900)) {
                     app.mini_tap(id, 0);
                     shot(&mut app, &format!("jogo-{name}-partida"));
+                    if name == "reversi" {
+                        app.mini = Some(Box::new(crate::reversi::Reversi::final_para_print()));
+                        shot(&mut app, "jogo-reversi-fim");
+                    }
                     if name == "coroas" {
                         for id in [0, 1, 7] {
                             app.mini_tap(id, 0);

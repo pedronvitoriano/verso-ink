@@ -49,6 +49,7 @@ pub fn pages(game: usize) -> &'static [Page] {
         14 => &HISTORIAS,
         15 => &DAMAS,
         16 => &VELHA,
+        17 => &REVERSI,
         _ => &[],
     }
 }
@@ -161,6 +162,12 @@ static VELHA: [Page; 3] = [
     p("O clássico", "Três em linha (deitado, em pé ou na diagonal) ganha. Você é o X. Quem começa troca a cada partida.", "", ""),
     p("O super", "O tabuleiro tem 9 velhas pequenas. A casa onde você joga dentro de uma velha manda o outro jogar na velha de mesma posição: jogou no canto de cima, ele vai para a velha do canto de cima.", "", ""),
     p("Vencer o super", "Ganhe uma velha pequena para marcá-la com o seu símbolo. Três velhas em linha vencem. Se a velha para onde você foi mandado já acabou, jogue em qualquer uma.", "", ""),
+];
+
+static REVERSI: [Page; 3] = [
+    p("O objetivo", "Tenha mais peças que o adversário ao fim. As pretas começam.", "", ""),
+    p("Virar peças", "Coloque uma peça para cercar uma ou mais peças adversárias entre ela e outra peça sua. As peças cercadas viram, inclusive na diagonal.", "", ""),
+    p("Sua vez", "Os pontos mostram onde você pode jogar. Sem jogada, a vez passa automaticamente. Quando nenhum dos dois pode jogar, conte as peças.", "", ""),
 ];
 
 static HISTORIAS: [Page; 2] = [
