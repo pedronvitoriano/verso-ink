@@ -144,7 +144,15 @@ pub fn due_count() -> usize {
             return *n;
         }
     }
+    // Também em disco: no boot, a Início não recalcula se nada mudou (188 ms no Kindle).
+    let disk = data("cache-revisao.txt");
+    let tag = format!("{:?}", key);
+    if let Some(n) = std::fs::read_to_string(&disk).ok().and_then(|t| t.strip_prefix(&format!("{tag}\n")).and_then(|n| n.trim().parse().ok())) {
+        *c = Some((key, n));
+        return n;
+    }
     let n = due(&cards(), &states(), today(), new_today(today())).len();
+    let _ = std::fs::write(&disk, format!("{tag}\n{n}\n"));
     *c = Some((key, n));
     n
 }
