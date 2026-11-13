@@ -44,6 +44,7 @@ mod semana;
 mod velha;
 mod reversi;
 mod go;
+mod cruzadas;
 mod claude_ui;
 mod clock;
 mod update;

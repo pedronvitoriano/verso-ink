@@ -122,7 +122,11 @@ pub fn draw_menu(fb: &mut Framebuffer, f: &Fonts, title: &str, subtitle: &str, o
 
 /// A ilustração do jogo num cartão, ocupando o espaço livre do menu (de `top` até o rodapé).
 pub fn menu_art(fb: &mut Framebuffer, title: &str, top: i32) {
-    let bottom = 1390;
+    menu_art_ate(fb, title, top, 1390);
+}
+
+/// Ilustração com limite inferior escolhido para telas que reservam margem maior.
+pub fn menu_art_ate(fb: &mut Framebuffer, title: &str, top: i32, bottom: i32) {
     let h = bottom - top;
     if h < 200 {
         return;
@@ -173,6 +177,7 @@ pub fn make(i: usize) -> Option<Box<dyn MiniGame>> {
         16 => Box::new(crate::velha::Velha::new()),
         17 => Box::new(crate::reversi::Reversi::new()),
         18 => Box::new(crate::go::Go::new()),
+        19 => Box::new(crate::cruzadas::Cruzadas::new()),
         _ => return None,
     })
 }

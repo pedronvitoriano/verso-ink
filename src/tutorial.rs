@@ -51,6 +51,7 @@ pub fn pages(game: usize) -> &'static [Page] {
         16 => &VELHA,
         17 => &REVERSI,
         18 => &GO,
+        19 => &CRUZADAS,
         _ => &[],
     }
 }
@@ -175,6 +176,12 @@ static GO: [Page; 3] = [
     p("O objetivo", "Cerque mais espaço que o adversário. As pretas começam e as brancas recebem 6,5 pontos de vantagem.", "", ""),
     p("Liberdades", "Coloque pedras nas interseções. Pedras ligadas precisam de espaços livres ao lado; um grupo sem espaços é capturado. Não vale repetir imediatamente a posição anterior.", "", ""),
     p("Fim da partida", "Duas passagens encerram a partida. Capture as pedras presas antes de passar: as pedras que restarem contam na área de cada jogador.", "", ""),
+];
+
+static CRUZADAS: [Page; 3] = [
+    p("Uma por dia", "Cada dia traz uma grade nova. Toque em uma casa para escolher a palavra e leia a dica abaixo da grade.", "", ""),
+    p("Escrever", "Toque em Escrever e digite a palavra inteira. Acentos são retirados na grade. No cruzamento, toque de novo para trocar a direção.", "", ""),
+    p("Conferir e revelar", "Use Conferir para destacar letras erradas ou Revelar letra para preencher a casa escolhida. Seu progresso fica guardado no dia.", "", ""),
 ];
 
 static HISTORIAS: [Page; 2] = [

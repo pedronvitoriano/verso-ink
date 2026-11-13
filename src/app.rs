@@ -713,7 +713,7 @@ impl App {
                 }
             }
             Screen::MiniText => {
-                let kicker = if self.mini_game == 14 { "HISTÓRIAS" } else { "JOGO" };
+                let kicker = if self.mini_back == Screen::Games && self.mini_game == 14 { "HISTÓRIAS" } else { "ESCREVER" };
                 ui::draw_field_header(fb, f, kicker, &self.mini_prompt);
                 crate::today_ui::draw_field(fb, f, &self.compose_text, &self.compose_hint);
                 self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
@@ -2115,12 +2115,14 @@ impl App {
             self.compose_hint = "Escreva alguma coisa antes de tocar em OK.".into();
             return self.render(false);
         }
-        self.fb.fill(self.fb.screen(), ui::PAPER);
-        ui::draw_field_header(&mut self.fb, &self.fonts, "UM MOMENTO", "Escrevendo…");
-        let hint = "O Verso está escrevendo a continuação. Leva até um minuto.";
-        self.fonts.draw(&mut self.fb, crate::text::Face::Body, 32.0, 72, 460, ui::MUTED, hint);
-        self.fb.refresh(self.fb.screen(), Wave::Quality, true);
-        self.fb.wait();
+        if self.mini_back == Screen::Games && self.mini_game == 14 {
+            self.fb.fill(self.fb.screen(), ui::PAPER);
+            ui::draw_field_header(&mut self.fb, &self.fonts, "UM MOMENTO", "Escrevendo…");
+            let hint = "O Verso está escrevendo a continuação. Leva até um minuto.";
+            self.fonts.draw(&mut self.fb, crate::text::Face::Body, 32.0, 72, 460, ui::MUTED, hint);
+            self.fb.refresh(self.fb.screen(), Wave::Quality, true);
+            self.fb.wait();
+        }
         if let Some(g) = self.mini.as_mut() {
             g.text_input(&text);
         }
@@ -2152,7 +2154,7 @@ impl App {
         if let Some(prompt) = g.wants_text() {
             self.mini_prompt = prompt;
             self.compose_text.clear();
-            self.compose_hint = "Escreva o que acontece agora e toque em OK.".into();
+            self.compose_hint = if self.mini_back == Screen::Games && self.mini_game == 14 { "Escreva o que acontece agora e toque em OK." } else { "Digite e toque em OK." }.into();
             return self.go(Screen::MiniText);
         }
         self.apply_mini_redraw(r);
@@ -4141,6 +4143,12 @@ mod raio_x {
                     if name == "go" {
                         app.mini = Some(Box::new(crate::go::Go::final_para_print()));
                         shot(&mut app, "jogo-go-fim");
+                    }
+                    if name == "cruzadas" {
+                        let mut g = crate::cruzadas::Cruzadas::new();
+                        g.screenshot_finish();
+                        app.mini = Some(Box::new(g));
+                        shot(&mut app, "jogo-cruzadas-fim");
                     }
                     if name == "coroas" {
                         for id in [0, 1, 7] {
