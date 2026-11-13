@@ -47,6 +47,7 @@ mod go;
 mod cruzadas;
 mod puzzle_dia;
 mod geografia;
+mod matematica;
 mod claude_ui;
 mod clock;
 mod update;

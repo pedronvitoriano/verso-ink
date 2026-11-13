@@ -4258,6 +4258,18 @@ mod raio_x {
         }
         let _ = std::fs::remove_file(home.join("data/geografia.txt"));
         let _ = std::fs::remove_file(home.join("data/aprender.txt"));
+        let _ = crate::aprender::add(10, "matematica");
+        for (g, name) in [
+            (crate::matematica::Matematica::print_menu(), "matematica-menu"),
+            (crate::matematica::Matematica::print_questao(), "matematica-questao"),
+            (crate::matematica::Matematica::print_feedback(), "matematica-resposta"),
+            (crate::matematica::Matematica::print_fim(), "matematica-fim"),
+        ] {
+            app.mini = Some(Box::new(g));
+            app.go(Screen::Mini);
+            shot(&mut app, name);
+        }
+        let _ = std::fs::remove_file(home.join("data/aprender.txt"));
         // Revisão de um erro real: coordenadas, alternativa e cobertura da análise.
         app.saved_games = vec![crate::coach::Saved {
             file: home.join("data/xadrez/partidas/exemplo.txt"),

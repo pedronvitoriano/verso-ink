@@ -134,7 +134,7 @@ pub fn habit_topics() -> Vec<(String, Vec<String>)> {
     let t = today();
     let used: Vec<String> = xp_by_source(t - 29, t).into_iter().map(|(s, _)| s).collect();
     let mut v = vec![("Aprender".to_string(), Vec::new())];
-    for (name, srcs) in [("Violão", vec!["violao"]), ("Partitura", vec!["licao", "treino"]), ("Destaques", vec!["revisao"]), ("Geografia", vec!["geografia"])] {
+    for (name, srcs) in [("Violão", vec!["violao"]), ("Partitura", vec!["licao", "treino"]), ("Destaques", vec!["revisao"]), ("Geografia", vec!["geografia"]), ("Matemática mental", vec!["matematica"])] {
         if srcs.iter().any(|s| used.iter().any(|u| u == s)) {
             v.push((name.to_string(), srcs.iter().map(|s| s.to_string()).collect()));
         }

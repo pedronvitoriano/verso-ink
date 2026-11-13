@@ -256,7 +256,7 @@ pub struct Estudo {
 }
 
 /// Os três tópicos embutidos: (nome, fontes de XP, ícone).
-const BUILTIN: [(&str, &[&str], &str); 4] = [("Violão", &["violao"], "violao"), ("Partitura", &["licao", "treino"], "partitura"), ("Destaques", &["revisao"], "destaques"), ("Geografia", &["geografia"], "geografia")];
+const BUILTIN: [(&str, &[&str], &str); 5] = [("Violão", &["violao"], "violao"), ("Partitura", &["licao", "treino"], "partitura"), ("Destaques", &["revisao"], "destaques"), ("Geografia", &["geografia"], "geografia"), ("Matemática mental", &["matematica"], "matematica")];
 const PER_PAGE: usize = 8;
 
 impl Estudo {
@@ -340,7 +340,8 @@ impl Estudo {
                     0 => if crate::violao::practiced_today() { "Treino feito hoje".to_string() } else { "Trocas, cifras, acordes".to_string() },
                     1 => format!("{} de {} lições", crate::partitura::done().len().min(crate::partitura::total()), crate::partitura::total()),
                     2 => format!("{} para hoje", crate::revisao::due_count()),
-                    _ => "Capitais e países".to_string(),
+                    3 => "Capitais e países".to_string(),
+                    _ => "Contas rápidas por nível".to_string(),
                 };
                 (BUILTIN[k].0.to_string(), sub, Some(BUILTIN[k].2.to_string()))
             } else if let Some((id, theme, t)) = self.topics.get(k - BUILTIN.len()) {
@@ -703,7 +704,8 @@ impl MiniGame for Estudo {
                         0 => Box::new(crate::violao::Violao::new()),
                         1 => Box::new(crate::violao::Violao::course()),
                         2 => Box::new(crate::revisao::Revisao::new()),
-                        _ => Box::new(crate::geografia::Geografia::new()),
+                        3 => Box::new(crate::geografia::Geografia::new()),
+                        _ => Box::new(crate::matematica::Matematica::new()),
                     });
                 } else if k == self.n_cards() - 1 {
                     self.want_text = true;
