@@ -124,6 +124,7 @@ pub enum Block {
 pub struct Book {
     pub path: PathBuf,
     pub title: String,
+    pub ingles: bool,
     /// Arquivos do capítulo (EPUB) na ordem de leitura, ou um só (TXT).
     spine: Vec<String>,
     /// Títulos do sumário por capítulo (quando o livro tiver).
@@ -369,7 +370,7 @@ impl Book {
     pub fn open(path: &Path) -> Result<Book, String> {
         let title_from_file = path.file_stem().and_then(|s| s.to_str()).unwrap_or("Livro").to_string();
         if path.extension().is_some_and(|e| e.eq_ignore_ascii_case("txt")) {
-            return Ok(Book { path: path.into(), title: title_from_file, spine: vec![String::new()], titles: vec![None], kind: Kind::Txt, blocks: vec![], ranges: vec![] });
+            return Ok(Book { path: path.into(), title: title_from_file, ingles: false, spine: vec![String::new()], titles: vec![None], kind: Kind::Txt, blocks: vec![], ranges: vec![] });
         }
         let ext = path.extension().and_then(|e| e.to_str()).map(|e| e.to_ascii_lowercase()).unwrap_or_default();
         if ext == "azw3" || ext == "mobi" {
@@ -380,7 +381,7 @@ impl Book {
             let blocks = parse_xhtml(&html);
             let (ranges, titles) = split_chapters(&blocks);
             let title = if title.trim().is_empty() { title_from_file } else { decode_entities(title.trim()) };
-            return Ok(Book { path: path.into(), title, spine: vec![String::new(); ranges.len()], titles, kind: Kind::Mobi, blocks, ranges });
+            return Ok(Book { path: path.into(), title, ingles: false, spine: vec![String::new(); ranges.len()], titles, kind: Kind::Mobi, blocks, ranges });
         }
         let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
         let mut z = zip::ZipArchive::new(file).map_err(|_| "não é um EPUB válido".to_string())?;
@@ -398,6 +399,12 @@ impl Book {
             })
             .filter(|t| !t.is_empty())
             .unwrap_or(title_from_file);
+        let ingles = opf.find("<dc:language").and_then(|i| {
+            let s = &opf[i..];
+            let a = s.find('>')? + 1;
+            let b = s.find("</dc:language")?;
+            Some(s[a..b].trim().to_ascii_lowercase().starts_with("en"))
+        }).unwrap_or(false);
         // Manifesto: id -> (href, tipo, propriedades).
         let mut items: HashMap<String, (String, String, String)> = HashMap::new();
         for tag in opf.split("<item ").skip(1) {
@@ -439,7 +446,7 @@ impl Book {
             }
         }
         let titles = spine.iter().map(|s| toc.get(s).cloned().filter(|t| !t.is_empty())).collect();
-        Ok(Book { path: path.into(), title, spine, titles, kind: Kind::Epub, blocks: vec![], ranges: vec![] })
+        Ok(Book { path: path.into(), title, ingles, spine, titles, kind: Kind::Epub, blocks: vec![], ranges: vec![] })
     }
 
     pub fn chapters(&self) -> usize {
@@ -691,6 +698,8 @@ pub fn parse_xhtml(src: &str) -> Vec<Block> {
 pub struct Piece {
     pub x: f32,
     pub text: String,
+    /// Palavra original antes da hifenização feita pela paginação.
+    pub original: String,
     pub style: Style,
 }
 
@@ -738,7 +747,7 @@ pub fn paginate(fonts: &RFonts, blocks: &[Block], size: f32) -> Vec<Page> {
                 let sz = if head { (size * 1.3).round() } else { size };
                 let blh = (sz * 1.48).round() as i32;
                 // Palavras com estilo; a palavra mantém o espaço que vem antes dela.
-                let mut words: Vec<(String, Style)> = Vec::new();
+                let mut words: Vec<(String, Style, String)> = Vec::new();
                 for r in runs {
                     let st = if head { Style::Bold } else { r.style };
                     let mut first = true;
@@ -751,12 +760,13 @@ pub fn paginate(fonts: &RFonts, blocks: &[Block], size: f32) -> Vec<Page> {
                             if let Some(last) = words.last_mut() {
                                 if last.1 == st {
                                     last.0.push_str(w);
+                                    last.2.push_str(w);
                                     first = false;
                                     continue;
                                 }
                             }
                         }
-                        words.push((w.to_string(), st));
+                        words.push((w.to_string(), st, w.to_string()));
                         first = false;
                     }
                 }
@@ -793,7 +803,8 @@ pub fn paginate(fonts: &RFonts, blocks: &[Block], size: f32) -> Vec<Page> {
                         if let Some((a, b)) = hyphenate(&words[j].0, |pre| fonts.measure(st, sz, pre) <= room) {
                             let w = fonts.measure(st, sz, &a);
                             words[j].0 = a;
-                            words.insert(j + 1, (b, st));
+                            let original = words[j].2.clone();
+                            words.insert(j + 1, (b, st, original));
                             natural += space + w;
                             ws.push(w);
                             j += 1;
@@ -812,7 +823,7 @@ pub fn paginate(fonts: &RFonts, blocks: &[Block], size: f32) -> Vec<Page> {
                     }
                     let mut pieces = Vec::with_capacity(j - i);
                     for (k, idx) in (i..j).enumerate() {
-                        pieces.push(Piece { x, text: words[idx].0.clone(), style: words[idx].1 });
+                        pieces.push(Piece { x, text: words[idx].0.clone(), original: words[idx].2.clone(), style: words[idx].1 });
                         x += ws[k] + space + extra;
                     }
                     y += blh;
@@ -883,6 +894,13 @@ pub fn page_of(pages: &[Page], pos: (usize, usize)) -> usize {
 
 // ---------- Estado de leitura ----------
 
+pub struct DictView {
+    pub palavra: String,
+    pub definicao: String,
+    pub aviso: bool,
+    pub page: usize,
+}
+
 pub struct Reader {
     pub book: Book,
     pub size_k: usize,
@@ -891,6 +909,7 @@ pub struct Reader {
     pub pages: Vec<Page>,
     pub page: usize,
     pub menu: bool,
+    pub dict: Option<DictView>,
     pub turns: u32,
     pub chapter_title: String,
 }
@@ -914,7 +933,7 @@ impl Reader {
         let saved = std::fs::read_to_string(pos_file(path)).unwrap_or_default();
         let n: Vec<usize> = saved.split_whitespace().take(4).filter_map(|x| x.parse().ok()).collect();
         let (chapter, block, word, size_k) = (n.first().copied().unwrap_or(0), n.get(1).copied().unwrap_or(0), n.get(2).copied().unwrap_or(0), n.get(3).copied().unwrap_or(2));
-        let mut r = Reader { book, size_k: size_k.min(SIZES.len() - 1), chapter: 0, blocks: vec![], pages: vec![], page: 0, menu: false, turns: 0, chapter_title: String::new() };
+        let mut r = Reader { book, size_k: size_k.min(SIZES.len() - 1), chapter: 0, blocks: vec![], pages: vec![], page: 0, menu: false, dict: None, turns: 0, chapter_title: String::new() };
         r.load_chapter(chapter.min(r.book.chapters() - 1), fonts);
         r.page = page_of(&r.pages, (block, word));
         Ok(r)
@@ -986,6 +1005,35 @@ impl Reader {
         let _ = std::fs::write(pos_file(&self.book.path), format!("{} {} {} {} {:.4}\n", self.chapter, pos.0, pos.1, self.size_k, self.progress()));
     }
 
+    /// Encontra a palavra desenhada sob o dedo, usando as mesmas medidas da paginação.
+    pub fn palavra_em(&self, fonts: &RFonts, x: i32, y: i32) -> Option<String> {
+        let page = self.pages.get(self.page)?;
+        for line in &page.lines {
+            if y < line.baseline - line.size as i32 || y > line.baseline + (line.size * 0.35) as i32 { continue; }
+            for piece in &line.pieces {
+                let width = fonts.measure(piece.style, line.size, &piece.text);
+                if (x as f32) < piece.x || (x as f32) > piece.x + width { continue; }
+                let word = piece.original.trim_matches(|c: char| !c.is_alphabetic()).to_string();
+                return (!word.is_empty()).then_some(word);
+            }
+        }
+        None
+    }
+
+    pub fn consultar(&mut self, fonts: &RFonts, x: i32, y: i32) -> bool {
+        let Some(word) = self.palavra_em(fonts, x, y) else { return false };
+        let verbete = crate::dicionario::consultar(&word, self.book.ingles);
+        let aviso_path = crate::home_dir().join("data/dicionario-aviso.txt");
+        let aviso = verbete.as_ref().is_some_and(|v| v.portugues) && !aviso_path.exists();
+        if aviso {
+            if let Some(dir) = aviso_path.parent() { let _ = std::fs::create_dir_all(dir); }
+            let _ = std::fs::write(aviso_path, "1\n");
+        }
+        let (palavra, definicao) = verbete.map(|v| (v.palavra, v.definicao)).unwrap_or((word, "Palavra não encontrada no dicionário.".into()));
+        self.dict = Some(DictView { palavra, definicao, aviso, page: 0 });
+        true
+    }
+
     /// Texto da página atual (para o Claude entender a pergunta).
     pub fn page_text(&self) -> String {
         self.pages
@@ -1032,6 +1080,36 @@ pub fn draw(fb: &mut Framebuffer, f: &crate::text::Fonts, rf: &RFonts, r: &Reade
     if r.menu {
         draw_menu(fb, f, r);
     }
+    if let Some(d) = &r.dict { draw_dict(fb, f, d); }
+}
+
+pub fn dict_btn(k: usize) -> Rect {
+    match k {
+        0 => Rect::new(130, 958, 220, 80),
+        1 => Rect::new(371, 958, 220, 80),
+        _ => Rect::new(612, 958, 330, 80),
+    }
+}
+
+pub fn dict_pages(f: &crate::text::Fonts, d: &DictView) -> usize {
+    crate::chat::wrap_words(f, crate::text::Face::Body, 32.0, &d.definicao, 756).len().max(1).div_ceil(9)
+}
+
+fn draw_dict(fb: &mut Framebuffer, f: &crate::text::Fonts, d: &DictView) {
+    use crate::text::Face;
+    use crate::ui;
+    let r = Rect::new(72, 338, 928, 730);
+    ui::card(fb, r, 22, PAPER, false);
+    let title = crate::apps::fit(f, Face::Display, 44.0, &d.palavra, 800);
+    f.draw(fb, Face::Display, 44.0, 128, 414, INK, &title);
+    let lines = crate::chat::wrap_words(f, Face::Body, 32.0, &d.definicao, 756);
+    for (k, line) in lines.iter().skip(d.page * 9).take(9).enumerate() {
+        f.draw(fb, Face::Body, 32.0, 128, 474 + k as i32 * 43, INK, line);
+    }
+    if d.aviso { f.draw(fb, Face::Body, 23.0, 128, 920, MUTED, "Dicionário português de 1913: grafia antiga."); }
+    if d.page > 0 { ui::button(fb, f, dict_btn(0), "Anterior", false); }
+    if d.page + 1 < dict_pages(f, d) { ui::button(fb, f, dict_btn(1), "Continuar", false); }
+    ui::button(fb, f, dict_btn(2), "Fechar", true);
 }
 
 pub fn menu_top() -> Rect {
@@ -1136,6 +1214,33 @@ mod tests {
     use super::*;
 
     #[test]
+    fn localiza_palavras_hifenizadas_entre_paginas_sem_juntar_hifen_natural() {
+        let fonts = RFonts::load();
+        let book = Book { path: PathBuf::from("exemplo.txt"), title: "Livro".into(), ingles: false, spine: vec![String::new()], titles: vec![None], kind: Kind::Txt, blocks: vec![], ranges: vec![] };
+        let line = |baseline, text: &str, original: &str| Line { baseline, size: 36.0, pieces: vec![Piece { x: 70.0, text: text.into(), original: original.into(), style: Style::Regular }], rule: false };
+        let mut r = Reader { book, size_k: 2, chapter: 0, blocks: vec![], pages: vec![
+            Page { lines: vec![line(200, "cora-", "coração,")], start: (0, 0) },
+            Page { lines: vec![line(200, "ção,", "coração,"), line(250, "guarda-chuva", "guarda-chuva")], start: (0, 1) },
+        ], page: 0, menu: false, dict: None, turns: 0, chapter_title: String::new() };
+        assert_eq!(r.palavra_em(&fonts, 75, 195).as_deref(), Some("coração"));
+        r.page = 1;
+        assert_eq!(r.palavra_em(&fonts, 75, 195).as_deref(), Some("coração"));
+        assert_eq!(r.palavra_em(&fonts, 75, 245).as_deref(), Some("guarda-chuva"));
+        assert_eq!(r.palavra_em(&fonts, 800, 195), None);
+    }
+
+    #[test]
+    fn paginacao_preserva_palavra_original_na_hifenizacao() {
+        let fonts = RFonts::load();
+        let text = "Um livro extraordinariamente bonito, com guarda-chuva e outros detalhes. ".repeat(500);
+        let pages = paginate(&fonts, &[Block::Para(vec![Run { text, style: Style::Regular }])], 36.0);
+        let pieces: Vec<_> = pages.iter().flat_map(|p| &p.lines).flat_map(|l| &l.pieces).collect();
+        assert!(pieces.iter().any(|p| p.text != p.original && p.text.ends_with('-')), "o exemplo deve gerar hifenização");
+        assert!(pieces.iter().filter(|p| p.text != p.original).all(|p| !p.original.ends_with('-')));
+        assert!(pieces.iter().any(|p| p.text == "guarda-chuva" && p.original == p.text));
+    }
+
+    #[test]
     fn xhtml_vira_paragrafos_com_estilo() {
         let b = parse_xhtml("<html><head><title>x</title><style>p{}</style></head><body><h1>Capítulo 1</h1><p>Era uma <em>vez</em> um&nbsp;livro &amp; tal.</p><p>Outro<br/>parágrafo</p><hr/></body></html>");
         assert_eq!(b[0], Block::Head(vec![Run { text: "Capítulo 1".into(), style: Style::Regular }]));
@@ -1187,7 +1292,7 @@ mod render {
         let rf = RFonts::load();
         let book = Book::open(&path).expect("abre");
         eprintln!("{}: {} capítulos", book.title, book.chapters());
-        let mut r = Reader { book, size_k: 2, chapter: 0, blocks: vec![], pages: vec![], page: 0, menu: false, turns: 0, chapter_title: String::new() };
+        let mut r = Reader { book, size_k: 2, chapter: 0, blocks: vec![], pages: vec![], page: 0, menu: false, dict: None, turns: 0, chapter_title: String::new() };
         r.load_chapter(1.min(r.book.chapters() - 1), &rf);
         let mut fb = Framebuffer::memory();
         draw(&mut fb, &f, &rf, &r);
