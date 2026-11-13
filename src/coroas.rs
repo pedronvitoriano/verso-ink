@@ -207,13 +207,20 @@ fn write_atomic(name: &str, text: &str) {
 
 /// Prepara a grade da fase `level` em segundo plano, enquanto a pessoa joga a atual.
 fn prepare(level: u32) {
-    if read_puzzle("proxima.txt").is_some_and(|p| p.0 == level) {
+    prepare_to("proxima.txt", level);
+}
+
+/// Prepara em segundo plano a grade da fase `level` no arquivo `file` (se ainda não estiver lá).
+fn prepare_to(file: &'static str, level: u32) {
+    if read_puzzle(file).is_some_and(|p| p.0 == level) {
         return;
     }
     std::thread::spawn(move || {
+        // Prioridade mínima: a fase atual continua respondendo ao toque enquanto esta é preparada.
+        crate::background_priority();
         let (reg, sol) = generate_fase(level, std::time::Duration::from_secs(40));
         let n = fase_spec(level).0;
-        write_atomic("proxima.txt", &format!("{level}\n{n}\n{}\n{}\n", enc_reg(&reg), enc_sol(&sol)));
+        write_atomic(file, &format!("{level}\n{n}\n{}\n{}\n", enc_reg(&reg), enc_sol(&sol)));
     });
 }
 
@@ -533,8 +540,15 @@ impl Coroas {
     fn start_recharge(&mut self) {
         self.save();
         let k = (self.stats.level / 10 + 1) * 10;
-        let (reg, sol) = generate_fase(k, std::time::Duration::from_secs(6));
         let n = fase_spec(k).0;
+        // Já preparado em segundo plano (sem travar a tela); senão, gera agora.
+        let (reg, sol) = match read_puzzle("desafio.txt") {
+            Some((l, nn, r, s, _)) if l == k && nn == n => {
+                let _ = std::fs::remove_file(dir().join("desafio.txt"));
+                (r, s)
+            }
+            _ => generate_fase(k, std::time::Duration::from_secs(6)),
+        };
         self.load_grid(0, n, reg, sol);
         self.kind = Kind::Challenge;
         self.recharge = true;
@@ -564,6 +578,8 @@ impl Coroas {
         };
         self.load_grid(k, n, reg, sol);
         prepare(k + 1);
+        // O desafio de recarregar vidas também fica pronto antes de precisar.
+        prepare_to("desafio.txt", (k / 10 + 1) * 10);
     }
 
     fn elapsed(&self) -> u64 {

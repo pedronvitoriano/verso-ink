@@ -399,6 +399,49 @@ impl App {
             app.render(false);
         }
         println!("{:<22} desenho {:>6.1} ms", "Aprender", t.elapsed().as_secs_f64() * 1000.0 / 5.0);
+        // Jogos: começar a partida (cria a fase) e, nela, desenhar e responder a um toque.
+        // VERSO_INK_BENCH_SEM_JOGOS=1 pula esta parte.
+        if std::env::var("VERSO_INK_BENCH_SEM_JOGOS").is_ok() {
+            return;
+        }
+        let f = &app.fonts;
+        for (i, (name, _)) in crate::apps::GAMES.iter().enumerate() {
+            let Some(mut g) = crate::minigame::make(i) else { continue };
+            let mut fb = Framebuffer::memory();
+            g.draw(&mut fb, f);
+            let t = Instant::now();
+            // Primeira opção do menu: fase 1, contra a CPU ou a primeira história.
+            if let Some((id, _)) = g.targets().into_iter().find(|(id, _)| *id == 900) {
+                g.tap(id, 0, 0);
+            }
+            let start = t.elapsed().as_secs_f64() * 1000.0;
+            let t = Instant::now();
+            for _ in 0..3 {
+                g.draw(&mut fb, f);
+            }
+            let draw = t.elapsed().as_secs_f64() * 1000.0 / 3.0;
+            let tg = g.targets();
+            let t = Instant::now();
+            if let Some((id, r)) = tg.iter().find(|(id, _)| *id < 800).copied() {
+                g.tap(id, r.x + r.w / 2, r.y + r.h / 2);
+                g.draw(&mut fb, f);
+            }
+            let tap = t.elapsed().as_secs_f64() * 1000.0;
+            let t = Instant::now();
+            let mut cpu = 0;
+            while g.cpu_turn() && cpu < 3 {
+                g.cpu_move();
+                cpu += 1;
+            }
+            let cpu_ms = t.elapsed().as_secs_f64() * 1000.0;
+            println!("jogo {name:<16} começar {start:>7.1} · desenho {draw:>6.1} · toque+desenho {tap:>6.1} · CPU {cpu_ms:>6.1} ms");
+        }
+        // Coroas: criar a fase de cada nível (o que a pessoa espera quando a próxima não ficou pronta).
+        for k in [1u32, 5, 10, 15, 20, 30] {
+            let t = Instant::now();
+            let _ = crate::coroas::generate_fase(k, Duration::from_secs(6));
+            println!("coroas fase {k:<3} criar {:>7.0} ms", t.elapsed().as_secs_f64() * 1000.0);
+        }
     }
 
     pub fn new(fb: Framebuffer) -> Self {
