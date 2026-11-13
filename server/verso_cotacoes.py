@@ -9,8 +9,9 @@ import time
 import urllib.request
 
 
-URL = "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL,GBP-BRL,ARS-BRL,BTC-BRL"
-MOEDAS = ("USD", "EUR", "GBP", "ARS", "BTC")
+# Aberta e sem chave (a AwesomeAPI passou a exigir chave: 429 QuotaExceeded em 13/11/2026).
+URL = "https://open.er-api.com/v6/latest/BRL"
+MOEDAS = ("USD", "EUR", "GBP", "ARS")
 MAX_RESPONSE = 1024 * 1024
 CACHE_SECONDS = 3600
 
@@ -34,12 +35,13 @@ class Cotacoes:
                 payload = json.loads(raw)
                 valores = {}
                 for moeda in MOEDAS:
-                    value = float(payload[moeda + "BRL"]["bid"])
+                    # A resposta diz quanto de cada moeda vale 1 real; o app quer reais por moeda.
+                    value = 1.0 / float(payload["rates"][moeda])
                     if not math.isfinite(value) or value <= 0:
                         raise ValueError("cotação inválida")
                     valores[moeda] = value
                 valores["quando"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-            except (OSError, http.client.HTTPException, ValueError, TypeError, KeyError, OverflowError):
+            except (OSError, http.client.HTTPException, ValueError, TypeError, KeyError, OverflowError, ZeroDivisionError):
                 if self._cache is None:
                     return 502, {"error": "não foi possível obter as cotações"}
                 return 200, {**self._cache, "antigo": True}

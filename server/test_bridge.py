@@ -341,9 +341,10 @@ class CotacoesTest(unittest.TestCase):
     def setUp(self):
         from verso_cotacoes import Cotacoes
         self.cotacoes = Cotacoes()
-        self.payload = {moeda + "BRL": {"bid": str(valor)} for moeda, valor in (
-            ("USD", 5.43), ("EUR", 6.12), ("GBP", 7.01), ("ARS", 0.005), ("BTC", 324000)
-        )}
+        # Formato da open.er-api.com: quanto de cada moeda vale 1 real.
+        self.payload = {"result": "success", "rates": {moeda: 1 / valor for moeda, valor in (
+            ("USD", 5.43), ("EUR", 6.12), ("GBP", 7.01), ("ARS", 0.005)
+        )}}
 
     def response(self, payload):
         class Response:
@@ -367,7 +368,7 @@ class CotacoesTest(unittest.TestCase):
         self.assertEqual((status, status2), (200, 200))
         self.assertEqual(first, second)
         self.assertEqual(first["USD"], 5.43)
-        self.assertEqual(first["BTC"], 324000)
+        self.assertAlmostEqual(first["ARS"], 0.005)
         self.assertIn("quando", first)
         self.assertNotIn("antigo", first)
         self.assertEqual(fetch.call_count, 1)
@@ -384,7 +385,7 @@ class CotacoesTest(unittest.TestCase):
         self.assertEqual(stale, first)
 
     def test_cotacoes_failure_without_cache_and_invalid_values(self):
-        self.payload["USDBRL"]["bid"] = "nan"
+        self.payload["rates"]["USD"] = "nan"
         with patch("verso_cotacoes.urllib.request.urlopen", return_value=self.response(self.payload)):
             status, body = self.cotacoes.obter()
         self.assertEqual(status, 502)
