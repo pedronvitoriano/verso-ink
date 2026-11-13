@@ -30,10 +30,6 @@ pub fn goal() -> u32 {
     std::fs::read_to_string(crate::home_dir().join("settings/meta_xp")).ok().and_then(|s| s.trim().parse().ok()).filter(|n| (10..=200).contains(n)).unwrap_or(30)
 }
 
-pub fn set_goal(n: u32) {
-    let _ = std::fs::create_dir_all(crate::home_dir().join("settings"));
-    let _ = std::fs::write(crate::home_dir().join("settings/meta_xp"), n.to_string());
-}
 
 /// (dia, xp, fonte) de cada registro.
 fn log() -> Vec<(i64, u32, String)> {
@@ -271,27 +267,7 @@ pub fn flame(fb: &mut Framebuffer, r: Rect, lit: bool) {
     }
 }
 
-/// Selo compacto: chama + dias e a barra de XP de hoje. Largura ~300, altura 84.
-pub fn chip(fb: &mut Framebuffer, f: &Fonts, x: i32, y: i32, st: &Status) {
-    let r = Rect::new(x, y, 300, 84);
-    ui::card(fb, r, 42, PAPER, false);
-    flame(fb, Rect::new(r.x + 12, r.y + 8, 66, 66), st.today_done);
-    let n = st.streak.to_string();
-    f.draw(fb, Face::Display, 44.0, r.x + 84, r.y + 58, if st.today_done { INK } else { MUTED }, &n);
-    let nx = r.x + 84 + f.measure(Face::Display, 44.0, &n) + 16;
-    let t = format!("{}/{} XP", st.xp_today.min(999), st.goal);
-    f.draw(fb, Face::Strong, 22.0, nx, r.y + 36, MUTED, &t);
-    let bar = Rect::new(nx, r.y + 48, r.x + r.w - 22 - nx, 12);
-    fb.round_rect(bar, 6, 0xC8);
-    let fill = (bar.w as u32 * st.xp_today.min(st.goal) / st.goal.max(1)) as i32;
-    if fill > 0 {
-        fb.round_rect(Rect::new(bar.x, bar.y, fill.max(12), bar.h), 6, INK);
-    }
-}
 
-pub fn chip_rect(x: i32, y: i32) -> Rect {
-    Rect::new(x, y, 300, 84)
-}
 
 const DAYS: [&str; 7] = ["D", "S", "T", "Q", "Q", "S", "S"];
 

@@ -586,6 +586,7 @@ fn draw_daily_art(fb: &mut Framebuffer, st: &Status) {
 #[derive(Default)]
 pub struct HomeExtra {
     pub book: Option<crate::data::LastBook>,
+    #[allow(dead_code)] // guardado no arquivo; ainda sem tela que o mostre
     pub game: Option<&'static str>,
 }
 

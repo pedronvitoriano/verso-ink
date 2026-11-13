@@ -453,7 +453,7 @@ pub fn draw_review(fb: &mut Framebuffer, f: &Fonts, sp: &Sprites, g: &Saved, k: 
     }
     let route = |m: chess::Move| format!("{}→{}", chess::square_name(m.from), chess::square_name(m.to));
     let legend = match (played, best.filter(|b| Some(*b) != played)) {
-        (Some(user), Some(alt)) => format!("Cinza: seu {} ({}) · moldura: {} ({})", rec.san, route(user), rec.best_san, route(alt)),
+        (Some(_), Some(_)) => format!("A seta mostra o seu {}; a moldura, o melhor: {}.", rec.san, rec.best_san),
         (Some(user), _) => format!("Cinza: seu {} ({})", rec.san, route(user)),
         _ => String::new(),
     };

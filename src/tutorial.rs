@@ -474,16 +474,6 @@ fn draw_board(fb: &mut Framebuffer, f: &Fonts, page: &Page, top: i32) -> i32 {
     draw_board_in(fb, f, page, Rect::new(MARGIN, top, W - 2 * MARGIN, 440), max_cell)
 }
 
-/// Miniatura do jogo (a ilustração da 1ª página do tutorial) dentro de `area`, alinhada à direita.
-pub fn draw_preview(fb: &mut Framebuffer, f: &Fonts, game: usize, area: Rect) {
-    if let Some(p) = pages(game).iter().find(|p| !p.board.is_empty() && p.board != "FASES") {
-        let rows = p.board.lines().count() as i32;
-        let cols = p.board.lines().map(|l| l.chars().count()).max().unwrap_or(1) as i32;
-        let s = (area.w / cols.max(1)).min(area.h / rows.max(1)).min(64);
-        let (w, h) = (s * cols, s * rows);
-        draw_board_in(fb, f, p, Rect::new(area.x + area.w - w, area.y + (area.h - h) / 2, w, h), s);
-    }
-}
 
 fn draw_board_in(fb: &mut Framebuffer, f: &Fonts, page: &Page, area: Rect, max_cell: i32) -> i32 {
     let top = area.y;

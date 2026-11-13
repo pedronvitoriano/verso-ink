@@ -1010,9 +1010,10 @@ pub fn draw_compose(fb: &mut Framebuffer, f: &Fonts, c: &Compose) {
     fb.fill(fb.screen(), PAPER);
     ui::draw_back(fb, f, false);
     // Cabeçalho: a marca do Verso e a pergunta.
-    ui::icon(fb, ui::Module::Claude, MARGIN - 4, 176, 64, INK);
+    ui::icon(fb, ui::Module::Claude, MARGIN - 4, 194, 60, INK);
     let title = if c.image { "Crie uma imagem" } else if c.chat_title.is_some() { "Continue a conversa" } else { "Pergunte ao Verso" };
-    f.draw(fb, Face::Display, 58.0, MARGIN + 80, 232, INK, title);
+    // Respiro entre a fileira de botões (Imagem, Brain, Anexar) e o título.
+    f.draw(fb, Face::Display, 56.0, MARGIN + 76, 248, INK, title);
     if let Some(t) = c.chat_title {
         let t = fit(f, Face::Body, 26.0, t, W - 2 * MARGIN - 560);
         let w = f.measure(Face::Body, 26.0, &t);

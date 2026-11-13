@@ -68,6 +68,7 @@ pub struct Approval {
 /// Estado vindo da VPS numa consulta só (avisos, aprovações, modo longe).
 pub struct Sync {
     pub approvals: Vec<Approval>,
+    #[allow(dead_code)] // guardado no arquivo; ainda sem tela que o mostre
     pub away: bool,
 }
 
@@ -115,9 +116,6 @@ pub fn decide(id: &str, allow: bool) -> Result<(), String> {
     chat::call("POST", &format!("/aprovacoes/{id}"), Some(&format!("{{\"decision\": \"{}\"}}", if allow { "permitir" } else { "negar" })), 15).map(|_| ())
 }
 
-pub fn set_away(on: bool) -> Result<bool, String> {
-    chat::call("POST", "/longe", Some(&format!("{{\"on\": {on}}}")), 15).map(|j| j.get("on").and_then(Json::bool).unwrap_or(on))
-}
 
 /// O pedido já passou dos 10 minutos (a ponte nega sozinha).
 pub fn approval_expired(a: &Approval) -> bool {

@@ -11,6 +11,7 @@ use std::sync::mpsc::{channel, Receiver};
 
 #[derive(Default, Clone)]
 pub struct Week {
+    #[allow(dead_code)] // guardado no arquivo; ainda sem tela que o mostre
     pub id: String,
     pub title: String,
     pub summary: Vec<String>,

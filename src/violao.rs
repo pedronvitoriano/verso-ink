@@ -224,6 +224,7 @@ enum Line {
 }
 
 pub struct Song {
+    #[allow(dead_code)] // guardado no arquivo; ainda sem tela que o mostre
     pub path: PathBuf,
     pub title: String,
     lines: Vec<Line>,
@@ -1020,9 +1021,6 @@ impl Violao {
         ui::button(fb, f, Self::nav(1), "Pergunta ›", true);
     }
 
-    fn check_next() -> Rect {
-        Rect::new(W - MARGIN - 340, Self::nav(1).y, 340, Self::nav(1).h)
-    }
 
     fn option_rect(k: usize) -> Rect {
         Rect::new(MARGIN, 560 + k as i32 * 112, W - 2 * MARGIN, 98)
