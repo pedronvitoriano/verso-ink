@@ -59,7 +59,7 @@ pub fn draw(fb: &mut Framebuffer, name: &str, r: Rect) -> bool {
                 let a = px[k + 1] as u32;
                 if a > 8 {
                     let d = &mut fb.buf[dst + x as usize];
-                    *d = ((*d as u32 * (255 - a) + px[k] as u32 * a + 127) / 255) as u8;
+                    *d = crate::fb::mix(*d, px[k], a);
                 }
             }
         }
