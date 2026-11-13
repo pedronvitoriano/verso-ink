@@ -180,6 +180,8 @@ pub fn make(i: usize) -> Option<Box<dyn MiniGame>> {
         17 => Box::new(crate::reversi::Reversi::new()),
         18 => Box::new(crate::go::Go::new()),
         19 => Box::new(crate::cruzadas::Cruzadas::new()),
+        20 => Box::new(crate::dominio::Dominio::new()),
+        21 => Box::new(crate::detetive::Detetive::new()),
         _ => return None,
     })
 }

@@ -4302,6 +4302,24 @@ mod raio_x {
                         app.mini = Some(Box::new(crate::go::Go::final_para_print()));
                         shot(&mut app, "jogo-go-fim");
                     }
+                    if name == "detetive" {
+                        app.mini_tap(803, 0);
+                        shot(&mut app, "jogo-detetive-pessoas");
+                        app.mini_tap(0, 0);
+                        shot(&mut app, "jogo-detetive-pista");
+                        app.mini_tap(803, 0);
+                        app.mini_tap(801, 0);
+                        shot(&mut app, "jogo-detetive-caderno");
+                        app.mini_tap(812, 0);
+                        app.mini_tap(802, 0);
+                        shot(&mut app, "jogo-detetive-acusacao");
+                        app.mini = Some(Box::new(crate::detetive::Detetive::final_para_print()));
+                        shot(&mut app, "jogo-detetive-fim");
+                    }
+                    if name == "dominio" {
+                        app.mini = Some(Box::new(crate::dominio::Dominio::final_para_print()));
+                        shot(&mut app, "jogo-dominio-fim");
+                    }
                     if name == "cruzadas" {
                         let mut g = crate::cruzadas::Cruzadas::new();
                         g.screenshot_finish();
