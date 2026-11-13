@@ -41,3 +41,14 @@ Aprender               desenho  218.7 ms
 | Cartão / traço / ícone | 6,5 / 7,8 / 13 ms | igual | 1,5 / 0,9 / 2,7 ms |
 
 A troca da divisão por deslocamento (06dcbfe) não mudou nada: o compilador já otimizava. Desenho idêntico pixel a pixel (testes `texto_com_cache_igual_ao_antigo` e `mix_igual_a_divisao_para_todos_os_valores`).
+
+## Jogos (13/11/2026, Kindle, p50/p95 de 15 desenhos)
+
+| Jogo | Antes | Depois | O que mudou |
+|---|---|---|---|
+| Coroas: criar fase 30 | 9.004 ms | 2 ms | banco de 505 tabuleiros feito no PC |
+| Lig 4: desenho | 120 ms | 16 ms | buraco vazio desenhado uma vez e copiado |
+| UNO: desenho | 61 ms | 23 ms | oval da carta por faixas (era 1 fill por pixel) |
+| Todas as telas | opt-level "s" | opt-level 3 | 4 a 10% mais rápido |
+
+Ainda os mais lentos: Coroas 70 ms, Masmorra 56 ms (p95 126), Sokoban 41 ms (p95 82). Perfil por primitiva: `VERSO_INK_BENCH_JOGO=Nome verso-ink bench`.
