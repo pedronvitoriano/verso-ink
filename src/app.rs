@@ -4291,6 +4291,18 @@ mod raio_x {
         shot(&mut app, "diario-historico");
         app.mini_tap(101, 0);
         shot(&mut app, "diario-antigo");
+        app.mini_back = Screen::Home;
+        app.mini = Some(Box::new(crate::flashcards::Flashcards::new()));
+        app.go(Screen::Mini);
+        shot(&mut app, "flashcards-vazio");
+        app.mini = Some(Box::new(crate::flashcards::Flashcards::para_print()));
+        shot(&mut app, "flashcards-baralhos");
+        app.mini_tap(900, 0);
+        shot(&mut app, "flashcards-frente");
+        app.mini_tap(810, 0);
+        shot(&mut app, "flashcards-verso");
+        app.mini_tap(802, 0);
+        shot(&mut app, "flashcards-fim");
         // Revisão de um erro real: coordenadas, alternativa e cobertura da análise.
         app.saved_games = vec![crate::coach::Saved {
             file: home.join("data/xadrez/partidas/exemplo.txt"),

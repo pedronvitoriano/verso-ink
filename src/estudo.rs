@@ -256,7 +256,7 @@ pub struct Estudo {
 }
 
 /// Os três tópicos embutidos: (nome, fontes de XP, ícone).
-const BUILTIN: [(&str, &[&str], &str); 5] = [("Violão", &["violao"], "violao"), ("Partitura", &["licao", "treino"], "partitura"), ("Destaques", &["revisao"], "destaques"), ("Geografia", &["geografia"], "geografia"), ("Matemática mental", &["matematica"], "matematica")];
+const BUILTIN: [(&str, &[&str], &str); 6] = [("Violão", &["violao"], "violao"), ("Partitura", &["licao", "treino"], "partitura"), ("Destaques", &["revisao"], "destaques"), ("Geografia", &["geografia"], "geografia"), ("Matemática mental", &["matematica"], "matematica"), ("Flashcards", &["flashcards"], "flashcards")];
 const PER_PAGE: usize = 8;
 
 impl Estudo {
@@ -341,7 +341,8 @@ impl Estudo {
                     1 => format!("{} de {} lições", crate::partitura::done().len().min(crate::partitura::total()), crate::partitura::total()),
                     2 => format!("{} para hoje", crate::revisao::due_count()),
                     3 => "Capitais e países".to_string(),
-                    _ => "Contas rápidas por nível".to_string(),
+                    4 => "Contas rápidas por nível".to_string(),
+                    _ => "Revise seus baralhos".to_string(),
                 };
                 (BUILTIN[k].0.to_string(), sub, Some(BUILTIN[k].2.to_string()))
             } else if let Some((id, theme, t)) = self.topics.get(k - BUILTIN.len()) {
@@ -705,7 +706,8 @@ impl MiniGame for Estudo {
                         1 => Box::new(crate::violao::Violao::course()),
                         2 => Box::new(crate::revisao::Revisao::new()),
                         3 => Box::new(crate::geografia::Geografia::new()),
-                        _ => Box::new(crate::matematica::Matematica::new()),
+                        4 => Box::new(crate::matematica::Matematica::new()),
+                        _ => Box::new(crate::flashcards::Flashcards::new()),
                     });
                 } else if k == self.n_cards() - 1 {
                     self.want_text = true;
