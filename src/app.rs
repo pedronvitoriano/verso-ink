@@ -118,6 +118,8 @@ pub enum Target {
     Phrase,
     Help,
     Ctx,
+    /// Rever os lances da partida em andamento.
+    Peek,
     /// Alterna geração de imagem no compositor do Verso.
     Image,
 }
@@ -156,6 +158,8 @@ pub struct App {
     mini_slot: Option<usize>,
     /// Tela aberta quando o Kindle dormiu (para voltar a ela ao acordar).
     before_sleep: Option<Screen>,
+    /// Revendo a partida de xadrez: quantos lances mostrar (None = a partida ao vivo).
+    chess_peek: Option<usize>,
     /// Página da lista de redes Wi-Fi.
     wifi_page: usize,
     /// Início da leitura em andamento no leitor próprio (segundos, para o reading.log).
@@ -403,6 +407,7 @@ impl App {
             attach_page: 0,
             mini_slot: None,
             before_sleep: None,
+            chess_peek: None,
             wifi_page: 0,
             reading_since: None,
             achado_new: None,
@@ -586,7 +591,19 @@ impl App {
             Screen::Chess => {
                 if let (Some(g), Some(sp)) = (&self.chess, &self.sprites) {
                     let (left, right, note) = chess_btn.clone().unwrap_or_default();
-                    let b = crate::chess::Buttons { left: (left.0.as_str(), left.1), right: (right.0.as_str(), right.1), note: note.as_deref() };
+                    if let Some(k) = self.chess_peek {
+                        // Revendo: o tabuleiro depois do lance k, com Anterior/Próximo.
+                        let n = g.moves.len();
+                        let (v, san) = crate::chess::replay(g, k);
+                        let note = match san {
+                            Some(s) if k > 0 => format!("Lance {k} de {n} · {}{s}", if k % 2 == 1 { format!("{}. ", k.div_ceil(2)) } else { format!("{}... ", k / 2) }),
+                            _ => format!("Início da partida · 0 de {n}"),
+                        };
+                        let b = crate::chess::Buttons { left: ("‹ Anterior", false), right: ("Próximo ›", false), note: Some(note.as_str()), peek: true };
+                        crate::chess::draw(fb, f, &v, sp, &b);
+                        return;
+                    }
+                    let b = crate::chess::Buttons { left: (left.0.as_str(), left.1), right: (right.0.as_str(), right.1), note: note.as_deref(), peek: false };
                     crate::chess::draw(fb, f, g, sp, &b);
                     if let crate::chess::Mode::Coach { level, .. } = g.mode {
                         let c = crate::coach::coach(level);
@@ -1068,8 +1085,17 @@ impl App {
                 }
                 v
             }
+            Screen::Chess if self.chess_peek.is_some() => {
+                let local = self.chess.as_ref().is_some_and(|g| g.mode == crate::chess::Mode::Local);
+                vec![(Back, ui::back_rect()), (Peek, crate::chess::peek_rect(local)), (Prev, crate::chess::undo_rect()), (Next, crate::chess::new_rect())]
+            }
             Screen::Chess => {
                 let mut v = vec![(Back, ui::back_rect()), (Undo, crate::chess::undo_rect())];
+                if let Some(g) = &self.chess {
+                    if !g.moves.is_empty() {
+                        v.push((Peek, crate::chess::peek_rect(g.mode == crate::chess::Mode::Local)));
+                    }
+                }
                 if !self.chess_buttons().1 .0.is_empty() {
                     v.push((NewGame, crate::chess::new_rect()));
                 }
@@ -2611,6 +2637,9 @@ impl App {
         if screen == Screen::Sleep && self.screen != Screen::Sleep {
             self.before_sleep = Some(self.screen);
         }
+        if screen != Screen::Chess && screen != Screen::Sleep {
+            self.chess_peek = None;
+        }
         // Leitura no leitor próprio: começa ao entrar, registra ao sair (dormir também conta como sair).
         let reading = |s: Screen| matches!(s, Screen::Reader | Screen::ReaderToc);
         if reading(screen) && !reading(self.screen) {
@@ -2730,6 +2759,29 @@ impl App {
                 self.render(true);
             }
             (Screen::SudokuMenu | Screen::SudokuWon | Screen::ChessHub, Back) => self.go(Screen::Games),
+            (Screen::Chess, Peek) => {
+                // Entra no modo de rever no último lance; tocar de novo volta à partida.
+                self.chess_peek = match self.chess_peek {
+                    Some(_) => None,
+                    None => self.chess.as_ref().map(|g| g.moves.len().saturating_sub(1)),
+                };
+                self.render(false);
+            }
+            (Screen::Chess, Prev) if self.chess_peek.is_some() => {
+                self.chess_peek = self.chess_peek.map(|k| k.saturating_sub(1));
+                self.render(false);
+            }
+            (Screen::Chess, Next) if self.chess_peek.is_some() => {
+                let n = self.chess.as_ref().map_or(0, |g| g.moves.len());
+                let k = self.chess_peek.unwrap_or(0) + 1;
+                // Passou do último lance: volta à partida.
+                self.chess_peek = if k >= n { None } else { Some(k) };
+                self.render(false);
+            }
+            (Screen::Chess, Back) if self.chess_peek.is_some() => {
+                self.chess_peek = None;
+                self.render(false);
+            }
             (Screen::Chess, Back) => {
                 self.engine = None; // fecha o Stockfish; a partida fica salva para continuar
                 self.go(Screen::ChessHub);
@@ -4093,6 +4145,10 @@ mod raio_x {
                 app.coach_msg = "Boa abertura! Peões no centro abrem caminho para os bispos. Sua vez.".into();
                 app.go(Screen::Chess);
                 shot(&mut app, "jogo-xadrez-treinador-partida");
+                app.chess_peek = Some(1);
+                app.render(false);
+                shot(&mut app, "jogo-xadrez-lances");
+                app.chess_peek = None;
             }
         }
         // Revisão de um erro real: coordenadas, alternativa e cobertura da análise.

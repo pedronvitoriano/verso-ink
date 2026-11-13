@@ -1102,6 +1102,8 @@ pub struct Buttons<'a> {
     pub right: (&'a str, bool),
     /// Recado no lugar da linha de estado (empate proposto, fim por desistência…).
     pub note: Option<&'a str>,
+    /// Revendo lances (o botão do alto vira "Partida").
+    pub peek: bool,
 }
 
 pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites, btn: &Buttons) {
@@ -1112,7 +1114,10 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites, btn: &Butto
         let r = rotate_rect();
         let label = if rotate_enabled() { "Virar a tela: sim" } else { "Virar a tela: não" };
         crate::ui::button(fb, f, r, label, rotate_enabled());
-    } else {
+    }
+    if !g.moves.is_empty() {
+        crate::ui::button(fb, f, peek_rect(g.mode == Mode::Local), if btn.peek { "Partida" } else { "Lances" }, btn.peek);
+    } else if g.mode != Mode::Local {
         let tw = f.measure(Face::Strong, 34.0, "Xadrez");
         f.draw(fb, Face::Strong, 34.0, 1072 - 72 - tw, 128, INK, "Xadrez");
     }
@@ -1145,6 +1150,21 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites, btn: &Butto
             crate::ui::button(fb, f, r, label, filled);
         }
     }
+}
+
+/// Botão "Lances": rever a partida lance a lance sem sair dela.
+pub fn peek_rect(local: bool) -> Rect {
+    if local { Rect::new(1072 - 72 - 270 - 16 - 190, 76, 190, 84) } else { Rect::new(1072 - 72 - 190, 76, 190, 84) }
+}
+
+/// A mesma partida parada depois dos primeiros `k` lances (para rever).
+pub fn replay(g: &Game, k: usize) -> (Game, Option<String>) {
+    let mut v = Game { mode: g.mode, clock: None, ..Game::new() };
+    let mut san = None;
+    for m in g.moves.iter().take(k) {
+        san = v.play_uci(m);
+    }
+    (v, san)
 }
 
 pub fn rotate_rect() -> Rect {
@@ -1318,7 +1338,7 @@ mod render {
         let out = std::path::PathBuf::from(std::env::var("VERSO_INK_SHOTS").expect("VERSO_INK_SHOTS"));
         let f = Fonts::new();
         let sp = Sprites::new();
-        let btn = Buttons { left: ("Empate", false), right: ("Desistir", false), note: None };
+        let btn = Buttons { left: ("Empate", false), right: ("Desistir", false), note: None, peek: false };
         for (name, moves) in [("xeque", &["e2e4", "f7f6", "d1h5"][..]), ("mate", &["f2f3", "e7e5", "g2g4", "d8h4"][..])] {
             let mut g = Game::new();
             for m in moves {
