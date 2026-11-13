@@ -120,12 +120,21 @@ amazon_open_book() {
     [ -f "$AMAZON_LIVRO" ] || return 0
     uri="$(cat "$AMAZON_LIVRO")"
     rm -f "$AMAZON_LIVRO"
-    # Na primeira vez a interface ainda está subindo: espera a tela inicial (até 2 min).
-    k=0
-    while [ $k -lt 120 ]; do
-        case "$(lipc-get-prop com.lab126.appmgrd activeContext 2>/dev/null)" in *KPPMainApp*) break ;; esac
-        sleep 2; k=$((k + 2))
-    done
+    # Na primeira vez a interface ainda está subindo, e livro pedido antes da hora não abre (o
+    # activeContext já diz "tela inicial" desde o começo; não serve de sinal). A tarefa
+    # framework_setup roda durante a subida e termina logo depois de anunciar framework_ready.
+    if [ "$AMAZON_SUBINDO" = 1 ]; then
+        AMAZON_SUBINDO=0; k=0; visto=0
+        while [ $k -lt 150 ]; do
+            case "$(status framework_setup 2>/dev/null)" in
+                *start/*) visto=1 ;;
+                *stop/waiting*) [ $visto = 1 ] && break ;;
+            esac
+            sleep 1; k=$((k + 1))
+        done
+        log "interface da Amazon pronta em $k s"
+        sleep 3
+    fi
     # O leitor precisa do número de série para abrir livro com DRM. Visto em 13/11: o lipc-daemon
     # trava (cada processo filho dele fica parado numa trava) e nenhum livro da loja abre.
     if ! lipc-get-prop com.lab126.system usid >/dev/null 2>&1; then

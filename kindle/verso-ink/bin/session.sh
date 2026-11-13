@@ -55,6 +55,7 @@ while :; do
             # Primeira vez: a interface sobe (~1 min). Sem marcar "não reabrir": a sessão continua.
             amazon_unstick
             "$RUN/verso-ink" splash-amazon 2>>"$LOG"
+            AMAZON_SUBINDO=1
             trap "" TERM
             start lab126_gui >>"$LOG" 2>&1
             trap - TERM
