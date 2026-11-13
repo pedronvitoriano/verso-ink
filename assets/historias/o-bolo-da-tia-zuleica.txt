@@ -2,159 +2,1161 @@
 @ Uma missão simples: levar o bolo do casamento do outro lado da cidade. Nada é simples.
 
 == inicio
-Tia Zuleica te liga às sete da manhã com a voz de quem está prestes a desmaiar:
+Capítulo 1 — A convocação
+
+Às sete da manhã, o telefone toca com a insistência de quem acredita que a pessoa do outro lado só atende quando é devidamente perseguida. É tia Zuleica. Você mal diz alô e já escuta o ruído de cabides, uma porta batendo e uma voz que parece procurar ar num cômodo sem janelas.
 
 — Meu amor, o casamento é ao meio-dia e a confeitaria só entrega amanhã. Você vai buscar o bolo. Três andares. Chantilly. Uma noivinha de porcelana que era da sua bisavó. Se cair, eu não sobrevivo, e você também não.
 
-A confeitaria fica do outro lado da cidade. Você tem um carro pequeno, um primo disponível e quatro horas.
+Clara, a noiva, é filha dela; Miguel, o noivo, tem o hábito de tentar resolver crises oferecendo água. Talvez hoje precise de um caminhão-pipa. A confeitaria fica do outro lado da cidade. Entre se vestir, atravessar o trânsito e chegar ao salão, sobram quatro horas úteis, segundo o cálculo de sua tia, que considera café da manhã uma atividade recreativa.
 
-* Ir sozinho, de carro, agora -> carro
-* Chamar o primo Juninho para ajudar -> juninho
-* Pedir um carro de aplicativo maior -> aplicativo
+Você tem um carro pequeno, um primo disponível e uma aplicação de transporte aberta no celular. Sobre a mesa, as chaves reluzem com uma coragem que você não sente.
 
-== juninho
-Juninho chega de bermuda, sandália e uma confiança que nunca foi justificada por nada.
+* Pegar o carro e assumir a missão sozinho -> cap1_a
+* Chamar Juninho para dividir o trabalho -> cap1_b
+* Pedir uma caminhonete pelo aplicativo -> cap1_c
+
+== cap1_a
+Você confere os pneus com a solenidade de um comandante de avião. Não sabe exatamente o que procura; mesmo assim, dá dois tapas em cada um. O carro responde com um rangido que pode ser gratidão ou ameaça. No banco de trás há uma sacola de roupas para doação e um guarda-chuva que já enfrentou melhores chuvas.
+
+Seu plano é simples: chegar antes da confeitaria ficar cheia, prender a caixa e fugir dos parentes até o salão. Zuleica manda um áudio de dois minutos para explicar que a noivinha não pode ficar perto do ar-condicionado. No fim, acrescenta: “E não deixe ninguém inventar moda”. Em sua família, a frase equivale a convidar todos a uma competição de invenções.
+
+Você coloca a sacola no porta-malas e nota que o banco tem uma inclinação suspeita. Um bolo de três andares merece chão firme, não uma aula de escorregador. A padaria da esquina talvez tenha uma caixa resistente; o estacionamento do prédio guarda uma placa de madeira esquecida pelo zelador.
+
+* Pedir uma base na padaria da esquina -> cap1_d
+* Procurar a placa de madeira com o zelador -> cap1_e
+* Passar antes na casa de Zuleica para buscar instruções -> cap1_f
+
+== cap1_b
+Juninho chega de bermuda, sandália e uma confiança que nunca foi justificada por nada. Traz uma garrafa de café, um carregador de celular e uma colher no bolso, embora ninguém tenha mencionado sobremesa para a viagem.
 
 — Bolo? Tranquilo. Já carreguei geladeira sozinho.
 
-Ele não carregou geladeira sozinho. Você sabe disso. Ele sabe que você sabe.
+Ele não carregou geladeira sozinho. Você sabe disso. Ele sabe que você sabe. A geladeira ainda tem uma marca na lateral e o síndico ainda muda de assunto quando os dois entram no elevador.
+
+Apesar do histórico, seu primo aparece antes da hora combinada, o que já é uma demonstração comovente. Ele quer ajudar Clara porque ela lhe emprestou dinheiro para consertar a moto e nunca cobrou os juros que, segundo ele, existiam apenas na imaginação dos bancos. Quando você explica o valor da noivinha, Juninho deixa a colher sobre a mesa e promete não tocar em nada sem autorização.
+
+A promessa dura até ele mexer nas suas chaves. Vocês precisam de uma base firme e de informações sobre a retirada. Há tempo para preparar apenas uma coisa com calma antes de sair.
 
 +juninho
-* Ir de carro com o Juninho segurando o bolo -> carro
-* Ir de aplicativo, os dois -> aplicativo
+* Pedir uma caixa firme na padaria da esquina -> cap1_d
+* Buscar uma placa de madeira com o zelador -> cap1_e
+* Ir à casa de Zuleica confirmar os detalhes -> cap1_f
 
-== aplicativo
-O motorista do aplicativo chega numa caminhonete enorme e olha para a caixa do bolo com respeito religioso.
+== cap1_c
+O aplicativo anuncia que Nivaldo chegará em oito minutos. A foto do motorista mostra um homem sério diante de uma caminhonete enorme, com uma samambaia no banco de trás. Você prefere não perguntar por que a planta tinha cinto de segurança.
 
-— Bolo de casamento? Já levei três. Um chegou inteiro.
+Nivaldo telefona antes de aceitar a encomenda. Ao ouvir a palavra casamento, faz uma pausa respeitosa, dessas reservadas a notícias de cirurgia ou resultado de loteria.
 
-Ele dirige como quem carrega nitroglicerina. Vocês levam quarenta minutos para atravessar seis quarteirões.
+— Já levei três bolos. Um chegou inteiro.
 
-+devagar
-* Pedir para ele acelerar um pouco -> pressa
-* Aceitar o ritmo e avisar a tia que vai atrasar -> atraso
+Você pergunta o que aconteceu com os outros. Ele diz apenas que aprendeu muito com a experiência e que dirige devagar. Quer levar a filha à faculdade de enfermagem e não pode se dar ao luxo de receber outra avaliação ruim. A sinceridade lhe parece um bom começo, mesmo que as estatísticas não colaborem.
 
-== carro
-O bolo vai no banco de trás, preso com o cinto de segurança, como um passageiro muito importante. Na primeira lombada, a noivinha de porcelana balança e você sente o coração na garganta.
+Enquanto a caminhonete atravessa o bairro, você reúne o que puder para proteger a encomenda. A padaria talvez tenha uma caixa; o zelador conhece cada pedaço de madeira abandonado no prédio. Ou você pode ir à casa de Zuleica pegar instruções antes da corrida.
 
-Na segunda lombada, um ruído suspeito vem lá de trás: "pof".
++aplicativo
+* Pedir uma caixa firme na padaria -> cap1_d
+* Buscar uma placa com o zelador -> cap1_e
+* Ir à casa de Zuleica confirmar os detalhes -> cap1_f
 
-* [juninho] Perguntar ao Juninho o que foi esse barulho -> pof_juninho
-* [!juninho] Parar o carro e olhar -> amassado
+== cap1_d
+A padaria do senhor Anselmo já cheira a pão quente e café forte. Ele escuta a história sem interromper, apoiado numa vassoura, e depois examina você como quem avalia a resistência de um saco de farinha.
 
-== pof_juninho
-— Nada não — diz o Juninho, rápido demais. Tem chantilly na sobrancelha dele.
+— Base para bolo? Tenho uma caixa de verduras limpa. A dignidade, essa você vai ter de arranjar em outro lugar.
 
-Você para o carro. O terceiro andar do bolo tem uma cratera perfeita do tamanho de uma colher, e a colher está no bolso da bermuda do Juninho.
+Ele encontra papelão grosso e lhe mostra como dobrar as bordas, formando pequenas paredes. Um cliente tenta levar a caixa por engano; Anselmo a recupera com a rapidez de um goleiro que acaba de descobrir a aposentadoria. No balcão, uma senhora reconhece o nome de Zuleica e conta que ela fez o vestido do casamento de sua irmã, sem cobrar pela última prova.
 
-— Eu tava provando se tava bom — ele explica. — Tava.
+A lembrança dá à missão um peso diferente. Não se trata apenas de impedir que chantilly viaje pelo estofamento da cidade. Aquela mulher vive ajudando os outros e hoje, pela primeira vez, parece ter aceitado ajuda. Você agradece e guarda a caixa. Falta decidir se telefona à tia ou se aproveita o tempo para estudar o caminho.
 
-* Comprar chantilly no mercado e consertar -> conserto
-* Girar o bolo para o buraco ficar de costas -> girar
+* Ligar para Zuleica antes de sair -> cap1_g
+* Conferir a rota e evitar o centro -> cap1_h
 
-== amassado
-Um canto do segundo andar afundou. Não muito. O suficiente para a tia Zuleica notar a dois quilômetros de distância.
+== cap1_e
+O zelador Orlando encontra a placa no depósito, embaixo de uma árvore de Natal desmontada. Ele limpa a serragem com a manga e avisa que a madeira é mais confiável do que muitos moradores. Você evita pedir nomes: o prédio tem paredes finas e um grupo de mensagens muito ativo.
 
-Do outro lado da rua, uma padaria de bairro com um senhor de avental na porta, varrendo.
+A placa é firme, mas larga. Para fazê-la caber, Orlando empresta uma fita métrica e acompanha a operação com atenção. Vocês descobrem que ela passará pela porta do veículo se entrar de lado. Ele oferece também um pano limpo para impedir que a superfície escorregue.
 
-* Pedir ajuda ao padeiro -> padeiro
-* Girar o bolo para o amassado ficar de costas -> girar
+— Minha mulher é confeiteira — explica. — Quando o bolo está bonito, todo mundo fotografa. Quando cai, todo mundo lembra quem carregou.
 
-== padeiro
-O padeiro olha o estrago, estala a língua e diz:
+Você agradece pela placa e pela perspectiva aterrorizante. No elevador, seu celular vibra: uma mensagem da tia pergunta se você já está quase chegando. Ainda não são oito horas. O mapa anuncia lentidão perto da praça, onde montam barracas para uma festa de bairro. Talvez valha avisá-la; talvez seja melhor estudar uma rota alternativa antes que ela mande mais dez mensagens.
 
-— Me dá dez minutos.
+* Telefonar para tranquilizar Zuleica -> cap1_g
+* Traçar um caminho longe da praça -> cap1_h
 
-Volta com uma espátula, um saco de confeitar e o olhar de um cirurgião. Quando termina, o canto amassado virou uma rosa de chantilly tão bonita que parece de propósito.
+== cap1_f
+A casa de Zuleica parece ter sido invadida por uma floricultura e uma escola de samba ao mesmo tempo. Há fitas nas cadeiras, uma caixa de lembrancinhas aberta no sofá e uma tia distante dormindo sentada, com um grampo preso ao vestido.
 
-— Casamento é assim mesmo — ele diz. — Tudo que dá errado vira enfeite.
+Zuleica surge do corredor com um sapato em cada mão. Faz questão de lhe entregar um pano branco bordado: era da bisavó, dona da noivinha de porcelana. Pede que seja colocado sob a caixa, para que nada deslize. A voz baixa quando menciona a avó, falecida antes de conhecer Clara adulta.
 
-+rosa
-* Agradecer e correr para o salão -> salao
+— Ela dizia que casamento bom começa com gente dividindo o peso. Eu é que nunca fui boa em pedir.
 
-== conserto
-No mercado, você compra duas latas de chantilly spray, um pacote de confeitos prateados e uma dignidade que já tinha perdido. O conserto fica... aceitável. De longe. Com pouca luz.
+Do quarto, Clara chama pela mãe. Zuleica devolve a emoção ao bolso do avental e corre para atender, esquecendo um dos sapatos na sua mão. Você o deixa junto à porta, pega o pano e sai com a sensação de ter recebido algo mais delicado do que porcelana. O trânsito começa a apertar; um aviso ou uma consulta ao mapa pode poupar problemas.
 
-Juninho segura a lanterna do celular e opina sobre cada movimento.
+* Telefonar à tia quando estiver na rua -> cap1_g
+* Consultar a rota antes que a praça feche -> cap1_h
 
-* Correr para o salão -> salao
+== cap1_g
+Você liga para Zuleica e informa que ainda está a caminho da confeitaria. Ela responde com uma pergunta sobre a temperatura do dia, outra sobre o estado dos pneus e uma terceira sobre a possibilidade de chuva, como se você tivesse sido nomeado responsável pela meteorologia municipal.
 
-== girar
-Você gira o bolo com o cuidado de quem desarma uma bomba. O defeito agora está de costas. De frente, o bolo é perfeito. De costas, é um mistério.
+— Respira, tia. Ainda estamos em tempo.
+
+Do outro lado da linha, Clara pede o telefone. Sua voz sai abafada, entre o barulho de um secador e a reclamação de alguém que perdeu um brinco. Ela agradece sem cerimônia. Diz que Miguel escolheu a noivinha para homenagear dona Amélia, mas que os dois preferem um bolo torto à família brigada.
+
+— Minha mãe não precisa saber que eu disse isso — acrescenta.
+
+A conversa termina com uma gargalhada e uma advertência de Zuleica sobre curvas. Você guarda o celular. A cidade começa a acordar de vez: ônibus, bicicletas e uma procissão de entregadores disputam o mesmo pedaço de asfalto. É hora de escolher como abordar a confeitaria e a retirada.
+
+* Avisar Dalva de que está chegando e pedir a entrada lateral -> cap2_a
+* Ir pela rua principal e resolver a retirada no balcão -> cap2_b
+* Procurar primeiro um lugar seguro para estacionar -> cap2_c
+
+== cap1_h
+O mapa mostra a praça em vermelho, depois em vermelho mais escuro, como se tivesse ficado ofendido com a quantidade de carros. Você escolhe ruas menores e anota os nomes num papel. Na terceira esquina, uma placa anuncia obras; na quarta, outra informa que a placa anterior também está em obras.
+
+Uma senhora com sacolas observa seu dilema e aponta um desvio pela rua das mangueiras. Ela conhece a confeitaria de Dalva desde a época em que a vitrine vendia apenas sonhos e refrigerante em garrafa. Segundo ela, aos sábados a porta principal fica tomada por gente com pressa e caixas de doce.
+
+— Mas Dalva é uma santa. A fila anda porque ela manda andar.
+
+Você agradece e segue. Passa por uma banca de jornal, por um cachorro que dorme sobre a faixa de pedestres e por um homem levando cinco balões em forma de coração. O relógio continua avançando, mas agora há um plano. Ao chegar, será preciso escolher entre pedir uma entrada mais tranquila, enfrentar o balcão ou garantir primeiro um lugar para o veículo.
+
+* Avisar Dalva e pedir a entrada lateral -> cap2_a
+* Enfrentar a porta principal e falar com ela no balcão -> cap2_b
+* Procurar primeiro um lugar seguro para estacionar -> cap2_c
+
+== cap2_a
+Capítulo 2 — O palácio de chantilly
+
+A porta lateral da confeitaria se abre antes que você toque a campainha. Dalva aparece com farinha no avental e um lápis preso ao coque. Seu olhar percorre você, o veículo e a calçada, numa inspeção que dura menos do que uma respiração.
+
+— Zuleica disse que você vinha. Ela também disse que eu devia proteger a noivinha da corrente de ar. A janela está fechada há três dias.
+
+Dalva o conduz até a cozinha. A confeiteira quer entregar um trabalho perfeito porque essa encomenda pagará o conserto do forno, que falha sempre que decide demonstrar personalidade. O bolo aguarda numa bancada, cercado por utensílios de metal. São três andares brancos, com pequenas ondas de chantilly e a noivinha no alto. Vista de perto, a porcelana tem uma lasca antiga na barra do vestido.
+
+Juninho acompanha a retirada: Clara também pediu reforço ao primo. Ele ergue a mão, orgulhoso de participar de uma missão que envolve um bolo de casamento e, possivelmente, sobras. Dalva oferece instruções; você também pode examinar a montagem ou tratar logo da caixa.
+
+Nivaldo, motorista conhecido da família, aparece para assumir o volante do veículo escolhido. Ele se oferece para dirigir até o salão enquanto você e Juninho cuidam da encomenda, e Dalva aprova a divisão com um aceno.
+
+* Ouvir os cuidados de Dalva até o fim -> cap2_d
+* Examinar a noivinha e a estrutura -> cap2_e
+* Ajudar Juninho a preparar a caixa -> cap2_f
+
+== cap2_b
+Capítulo 2 — O palácio de chantilly
+
+Na porta principal, uma fila de clientes se estende até a banca de revistas. Um menino segura o dinheiro do próprio aniversário; uma mulher tenta decidir entre cinquenta e sessenta coxinhas como se o destino da festa dependesse de uma eleição. Por trás do balcão, Dalva comanda tudo sem levantar a voz.
+
+Quando você menciona o casamento de Clara, ela aponta para uma mesa reservada no fundo. O bolo repousa ali sob uma cobertura transparente. Três andares de chantilly sustentam a noivinha de porcelana, cujo vestido tem uma pequena lasca antiga. Mesmo protegido, ele atrai olhares de pessoas que provavelmente fariam fila para fotografá-lo.
+
+Juninho está com você na confeitaria para dar reforço. Conta que quase entrou numa loja de tecidos com nome parecido e só percebeu o erro quando pediram a medida da cintura. Dalva abre espaço entre duas fornadas para recebê-los. Quer que o bolo chegue bonito: o pagamento ajudará no conserto de seu forno cansado.
+
+O relógio atrás do balcão está cinco minutos adiantado, segundo Dalva, mas não parece disposto a negociar. Você pode ouvir as instruções, examinar a estrutura ou preparar a caixa.
+
+Nivaldo, motorista conhecido da família, está disponível para dirigir o veículo escolhido até o salão. Assim, você e Juninho poderão vigiar a encomenda enquanto ele se ocupa das curvas.
+
+* Escutar atentamente as recomendações de Dalva -> cap2_d
+* Examinar a noivinha e a estrutura -> cap2_e
+* Preparar a caixa com Juninho -> cap2_f
+
+== cap2_c
+Capítulo 2 — O palácio de chantilly
+
+Encontrar uma vaga perto da confeitaria exige duas voltas e um diálogo diplomático com um entregador. Ele promete sair em um minuto; o minuto dele possui duração suficiente para uma pequena biografia. Quando enfim consegue parar, você encontra Juninho com uma garrafa de água e a expressão de quem conquistou território.
+
+— Clara também me pediu para ajudar. Eu sabia que uma missão assim precisava de reforço.
+
+Vocês entram na confeitaria de Dalva. No fundo, o bolo de três andares espera numa bancada, tão branco que a cozinha inteira parece ter diminuído a luz para respeitá-lo. A noivinha de porcelana está no alto, com a barra do vestido ligeiramente lascada pelo tempo. Dalva explica que prendeu os andares com suportes e que o chantilly não gosta de calor nem de sacolejo.
+
+A confeiteira precisa do pagamento para consertar o forno, mas recusa a gorjeta que você oferece. Pede apenas uma fotografia do bolo no salão. Juninho, emocionado com o tamanho da encomenda, pergunta se haverá sobra. Dalva ergue a espátula. Ele muda de assunto com impressionante rapidez.
+
+Nivaldo, motorista conhecido da família, se oferece para dirigir o veículo escolhido até o salão. Você aceita: com ele ao volante, você e Juninho podem cuidar da carga e procurar o caminho.
+
+* Prestar atenção às instruções da confeiteira -> cap2_d
+* Examinar a noivinha e a estrutura -> cap2_e
+* Preparar a caixa com Juninho -> cap2_f
+
+== cap2_d
+Dalva coloca as duas mãos ao lado do bolo, sem encostar, e demonstra como se segura a base. Pede que ninguém erga a caixa pela tampa; que as curvas sejam feitas devagar; que o bolo viaje apoiado numa superfície reta. Fala como alguém que já teve de explicar tudo isso a uma pessoa segurando apenas a tampa vazia.
+
+— Se acontecer um acidente, não metam a mão. Procurem uma espátula limpa. E me avisem, por favor. Prefiro saber de uma tragédia a descobrir por fotografia.
+
+Você repete as instruções para ter certeza de que entendeu. Juninho repete também, acrescentando uma regra própria: não discutir política perto de chantilly. Dalva ri, mas pede que ele deixe a colher que apareceu no bolso sobre a bancada. Ele a deposita ali com a tristeza de quem se despede de um amigo.
+
+Você fotografa o bolo antes da partida e guarda o número da confeiteira. Há cuidado no gesto e alguma superstição: registrar a beleza parece uma maneira de prometer que ela chegará ao destino. A caixa já está aberta, esperando uma decisão sobre a proteção.
+
++cuidado
+* Pedir reforço nas laterais da caixa -> cap2_g
+* Examinar a noivinha e preparar uma caixa para protegê-la -> cap2_h
+* Colocar a caixa fechada sobre a base e sair logo -> cap2_i
+
+== cap2_e
+Você se aproxima para examinar a noivinha. O rosto pintado é minúsculo, mas o sorriso tem uma inclinação engraçada, como se a peça soubesse algo que o resto da família ainda não descobriu. A lasca na barra é antiga; Dalva diz que Zuleica pediu que não fosse escondida.
+
+— Foi a bisavó quem quebrou um pedacinho, dançando. Preferiu guardar assim. Disse que porcelana também merece uma história.
+
+Juninho pergunta como se dança com uma estatueta na mão. Dalva responde que provavelmente do mesmo jeito que ele dança sem uma: pondo em risco os móveis. Ele aceita o comentário porque quer provar um dos doces que esfriam na bancada, e a confeiteira deixa claro que a negociação depende de boas maneiras.
+
+Você verifica os suportes dos andares com os olhos, sem mexer no chantilly. A base parece sólida; a peça de cima, porém, poderia tombar numa freada. Dalva apresenta uma caixinha acolchoada, enquanto Juninho segura a embalagem maior. Falta decidir como proteger tudo sem transformar a retirada em outra cerimônia de casamento.
+
+* Reforçar as laterais da caixa grande -> cap2_g
+* Examinar a noivinha e preparar uma caixinha acolchoada -> cap2_h
+* Fechar a caixa e partir com a peça no topo -> cap2_i
+
+== cap2_f
+Você e Juninho abrem a caixa sobre a mesa. Seu primo sugere colocar guardanapos em volta do bolo; Dalva explica que guardanapo e chantilly podem se apaixonar de maneira irreversível. Ele então propõe papelão nas laterais, ideia que recebe o primeiro aceno de aprovação da manhã.
+
+Enquanto cortam tiras, Juninho fala de Clara. Quando eram crianças, ela repartia com ele os doces escondidos no armário alto da casa da avó. Ele era pequeno demais para alcançar a prateleira, mas alto o suficiente para levar a culpa quando a lata aparecia vazia.
+
+— Hoje eu quero entregar alguma coisa para ela — diz, baixando a voz. — Sem comer antes.
+
+Dalva lhe oferece um biscoito, talvez para testar a resistência dessa promessa. Juninho aceita: segundo sua lógica, um biscoito oferecido não é parte do bolo. Vocês riem, e por um instante a cozinha parece menos um quartel-general. A encomenda continua à espera, com a noivinha no alto e o chantilly ameaçado pelo calor que entra sempre que a porta se abre.
+
+* Fixar as tiras nas laterais da caixa -> cap2_g
+* Examinar a noivinha e preparar uma caixa acolchoada -> cap2_h
+* Fechar a caixa com a peça no topo e sair -> cap2_i
+
+== cap2_g
+Dalva ajuda a prender as tiras de papelão, deixando espaço entre a caixa e as bordas do bolo. Ela testa a firmeza com um leve movimento e recua. Nada se desloca. Juninho faz sinal de positivo com as duas mãos e quase encosta o cotovelo numa bandeja de quindins.
+
+— A humanidade nunca esteve tão perto de perder a sobremesa — murmura Dalva, puxando a bandeja para longe.
+
+Vocês erguem o bolo pela base, contando até três. Na calçada, o calor já vem do chão; uma bicicleta passa tão perto que seu guidão mexe uma ponta da fita da caixa. Juninho corre à frente para abrir caminho. Não toca no bolo, mas trata cada pedestre como se fosse parte de uma escolta presidencial.
+
+A encomenda finalmente encontra lugar no veículo, apoiada de modo que ninguém precise equilibrá-la no colo. Dalva pede a fotografia de novo e acena da porta. Você confere o relógio: ainda há margem, mas o trânsito não foi consultado. A primeira decisão da travessia é escolher que tipo de dificuldade enfrentar.
+
+* Seguir pelas ruas movimentadas em direção à ponte -> cap3_a
+* Tomar o desvio estreito pelo bairro -> cap3_b
+* Aproximar-se da praça para avaliar o bloqueio -> cap3_c
+
+== cap2_h
+Dalva retira a noivinha com a delicadeza de quem acorda uma criança que dormiu tarde. Mostra a você uma caixa pequena, com papel macio e uma seta apontando para cima, caso seja necessário protegê-la durante a viagem. Depois de examinarem a peça, ela a recoloca no topo do bolo e explica como removê-la sem apertar o vestido. A caixinha segue ao lado da encomenda, ao alcance de vocês.
+
+Juninho lê a palavra FRÁGIL escrita por Dalva e sugere acrescentar MUITO. Ela diz que a porcelana não entenderia a diferença, mas permite o acréscimo. Depois, ajeita uma folha protetora sobre o bolo e recomenda que retirem a peça se o caminho ficar perigoso.
+
+Na calçada, vocês movem as caixas até o veículo com passos curtos. Um homem oferece ajuda e desiste ao saber que precisaria largar o sorvete. Você não o julga: a cidade está quente. Quando tudo está acomodado, Dalva se despede e pede uma fotografia no salão. Há três caminhos pela frente, e nenhum deles promete tratar uma encomenda com respeito.
+
+* Enfrentar a avenida e a ponte -> cap3_a
+* Usar as ruas menores do bairro -> cap3_b
+* Aproximar-se da praça e examinar o bloqueio -> cap3_c
+
+== cap2_i
+Dalva fecha a caixa com a noivinha no topo e deixa uma abertura suficiente para vocês conferirem a peça sem tocar nela. Ela fita Juninho por alguns segundos, como se tentasse decidir se deve confiar nele. Ele se oferece para carregar as chaves, uma tarefa em que o histórico da família registra menos incidentes.
+
+A retirada atrai espectadores. Uma criança pergunta se é um castelo de açúcar; o pai responde que sim, mas que o castelo custa mais do que o aluguel deles. Juninho ergue os braços para abrir passagem e anuncia que a realeza está saindo. Dalva manda que ele pare de fazer barulho antes que alguém apareça com trombetas.
+
+Vocês apoiam a caixa no veículo e conferem se está estável. A confeiteira insiste para que dirijam com cuidado e pede uma fotografia quando o bolo chegar. Juninho promete uma imagem tão bonita que ela poderá pendurá-la na parede, entre o calendário e o orçamento do forno quebrado.
+
+A rua parece livre por alguns metros. Depois, surgem carros, buzinas e uma placa anunciando interdição. O relógio avança sem se importar com a porcelana.
+
+* Seguir pela avenida em direção à ponte -> cap3_a
+* Escolher as ruas menores do bairro -> cap3_b
+* Verificar de perto a interdição na praça -> cap3_c
+== cap3_a
+Capítulo 3 — O barulho
+
+O relógio da farmácia anuncia dez e dez quando o carro se integra ao trânsito. O bolo está preso no banco de trás, cinto cruzado sobre a caixa como se tivesse carteira de identidade e direito a opinar sobre a viagem. Juninho caminha ao lado por alguns metros, conferindo pela janela a estabilidade da carga, até uma senhora lhe perguntar se o veículo está sendo levado para passear.
+
+— É um bolo de casamento — ele esclarece.
+
+— Então já aprendeu a andar acompanhado — diz ela, e atravessa antes que alguém peça explicação.
+
+A cidade ferve sob um sol de novembro. O asfalto devolve calor, um caminhão descarrega sacos de farinha e o semáforo adiante parece examinar cada carro individualmente antes de permitir a passagem. Você segura a caixa a cada solavanco, tentando não imaginar a noivinha de porcelana presa lá dentro. Tia Zuleica deixou três mensagens novas: na primeira havia instruções, na segunda perguntas e na terceira somente um ponto de interrogação tão comprido que parecia uma estrada.
+
+À frente, uma lombada recém-pintada surge entre duas barracas. Você pode pedir calma ou procurar uma passagem menos irregular antes que o motorista avance.
+
+* Pedir para enfrentar a lombada bem devagar -> cap3_d
+* Procurar uma rua lateral mais lisa -> cap3_e
+* [juninho] Pedir ao primo que observe o bolo de perto -> cap3_f
+
+== cap3_b
+Capítulo 3 — O barulho
+
+No primeiro cruzamento depois da confeitaria, uma fanfarra escolar toma a avenida. Tambores fazem o chão vibrar e um menino de uniforme azul tenta manter a marcha enquanto procura a mãe na calçada. O cheiro de milho cozido entra pela janela; atrás de vocês, uma fila de carros bufa em buzinas impacientes.
+
+Juninho aparece no passeio com duas garrafinhas de água e oferece uma a você, orgulhoso de ter previsto o calor. A outra ele entrega ao menino da fanfarra quando percebe que o garoto está vermelho feito pimentão. O professor agradece com a ponta do bastão, sem interromper o ritmo. Nem todo herói usa capa, pensa você; alguns usam bermuda e têm o péssimo hábito de anunciar a própria coragem.
+
+No banco de trás, a caixa do bolo parece imóvel, mas uma trepidação mais forte faz a fita de cetim estremecer. A noivinha é antiga, explicara Zuleica, e ninguém naquela família sabe consertar porcelana. Não adianta proteger apenas o chantilly e entregar à noiva uma bisavó em pedaços.
+
+A fanfarra começa a abrir passagem. A rua principal tem lombadas; a travessa parece mais livre, embora um caminhão pare perto da esquina.
+
+* Seguir pela avenida atrás da fanfarra -> cap3_d
+* Tomar a travessa antes do caminhão -> cap3_f
+* [!juninho] Agradecer a água e pedir ao primo que examine a caixa -> cap3_e
+
+== cap3_c
+Capítulo 3 — O barulho
+
+Uma nuvem discreta cobre o sol, mas não refresca a cidade. A caixa do bolo ocupa o banco de trás com uma autoridade que nenhum passageiro da família jamais conseguiu. No vidro, alguém escreveu com o dedo: CARGA PRECIOSA. A letra redonda é de Juninho, que apareceu na confeitaria e desde então acompanha a operação como fiscal nomeado por si mesmo.
+
+Tia Zuleica telefona para perguntar se a noivinha está firme. Você diz que sim, embora não tenha coragem de abrir a caixa em movimento. Do outro lado há uma pausa, seguida pelo barulho de pratos e pela voz de uma mulher reclamando das flores.
+
+— Eu conheci sua bisavó com aquela peça no aparador — conta a tia. — Ela dizia que a noivinha aguentava mais do que parecia. Só não precisava testar.
+
+Você promete cuidado. Desligado o telefone, percebe que o trânsito se divide: uma avenida passa por um trecho de calçamento irregular; uma rua estreita contorna o mercado e cheira a fruta madura. Ao longe, uma sirene obriga os motoristas a encostar, e a pressa de repente parece um luxo.
+
+* Ir pela avenida e reduzir antes das pedras -> cap3_d
+* Contornar o mercado pela rua estreita -> cap3_e
+* Pedir ajuda a Juninho para conferir a carga -> cap3_f
+
+== cap3_d
+A lombada parece pequena vista de longe. De perto, tem as proporções morais de uma montanha: exige humildade de todo mundo. O carro sobe devagar, desce devagar e, no instante em que você começa a acreditar na vitória da prudência, a roda encontra um buraco escondido atrás dela.
+
+Pof.
+
+O som vem da caixa, macio e terrível, como se uma almofada tivesse dado uma má notícia. Você pede para encostar. Juninho chega à janela com o rosto de quem espera receber a culpa por uma coisa que ainda nem aconteceu. Um pouco de branco reluz na sobrancelha dele. Pode ser chantilly; pode ser tinta da faixa de pedestres. Nenhuma das hipóteses é particularmente tranquilizadora.
+
+— Nada não — ele diz, rápido demais.
+
+A caixa inclina alguns centímetros antes de você segurá-la. No outro lado da rua há uma padaria; mais adiante, um mercado anuncia chantilly em promoção numa placa torta. O relógio segue indiferente à sua angústia, e uma motocicleta espera atrás do carro para passar.
+
+* Examinar o bolo junto à padaria -> cap3_g
+* Abrir a caixa perto do mercado -> cap3_h
+* Confrontar Juninho antes de decidir -> cap3_i
+
+== cap3_e
+A rua lateral começa lisa e promissora, com árvores que emprestam sombra aos carros estacionados. No fim da quadra, entretanto, uma entrega ocupa metade da pista. Um rapaz descarrega galões de água enquanto pede desculpas com tanta frequência que já deveria receber por isso.
+
+Você ajuda a afastar uma caixa vazia, e ele abre espaço para o veículo passar. Quando a roda alcança o meio-fio, um pof discreto sobe do banco de trás. Não é o barulho da porcelana quebrando; seria mais agudo, você imagina. Essa é uma imaginação que jamais pediu para desenvolver.
+
+Juninho aparece junto à janela, engolindo alguma coisa com ar de inocência aplicada. Há um vestígio branco na sobrancelha dele. O rapaz dos galões aponta para uma padaria do outro lado da rua e explica que seu Anselmo entende de confeitaria antiga. Depois aponta para o mercado, onde há latas de chantilly spray.
+
+Você agradece. O caminhão começa a fechar a passagem, e o bolo precisa ser examinado antes que a próxima curva faça do defeito um monumento.
+
+* Levar a caixa para a sombra diante da padaria -> cap3_g
+* Parar na frente do mercado e verificar o estrago -> cap3_h
+* Perguntar a Juninho o que ele sabe sobre o pof -> cap3_i
+
+== cap3_f
+Juninho se oferece para vigiar a caixa. Faz uma continência tão solene que uma mulher no ponto de ônibus bate palmas, pensando tratar-se de apresentação de rua. Você pede apenas que ele preste atenção ao bolo. Seu primo promete com a expressão ofendida de quem jamais abandonaria uma missão importante, especialmente uma missão que cheira a açúcar.
+
+O trajeto prossegue por alguns metros entre buzinas e carrinhos de feira. Uma criança aponta para a fita que escapa da tampa, perguntando à mãe se vocês estão levando um presente gigante. Você gostaria que o presente fosse uma estrada sem obstáculos, mas a cidade não trabalha com esse estoque.
+
+Então vem o som: pof. Juninho faz um movimento estranho com a mão e enfia alguma coisa no bolso da bermuda. A sobrancelha dele tem uma mancha branca que certamente não estava ali antes.
+
+— Nada não — garante, olhando para um ponto atrás de você.
+
+Uma padaria e um mercado estão abertos na próxima quadra. O bolo continua na caixa, mas agora a dúvida tem peso próprio e parece chacoalhar junto com ele.
+
+* Abrir a caixa diante da padaria -> cap3_g
+* Examinar o bolo perto do mercado -> cap3_h
+* Fazer Juninho explicar o bolso suspeito -> cap3_i
+
+== cap3_g
+Sob o toldo da padaria, o ar cheira a pão saindo do forno e café recém-passado. Você pousa a caixa numa mesa de metal, segura a respiração e levanta a tampa. Um canto do segundo andar afundou; no terceiro, há uma pequena cratera no chantilly. A noivinha permanece inteira, mas agora olha para a frente com o ar severo de quem quer nomes.
+
+Juninho assobia. Seu Anselmo, senhor de avental enfarinhado, varre a calçada com movimentos tranquilos demais para a urgência da situação. Ele observa o bolo por cima dos óculos e para de varrer. Uma cliente pergunta se aquilo é uma exposição, e ele responde que ainda está decidindo se chama de arte ou acidente.
+
+Você explica o casamento, a tia e as consequências de chegar com aquela paisagem lunar. Anselmo não ri. Em vez disso, apoia a vassoura e toca de leve a borda da caixa.
+
+— Chantilly sente calor e pressa. Gente também. Vamos começar dando sombra aos dois.
+
+O mercado fica a poucos passos, e há tempo para pensar num conserto ou esconder o lado machucado. Os minutos, porém, não esperam uma reunião de família.
+
+* Ouvir a proposta do padeiro -> cap4_a
+* Ir ao mercado buscar material -> cap4_b
+* Examinar se dá para disfarçar girando o bolo -> cap4_c
+
+== cap3_h
+Na porta do mercado, entre sacos de batata e uma pilha de refrigerantes, você abre a caixa. A cena é menos grave do que uma colisão, embora mais grave que uma fotografia tremida: parte do segundo andar afundou e uma cratera pequena interrompe a superfície branca do terceiro. A noivinha continua inteira. Diante de tantas más notícias possíveis, isso quase merece aplauso.
+
+Juninho olha o bolo e depois o próprio bolso. Você acompanha o movimento; ele muda de assunto e pergunta se alguém quer água. Uma moça do caixa, Márcia, ouve a explicação e aponta para a prateleira refrigerada. Há chantilly spray e confeitos prateados. A loja, porém, não vende experiência, que parece ser exatamente o ingrediente em falta.
+
+Do outro lado da rua, o padeiro Anselmo termina de varrer a calçada. Márcia diz que ele salvou o bolo do aniversário da mãe dela quando o cachorro decidiu experimentá-lo antes dos convidados.
+
+— Não pergunte como o cachorro chegou à mesa — acrescenta. — A história dá discussão até hoje.
+
+Você precisa escolher com o tempo que tem.
+
+* Procurar Anselmo e pedir uma avaliação -> cap4_a
+* Comprar o material e tentar o reparo -> cap4_b
+* Virar o lado danificado para trás -> cap4_c
+
+== cap3_i
+Você cruza os braços. Juninho tenta encarar você com dignidade, mas esquece a mancha de chantilly na sobrancelha. Uma colher desliza do bolso da bermuda e cai no chão com um tilintar definitivo. Até o cachorro deitado perto da padaria levanta a cabeça.
+
+— Eu tava provando se tava bom — confessa ele. — Tava.
+
+Você pergunta por que alguém precisaria testar justamente o bolo alheio. Juninho abaixa os olhos e explica que ouviu tia Zuleica dizer que tudo dependia da entrega; quis ter certeza de que pelo menos o sabor estava certo. A lógica tem tantos buracos quanto o chantilly, mas o constrangimento dele é verdadeiro.
+
+Ao abrir a caixa, você encontra uma cratera no terceiro andar e um canto afundado no segundo. A noivinha de porcelana continua inteira. Juninho apanha a colher, embrulha-a num guardanapo e promete fazer o que for necessário para ajudar, sem tocar mais no bolo.
+
+Um padeiro varre a calçada em frente; no mercado ao lado, uma placa anuncia chantilly spray. Também é possível virar o bolo e confiar que a festa nunca conheça sua outra face.
+
+* Pedir ajuda ao padeiro -> cap4_a
+* Deixar Juninho comprar material para consertar -> cap4_b
+* Girar a base e esconder os danos -> cap4_c
+
+== cap4_a
+Capítulo 4 — O outro lado do bolo
+
+O padeiro Anselmo aproxima um banquinho da mesa e examina o bolo como quem escuta uma história antes de dar opinião. Tem mãos largas, cuidadosas, e uma pequena queimadura antiga no braço. Você imagina quantos pães já saíram de suas formas graças a elas.
+
+— Dá para tratar — diz ele. — Mas preciso saber se vocês querem esconder o acidente ou fazer algo novo com ele.
+
+Você explica que a tia Zuleica espera exatamente o bolo que encomendou. Anselmo observa a noivinha de porcelana e pergunta se ela não era da dona Amélia, que morava na rua das Mangueiras. Era. Ele sorri: quando menino, comprava fiado na mercearia da bisavó e pagava com moedas que demorava semanas para juntar.
+
+— Ela sempre me dava o troco certo, mesmo quando eu não sabia contar.
+
+O padeiro oferece sua espátula, mas não obriga ninguém a aceitar. Márcia, do mercado, já separou as latas de chantilly e avisa que pode emprestá-las. Ao lado, Juninho propõe girar a base. Três soluções, três maneiras diferentes de levar a história adiante.
+
+* Aceitar a intervenção de Anselmo -> cap4_d
+* Girar a base e preservar o que resta da decoração -> cap4_e
+* Comprar o chantilly e fazer o reparo com Juninho -> cap4_f
+
+== cap4_b
+Capítulo 4 — O outro lado do bolo
+
+Márcia abre espaço no balcão do mercado entre um pote de balas e uma máquina de cartão que perdeu a paciência antes de todo mundo. Você encontra chantilly spray e confeitos prateados, mas a embalagem não explica como reconstruir a lateral de um bolo de três andares às dez e tantas da manhã de um casamento.
+
+Juninho segura as latas como se fossem ferramentas de um cirurgião. Promete seguir instruções e, para demonstrar arrependimento, entrega a colher a Márcia. Ela a guarda debaixo do balcão com uma solenidade que nem o objeto nem o caso merecem.
+
+Pela porta, você vê Anselmo, o padeiro, olhando a caixa. Ele oferece ajuda com a mesma naturalidade com que perguntaria as horas. Juninho sugere, baixinho, girar o bolo; da frente ele ainda parece impecável. Nenhuma dessas soluções recupera os minutos perdidos, mas uma delas pode evitar que a tia Zuleica passe o resto da festa perseguindo alguém com uma espátula.
+
+O telefone vibra de novo. Você desliga a tela sem ler: precisa primeiro saber o que poderá contar.
+
+* Levar o bolo a Anselmo -> cap4_d
+* Virar o defeito para o lado de trás -> cap4_e
+* Usar o chantilly do mercado -> cap4_f
+
+== cap4_c
+Capítulo 4 — O outro lado do bolo
+
+Com as mãos apoiadas na base, você gira o bolo alguns centímetros. O lado da frente continua belo, com pequenas pérolas de açúcar e a noivinha equilibrada sobre o último andar. Atrás, a cratera e o canto afundado se escondem como um parente que ouviu a campainha e não quer receber visita.
 
 — Ninguém olha bolo por trás — você diz, sem acreditar.
 
+Juninho, que conhece a capacidade da família de examinar qualquer assunto por todos os lados, não responde. Ele afasta uma cadeira para você respirar e oferece a própria camisa para cobrir a caixa; você recusa, pois ela cheira vagamente a trânsito e protetor solar.
+
+Anselmo, o padeiro, para ao lado da mesa. Afirma que uma rosa de chantilly poderia resolver o problema e que levaria alguns minutos. Do mercado, Márcia traz duas latas de spray e um pacote de confeitos, caso vocês prefiram tentar por conta própria. Os dois esperam sua decisão sem transformar a generosidade em pressão.
+
+É difícil confessar que o bolo já sofreu tanto. Também é difícil continuar imaginando a hora em que alguém resolverá girá-lo de novo.
+
+* Pedir que Anselmo faça a rosa -> cap4_d
+* Manter o defeito escondido -> cap4_e
+* Tentar um conserto com o spray -> cap4_f
+
+== cap4_d
+Anselmo pede dez minutos e abre caminho para a cozinha da padaria. Entre tabuleiros de pão e uma panela que cheira a doce de leite, ele prepara um saco de confeitar com a calma de quem sabe que mãos apressadas pioram qualquer ferida. Você segura a base enquanto Juninho observa a distância respeitosa de uma colher inteira.
+
+A espátula corrige o canto afundado. Em seguida, pétala por pétala, uma rosa branca nasce sobre a marca do terceiro andar. Não é idêntica às flores originais: tem uma curva mais aberta, como se estivesse rindo de alguma coisa. É bonita justamente por isso.
+
+— Casamento é assim mesmo — diz Anselmo, limpando a borda da bandeja. — Tudo que dá errado vira enfeite.
+
+Você pergunta quanto deve. Ele recusa dinheiro e pede apenas que a família lembre da padaria quando quiser pão de verdade. Antes de fechar a caixa, conta que dona Amélia lhe ensinou a não negar ajuda a quem aparece carregando um problema maior que os próprios braços.
+
+A viagem precisa continuar. A rosa vai junto, silenciosa testemunha do desastre e da gentileza.
+
++rosa
+* Agradecer e retomar o caminho pela avenida -> cap4_g
+* Pedir a Juninho que acompanhe a caixa na próxima etapa -> cap4_h
+* Telefonar para o salão antes de partir -> cap4_i
+
+== cap4_e
+Você gira o bolo com o cuidado de quem desarma uma bomba. O defeito desaparece atrás das flores de açúcar; visto de frente, o conjunto parece tão impecável que Juninho chega a bater palmas. Você pede silêncio antes que a comemoração atraia alguém interessado em conhecer o outro lado.
+
+Anselmo oferece uma espátula, mas respeita sua decisão. Ele coloca uma pequena marca de lápis na base de papelão para indicar qual face deve ficar voltada para a parede. Não é uma solução definitiva, avisa: calor, movimento e parentes curiosos continuam existindo. Você sabe disso melhor do que gostaria.
+
+Juninho prende a tampa e promete não tocar novamente na decoração. A colher, agora embrulhada num guardanapo, fica sob os cuidados de Márcia, no mercado. Mais tarde ele terá de voltar para buscá-la; a ideia de deixar uma prova material do crime no bairro inteiro parece punição suficiente por enquanto.
+
+O relógio avança. Você imagina a tia Zuleica recebendo o bolo e decide guardar a marca do lápis na memória. Uma fotografia pela frente pode ser linda. O desafio será chegar até ela.
+
 +escondido
-* Correr para o salão -> salao
+* Seguir pela avenida com a caixa estabilizada -> cap4_g
+* Pedir a Juninho que vigie a marca na base -> cap4_h
+* Avisar o salão de que estão a caminho -> cap4_i
 
-== pressa
-O motorista acelera um pouco. Na primeira curva, a caixa escorrega e para na porta, inteira, mas a noivinha de porcelana tomba de lado e fica ali, deitada sobre o chantilly, como se tivesse desmaiado de emoção.
+== cap4_f
+No mercado, você compra duas latas de chantilly spray, um pacote de confeitos prateados e uma dignidade que já tinha perdido. Márcia empresta uma colher limpa para alisar as bordas, mas mantém a colher de Juninho confiscada debaixo do balcão. Ele aceita a sentença sem recorrer.
 
-* Pôr a noivinha de pé com todo o cuidado -> salao
-* Deixar como está: parece romântico -> salao_noivinha
+Você testa o spray sobre um guardanapo. A primeira nuvem sai torta e atinge seu dedo; a segunda tem a forma aproximada de uma pétala. Juninho segura a lanterna do celular e opina sobre cada movimento, até que você explica que colaboração também pode ser silenciosa. Ele fecha a boca com tanta força que parece economizar palavras para o resto do dia.
 
-== atraso
-Você manda mensagem para a tia: "vou atrasar um pouco, mas o bolo está perfeito". Ela responde com quarenta e dois emojis, nenhum deles calmo.
+A cratera recebe chantilly novo, e os confeitos disfarçam a diferença entre as duas cores. O conserto fica aceitável. De longe. Com pouca luz. O canto do segundo andar ainda está ligeiramente irregular, mas a noivinha permanece intacta e olha para a frente como se aprovasse o esforço.
 
-A caminhonete chega ao salão às 12h20, com o bolo intacto, glorioso, tão perfeito quanto saiu da confeitaria.
+Márcia oferece um pano para limpar suas mãos. Você agradece, fecha a caixa e promete não avaliar o trabalho outra vez até chegar ao salão. Algumas obras precisam da proteção da distância.
 
-* Entrar com o bolo -> fim_perfeito
++conserto
+* Agradecer e tomar o caminho da avenida -> cap4_g
+* Pedir a Juninho que acompanhe a caixa -> cap4_h
+* Avisar o salão de que estão saindo -> cap4_i
 
-== salao
-O salão está cheio de flores e de parentes que você não vê desde a infância. Tia Zuleica corre na sua direção com o vestido levantado e o rosto de quem não dormiu.
+== cap4_g
+O bairro fica para trás entre cheiro de pão e buzinas. Você confere o relógio: a manhã perdeu um pedaço considerável, mas o meio-dia ainda está à frente. A caixa volta a ocupar seu lugar, bem apoiada, e você ajusta a fita sem apertar demais. Uma garrafa de água rola pelo chão do carro; Juninho a recolhe antes que bata na bandeja.
 
-Ela olha o bolo. Olha de novo. Olha mais de perto.
+— Aprendi alguma coisa — ele diz, levantando a garrafa como um troféu.
 
-* [rosa] Esperar o veredito -> fim_rosa
-* [escondido] Torcer para ela não dar a volta na mesa -> fim_costas
-* [!rosa] Esperar o veredito -> fim_aceitavel
+Você pergunta se aprendeu a não comer o transporte. Ele faz uma careta e diz que o aprendizado continua em andamento. Ainda assim, percebe-se que está tentando ajudar: oferece o casaco dobrado para firmar a caixa e se dispõe a ir buscar qualquer coisa esquecida. Por um instante, ele parece menos o primo da colher e mais um companheiro de expedição.
 
-== salao_noivinha
-Tia Zuleica vê a noivinha deitada sobre o chantilly e solta um grito que faz a banda parar de afinar os instrumentos.
+Na esquina seguinte, um agente de trânsito sinaliza um desvio. A avenida adiante foi parcialmente fechada; uma faixa de festa junina atravessa a rua como se tivesse chegado meses atrasada. Você pode pedir informação no posto, acompanhar o desvio ou consultar o salão. Qualquer caminho toma tempo, mas ficar parado também.
 
-Depois, para surpresa geral, começa a rir. Ri tanto que precisa sentar.
+Com o veículo parado em segurança, você retira a noivinha do topo e a acomoda na caixinha com papel macio. Juninho segura a tampa enquanto você confere se a porcelana ficou firme. Assim, ela segue protegida até que possam recolocá-la no salão.
 
-— Igualzinha a mim no meu casamento — diz, enxugando as lágrimas. — Desmaiei antes do sim.
+* Seguir a sinalização do desvio -> cap5_a
+* Perguntar ao agente qual caminho está livre -> cap5_b
+* [cuidado] Conferir a firmeza da caixa antes de escolher a rua -> cap5_c
 
-* Deixar a noivinha deitada para sempre -> fim_desmaio
+== cap4_h
+Juninho insiste em acompanhar a caixa durante o próximo trecho. Não diz que vai carregá-la sozinho; você toma isso como um sinal de crescimento pessoal. Ele amarra os cadarços que não existem nas sandálias, percebe o gesto inútil e limpa as mãos na bermuda antes de ajudar a acomodar a carga.
+
+A cidade continua indiferente à importância da missão. Um homem troca a lâmpada de uma vitrine, uma criança negocia um picolé e duas senhoras discutem se a nuvem ao longe significa chuva. Você daria tudo por uma previsão específica para chantilly, mas o céu não parece aceitar encomendas.
+
+Juninho conta que quer provar a tia Zuleica que consegue cumprir uma tarefa sem transformar o resultado em história de família. Ao terminar a frase, olha para o bolo e admite que talvez tenha começado tarde demais.
+
+— Ainda dá tempo de fazer a parte boa — você responde.
+
+Uma faixa de desvio obriga o trânsito a mudar de direção. Mais adiante, um agente conversa com motoristas; à esquerda, a rua fica estreita entre barracas desmontadas. O salão precisa saber que vocês continuam em movimento.
+
+Com o veículo parado em segurança, você retira a noivinha do topo e a acomoda na caixinha com papel macio. Juninho segura a tampa enquanto você confere se a porcelana ficou firme. Assim, ela segue protegida até que possam recolocá-la no salão.
+
+* Seguir o desvio indicado pelas placas -> cap5_a
+* Pedir orientação ao agente -> cap5_b
+* Avisar o salão e avaliar a rua estreita -> cap5_c
+
+== cap4_i
+Você telefona para o salão. Quem atende é Miguel, o noivo, com uma voz tão baixa que parece estar escondido dentro de uma gaveta. Ao fundo, alguém pergunta onde foram parar os guardanapos, e ele responde cobrindo o microfone com a mão.
+
+— Estou no salão procurando meu sapato — explica. — Antes que você pergunte: estou com o outro no pé.
+
+Você informa que o bolo está a caminho. Miguel diz que Clara se preocupa menos com a decoração do que com a saúde da tia Zuleica, que tenta controlar cada detalhe sozinha. A noiva pediu apenas que a porcelana da bisavó chegasse inteira. Aquela peça, aparentemente pequena, é uma maneira de incluir na festa alguém que não pode estar ali.
+
+— Se acontecer alguma coisa, me conta — ele acrescenta. — A gente resolve junto.
+
+Você promete manter contato. Quando encerra, Juninho observa que os noivos parecem mais tranquilos que a família inteira. Você concorda; logo depois vê uma faixa anunciando desvio, uma fila de carros e um agente tentando organizar a confusão. Tranquilidade, ao que parece, é uma mercadoria em falta naquela região.
+
+Com o veículo parado em segurança, você retira a noivinha do topo e a acomoda na caixinha com papel macio. Juninho segura a tampa enquanto você confere se a porcelana ficou firme. Assim, ela segue protegida até que possam recolocá-la no salão.
+
+* Acompanhar os carros no desvio -> cap5_a
+* Perguntar ao agente por uma alternativa -> cap5_b
+* Examinar a rua estreita e seguir com cautela -> cap5_c
+== cap5_a
+Capítulo 5 — Uma cidade pelo caminho
+
+O trânsito para diante de uma faixa de pedestres pintada de fresco. Um homem de colete laranja levanta a mão e avisa que a rua ficará fechada por alguns minutos. Atrás dele, uma procissão de crianças atravessa com cartazes de papelão: hoje é a festa da escola, e cada turma traz um bolo desenhado. Você considera aquilo uma provocação pessoal.
+
+Juninho observa o bolo de verdade pela abertura da caixa. Os três andares ainda se sustentam, embora o caminho tenha deixado lembranças que não constavam do orçamento. A noivinha de porcelana permanece entre as dobras do papel de seda, guardada para a chegada.
+
+O telefone vibra. Tia Zuleica escreve: «Está tudo bem?» A pergunta ocupa uma linha; as ameaças implícitas, a tela inteira. Ao mesmo tempo, uma sombra de sol avança sobre a caixa, e o motorista avista uma rua estreita que talvez contorne o bloqueio. Você precisa decidir qual problema merece sua primeira providência.
+
+* Contar à tia o que aconteceu no caminho -> cap5_d
+* Proteger a caixa antes que o sol alcance o chantilly -> cap5_e
+* Apostar na rua estreita para escapar do bloqueio -> cap5_f
+
+== cap5_b
+Capítulo 5 — Uma cidade pelo caminho
+
+Uma camionete de mudanças está atravessada na esquina e seu motorista discute com um guarda sobre a definição de «rapidinho». Enquanto isso, uma roda de conversa involuntária se forma ao redor do bolo. Cada curioso oferece um conselho diferente, e nenhum deles se oferece para carregar a caixa.
+
+— Meu cunhado transportava torta em cima da geladeira — diz uma senhora.
+
+— E a geladeira ia onde? — pergunta Juninho.
+
+A senhora pondera, incomodada pela precisão da pergunta. Você aproveita o silêncio para conferir a noivinha de porcelana embrulhada separadamente. A pintura do rosto é delicada, quase apagada pelo tempo. Seu telefone vibra: Zuleica quer notícias e, pela quantidade de pontos de interrogação, já imaginou pelo menos três funerais.
+
+A sombra do prédio recua, expondo a caixa ao calor. À esquerda, uma ruela parece livre, embora uma placa avise que veículos largos passam por ali com dificuldade. Cada alternativa cobra um preço, mesmo antes de alguém tocar no bolo.
+
+* Responder à tia com sinceridade -> cap5_d
+* Arrumar uma proteção contra o calor -> cap5_e
+* Tentar a ruela antes que o trânsito piore -> cap5_f
+
+== cap5_c
+Capítulo 5 — Uma cidade pelo caminho
+
+Um ônibus enguiçado estreita a avenida. O cobrador improvisa um leque com a prancheta, os passageiros esperam à sombra e o relógio da farmácia marca onze e quinze. A distância que resta parece pequena no mapa e infinita na cidade real.
+
+Juninho estica o pescoço por cima da caixa. A noivinha de porcelana foi retirada com cuidado e segue protegida por papel de seda. Quando você a confere, nota uma manchinha azul sob a base. Pode ser tinta antiga ou uma mensagem microscópica de socorro. Juninho propõe lamber para descobrir. Você recoloca o papel imediatamente.
+
+A ligação de Zuleica cai antes de você atender, substituída por uma mensagem: «O bolo está bem?» Um vendedor oferece gelo numa sacola térmica, e a rua ao lado promete um desvio rápido. A promessa vem de uma placa velha e desbotada, mas ainda assim é uma promessa.
+
+* Dizer a Zuleica a verdade sobre o percurso -> cap5_d
+* Comprar gelo e proteger o bolo -> cap5_e
+* Aceitar o risco do desvio -> cap5_f
+
+== cap5_d
+Você respira fundo e grava uma mensagem para Zuleica. Conta que o trânsito está difícil, que houve um contratempo com o bolo e que estão cuidando dele. Não enfeita a história com uma palavra sobre perfeição.
+
+A resposta demora tanto que Juninho sugere chamar os bombeiros. Então a tia envia um áudio curto, com vozes ao fundo e o tilintar de pratos.
+
+— Obrigada por me dizer. Fiquei com raiva durante uns quatro segundos, mas prefiro saber. A Clara também está atrasada. Não contem para o Miguel que eu contei.
+
+A voz dela falha um pouco na última frase. Você percebe que Zuleica passou meses organizando uma festa para a filha e agora tenta, com todas as forças, manter o mundo em pé. O bolo é apenas o objeto mais visível dessa tentativa.
+
+Juninho olha para você, surpreso por ninguém ter morrido. O bloqueio começa a se desfazer; é hora de aproveitar a abertura e continuar a conversa sobre a pequena herança de porcelana.
+
++verdade
+* Pedir à tia que conte a história da noivinha -> cap5_g
+* Investigar a marca azul na base da porcelana -> cap5_h
+* Seguir pela avenida e ouvir Juninho -> cap5_i
+
+== cap5_e
+Você encontra um vendedor de gelo e compra uma sacola e pede papelão para fazer uma barreira entre o sol e a caixa. Ele aceita a negociação de um jeito que faz Juninho chamar você de ministro da refrigeração. O gelo fica ao lado, sem encostar no papel: ninguém quer um bolo nadando antes de chegar ao casamento.
+
+A dona de uma banca empresta um pano limpo para cobrir a abertura do veículo. Chama-se Doralice e explica que já perdeu um pavê inteiro para o sol de dezembro.
+
+— Minha família ainda fala disso como se eu tivesse abandonado uma criança no ponto de ônibus.
+
+Você promete devolver o pano no caminho de volta. Doralice diz que a promessa está anotada na memória, lugar onde os parentes costumam guardar dívidas menores e mais duradouras.
+
+A sombra improvisada dá algum alívio ao chantilly. Juninho ajeita o embrulho da porcelana para que não balance. Com o trânsito afrouxando, vocês seguem adiante e você se lembra da marca azul debaixo da noivinha.
+
++protecao
+* Ligar para a tia e perguntar sobre a noivinha -> cap5_g
+* Examinar a marca azul sob a base -> cap5_h
+* Pedir a Juninho que conte o que sabe da família -> cap5_i
+
+== cap5_f
+Você aceita o desvio pela rua estreita. O motorista entra devagar, espremido entre uma caçamba e a parede de uma oficina, enquanto Juninho acompanha a manobra pelo lado de fora.
+
+— Mais um pouquinho! — ele orienta.
+
+Um gato atravessa diante das rodas. Juninho grita «para!» com tanta convicção que o gato também para, ofendido. O veículo freia sem violência, mas o bolo se inclina o suficiente para convencer todos de que mapas deveriam vir acompanhados de um curso de coragem.
+
+O motorista recua alguns centímetros, o gato termina sua caminhada e a passagem fica livre. Vocês economizam apenas alguns minutos. Mesmo assim, a avenida reaparece à frente, e você descobre que estava prendendo a respiração desde a caçamba.
+
+Juninho volta ao seu lado e segura o embrulho da noivinha com cuidado incomum. A experiência transformou sua confiança em vigilância, pelo menos até a próxima esquina. Seu telefone vibra com uma mensagem de Zuleica sobre a porcelana.
+
++risco
+* Ouvir a mensagem da tia sobre a noivinha -> cap5_g
+* Examinar a porcelana e sua marca azul -> cap5_h
+* Conversar com Juninho durante o resto da avenida -> cap5_i
+
+== cap5_g
+Zuleica atende entre o barulho de pratos e uma discussão sobre onde pôr os guardanapos. Você pergunta pela noivinha. Por um momento, ela deixa de ser a comandante do casamento e volta a ser a menina que ouvia histórias na cozinha da própria avó.
+
+— Era da sua bisavó Amélia. Seu bisavô ficou desempregado pouco antes do casamento, e ela quis vender a porcelana para pagar a festa. Ele disse que os dois podiam se casar com pão e café, mas que ela não devia vender uma coisa que amava.
+
+No fim, os vizinhos levaram comida, a festa aconteceu no quintal e Amélia guardou a noivinha numa lata de biscoitos. Zuleica ri ao lembrar que a lata passou anos escondida da criançada, especialmente de Juninho.
+
+— Hoje eu só quero que Clara tenha a peça perto dela — diz. — Nem precisa ficar no alto do bolo, se não for seguro.
+
+O sinal abre. A história deixa a porcelana mais leve na mão e mais pesada no coração.
+
+* Avisar Clara de que a peça está protegida -> cap6_a
+* Procurar uma rota menos movimentada perto do salão -> cap6_b
+* Ajudar Juninho a conferir a chegada pelo mapa -> cap6_c
+
+== cap5_h
+Você abre o papel de seda sobre o colo, longe das bordas. Sob a base da noivinha há uma letra A desenhada em azul, seguida de uma data tão pequena que Juninho precisa afastar a peça do rosto para ler.
+
+— Mil novecentos e... um borrão.
+
+Você manda uma fotografia para Zuleica. Ela responde com uma foto antiga: sua bisavó Amélia no quintal de casa, segurando a mesma noivinha diante de um bolo que tem apenas um andar e uma cobertura caprichosamente irregular. Atrás dela, alguém ergue uma panela como se fosse um troféu.
+
+«A de Amélia», escreve a tia. «Ela marcou para não confundir com a que a irmã tinha. Brigaram por isso durante vinte anos.»
+
+Juninho amplia a imagem até achar uma criança tentando lamber a panela. Jura que é um retrato seu em outra encarnação. Você guarda a porcelana novamente, agora com o nome de Amélia tão nítido quanto a pequena letra azul.
+
+* Contar a descoberta para Clara -> cap6_a
+* Pedir um caminho mais calmo para a chegada -> cap6_b
+* Consultar Juninho sobre a entrada do salão -> cap6_c
+
+== cap5_i
+Juninho fica sério por tempo suficiente para você conferir se ele tem febre. Depois diz que se lembra da bisavó Amélia, embora fosse muito pequeno quando ela morreu.
+
+— Ela escondia biscoito numa lata alta. Eu achava que era por minha causa, mas era por causa do vô. Ele também roubava.
+
+Você ri, e ele continua. Na fotografia antiga da família, Amélia aparece com a noivinha de porcelana na mão porque o bolo tinha ficado torto e ninguém se atreveu a colocar a peça em cima. A história foi repetida tantas vezes que já há parentes jurando ter visto o bolo cair, embora tivessem nascido depois da festa.
+
+— A tia quer tudo certinho porque acha que assim a Clara vai lembrar do dia com carinho — diz Juninho. — Só que a gente também lembra do bolo torto.
+
+A observação merece ser guardada junto da porcelana. A avenida desemboca na região do salão; dali em diante, os obstáculos serão cada vez mais familiares.
+
+* Mandar notícias a Clara antes da chegada -> cap6_a
+* Procurar uma rua tranquila perto do salão -> cap6_b
+* Conferir com Juninho qual entrada usar -> cap6_c
+
+== cap6_a
+Capítulo 6 — A herança
+
+Clara atende por mensagem de voz. A noiva parece tranquila até a terceira palavra; na quarta, você percebe o barulho de um secador e alguém perguntando onde está o sapato esquerdo.
+
+— Já cheguei ao salão e estou terminando de me arrumar aqui — ela diz. — Podem guardar a noivinha até eu chegar? Quero ver de perto antes de colocarem no bolo.
+
+Você confirma. Clara conta que gostava de procurar a letra azul sob a peça quando criança. Era o único objeto da cristaleira que Zuleica permitia tocar, desde que as duas lavassem as mãos primeiro e ninguém respirasse com entusiasmo.
+
+A conversa é interrompida por um grito vitorioso: encontraram o sapato dentro de uma sacola de flores artificiais. Você ri, aliviado por descobrir que o atraso não é um privilégio seu.
+
+A rua do salão já aparece no mapa, mas a entrada principal está cheia de fornecedores. Antes de avançar, você pode registrar a lembrança de Clara, ajudar uma pessoa em dificuldade ou acelerar a entrega.
+
+* Registrar a lembrança de Clara para a festa -> cap6_d
+* Ajudar quem está tentando descarregar flores -> cap6_e
+* Procurar imediatamente a entrada de serviço -> cap6_f
+
+== cap6_b
+Capítulo 6 — A herança
+
+A rua lateral do salão cheira a pão quente e folhas molhadas. Uma senhora rega as plantas diante de casa, desviando com paciência dos carros de fornecedores. Ela aponta a esquina seguinte quando você pergunta pela entrada.
+
+— Cheguem com cuidado. O portão de serviço emperra, e tem uma moça com um monte de flores tentando passar.
+
+Juninho pede água para molhar a ponta dos dedos e limpar uma mancha na caixa. Você impede a operação antes que ele inaugure a primeira lavagem de bolo a seco da cidade. A senhora oferece um pano limpo e deseja sorte sem fazer perguntas.
+
+Do outro lado do muro, uma banda ensaia os primeiros acordes de uma marcha, para e começa de novo. A música sai aos pedaços, como se também estivesse procurando a entrada. Uma mensagem de Clara pede notícias da porcelana; perto do portão, a florista luta com dois baldes.
+
+* Ouvir e guardar a lembrança de Clara sobre a peça -> cap6_d
+* Ajudar a florista com os baldes -> cap6_e
+* Ir direto ao portão para cumprir o horário -> cap6_f
+
+== cap6_c
+Capítulo 6 — A herança
+
+Juninho consulta o mapa, gira o celular e anuncia que o salão fica atrás de vocês. O motorista aponta para o prédio ao lado, onde uma faixa com os nomes de Clara e Miguel ocupa metade da fachada. Juninho aproxima o rosto da tela.
+
+— O mapa é que não atualizou.
+
+Apesar do desentendimento geográfico, ele encontra uma informação útil: há uma entrada de serviço na rua lateral. A principal está cercada por fornecedores, convidados adiantados e um homem tentando estacionar um arranjo de flores maior que a própria moto.
+
+Você recebe uma mensagem de Clara. Ela já chegou ao salão e pede que guardem a noivinha até ela poder vê-la. Quer contar a Miguel a história da peça antes de colocá-la no bolo. Juninho pergunta se ela sabe do caminho inteiro percorrido pela família em torno de um pedaço de porcelana.
+
+— Ela vai saber — você responde.
+
+Um chamado vem do portão lateral: a florista precisa de ajuda. O relógio, por sua vez, pede pressa sem se dar ao trabalho de falar.
+
+* Registrar a história da noivinha para Clara -> cap6_d
+* Ajudar a florista a passar pelo portão -> cap6_e
+* Usar a entrada de serviço sem perder tempo -> cap6_f
+
+== cap6_d
+Você pede a Clara que grave a lembrança da noivinha para ser ouvida na festa, se ela quiser. O áudio chega entre uma buzina e outra. Clara conta que a bisavó Amélia marcara a porcelana com um A azul, para distinguir a peça de outra muito parecida que pertencia à irmã. As duas discutiam sobre isso com uma seriedade reservada a tratados internacionais e receitas de família.
+
+— Quando eu era pequena, minha mãe deixava eu procurar a letra. Era nosso segredo da cristaleira — diz Clara. — Se der, ponham a noivinha num lugar onde eu e o Miguel possamos olhar para ela juntos.
+
+Você salva a mensagem e promete perguntar antes de tocá-la para os convidados. Juninho sugere colocá-la como toque do grupo da família; você explica a diferença entre homenagem e perseguição sonora.
+
+A memória não abre o portão nem atrasa o relógio, mas agora existe uma voz de Clara guardada junto com a história da peça.
+
++memoria
+* Entrar pelo acesso indicado pela equipe -> cap6_g
+* Falar com Miguel antes de levar a caixa -> cap6_h
+* Pedir a Juninho que prepare passagem no salão -> cap6_i
+
+== cap6_e
+A florista se chama Bia. Ela tenta carregar dois baldes e segurar o portão ao mesmo tempo, operação para a qual a natureza lhe forneceu um braço a menos. Você apoia a caixa em segurança e segura a folha de metal enquanto ela passa com as flores.
+
+— Estou devendo uma — diz Bia, ajeitando uma mecha de cabelo coberta de pólen. Ela trabalha desde antes do amanhecer e precisa levar os arranjos ao salão antes da chegada de Clara.
+
+Juninho assume um dos baldes sem fazer discurso. Na volta, descobre um espinho preso à bermuda e o trata como ferimento de guerra. Bia oferece um curativo da bolsa, onde há também fita adesiva, tesoura e uma quantidade impressionante de grampos.
+
+— Se precisarem abrir caminho lá dentro, me procurem. Conheço cada porta deste lugar.
+
+A ajuda custa alguns minutos, mas rende uma aliada que conhece o salão. Enquanto ela vai à frente com as flores, o cheiro de rosas se mistura ao de café vindo da cozinha.
+
++generosidade
+* Seguir pela entrada com a orientação de Bia -> cap6_g
+* Procurar Miguel antes de apresentar o bolo -> cap6_h
+* Pedir a Juninho que organize a passagem -> cap6_i
+
+== cap6_f
+Você decide priorizar a entrega. Juninho pede licença aos fornecedores enquanto você acompanha a caixa até a calçada do portão de serviço. A florista consegue passar com a ajuda de um funcionário; vocês trocam desculpas apressadas, sem tempo para conversar.
+
+Pela grade, um relógio redondo marca onze e cinquenta e dois. Não é exatamente cedo, mas também não é uma tragédia com testemunhas. Lúcia, cozinheira do salão, aparece do outro lado e avisa que deixará uma bancada livre assim que conseguirem abrir passagem pelo portão.
+
+— Faltam pratos, sobram parentes e o noivo já perguntou três vezes se a noiva fugiu — informa. — Dia normal.
+
+Você mantém a noivinha protegida e pede que ninguém mexa na caixa antes que Clara a veja. Lúcia aponta para os caminhos possíveis depois da entrada. Juninho, satisfeito por ter descoberto onde a água gelada fica guardada, oferece-se para procurar alguém que ajude com o portão. O bolo continua seguro à sombra, junto de vocês.
+
++prazo
+* Pedir a Lúcia orientação sobre o acesso -> cap6_g
+* Procurar notícias de Miguel por telefone -> cap6_h
+* Pedir a Juninho que ajude a preparar a passagem -> cap6_i
+
+== cap6_g
+Você acompanha pela calçada a grade que cerca o acesso de serviço. Do outro lado há um corredor fresco, caixas de refrigerante empilhadas e um retrato torto de uma paisagem que ninguém tem tempo de endireitar. Lúcia, a cozinheira, indica o trajeto por ali assim que a entrada estiver livre.
+
+— O bolo fica na mesa perto da janela. Não deixem ninguém abrir a caixa por curiosidade; aqui curiosidade tem nome, sobrenome e gravata.
+
+Na rua, você ouve o ensaio da banda virar uma melodia reconhecível. Uma criança surge com uma máquina de bolhas e é gentilmente desviada por Juninho antes que a espuma encontre o chantilly. Ele faz uma reverência ao próprio reflexo na vitrine de uma loja vizinha.
+
+Você confirma que a noivinha continua protegida e espia pela grade. Há flores, toalhas brancas e uma mesa redonda esperando entre os convidados. Falta encontrar como entrar sem transformar a entrega em espetáculo. Sendo aquela família, talvez seja uma ambição excessiva.
+
+* Tentar um caminho pela lateral -> cap7_a
+* Procurar alguém da equipe na entrada -> cap7_b
+* Pedir ajuda à família para abrir passagem -> cap7_c
+
+== cap6_h
+Você telefona para Miguel. Ele atende do corredor dos convidados, com o nó da gravata torto, segundo informa sem que ninguém pergunte, e uma folha dobrada nas mãos. Tentou escrever os votos pela quarta vez e agora suspeita que «você é minha pessoa favorita» não ocupa uma página inteira.
+
+— A Clara está bem? — pergunta, antes de se lembrar do bolo.
+
+Você garante que ela chegou para se arrumar. Ele solta o ar e confessa que queria fazer a festa em casa, mas aceitou o salão porque Clara sonhava em reunir as duas famílias. Não está nervoso com os convidados; está nervoso por querer que ela se sinta amada.
+
+Ao saber que a noivinha viajou com vocês, ele promete procurar quem abra a passagem. Pergunta se ela sempre foi frágil. Juninho responde que só a porcelana: as mulheres da família atravessariam um engarrafamento por cima.
+
+Miguel ri e desliga para resolver um problema que alguém acaba de mencionar. Vocês seguem junto à caixa, ainda do lado de fora, esperando poder entrar.
+
+* Procurar acesso pela lateral -> cap7_a
+* Falar com a equipe perto do portão -> cap7_b
+* Pedir ajuda à família na calçada -> cap7_c
+
+== cap6_i
+Juninho avança pela calçada para abrir caminho e anuncia, numa voz que deveria ser discreta e não é, que o bolo chegou. Metade dos parentes na fila se vira. A outra metade já estava olhando para ele por causa da bermuda.
+
+Você o alcança antes que transforme a notícia em discurso. Ele afasta uma cadeira de praia esquecida na entrada, pede licença a duas tias e convence uma criança a trocar a posição de uma máquina de bolhas por um copo de refrigerante. A negociação é rápida porque a criança conhece o valor de mercado da sede.
+
+Uma senhora que você não vê desde a infância beija seu rosto e pergunta se ainda toca flauta. Você nunca tocou flauta, mas confirma por prudência. Juninho ajuda a manter a caixa à sombra enquanto a passagem é desobstruída.
+
+Pela grade, a mesa aguarda sob a janela. O cheiro das flores cobre por um instante o do almoço. A chegada, enfim, deixou de ser uma previsão; ainda falta descobrir por qual porta a caixa poderá passar.
+
+* Examinar o acesso pela lateral -> cap7_a
+* Pedir orientação à equipe do portão -> cap7_b
+* Buscar ajuda dos parentes na calçada -> cap7_c
+== cap7_a
+Capítulo 7 — O salão à vista
+
+O toldo branco aparece no fim da rua, entre um ônibus de turismo e uma árvore decorada com fitas. Você nunca imaginou que um pedaço de lona pudesse parecer tão comovente. Falta pouco para o meio-dia, mas o portão de serviço está fechado, e uma fila de parentes ocupa a entrada principal como se esperasse a distribuição de uma herança.
+
+Juninho desembarca primeiro. Estica os braços para o céu e anuncia:
+
+— Chegamos, bolo. O resto é detalhe.
+
+Uma senhora de chapéu lilás escuta e pergunta se ele está chamando alguém de bolo. Antes que a explicação piore, o telefone vibra: é Clara, a noiva, tentando descobrir por que ninguém encontra Miguel. Sua voz não soa zangada; soa cansada de sorrir para uma câmera enquanto lhe escondem problemas.
+
+Você observa o portão, a fila e o mostrador do celular. Dá para resolver uma coisa de cada vez, desde que alguém tenha coragem de escolher qual.
+
+* Procurar uma entrada pelos fundos -> cap7_d
+* Contar a Clara o que está acontecendo -> cap7_e
+* [prazo] Aproveitar a passagem preparada com pressa e mobilizar a família -> cap7_f
+
+== cap7_b
+Capítulo 7 — O salão à vista
+
+Ao dobrar a última esquina, você encontra a rua do salão ocupada por uma van de flores. Rosas brancas dormem em baldes no asfalto; atrás delas, um rapaz com colete tenta mover sozinho uma estrutura de ferro. Seu crachá diz Beto. Ele explica que a chave do portão lateral ficou presa do lado de dentro e que o encarregado saiu para buscar outra.
+
+— E a entrada da frente? — você pergunta.
+
+— Liberada, se o seu bolo conseguir responder a quinze perguntas sobre namorados e emprego antes de chegar à mesa.
+
+Juninho considera seriamente usar uma das flores como disfarce. Você não considera, mas também não proíbe. Pela grade, enxerga o salão preparado: toalhas claras, taças alinhadas e uma cadeira vazia perto da pista. Uma placa pequena reserva o lugar à memória de alguém.
+
+Beto segura o ferro com o joelho. Você precisa decidir se abre caminho com ajuda ou se avisa primeiro quem está esperando lá dentro.
+
+* Ajudar Beto a encontrar passagem -> cap7_d
+* Telefonar para Clara e pedir orientação -> cap7_e
+* Convocar os parentes para uma operação de resgate -> cap7_f
+
+== cap7_c
+Capítulo 7 — O salão à vista
+
+A música do teste de som chega antes da fachada. Um trompete insiste em desafinar a mesma nota, e você sente um afeto inesperado por aquele músico desconhecido: pelo menos mais alguém está tentando entregar alguma coisa inteira hoje.
+
+O salão fica no meio de uma rua estreita. A caixa precisa atravessar um trecho de calçada desnivelada, passar por um portão de ferro e escapar dos abraços que já começam a surgir. Tia Célia reconhece você de longe e avança com a força de quem não vê um sobrinho há cinco anos.
+
+— Depois a senhora me aperta! — você pede, protegendo a caixa.
+
+Ela recua, ofendida por meio segundo, até notar o nome de Zuleica na etiqueta. Então põe as mãos na cintura e oferece seus serviços com a autoridade de uma fiscal de trânsito. Juninho acha perigoso dar poder a Célia. Célia ouve. Juninho passa a achar maravilhoso.
+
+Agora é preciso escolher quem abre o caminho e quem recebe a notícia da chegada.
+
+* Verificar o acesso de serviço -> cap7_d
+* Falar com Clara antes de entrar -> cap7_e
+* [aplicativo] Pedir a Nivaldo que ajude a família a abrir caminho -> cap7_f
+
+== cap7_d
+Beto volta com uma chave que parece antiga demais para combinar com qualquer fechadura moderna. Depois de três tentativas, o portão cede com um gemido comprido, tão dramático que Juninho pede desculpa a ele. Lá dentro, um corredor estreito leva à cozinha; um carrinho de mão bloqueia metade da passagem.
+
+Beto, um funcionário de colete, apresenta-se e ajuda você a levantar o carrinho pelas alças. A parente Célia aparece do outro lado e empurra a caixa de ferramentas para o canto. Não é uma operação bonita, mas funciona. A cozinheira Lúcia aparece com um pano no ombro e examina o espaço como quem calcula uma equação familiar.
+
+— Por aqui dá, mas só se vocês entrarem sem plateia. A mesa está pronta. O que não está pronto é o humor da Zuleica.
+
+Pela porta entreaberta você vê a tia caminhar de um lado para o outro, falando ao telefone e equilibrando uma presilha entre os dentes. A vontade de anunciar a vitória compete com a necessidade de pousar o bolo antes que qualquer braço desista.
+
+* Levar a caixa discretamente à cozinha -> cap7_g
+* Chamar Zuleica e preparar a conversa -> cap7_h
+* Procurar a mesa antes de anunciar a chegada -> cap7_i
+
+== cap7_e
+Clara atende do quarto reservado à noiva. Ao fundo, alguém insiste para que ela passe mais batom; ela pede licença e fecha uma porta. Por um instante vocês só ouvem a respiração um do outro, como se a manhã inteira precisasse caber naquele silêncio.
+
+— Perdi o Miguel de vista há pouco — ela confessa. — Minha mãe acha que ele fugiu. Eu acho que ele foi resolver alguma coisa sem pedir ajuda, que é o defeito mais irritante e mais bonito dele.
+
+Você conta que o bolo chegou à rua do salão. Clara ri, aliviada, e diz que a porcelana era de sua bisavó também: as duas famílias se cruzaram muito antes de os noivos se conhecerem. A lembrança veio de Zuleica, que guardou a peça com cuidado durante décadas.
+
+— Se alguma coisa estiver diferente, me diga. Eu prefiro uma verdade torta a uma surpresa na frente de duzentas pessoas.
+
+Ela precisa se arrumar; você precisa entrar. Agora a pergunta é quem ouvirá primeiro o restante da história.
+
+* Depositar o bolo em segurança na cozinha -> cap7_g
+* Falar diretamente com Zuleica -> cap7_h
+* Examinar o lugar preparado para o bolo -> cap7_i
+
+== cap7_f
+Célia assume a operação com uma voz que atravessaria concreto. Pede aos primos que liberem a calçada, aos tios que parem de filmar e a Juninho que deixe de dar ordens contraditórias. A fila obedece com a resignação de quem já foi criança diante dela.
+
+Cada pessoa descobre uma utilidade: uma segura o portão, outra afasta um vaso, outra leva notícia para a cozinha. O pequeno cortejo avança tão lentamente que parece ensaiar uma cerimônia própria. Você percebe que, mesmo quando a família se atrapalha, existe uma habilidade coletiva para aparecer na hora certa.
+
+— Se perguntarem, eu organizei tudo — sussurra Juninho.
+
+— Se perguntarem, você segurou a porta.
+
+— Liderança é isso: saber delegar a si mesmo.
+
+Na entrada, Lúcia, a cozinheira, aponta os caminhos possíveis. Sua expressão sugere que não quer uma multidão em volta da sobremesa. Célia concorda, mas continua distribuindo ordens a quem estiver ao alcance.
+
+* Levar a caixa à cozinha com pouca gente -> cap7_g
+* Pedir que Zuleica venha recebê-la -> cap7_h
+* Conferir a mesa do salão antes de abrir -> cap7_i
+
+== cap7_g
+A cozinha cheira a cebola dourada, bolo assado e sabonete de limão. Lúcia limpa uma bancada, aponta onde apoiar a caixa e exige que todos se afastem o suficiente para respirar. Quando suas mãos finalmente deixam o peso, os dedos continuam curvados por alguns segundos, como se ainda segurassem o papelão.
+
+— Ninguém põe o cotovelo aqui — ela decreta.
+
+Juninho olha para o próprio cotovelo com a surpresa de quem acabou de conhecer um parente problemático. Você abre uma fresta da caixa. O perfume doce escapa; sob a luz da cozinha, o chantilly revela as marcas da viagem, de reparos e cuidados. Nada impede que o bolo seja servido, mas a apresentação precisará de atenção.
+
+Lúcia oferece uma espátula e um pano limpo. Do salão vem uma salva de palmas: provavelmente um teste da banda, embora a sua imaginação tenha outras ideias. Você pode contar a história com calma ou concentrar as energias na chegada à mesa.
+
+* Conversar com Lúcia sobre o acabamento -> cap8_a
+* Convidar Zuleica para ver o bolo antes de todos -> cap8_b
+* [escondido] Pedir ajuda para apresentar o lado que você preservou -> cap8_c
+
+== cap7_h
+Zuleica aparece na porta com uma presilha atravessada no penteado e os olhos de quem passou a manhã resolvendo o impossível. Primeiro vê você. Depois vê a caixa. Por fim, segura seu rosto entre as mãos, de maneira tão brusca que você teme ser sacudido.
+
+— Você chegou.
+
+A frase sai mais baixa do que todas as ligações anteriores. A tia se afasta depressa, como se o alívio fosse uma peça de roupa que alguém pudesse notar amarrotada. Conta que guardou a noivinha de porcelana porque sua avó dizia que objetos herdados não servem para ficar presos em armários: servem para lembrar as pessoas de se encontrar.
+
+— Ela também dizia para não pôr porcelana perto de criança — acrescenta Zuleica. — Mas ninguém é coerente o tempo todo.
+
+A caixa ainda está fechada. Não dá para saber qual será a reação dela ao que encontrar. Você pode pedir privacidade, procurar apoio ou transformar a abertura num acontecimento público.
+
+* Abrir a caixa com Lúcia por perto -> cap8_a
+* Mostrar o bolo primeiro à tia -> cap8_b
+* [protecao] Mostrar como você protegeu a encomenda na chegada -> cap8_c
+
+== cap7_i
+A mesa do bolo ocupa o centro do salão sob uma guirlanda de folhas. A toalha é comprida, o tampo é firme e as flores estão tão próximas da borda que qualquer descuido pode transformá-las em cobertura. Você afasta um vaso. Depois afasta outro. Juninho afasta um terceiro, que era uma convidada segurando uma taça; pede desculpa imediatamente.
+
+Uma fotógrafa chamada Joana ajusta a luz e pergunta de que lado deve fazer a primeira foto. Você quase responde antes de lembrar que um bolo tem mais de uma história e mais de um lado. Na parede, o relógio marca uma hora que parece ter sido escolhida apenas para provocar.
+
+Miguel surge no corredor, carregando um pacote de fitas e com um risco de poeira no paletó. Ele não fugiu: estava consertando a cadeira reservada à avó, para a homenagem preparada por Clara. Falta pouco para que todos entrem.
+
+Você decide como apresentar o que trouxe até ali.
+
+* Pedir à cozinha um último acabamento -> cap8_a
+* Chamar Zuleica para uma conversa reservada -> cap8_b
+* [risco] Contar aos noivos como o atalho quase inclinou o bolo -> cap8_c
+
+== cap8_a
+Capítulo 8 — A hora do corte
+
+Lúcia abre a caixinha e, com sua ajuda, recoloca a noivinha de porcelana sobre o bolo. Depois segura a espátula como quem segura uma caneta. Você descreve o caminho, o susto e as decisões que couberam entre uma esquina e outra. Ela escuta sem interromper, girando devagar a base para estudar a cobertura.
+
+— Não vou apagar a viagem inteira — diz. — Mas posso impedir que uma ponta de chantilly se despeça antes da festa.
+
+Ela alisa uma borda, firma um detalhe e entrega a espátula a você para o toque final. Sua mão treme; a dela não tenta tomar o lugar. O resultado tem pequenas irregularidades que só parecem maiores porque você as conhece de perto. A caixinha com a porcelana fica sobre a bancada, protegida do movimento.
+
+Na porta, Juninho avisa que os convidados estão procurando o início da cerimônia e que, por algum motivo, lhe perguntaram se ele é o cerimonialista. Ele respondeu que depende do salário.
+
+* Apresentar o bolo com confiança -> cap8_d
+* Conversar francamente com os noivos -> cap8_e
+* Deixar Zuleica escolher como recebê-lo -> cap8_f
+
+== cap8_b
+Capítulo 8 — A hora do corte
+
+Você e Zuleica ficam a sós com a caixa por um instante raro naquela manhã. Juntos, abrem o embrulho e recolocam no bolo a noivinha de porcelana que viajou protegida. Quando a tia examina o conjunto, não grita. Olha primeiro para a noivinha, depois para as camadas, e enfim para suas mãos manchadas de açúcar.
+
+— Achei que você fosse brigar — você diz.
+
+— Ainda posso. Estou escolhendo o momento.
+
+Mas ela sorri. Conta que a avó, dona Amélia, era capaz de transformar qualquer refeição de domingo numa reunião de gente que nem sabia estar precisando de companhia. Zuleica quis um bolo magnífico porque tinha medo de que a ausência dela fosse grande demais na fotografia. Dizer isso em voz alta parece deixá-la um pouco menos dura.
+
+Você compreende que a tia ligou tantas vezes não apenas por causa da cobertura. Ao mesmo tempo, sabe que uma surpresa diante de todos pode mudar o clima da festa. Zuleica fecha a tampa com delicadeza e deixa a próxima decisão com você.
+
+* Prometer uma entrada triunfal -> cap8_d
+* Chamar Clara e Miguel para conversar -> cap8_e
+* Pedir que a tia decida a apresentação -> cap8_f
+
+== cap8_c
+Capítulo 8 — A hora do corte
+
+Joana organiza a fotografia com a concentração de quem tenta reunir gatos para uma reunião de condomínio. Clara chega segurando a saia do vestido; Miguel vem atrás, ainda tirando poeira do paletó. Quando ele conta onde estava, a noiva ri de alívio e depois lhe dá um tapinha no braço.
+
+— Você podia ter avisado.
+
+— Queria fazer surpresa.
+
+— Surpresa é sobremesa. Desaparecimento é outra coisa.
+
+Os dois ajudam a abrir espaço entre os arranjos. A caixa aguarda ao lado da mesa, e você percebe que todas as decisões da viagem desembocaram naquele pequeno retângulo de papelão. Os convidados se aproximam, atraídos pelo suspense e também pela promessa concreta de açúcar.
+
+Você abre a caixinha acolchoada e, com Clara, recoloca a noivinha no topo do bolo. Zuleica pede que ninguém mais toque na peça. Juninho ergue as mãos como se estivesse sendo preso. Joana pergunta se prefere registrar o instante em que o bolo é revelado ou esperar que a família se acomode. Você ainda pode escolher o ritmo da cena.
+
+* Fazer uma entrada festiva -> cap8_d
+* Falar em particular com os noivos -> cap8_e
+* Deixar Zuleica comandar a revelação -> cap8_f
+
+== cap8_d
+A banda recebe um sinal que ninguém sabe exatamente quem deu e começa uma marcha solene. Juninho segura uma ponta da toalha; Célia, a outra. Você acompanha a caixa pelo salão, tentando manter o rosto de quem planejou tudo desde as sete da manhã.
+
+Quando a tampa sobe, uma onda de suspiros percorre as mesas. O bolo não precisa ser uma joia de vitrine para ter presença: é alto, cheira a festa e carrega uma noivinha que já sobreviveu a mais almoços de família do que qualquer pessoa consegue contar. Joana pede que todos abram espaço para a foto.
+
+Zuleica procura seus olhos do outro lado da mesa. Não há tempo para ensaiar uma explicação longa; há tempo suficiente para decidir o que destacar. A escolha pode fazer da chegada uma vitória discreta, uma conversa honesta ou, se a viagem trouxe uma rosa, uma homenagem inesperada.
+
+* Celebrar a chegada e deixar a festa seguir -> cap8_g
+* [verdade] Continuar a conversa sincera iniciada com Zuleica -> cap8_h
+* Dar à noivinha o lugar principal da fotografia -> cap8_i
+
+== cap8_e
+Clara e Miguel escutam perto da cozinha, longe dos convidados. Você explica como uma entrega simples ganhou esquinas, obstáculos e opiniões demais. Não precisa transformar cada detalhe em confissão solene: basta mostrar onde o bolo pede cuidado e deixar que eles decidam o que querem lembrar.
+
+Miguel pega um guardanapo para suas mãos. Clara examina a porcelana com atenção, sem tentar corrigi-la imediatamente. Ela diz que a família de dona Amélia sempre contava as histórias difíceis pela metade, talvez para que os mais jovens não se preocupassem. O problema é que, sem a outra metade, muita gente achava que tinha de acertar tudo sozinha.
+
+— Hoje a gente pode contar inteiro — ela propõe.
+
+Juninho põe a cabeça na porta para avisar que Célia está cronometrando o atraso da cerimônia, embora não exista relógio capaz de medir o entusiasmo daquela mulher. Os noivos riem e aguardam sua sugestão para a entrada.
+
+* Apresentar o bolo e deixar a celebração fluir -> cap8_g
+* Assumir publicamente o lado menos bonito -> cap8_h
+* [conserto] Mostrar a Clara o reparo de chantilly antes da homenagem -> cap8_i
+
+== cap8_f
+Zuleica alisa a saia do vestido e contempla a caixa fechada. Depois chama Clara, Miguel e Lúcia para perto, como se reunisse um conselho muito importante e ligeiramente faminto. Pergunta se alguém ainda espera que aquele casamento seja perfeito.
+
+Ninguém responde. Juninho levanta a mão, mas a abaixa quando a tia olha para ele.
+
+— Ótimo — diz ela. — Assim temos uma chance de gostar do que acontecer.
+
+Ela confessa que ensaiou uma bronca no caminho até a cozinha. Ensaiou também um abraço, embora tenha praticado menos. Você lhe entrega a tampa, e a tia a abre com as duas mãos. Por um momento o silêncio parece ameaçador. Então Clara se inclina sobre o bolo, sorri para a noivinha e pede que a música recomece.
+
+A família está pronta para receber o resultado da viagem. Ainda resta escolher se a história será contada como triunfo, como verdade imperfeita ou como homenagem à peça herdada.
+
+* Levar o bolo à mesa sob os aplausos -> cap8_g
+* Contar o que foi difícil durante a entrega -> cap8_h
+* Dar destaque à noivinha de porcelana -> cap8_i
+
+== cap8_g
+A cerimônia se prepara para começar com atraso suficiente para provocar comentários e insuficiente para que alguém vá embora. Clara e Miguel atravessam o salão de mãos dadas; quando chegam à mesa, o bolo já os espera. Joana encontra um ângulo em que as flores não escondem ninguém e pede que os convidados se aproximem sem disputar a frente.
+
+Zuleica ajeita uma dobra da toalha, depois percebe que está fazendo isso pela terceira vez e finalmente tira as mãos dali. Você olha para ela, que olha de volta. O momento tem espaço para uma celebração simples e também para reconhecer as marcas da viagem, caso você queira contá-las.
+
+— Nenhum bolo atravessa esta cidade sem aprender alguma coisa — diz Juninho, tomando uma pose filosófica.
+
+— E você aprendeu? — pergunta Lúcia.
+
+— Aprendi a não chegar perto de espátula com testemunhas.
+
+A risada diminui a solenidade na medida certa. Falta escolher o que será celebrado quando as facas e as câmeras aparecerem.
+
+* Comemorar a chegada e seguir com a festa -> fim_perfeito
+* Contar o esforço e aceitar as imperfeições -> fim_aceitavel
+* [rosa] Apresentar a rosa de chantilly e falar de Anselmo -> fim_rosa
+
+== cap8_h
+A foto está prestes a acontecer quando um enfeite de açúcar escorrega e arrasta consigo um pedaço do chantilly lateral, deixando uma nova marca. Você pode apresentar o bolo pelo lado mais bonito, ou contar o que aconteceu e deixar que todos o vejam inteiro. A diferença parece pequena até o momento em que Zuleica entrega a faca a Clara e pede que o primeiro corte seja feito bem na frente das câmeras.
+
+— A gente pode mudar de lado — sugere Juninho, rápido demais.
+
+Miguel testa o peso da faca na mão e espera. Clara espera também. Nem eles nem os convidados conhecem cada conversa, cada curva e cada remendo da manhã. Você conhece. Sabe que a escolha de esconder ou dividir uma história pode permanecer na família por muito mais tempo do que as fotografias.
+
+Zuleica percebe sua hesitação, mas não preenche o silêncio. Pela primeira vez desde a ligação, oferece algo mais difícil do que uma ordem: espaço para você decidir. Na mesa ao lado, a cadeira reservada a dona Amélia está cercada de flores.
+
+* Esconder o lado imperfeito atrás das flores -> fim_costas
+* Contar a verdade e servir o bolo como está -> fim_aceitavel
+* [memoria] Revelar a lembrança de dona Amélia aos noivos -> fim_memoria
+
+== cap8_i
+Clara aproxima o rosto da noivinha e solta uma risada. A peça minúscula parece tão séria quanto uma juíza diante daquela assembleia de vestidos, gravatas e celulares erguidos. Zuleica encontra na bolsa um lencinho para limpar a base de porcelana, mas para antes de tocar nela.
+
+— Minha avó dizia que a gente põe as lembranças na mesa para elas conversarem com os vivos — comenta.
+
+Miguel propõe uma fotografia de todas as gerações presentes. Joana começa a reunir quem se oferece; Célia tenta organizar por altura e desiste quando percebe que os saltos alteram a política da família. Lúcia avisa que é hora de servir. O relógio já passou do combinado, e o almoço espera na cozinha.
+
+Há maneiras diferentes de concluir aquela manhã: abraçar o acidente, insistir em controlar a cena ou reconhecer as pessoas que ajudaram ao longo do caminho. O que você disser agora decide quem fica com a última palavra.
+
+* Deixar a noivinha deitada, como se tivesse desmaiado de emoção -> fim_desmaio
+* Exigir que tudo siga exatamente como foi planejado -> fim_amargo
+* [generosidade] Convidar para a mesa quem ajudou na viagem -> fim_comunidade
 
 == fim_perfeito
-O bolo atravessa o salão como uma rainha. Ninguém nota o atraso: a noiva também está atrasada, como manda a tradição.
+O bolo reina sobre a mesa. Quando Clara e Miguel chegam, alguém começa a aplaudir, e os aplausos se espalham numa velocidade muito superior à do trânsito. A noiva também demorou a chegar, de modo que o atraso do bolo se dissolve entre os muitos pequenos atrasos de uma cerimônia de família.
 
-Tia Zuleica te dá um beijo na testa e diz que você é o único da família em quem ela confia. Você decide nunca contar a ela sobre os quarenta minutos em seis quarteirões.
+Zuleica dá um beijo na sua testa e declara, alto o bastante para que todos escutem:
+
+— Você é a única pessoa desta família em quem eu confio.
+
+Célia protesta. Juninho protesta com mais emoção. A tia emenda que confia nos outros para assuntos menos delicados, como emprestar dinheiro e cuidar da casa durante viagens. O protesto aumenta.
+
+Mais tarde, você vê Clara e Miguel dividindo uma fatia perto da janela. Ela rouba a última colherada dele; ele finge indignação. Você pensa em contar os detalhes da travessia, mas os dois estão ocupados demais para ouvir. Pela primeira vez naquele dia, isso parece exatamente certo.
 
 FIM
 
 == fim_rosa
-— Essa rosa — diz a tia Zuleica, emocionada. — Ninguém me falou que vinha rosa.
+Você apresenta a rosa de chantilly como o trabalho de Anselmo, o padeiro que transformou um desastre em detalhe. Não diz que foi uma encomenda especial: conta que ele interrompeu a própria manhã, pegou uma espátula e ofereceu mais cuidado do que qualquer preço poderia comprar.
 
-— Foi um pedido especial — você mente.
+Zuleica inclina a cabeça para examinar a flor. O salão prende a respiração, inclusive Juninho, o que por si só já seria motivo de fotografia.
 
-No fim da festa, ela pede o telefone da confeitaria para encomendar outra rosa igual no aniversário dela. A confeitaria nunca vai saber de que rosa ela está falando. O padeiro do bairro ganha uma cliente para a vida toda.
+— Ninguém me falou que vinha rosa — diz ela.
+
+Você explica. A tia toca seu braço e pede o endereço da padaria. Na semana seguinte, aparece lá para encomendar outra rosa, desta vez num bolo de aniversário. Anselmo tenta repetir cada pétala; descobre que não consegue fazer duas exatamente iguais. Ela encomenda mesmo assim.
+
+No fim da festa, Lúcia corta a primeira fatia e serve um pedaço generoso a você. A rosa dura poucos minutos. O endereço do padeiro permanece no grupo da família durante anos.
 
 FIM
 
 == fim_costas
-Durante duas horas, tudo corre bem. Na hora de cortar o bolo, o noivo, querendo agradar, gira a base para a foto ficar mais bonita.
+Você gira a base com cuidado e deixa o lado imperfeito escondido atrás das flores. De frente, o bolo parece não ter atravessado uma única lombada. Zuleica sorri para as fotos, Clara agradece e Juninho murmura que a geometria finalmente serviu para alguma coisa.
 
-O salão inteiro vê o buraco. Silêncio. Então alguém grita "é o bolo da sorte!", e todo mundo aplaude sem saber por quê.
+Durante duas horas tudo corre bem. Na hora de cortar, Miguel decide girar o bolo para que a avó, sentada do outro lado, possa ver melhor. Você abre a boca, mas a mesa já está rodando. O salão inteiro descobre o que as flores guardavam.
 
-A tia Zuleica olha para você do outro lado do salão. Você sabe que esse assunto vai voltar em todo Natal até o fim dos tempos.
+Segue-se um silêncio tão completo que a banda para no meio de um acorde. Então Célia grita:
+
+— É o bolo da sorte!
+
+Ninguém sabe por quê. Mesmo assim, todos aplaudem. Zuleica olha para você do outro lado da mesa; depois olha outra vez, para garantir que a mensagem chegou. A festa continua, e o bolo está gostoso. A história também continua: em todo Natal, alguém pergunta qual é o lado da sorte antes de servir a sobremesa.
 
 FIM
 
 == fim_aceitavel
-Ela não diz nada por um longo segundo. Depois aperta a sua mão e sussurra:
+Você conta o que consegue contar antes de a voz falhar de cansaço. Fala dos cuidados, dos desvios e dos momentos em que pareceu impossível chegar. Não transforma ninguém em culpado exemplar nem a si mesmo em herói. Quando termina, o salão fica quieto por um segundo comprido.
+
+Zuleica se aproxima, aperta sua mão e examina o bolo mais uma vez. Então sussurra:
 
 — Está do jeito que o amor é. Meio torto, mas chegou.
 
-Ninguém mais nota nada. Ou, se nota, finge muito bem. Juninho, se estava lá, come três fatias e diz a todo mundo que ajudou a carregar.
+Clara escuta e repete a frase para Miguel. Os dois cortam a primeira fatia, dividem uma colherada e convidam Lúcia a servir. Há quem note as pequenas irregularidades; há quem esteja ocupado demais discutindo o tamanho justo de uma fatia para reparar nelas.
+
+Juninho come três pedaços e informa a quem quiser ouvir que ajudou a carregar. Você deixa. Numa mesa perto da janela, Zuleica finalmente se senta e pede café. O mundo não acaba porque o bolo chegou com uma história.
 
 FIM
 
 == fim_desmaio
-A noivinha fica deitada sobre o chantilly a festa inteira, e vira a foto mais compartilhada do casamento. Alguém faz um adesivo com ela. A noiva pede para guardar a porcelana assim mesmo, deitada, numa redoma.
+Você deita a noivinha com cuidado sobre o chantilly e anuncia que ela precisa descansar depois da viagem. A banda ainda está afinando quando Zuleica vê a porcelana e solta um grito. O trompete engasga; uma criança pergunta se é hora de correr.
 
-Anos depois, você ainda recebe a figurinha da noivinha desmaiada no grupo da família, sempre que alguém se atrasa.
+Então a tia começa a rir. Ri tanto que precisa sentar, enxugando as lágrimas com um guardanapo.
+
+— Igualzinha a mim no meu casamento. Desmaiei antes do sim.
+
+Célia confirma a história com detalhes que Zuleica jura serem invenção. A família reúne suas versões, cada uma mais comprida que a anterior. Clara pede que ninguém endireite a peça até a fotografia. Miguel posa ao lado dela com uma mão na testa, imitando a pequena noiva.
+
+A imagem vira a mais compartilhada da festa. Anos depois, quando alguém avisa que está atrasado, recebe no grupo a figurinha da porcelana deitada. Zuleica reclama que já não tem graça; é sempre a primeira a mandar de novo.
+
+FIM
+
+== fim_amargo
+Você insiste para que a noivinha fique exatamente como estava no planejamento, as fotos sejam tiradas na ordem prevista e o corte aconteça sem mais atrasos. Zuleica concorda de imediato; depois percebe que também está prendendo a respiração. Um convidado derruba uma taça, a banda interrompe a música e alguém pede mais uma fotografia porque uma tia piscou.
+
+Tudo acaba acontecendo. O bolo é servido, a porcelana permanece em pé e os horários são anotados por Célia com a precisão de um relatório policial. Mas Clara e Miguel passam a primeira meia hora do casamento obedecendo a instruções, sem conseguir conversar um com o outro.
+
+No fim, Clara agradece sua dedicação e pergunta baixinho se você aproveitou alguma coisa. Você procura uma resposta e descobre que lembra de cada minuto, mas não do sabor do bolo. Na porta, Zuleica oferece uma fatia embrulhada para levar. Vocês dividem o pedaço em silêncio, tarde demais para recuperar aquela meia hora, ainda a tempo de começar uma conversa.
+
+FIM
+
+== fim_memoria
+Você pede licença a Clara para compartilhar o áudio que ela gravou no caminho. Com a autorização dela, todos escutam a história da letra A azul sob a noivinha: dona Amélia marcou a porcelana para distingui-la de outra, muito parecida, que pertencia à irmã. As duas discutiam o assunto com uma seriedade reservada a tratados internacionais.
+
+Zuleica segura a borda da mesa. Clara se aproxima dela e pergunta o que mais a bisavó fazia. A tia começa com uma receita e termina contando como Nair abria a porta para qualquer vizinho que precisasse de almoço. Outras pessoas acrescentam detalhes: uma canção desafinada, um avental florido, a mania de cortar o maior pedaço para quem dizia não estar com fome.
+
+Joana fotografa a cadeira vazia cercada de gente contando histórias. Ninguém transforma a ausência em coisa pequena; também não deixa que ela ocupe o salão inteiro. Quando o bolo é cortado, Clara guarda a noivinha e anota as lembranças num caderno. Na primeira página escreve a data e, embaixo, os nomes de todos que ajudaram a lembrar.
+
+FIM
+
+== fim_comunidade
+Você pede a Zuleica que espere antes do primeiro corte e chama para perto as pessoas que ajudaram a viagem a continuar. Lúcia larga o pano no ombro; Bia, a florista a quem você ajudou no portão, chega com as mãos ainda cobertas de pólen. Quem está presente abre espaço para quem costumava ficar fora das fotografias. Você promete contar a Anselmo e aos outros que não puderam comparecer como terminou aquela manhã.
+
+Clara pede mais pratos. Miguel leva fatias à cozinha antes de servir a própria. Juninho declara que já estava planejando aquilo desde o início, e Célia pergunta por que ele então havia escondido dois guardanapos no bolso. Ele responde que liderança exige preparação.
+
+Zuleica observa a mesa crescer, cadeira por cadeira. Depois se levanta para buscar café a quem ainda não recebeu. Não há grande anúncio: há gente comendo bolo, falando ao mesmo tempo e dando lugar para mais um.
+
+No aniversário seguinte, o convite da tia traz uma instrução nova: quem chegar com fome entra. A família discute a redação, mas ninguém discute a regra.
 
 FIM

@@ -2,167 +2,940 @@
 @ Uma noite no porto, um envelope e uma escolha por página.
 
 == inicio
-O apito da balsa corta a chuva quando você chega ao porto. Último horário da noite. Na mão, um envelope que a sua avó pediu para entregar "a quem estiver esperando do outro lado". Ela não disse quem.
+O apito da balsa corta a chuva quando você chega ao porto. Último horário da noite. Na mão, um envelope que sua avó pediu para entregar “a quem estiver esperando do outro lado”. Ela não disse quem.
+
+A tinta do endereço inexistente continua branca, como se o papel também esperasse. Iolanda tinha mania de confiar encargos a pessoas desprevenidas: uma vez deixou um bolo no seu colo e foi buscar açúcar em outra cidade. Voltou três dias depois com o açúcar, uma sombrinha quebrada e uma história que mudou de versão a cada aniversário.
+
+Desta vez ela não volta. Você apertou o envelope na noite do enterro e prometeu fazer a travessia, embora não soubesse se promessas feitas diante de uma cova alcançam quem já partiu. Agora a chuva atravessa a gola e o relógio do porto parece preso entre dois minutos.
 
 No guichê, um homem de boné desbotado conta moedas devagar, como se o tempo fosse dele.
 
-— A balsa sai em dez minutos — diz, sem levantar os olhos. — Ou não sai. Depende do rio.
+* Pedir uma passagem ao homem do guichê -> cap1_01
+* Abrigar-se sob o toldo e examinar o envelope -> cap1_02
 
-* Comprar a passagem e embarcar -> embarque
-* Perguntar o que ele quer dizer com "depende do rio" -> rio
-* Abrir o envelope antes de tudo -> envelope
+== cap1_01
+O homem do guichê empilha moedas em torres tão pequenas que o vento poderia governá-las. Seu crachá diz Bento. Ao vê-lo, você lembra que Iolanda guardava passagens antigas entre as páginas de um livro de receitas, uma para cada viagem sobre a qual se recusava a falar.
 
-== rio
-O homem finalmente olha para você. Tem um olho cinzento, como água parada.
+— A balsa sai em dez minutos — ele diz, sem levantar os olhos. — Ou não sai. Depende do rio.
+
+Você deposita o dinheiro no balcão. Bento separa uma moeda e a devolve: a passagem custa menos do que a placa anuncia. Quando você aponta a diferença, ele dá de ombros.
+
+— A placa cobra pressa. Eu cobro travessia.
+
+Do lado de fora, uma mulher cobre uma gaiola com o próprio xale. Mais adiante, um menino esquadrinha o cais e interrompe cada marinheiro com uma pergunta que a chuva engole. Bento faz menção de entregar um bilhete, mas mantém os dedos sobre ele.
+
+* Perguntar a Bento o que significa depender do rio -> cap1_03
+* Deixar o guichê e ajudar a mulher com a gaiola -> cap1_04
+
+== cap1_02
+Sob o toldo da antiga venda, o envelope parece fino demais para conter uma explicação. Você conhece os cantos daquela letra: o I comprido, o ponto que nunca fica sobre a letra certa. Na infância, Iolanda escrevia seu nome nos potes de doce para protegê-los de visitas. Os potes desapareciam; os nomes ficavam.
+
+Você encosta um dedo na aba colada. Abrir seria desobedecer? Sua avó não proibiu; tampouco autorizou. Há uma pequena dureza no interior, talvez uma moeda, talvez alguma coisa capaz de abrir uma fechadura. A água pinga do telhado entre suas mãos, e você protege o papel contra o peito.
+
+Uma voz chama do cais:
+
+— Se vai atravessar, é agora!
+
+O dono da voz é um menino magro, com uma sacola de farinha pendurada no ombro. Ele não pergunta pelo envelope. Pergunta se você viu um homem de camisa azul. Antes que responda, o apito soa novamente, mais curto.
+
+* Romper a aba e descobrir o que Iolanda deixou -> cap1_05
+* Guardar a carta fechada e seguir o menino -> cap1_06
+
+== cap1_03
+Bento finalmente olha para você. Tem um olho cinzento, como água parada, e outro castanho, ligeiramente espantado. Você imagina quantas histórias alguém lhe contou sobre essa diferença; ele parece cansado de todas.
 
 — O rio decide quem atravessa à noite. Leva quem precisa ir. Quem só quer ir, ele devolve para a margem.
 
-Ele empurra um bilhete pelo vão do vidro. No verso, alguém escreveu a lápis: "não durma na travessia".
+Você pergunta como o rio distingue uma coisa da outra. Bento considera a pergunta com seriedade, o que é mais inquietante do que uma risada.
+
+— A gente nunca sabe antes. Por isso eu vendo passagem, não garantia.
+
+Ele empurra o bilhete pelo vão do vidro. No verso, alguém escreveu a lápis: “não durma na travessia”. Ao notar seu olhar, Bento tira o boné. O cabelo amassado se ergue numa direção só, como um milharal depois da enchente.
+
+— Sua avó sabia ficar acordada — ele diz. — Até quando sonhava.
 
 +aviso
-* Embarcar com o bilhete -> embarque
-* Abrir o envelope primeiro -> envelope
+* Perguntar por que Bento conhecia Iolanda -> cap2_01
+* Levar o aviso ao menino que procura alguém no cais -> cap2_02
 
-== envelope
+== cap1_04
+A mulher recebe sua ajuda segurando a gaiola enquanto ela prende melhor o pano. O cheiro é de penas molhadas e folha amassada. Lá dentro, alguma coisa dá duas batidinhas impacientes na madeira.
+
+— É um bem-te-vi — diz ela, antes que você pergunte. — Canta quando a gente chega. Se não cantar, a gente não chegou.
+
+Ela levanta um canto do tecido. O pássaro olha para você com um interesse quase educado. A mulher se apresenta como Celina e informa que vai visitar a irmã e um velho amigo. Não diz o nome dele, mas fala de amizade como quem leva uma tigela cheia e precisa evitar que derrame.
+
+Você oferece o braço. Celina aceita com uma solenidade que dura até escorregar numa casca de banana, salva a gaiola e soltar uma gargalhada.
+
+— Depois conte que eu enfrentei uma onça. Uma velha tem direito à própria propaganda.
+
+* Acompanhar Celina até a prancha de embarque -> cap2_03
+* Perguntar se ela conheceu sua avó -> cap2_04
+
+== cap1_05
 Dentro do envelope há uma chave pequena, de latão, e um bilhete na letra apertada da sua avó:
 
-"Se abriu, é porque tem medo. Tudo bem. A chave abre o que ficou fechado tempo demais. Não entregue a chave a quem pedir por ela; entregue a quem não pedir."
+“Se abriu, é porque tem medo. Tudo bem. A chave abre o que ficou fechado tempo demais. Não entregue a chave a quem pedir por ela; entregue a quem não pedir.”
 
-Você fecha o envelope com cuidado. O apito soa de novo, mais curto.
+Você lê duas vezes. Iolanda sempre soube transformar uma instrução simples em tarefa para uma vida inteira. Ainda assim, ao reconhecer a curva do M, você sente a presença dela tão nitidamente que precisa se apoiar na parede. O alívio e a raiva chegam juntos: ela podia ter dito tudo enquanto estava viva.
+
+Você devolve a chave ao envelope e dobra a aba sem conseguir fechá-la como antes. Do outro lado da rua, uma capa de chuva brilha sob o poste. A pessoa que a veste não parece sentir frio. Mais perto, o menino da farinha pergunta a um carregador sobre o homem de camisa azul.
 
 +chave
-* Correr para a balsa -> embarque
+* Seguir a figura de capa até a prancha -> cap2_05
+* Procurar o menino e oferecer ajuda -> cap2_06
 
-== embarque
-A balsa cheira a diesel e a fruta madura. Poucos passageiros: uma mulher com uma gaiola coberta por um pano, um menino dormindo sobre sacos de farinha e, na proa, uma figura de capa de chuva que não se vira.
+== cap1_06
+Você guarda o envelope fechado. A promessa não exigia que soubesse o conteúdo; exigia que ele chegasse. Mesmo assim, o papel roça sua pele como uma pergunta que insiste em ser feita em voz baixa.
 
-O motor ronca. A margem vira uma linha de luzes tremendo e depois some.
+O menino se apresenta como Tião. Seu pai saiu numa canoa numa manhã de cheia, meses atrás, e mandou uma notícia curta por um carregador: estava trabalhando na outra margem. Desde então, nenhum recado. A mãe de Tião costura até tarde e diz que ausência também cansa; o menino decidiu que ajudaria procurando.
 
-* Sentar perto da mulher da gaiola -> gaiola
-* Ir até a proa falar com a figura de capa -> proa
-* Sentar num canto e fechar os olhos um instante -> sono
+— E se ele só não sabe escrever? — pergunta.
 
-== gaiola
-— É um bem-te-vi — diz a mulher, antes que você pergunte. — Canta quando a gente chega. Se não cantar, a gente não chegou.
+Você prefere não responder por um homem que não conhece. Ajuda Tião a erguer a sacola, que afinal contém duas broas e uma camisa dobrada sobre um pouco de farinha. Ele explica que farinha solta ocupa o espaço que o medo tenta tomar.
 
-Ela levanta um canto do pano. O pássaro olha para você com um interesse quase educado.
+A balsa apita. Alguém acende um lampião no convés.
 
-— Sua avó atravessava muito — continua ela. — Sempre com um envelope. Você tem os olhos dela.
+* Ajudar Tião a levar a sacola para o barco -> cap2_07
+* Perguntar a Bento se ouviu falar do pai de Tião -> cap2_08
 
-* Perguntar como ela conheceu sua avó -> avo
-* Agradecer e ir até a proa -> proa
+== cap2_01
+Bento guarda as moedas numa lata de biscoito. Uma etiqueta antiga ainda promete rosquinhas de nata; dentro, só há metal e um botão de casaco. Ele percebe você olhando.
 
-== avo
-— Ela me ensinou a esperar — diz a mulher. — Do outro lado tem gente que esperou demais. Uma porta que ninguém abre há anos, numa casa de palafita. Ela ia abrir. Não deu tempo.
+— O botão é meu fundo de emergência. Se tudo der errado, pelo menos fecho o paletó.
 
-O bem-te-vi se mexe na gaiola.
+A lembrança faz sua boca ameaçar um sorriso. Então você pergunta por Iolanda. Bento responde que ela atravessava levando remédios quando a ponte caiu e continuou muito depois de reconstruírem a ponte. Nunca comentou quem encontrava, mas sempre comprava duas passagens: uma para si e outra para alguém que precisasse.
 
-— Quem estiver esperando não vai pedir nada a você. É assim que você sabe.
+— Ela pagou a minha primeira, quando eu ainda não tinha guichê nem coragem.
+
+A chuva engrossa sobre o telhado de zinco. Bento lhe dá passagem agora, com um gesto discreto, como se devolvesse uma dívida antiga à pessoa errada de propósito. Ao longe, Celina tenta equilibrar a gaiola; no convés, Tião põe a sacola sobre os sacos de farinha.
+
+* Sentar-se perto de Celina e oferecer companhia -> cap3_01
+* Acompanhar Tião até perto da cabine -> cap3_02
+
+== cap2_02
+Tião escuta o aviso de Bento com os olhos arregalados e tira da sacola uma broa dura o suficiente para servir de âncora. Parte-a ao meio contra o joelho e oferece um pedaço.
+
+— Minha mãe diz que mastigar espanta o sono. Não disse que espanta o dente também.
+
+O menino procura o pai, um barqueiro de camisa azul que partiu numa cheia. Você lhe conta o que sabe sobre a travessia: pouco, mas não inventa mais. Tião põe a metade da broa no bolso e verifica se a camisa do pai continua protegida pela farinha. O cuidado dele com aquela roupa é de quem guarda um lugar numa mesa.
+
+Na prancha, uma figura de capa embarca sem fazer a madeira ranger. Celina, a mulher da gaiola, vem logo atrás e reclama educadamente que alguém molhou sua chuva. O apito avisa que já é hora.
+
+* Ir até Tião quando o motor falha -> cap3_03
+* Seguir com Tião para procurar um lugar no convés -> cap3_04
+
+== cap2_03
+Celina aceita sua companhia na prancha e apresenta o passageiro da gaiola como Benedito, embora admita que não pediu a opinião dele sobre o nome. O bem-te-vi responde com um som breve, de preferência reservada.
+
+A balsa cheira a diesel e a fruta madura. Há caixotes cobertos por lona, bancos de madeira e uma chaleira presa por barbante. Um menino passa por vocês e diz chamar-se Tião. Alguém pintou flores no salva-vidas; alguém mais prático acrescentou a palavra BOIA, para que ninguém se confundisse diante do entusiasmo artístico.
+
+Celina conta que conhece a outra margem desde menina. Voltou a cruzar o rio para visitar a irmã e Anselmo, amigo antigo que mora numa casa de palafita. O nome não lhe diz nada, mas a maneira como ela o pronuncia sugere uma história que talvez diga respeito a Iolanda.
+
+Uma corda solta bate no casco. Perto da proa, a figura de capa se mantém imóvel. Lá dentro, um marinheiro luta com a chaleira.
+
+* Procurar abrigo com Tião enquanto observa a proa -> cap3_05
+* Sentar-se com Celina e o bem-te-vi -> cap3_01
+
+== cap2_04
+— Ela me ensinou a esperar — diz Celina quando você menciona sua avó. — Não parada. Esperar também pode ser regar uma planta, consertar um telhado, fazer café para quem chega atrasado.
+
+O menino Tião, que você conheceu ao embarcar, acomoda uma sacola de farinha perto do banco. O bem-te-vi se mexe na gaiola, talvez em aprovação. Celina conheceu Iolanda numa cheia antiga, quando as duas organizaram abrigo para os vizinhos. Sua avó levava recados de uma casa a outra, mesmo depois de a água baixar. Uma mensagem, porém, ficou presa durante anos atrás de uma porta numa palafita.
+
+— Ela ia abri-la. Não deu tempo.
+
+Você quer saber o que havia lá dentro, e Celina sacode a cabeça. Não é uma recusa: ela não sabe. Sabe apenas que algumas pessoas aprendem a calar por amor e depois não encontram jeito de desfazer o silêncio.
+
+O motor começa a tossir. Um menino reclama que a balsa está engolindo parafusos.
 
 +pista
-* Ir até a proa -> proa
-* Ficar ali, ouvindo a chuva -> sono
+* Acompanhar Tião até perto da cabine -> cap3_02
+* Ajudar o menino quando o motor falhar -> cap3_03
 
-== proa
-A figura de capa estende a mão sem se virar.
+== cap2_05
+Você segue a figura até a prancha, mas uma rajada levanta a aba da capa e revela apenas uma escuridão comum, densa de sombra e chuva. A pessoa não olha para trás. Seus passos parecem cuidadosamente colocados onde a madeira não reclama.
+
+No barco, um homem de mãos graxentas apresenta-se como Davi, o piloto. Ele avisa que o rio subiu e pede que ninguém fique perto da amurada quando soar o terceiro apito. Tem um jeito de quem conhece os perigos pelo nome e gostaria de conhecê-los menos.
+
+— E a figura de capa? — você pergunta.
+
+Davi acompanha seu olhar. Um menino chamado Tião passa correndo pelo convés. Por um instante, o rosto do piloto perde a cor.
+
+— Nesta travessia sempre há quem procure alguma coisa. Melhor saber o que você procura antes que outra pessoa decida por você.
+
+Você guarda o envelope mais fundo no bolso. No convés, uma lamparina oscila e desenha uma segunda sombra onde deveria haver apenas uma.
+
+* Procurar Tião para conversar sobre seu pai -> cap3_04
+* Abrigar-se com Tião e observar a figura -> cap3_05
+
+== cap2_06
+Tião tenta carregar sozinho uma sacola que parece determinada a viajar na direção oposta. Quando você segura uma ponta, ele aceita com uma dignidade ofendida que dura até a alça arrebentar. A farinha se espalha sobre os sapatos de ambos.
+
+— Agora somos padeiros — ele diz.
+
+Vocês recuperam as broas e uma camisa azul dobrada. Tião conta que a roupa pertence ao pai, barqueiro de quem espera notícias há meses. A mãe pediu que não fosse sozinho; você calcula que a promessa dela talvez não inclua um estranho coberto de farinha. Ainda assim, o menino parece menos só quando vocês sobem a prancha juntos.
+
+Celina ajeita a gaiola num banco e o convida a sentar. A poucos passos, a figura de capa observa a água. A balsa se afasta antes que você decida se quer olhar para a margem que deixa.
+
+* Conversar com Celina sobre o pássaro -> cap3_01
+* Acompanhar Tião até perto da cabine -> cap3_02
+
+== cap2_07
+Você e Tião deixam a sacola entre os sacos de farinha, onde ele consegue vigiá-la. O menino lhe agradece com a formalidade de quem ouviu muitas recomendações para desconfiar de desconhecidos e decidiu fazer uma exceção temporária.
+
+Um marinheiro distribui canecas de café tão escuro que Tião diz ver o próprio futuro numa delas. Davi, o piloto, responde que o futuro custa mais e aponta para a chaleira vazia. A piada produz uma risada pequena, mas suficiente para mudar o ar apertado do barco.
+
+A margem se afasta. Você pensa em Iolanda na cozinha, arrancando uma cadeira do lugar para sempre caber mais um à mesa. Teria ela confiado o envelope a você por coragem ou por falta de opção? A pergunta acompanha o movimento do motor.
+
+Na proa, alguém de capa estende a mão para a chuva como se recolhesse gotas. A outra ponta do convés range sob um peso invisível.
+
+* Ajudar Tião quando o motor engasgar -> cap3_03
+* Conversar com Tião sobre o pai -> cap3_04
+
+== cap2_08
+Bento ouve a descrição do pai de Tião e passa a mão pelo boné. Diz conhecer muitos barqueiros de camisa azul, mas lembra de um homem chamado Miguel que ajudou a retirar moradores durante a cheia. Depois, Miguel seguiu para a outra margem. Bento não recebeu notícia de volta e não deseja oferecer uma certeza que não possui.
+
+— O menino merece a verdade, mesmo quando ela vem pela metade — diz.
+
+Você transmite a Tião o que ouviu. Ele repete o nome do pai baixinho, como quem experimenta se uma ponte aguenta seu peso, e guarda o resto das perguntas para depois. Na prancha, Davi manda os últimos passageiros embarcarem. Bento entrega a Tião uma moeda para o caso de precisar telefonar; o menino insiste que pagará com juros de broa.
+
+A corda se solta do poste. As luzes do porto se alongam na água escura.
+
+* Abrigar-se com Tião e observar a figura -> cap3_05
+* Sentar-se perto de Celina e seu pássaro -> cap3_01
+== cap3_01
+Dona Celina tira o pano da gaiola até a metade, como quem oferece ao dia uma fresta de janela. O bem-te-vi sacode as penas e encara o seu envelope. Seu bico é pequeno demais para fazer estrago, mas você o afasta mesmo assim.
+
+— Esse aí reconhece segredo melhor que fiscal reconhece troco errado — diz ela. — Sua avó Iolanda lhe dava miolo de pão e conversava com ele como se fosse gente. O bicho nunca respondeu, o que prova que é mais educado que muito passageiro.
+
+Uma rajada faz o barco gemer. Celina aperta a gaiola contra o peito; não para proteger o pássaro da chuva, mas da água que salta pela amurada em gotas que parecem procurar alguma coisa. Ela explica que veio ver uma irmã que esqueceu seu rosto. Talvez a irmã se lembre do canto. Talvez Celina precise se lembrar por duas. A proa oscila entre uma luz distante e uma mancha escura no rio.
+
++celina
+
+* Perguntar à figura de capa por que ela estende a mão -> cap3_06
+* Investigar o cheiro de goiaba perto da mesa -> cap3_07
+
+== cap3_02
+O vidro da cabine vibra sob os seus dedos. Atrás dele, o piloto trabalha curvado sobre o leme, sem olhar para a bússola que gira como um brinquedo cansado. No reflexo, por um segundo, você vê Iolanda de costas, espremendo o avental. Ao se virar, encontra apenas Tião, o menino dos sacos de farinha.
+
+— Também viu alguém? — pergunta ele, e guarda a resposta antes mesmo que você consiga formulá-la. O pai, diz, saiu numa canoa na cheia passada. A família o chama de perdido, mas Tião prefere dizer que o rio não deu notícia.
+
+O piloto sopra no vidro e desenha uma seta torta apontando para frente. A neblina responde apagando a margem. Da tolda vem cheiro de goiaba; do rio, uma cantiga que o vento mal deixa ouvir. O menino passa a mão no nariz, sem decidir se enxuga chuva ou lágrimas.
+
+* Investigar o cheiro de goiaba vindo da mesa -> cap3_07
+* Escutar a cantiga que vem do rio -> cap3_08
+
+== cap3_03
+O motor engasga, e a conversa dos passageiros cai num silêncio atento. Você sente no bolso o peso do envelope, leve demais para explicar por que exige tanto cuidado. Iolanda o colocou em sua mão com uma firmeza que a doença já lhe roubara em quase todo o resto.
+
+— Não é uma dívida sua — disse. — Só estou pedindo que leve uma coisa até quem soube esperar.
+
+Agora o barco dá um solavanco. Tião escorrega; você o segura pelo cotovelo antes que bata a cabeça no banco. O menino agradece com a solenidade de quem não gosta de ser tratado como menino. Mais adiante, uma cantiga parece sair da chuva, e a figura de capa acompanha o balanço sem tocar a amurada. O ronco do motor fica mais irregular, mas não impede você de ouvir a melodia.
+
+* Escutar a cantiga que o vento traz ao convés -> cap3_08
+* Acompanhar com o olhar a figura de capa -> cap3_09
+
+== cap3_04
+Tião tira do bolso uma tampinha de garrafa achatada, perfurada no meio. Por ali passa um barbante escuro. Ele a usa no pescoço como uma medalha, embora o desenho da marca tenha desaparecido.
+
+— Meu pai disse que a gente sempre acha o rumo pelo barulho da água batendo na canoa. Depois levou a canoa e esqueceu de me ensinar o resto.
+
+Ele ri, mas só com a boca. Quando a balsa se inclina, você segura o corrimão e oferece a outra mão. Tião aceita sem cerimônia, como se tivesse decidido que as pessoas servem para alguma coisa. Conta que pretende procurar o pai na outra margem antes que a mãe venda a rede que ele remendou. A figura de capa aparece perto da proa, com a mão estendida. Celina observa da tolda e faz um sinal para que você se aproxime, como se tivesse se lembrado de algo sobre Iolanda.
+
++tiao
+
+* Aproximar-se da figura de capa -> cap3_09
+* Escutar Celina falar de Iolanda -> cap3_10
+
+== cap3_05
+A chuva torna a tolda uma peneira. Você procura abrigo sob um banco e encontra Tião agachado, olhando para fora por uma fresta. Ele tem uma lista escrita a lápis na palma da mão: canoa, pai, rede. A água já levou metade da última palavra.
+
+— Se eu escrever no papel, perco. Se escrever aqui, pelo menos eu sei onde procurei.
+
+Você estende seu lenço para que ele enxugue a mão sem apagar o resto. O menino guarda o pano no colo, com cuidado de quem recebeu um objeto emprestado para a vida inteira. Do outro lado da balsa, a figura de capa mantém a mão estendida. Ela não chama ninguém pelo nome; ainda assim, seu gesto parece dirigido a todos. Tião vê, também, um vulto junto à superfície e se ergue tão depressa que bate a cabeça no banco.
+
+* Conversar com Celina sobre sua avó -> cap3_10
+* Perguntar à figura de capa o que ela quer -> cap3_06
+
+== cap3_06
+A figura de capa não deixa pegadas no convés molhado. Você percebe porque uma onda atravessa a proa e a água corre em volta das botas sem encontrar obstáculo. A mão aparece sob o tecido, aberta, paciente, como a de alguém que espera receber uma moeda.
+
+— O envelope — diz a voz. — Eu sou quem espera.
+
+A gentileza da frase chega a incomodar. Você pensa nas pessoas que pediam a Iolanda que contasse a mesma história outra vez e na paciência com que ela mudava apenas o final. Não sabe se há ameaça sob aquela capa ou somente uma solidão tão antiga que esqueceu de usar rosto. A figura recua quando Celina passa com a gaiola, e o bem-te-vi solta um piado curto, sem chegar a cantar. Na tolda, a água junta poças em torno de uma mesa vazia.
+
+* Observar com Celina a janela acesa entre a névoa -> cap4_01
+* Escutar as vozes que vêm da água -> cap4_02
+
+== cap3_07
+Você encontra um prato sobre a mesa da balsa. Há nele duas fatias de goiaba, intactas apesar do balanço. A primeira reação é procurar quem esqueceu o lanche; a segunda é estranhar que a fruta conserve o cheiro da cozinha de Iolanda, onde não há mais ninguém para cortá-la.
+
+Celina vem espiar por cima do seu ombro. Conta que o rio oferece recordações como vendedores oferecem amostras no mercado: a parte difícil vem quando se descobre o preço.
+
+— O que ele cobra?
+
+— Atenção. Às vezes cobra tudo de uma vez.
+
+Você pisca e o prato já não está ali. Uma mesa menor aparece alguns passos adiante, onde antes havia apenas bancos empilhados. Perto da amurada, um remo se debate entre as ondas, preso por uma tira de couro. Tião corre para vê-lo, acreditando reconhecer o entalhe na madeira. De fora vêm vozes indistintas, e uma lanterna balança entre as ondas.
+
+* Escutar as vozes que vêm do rio -> cap4_02
+* Examinar a lanterna que balança entre as ondas -> cap4_03
+
+== cap3_08
+O vento atravessa o convés carregando uma cantiga interrompida. O balanço da balsa pesa nas suas pálpebras. A melodia lhe é familiar, mas faltam palavras, como se alguém tivesse dobrado a canção e guardado o pedaço principal. Iolanda a cantarolava enquanto descascava manga. Você nunca perguntou de quem aprendera.
+
+Tião põe a cabeça para fora da tolda e anuncia que viu um remo. Ele se anima de um jeito que torna difícil pedir cautela. Ao mesmo tempo, alguma coisa toca três vezes embaixo da água: tim, tim, tim. Não é o apito da balsa nem o sino do porto. Celina cobre a gaiola antes do terceiro toque terminar.
+
+— Só não responda sem pensar — aconselha. — Algumas perguntas esperam uma vida para serem feitas e depois não dão tempo de ouvir a resposta.
+
+Você se agarra à madeira úmida; a balsa está mudando de direção ou o rio inteiro gira devagar ao redor dela.
+
+* Examinar a lanterna que balança entre as ondas -> cap4_03
+* Ajudar Tião a prender uma corda solta -> cap4_04
+* [aviso] Lembrar o aviso de Bento e escutar as vozes do rio -> cap4_02
+
+== cap3_09
+A cabine escurece. No mesmo instante, a figura de capa atravessa a tolda e se detém diante de você. A água pinga das mangas, mas o cheiro é de tecido guardado: baú, madeira e chuva antiga.
 
 — O envelope. Eu sou quem espera.
 
-A voz é gentil, convincente. A mão está aberta, paciente, molhada de chuva.
+Você se lembra da voz de Iolanda e mantém a mão sobre o bolso. A figura espera alguns instantes; não avança. Não parece irritada por encontrar resistência, e isso a torna ainda mais difícil de compreender. A gaiola treme perto da janela. Celina murmura algo ao pássaro, chamando-o de professor, e ele lhe responde com um bico aberto e indignado.
 
-* [chave] Lembrar do bilhete da avó e recusar -> recusa
-* [!chave] Entregar o envelope -> engano
-* [chave] Entregar o envelope mesmo assim -> engano
-* [!desperto] Voltar para dentro sem responder -> sono
+Três badaladas sobem do rio. Logo depois, uma chiadeira de rádio se mistura ao motor, embora não haja aparelho visível. A figura vira a cabeça na direção do som. Pela primeira vez sua espera tem um gesto diferente: ela parece escutar.
 
-== recusa
-— Não — você diz. — A senhora pediu.
+* Prender a corda que bate no convés -> cap4_04
+* Acompanhar Tião até a amurada para examinar um vulto -> cap4_05
+* [pista] Lembrar o que Celina disse e investigar a luz nas ondas -> cap4_03
 
-A figura fica parada um momento. Depois ri, um riso baixo, quase aliviado, e a capa cai no convés vazia. Não havia ninguém dentro. Só água escorrendo pelas tábuas.
+== cap3_10
+A balsa avança tão lentamente que as gotas parecem cair para trás. Você toca a borda do envelope e pensa que a vontade de saber pode ser mais pesada que o próprio segredo. No início da noite, sua maior preocupação era não perder o último horário. Agora nem o relógio parece disposto a lhe dar notícia confiável.
 
-Lá atrás, o bem-te-vi começa a cantar.
+Celina lhe conta que Iolanda gostava de rádios quebrados porque eles obrigavam as pessoas a ter paciência com o silêncio. Uma vez tentou consertar um usando um grampo de cabelo; o rádio continuou mudo, mas o grampo ganhou uma segunda profissão como marcador de página.
 
-* Olhar para a margem que se aproxima -> chegada
+Perto da proa, uma interferência arranha o ar. Mais longe, por entre a névoa, brilha uma janela. Celina levanta a gaiola para que o bem-te-vi veja também. O pássaro observa a luz sem cantar e volta a olhar para você, muito sério.
 
-== engano
-A mão se fecha sobre o envelope. A capa se vira e não tem rosto, só o reflexo das luzes do rio. O envelope se desfaz em papel molhado entre dedos que não existem.
+* Acompanhar Tião até a amurada para examinar um vulto -> cap4_05
+* Ajudar Celina a identificar a janela acesa -> cap4_01
 
-A balsa dá um tranco e começa a voltar.
+== cap4_01
+A janela acesa aparece e desaparece entre os farrapos de neblina. Celina ergue a gaiola acima do ombro, tentando mostrar o caminho ao bem-te-vi. Ele inclina a cabeça, atento, mas continua calado. O silêncio pesa mais que a chuva.
 
-— Quem só quer ir, o rio devolve — você lembra, tarde demais.
+— Não é a nossa margem — diz ela. — Se fosse, ele saberia.
 
-* Correr até a amurada e olhar a água -> fim_devolvido
-* [pista] Gritar o nome da sua avó para o rio -> fim_nome
+Ao redor da luz, as paredes de uma casa se desenham sobre palafitas. Numa varanda estreita, uma cadeira balança sem ninguém. Você sente vontade de chamar Iolanda, mesmo sabendo que sua voz não pode atravessar os anos. Em vez disso, pergunta a Celina se já viu aquela casa.
 
-== fim_devolvido
-Na água preta, por um segundo, você vê papel boiando, as letras da sua avó se desmanchando como tinta de aquarela.
+— Toda noite de travessia a gente vê alguma casa que perdeu. A minha tinha um pé de jambo. Essa pode ser de outra pessoa.
 
-A balsa atraca na margem de onde você saiu. O homem do guichê não diz nada; só desliga a luz da cabine.
+A luz diminui, e o motor encontra força. A janela continua acesa atrás da névoa, pequena e teimosa. Celina agradece por você não ter pedido que ela fingisse reconhecê-la; às vezes, diz, companhia é só isso. Na tolda, uma mesa surge entre bancos antes vazios. A figura de capa passa diante dela sem fazer ruído.
 
-Em casa, a chave de latão, se você a tinha, está no seu bolso, seca, como se nunca tivesse molhado. Ela vai esperar. As coisas da sua avó sempre souberam esperar.
+* Perguntar à figura de capa o que ela espera -> cap4_06
+* Examinar a mesa que apareceu sob a tolda -> cap4_07
+
+== cap4_02
+As vozes vêm de baixo da água, sem formar bolhas. Uma chama por alguém que não responde; outra reclama que a panela vai queimar. Você reconhece um pedaço da risada de Iolanda e se inclina, mas Celina segura sua manga com firmeza.
+
+— Escutar não é a mesma coisa que descer atrás.
+
+Você se afasta da borda e deixa o som chegar por conta própria. A risada se mistura às outras, perde o contorno e vira apenas o bater do rio contra o casco. Por um instante, isso dói como uma segunda perda. Depois você percebe que consegue lembrar a risada verdadeira: aquela que vinha acompanhada de um assobio involuntário pelo nariz.
+
+Tião encosta ao seu lado. Também procura uma voz, admite, mas não deseja que alguém a invente só para acalmá-lo. Vocês ficam escutando até o motor recuperar o compasso. A balsa segue; nenhuma voz exige que alguém a acompanhe. Uma mesa surge sob a tolda, enquanto Tião aponta um remo que bate na amurada.
+
++escuta
+
+* Examinar a mesa que apareceu sob a tolda -> cap4_07
+* Ajudar Tião a recolher um remo preso à balsa -> cap4_08
+
+== cap4_03
+A lanterna balança no vazio, a um braço de distância da balsa. Você estica a mão e percebe que ela está presa a uma boia de madeira. Debaixo do vidro, a chama arde sem pavio. O piloto reduz a marcha para que você possa puxá-la.
+
+No fundo da boia há uma inscrição quase apagada: PARA QUEM PERDEU O CAMINHO. Você pergunta se pode acendê-la para todos. A chama se encolhe, como se pensasse, e torna a crescer quando Tião prende a boia na amurada. O menino anuncia que encontrou um passageiro que não precisa pagar. Celina responde que então o passageiro provavelmente será o primeiro a reclamar do serviço.
+
+A luz revela uma faixa de água desimpedida. Fora dela, troncos e telhados emergem e somem entre ondas baixas. O piloto agradece com um aceno e orienta a proa pela faixa. Você ainda não vê o destino, mas já distingue uma direção do resto da noite. Tião aponta um remo preso ao casco. Por baixo da água, um sino começa a tocar.
+
+* Ajudar Tião a recolher um remo preso à balsa -> cap4_08
+* Escutar as badaladas que vêm da água -> cap4_09
+
+== cap4_04
+A corda solta ameaça se enrolar na hélice. Você se abaixa para agarrá-la, mas ela escapa como um peixe liso. Na terceira tentativa, Tião pisa na ponta e lhe entrega a outra com uma expressão de quem acaba de inventar os pés.
+
+Juntos, vocês enrolam o cabo num cabeço. Ele traz nós antigos, feitos por mãos diferentes; um deles tem uma fita azul desbotada. O piloto olha a fita e fica muito quieto antes de explicar que a corda pertenceu a um barqueiro desaparecido. Tião passa o polegar pela marca e pergunta se aquilo significa que o pai está vivo.
+
+— Significa que esta corda chegou até aqui — responde o piloto. — Não vou prometer mais do que sei.
+
+O menino baixa a cabeça, decepcionado, mas agradece. Você entende que uma resposta honesta pode doer sem abandonar quem a recebe. O cabo fica preso; a água volta a correr sem ameaçar o motor. Ao longe surge uma linha de árvores. Abaixo da água soam badaladas; por trás do motor, uma chiadeira lembra um rádio procurando estação.
+
+* Escutar as badaladas que vêm da água -> cap4_09
+* Procurar a origem da chiadeira de rádio -> cap4_10
+
+== cap4_05
+Uma forma comprida acompanha a balsa por alguns metros. Tião se debruça tanto sobre a amurada que você precisa segurá-lo pela camisa. A forma vem à tona: não é uma canoa, mas um tronco coberto de raízes, cheio de sapos agarrados uns aos outros.
+
+— Passageiros clandestinos — diz o menino, desapontado. — E nenhum sabe remar.
+
+Um sapo maior solta um coaxo que parece indignado com a acusação. Tião ri de verdade, pela primeira vez desde que a névoa fechou. Depois confessa que está cansado de transformar tudo em sinal do pai. Se uma madeira boia, procura um nome; se uma pessoa assobia, escuta uma despedida. Você não tenta convencê-lo de que o pai voltará. Fica ali enquanto ele conta como os dois disputavam a última colherada de doce.
+
+O tronco se afasta. A balsa passa por uma cortina de árvores baixas, e a névoa muda de cheiro: barro fresco, folhas amassadas, um pouco de fumaça. Da proa vem a chiadeira de um rádio, enquanto a figura de capa aguarda imóvel.
+
+* Procurar a origem da chiadeira de rádio -> cap4_10
+* Perguntar à figura de capa o que ela espera -> cap4_06
+
+== cap4_06
+Você pergunta à figura de capa o que ela espera. A mão estendida se recolhe, devagar. Pela abertura do capuz não há rosto; apenas um reflexo tremido do rio, como se ela trouxesse uma janela escura onde deveria haver olhos.
+
+— Espero o que ficou para depois — diz. — Uma visita, uma desculpa, uma canção. Fico maior quando ninguém decide.
+
+A resposta não transforma a figura em amiga. Você protege o envelope; a figura continua perto demais. Mas a voz já não parece a de uma pessoa tentando enganá-lo por prazer. Você pergunta por que ela não vai embora. O tecido se move com uma espécie de encolher de ombros.
+
+— Alguém precisa ficar com as esperas que largam na margem.
+
+Tião chama da tolda, dizendo que sente cheiro de fumaça. Quando você olha outra vez, a capa está mais adiante, vazia de tudo que se possa tocar. A balsa atravessa a névoa sem parar; a conversa fica com você.
+
+A balsa encosta no atracadouro da outra margem. A madeira do cais range quando a primeira corda a alcança.
+
+* Desembarcar pelo cais e ajudar na amarração -> cap5_01
+* Acompanhar Celina em direção ao mercado fechado -> cap5_02
+
+== cap4_07
+A mesa sob a tolda está posta para três pessoas. Os pratos são diferentes entre si, e uma das xícaras tem a alça colada com um fio de cobre. É igual à que Iolanda guardava para visitas que apareciam sem avisar.
+
+Celina se aproxima e toca o tampo. Sua mão atravessa a madeira até o pulso. Ela a retira num susto e depois ri, aliviada por ainda possuir os cinco dedos.
+
+— Minha irmã tinha uma mesa assim. Talvez esta seja a sua. Talvez o rio não tenha bastante mobília para representar todas as saudades.
+
+Você não tenta sentar. Olha para os lugares vazios e se lembra de uma tarde em que Iolanda esperou uma visita que não veio. No fim, ela serviu o bolo mesmo assim, dividindo a última fatia entre vocês. Quando o barco oscila, os pratos se desfazem em névoa. Celina ajeita o pano sobre a gaiola e agradece por você ter ficado até a mesa sumir.
+
+A balsa encosta no atracadouro da outra margem. A madeira do cais range quando a primeira corda a alcança.
+
+* Acompanhar Celina em direção ao mercado fechado -> cap5_02
+* Subir a escadaria junto ao atracadouro -> cap5_03
+
+== cap4_08
+O remo preso à balsa bate no casco a cada onda. Você e Tião puxam a tira de couro até conseguir içá-lo. A madeira é escura, gasta no lugar onde mãos costumavam segurá-la, e tem um pequeno peixe entalhado perto da pá.
+
+Tião reconhece o desenho, mas não a forma do peixe: o pai fazia peixes compridos; aquele é redondo, quase uma batata com olhos. O menino fica um instante dividido entre rir e chorar. Acaba fazendo as duas coisas. Você o ajuda a deitar o remo num banco, onde a água escorre devagar.
+
+— Pode ter passado por ele — diz Tião. — Ou por alguém que conheceu ele.
+
+Você concorda que as duas coisas são possíveis. O remo não conta a história inteira, e seria fácil demais preencher o resto com uma certeza bonita. O piloto pede espaço no convés para a aproximação. Um ponto de luz pisca à frente, alto demais para ser reflexo.
+
+A balsa encosta no atracadouro da outra margem. A madeira do cais range quando a primeira corda a alcança.
+
+* Subir a escadaria junto ao atracadouro -> cap5_03
+* Examinar a passarela alagada antes de atravessá-la -> cap5_04
+
+== cap4_09
+As badaladas vêm do fundo do rio. A cada toque, a água perto da balsa se abre numa roda perfeita. Você conta até três e espera a quarta, que não chega. Celina conta que havia uma capela numa ilha baixa, antes da grande cheia; o sino desapareceu junto com a torre.
+
+— Minha irmã dizia que sino não serve para prender ninguém. Serve para lembrar que existe um lado de fora.
+
+Você escuta de novo e percebe que o som não vem sempre do mesmo lugar. É a balsa que passa por ele, ou ele que passa por vocês? A pergunta fica sem resposta quando um ponto luminoso pisca no alto da névoa. Tião acha que pode ser um barco; o piloto diz que é cedo para adivinhar.
+
+O sino toca outra vez, uma nota só, e o motor responde com um ronco firme. A figura de capa permanece na proa, imóvel, como quem escuta uma notícia antiga sem saber se pode acreditar.
+
+A balsa encosta no atracadouro da outra margem. A madeira do cais range quando a primeira corda a alcança.
+
+* Seguir pela passarela alagada -> cap5_04
+* Procurar abrigo na padaria da margem -> cap5_05
+
+== cap4_10
+A chiadeira vem de um rádio que não está ali. Você passa a mão pelo ar e encontra somente chuva. Entre estalos, uma voz feminina ensaia a primeira nota de uma canção; não chega a completar o verso. Seu peito reconhece Iolanda antes que sua memória aceite a semelhança.
+
+— Ela gravou? — você pergunta a Celina.
+
+— Sua avó fazia muitas coisas sem anunciar. Uma vez costurou o nome no casaco do meu marido para ele parar de jurar que era de outro.
+
+Celina sorri, mas não confirma se a voz é de Iolanda. Você escuta de novo. O rádio invisível chia, perde a estação e desaparece debaixo do motor. Não há certeza para guardar, apenas a melodia incompleta. Tião lhe pede que a cante; você tenta, e ele acompanha uma nota fora do tom com tanto empenho que o piloto se vira para ver se alguma peça quebrou.
+
+Mais à frente, a névoa abre uma passagem estreita, como uma cortina afastada por mãos invisíveis.
+
+A balsa encosta no atracadouro da outra margem. A madeira do cais range quando a primeira corda a alcança.
+
+* Procurar abrigo na padaria da margem -> cap5_05
+* Desembarcar pelo cais e ajudar na amarração -> cap5_01
+== cap5_01
+O casco encosta no cais com um gemido comprido, como se a balsa reconhecesse uma velha dor na madeira. A outra margem surge aos poucos: palafitas de tábuas escuras, passarelas estreitas, roupas que a chuva lavou duas vezes. O bem-te-vi solta três notas; só então Dona Celina retira o pano da gaiola.
+
+— Chegamos mesmo — diz, sem comemorar. — Agora falta chegar aonde você precisa.
+
+Tião salta para o trapiche e chama pelo pai. A voz vai de casa em casa, sem receber resposta. Você sente o envelope contra o corpo, protegido da água, mas já não acredita que papel possa proteger alguém de tudo. No alto da rua, uma única janela permanece iluminada. Debaixo dela há a sombra de uma cadeira que balança, embora não se veja quem a ocupa.
+
+Uma senhora no cais informa que o caminho direto está coberto pela cheia. As casas, porém, conservam outras entradas; basta escolher por onde se aproximar.
+
+
+* Ajudar a vizinha que tenta salvar seus pertences -> cap5_06
+* Procurar abrigo e informações no galpão -> cap5_07
+
+== cap5_02
+Na outra margem, a chuva transformou o mercado numa coleção de telhados pingando dentro de bacias. Uma placa anuncia peixe fresco em letras azuis; por trás dela, uma peixeira de avental vermelho recolhe as últimas escamas da mesa.
+
+— Iolanda? — Ela repete o nome da sua avó e põe a faca de lado. — Aquela mulher fazia perguntas como quem bate à porta e já traz café.
+
+Seu nome é Dalva. Ela aponta para a casa da janela acesa, no fim de uma passarela. A enchente antiga levou metade do mercado, conta, e quase levou Anselmo também. Ele sobreviveu; desde então, a família costuma medir os anos pelo que havia antes e depois da água. Você pergunta se ele espera alguém. Dalva hesita tanto que um pingo cai do telhado dentro da sua gola.
+
+— Espera, sim. Mas não confunda espera com cobrança. São bichos que se parecem só de longe.
+
+* Procurar informações no galpão da comunidade -> cap5_07
+* Seguir pela rua das lamparinas acesas -> cap5_08
+
+== cap5_03
+Uma escadaria de pedra sobe da beira do rio até as palafitas. Os degraus estão gastos em forma de meia-lua, como se cada pessoa que passou tivesse levado um pedacinho para casa. Você apoia a mão no corrimão úmido e pensa nas vezes que Iolanda subiu por ali sem comentar a visita.
+
+No patamar, um rapaz recolhe fotografias de um varal. O vento ameaça levar uma delas; você a segura pela ponta antes que caia na água. Mostra uma mulher jovem, de braços cruzados, ao lado de um homem que parece prestes a rir. Há um espaço aberto entre os dois, suficiente para outra pessoa, ou para um segredo.
+
+— Seu Joaquim tira retrato desde o tempo em que o rio andava de chapéu — explica o rapaz. — A casa dele fica perto da varanda do Anselmo.
+
+No alto da escada, a luz amarela desenha um caminho entre as tábuas.
+
+* Percorrer a rua iluminada por lamparinas -> cap5_08
+* Visitar a capela vista do alto da escadaria -> cap5_09
+
+== cap5_04
+A passarela que atravessa o braço do rio está inundada até os tornozelos. Dona Celina ergue a gaiola acima da cabeça e examina a corrente com o respeito de quem sabe nadar e prefere não precisar demonstrá-lo.
+
+— Essa ponte já foi mais alta — ela diz. — Ou eu já fui mais baixa. Não descarto nenhuma das duas coisas.
+
+A piada lhe arranca um sorriso inesperado. Juntos, vocês avançam, sentindo as tábuas cederem sob os pés. Do outro lado, uma parede de casa exibe um retrato coberto por plástico: Iolanda aparece mais moça, junto de um homem com olhos parecidos com os do velho na varanda iluminada.
+
+Celina diminui o passo. Ela conta que conheceu sua avó numa travessia de cheia, quando a balsa levou mantimentos até a comunidade. Nunca conheceu pessoa capaz de mandar tanto e, ao mesmo tempo, fazer cada um acreditar que a ideia tinha sido sua.
+
+* Pedir orientação na pequena capela da margem -> cap5_09
+* Seguir com Celina em direção à casa sobre palafitas -> cap5_10
+
+== cap5_05
+O cheiro de pão quente chega antes da padaria. Uma mulher abre a janela dos fundos e deixa uma fornada esfriar, apesar da hora impossível. Você pergunta pela casa de Anselmo; ela aponta com o queixo, porque as duas mãos estão ocupadas com uma forma maior que seus braços.
+
+— Se vir aquela criatura, diga que não adianta fingir que esqueceu o bolo de fubá. Está me devendo a forma há doze anos.
+
+Celina, que acompanha você pelo trecho seco da rua, ri tão alto que o bem-te-vi responde da gaiola. A mulher se chama Neide e conheceu Iolanda nas manhãs em que a balsa trazia farinha. A avó sempre pedia uma fatia para a viagem e outra, embrulhada, para deixar em certa varanda.
+
+Neide lhe oferece uma fatia morna. O açúcar gruda nos dedos, e o gosto repentino transforma a noite numa cozinha que já não existe. Você engole devagar para não desperdiçar a lembrança.
+
+* Levar o bolo para a casa sobre palafitas -> cap5_10
+* Ajudar a vizinha que tenta salvar uma caixa -> cap5_06
+
+== cap5_06
+Uma vizinha tenta puxar para cima da passarela uma caixa que a corrente deslocou. Dentro há livros escolares, um pente e uma panela pequena. Você segura uma alça, ela segura a outra, e ambos chegam à porta carregando o que restou da prateleira derrubada.
+
+— A panela é minha; o resto é do meu filho — explica a mulher, ofegante. — Ele vai reclamar dos livros. Eu vou reclamar se perder a panela.
+
+Chama-se Rosa e mora duas casas antes de Anselmo. Quando você pergunta pelo velho, ela aponta para uma janela acesa entre as frestas da chuva. Diz que ele conserta cadeiras e guarda coisas para os outros, embora quase nunca aceite que façam o mesmo por ele.
+
+Tião recolhe um caderno que caiu na água e o entrega a Rosa. Ela agradece ao menino e conta que viu uma canoa passar ao anoitecer, remada por alguém que podia ser seu pai. Não promete certeza. Ele guarda a possibilidade com o cuidado de quem não quer amassá-la. Rosa encontra entre as páginas uma receita que prometeu entregar ao velho e oferece o papel a você.
+
++ajuda
+
+* Seguir a indicação de Rosa até a varanda de Anselmo -> cap6_01
+* Examinar a marca da enchente junto à casa -> cap6_02
+
+== cap5_07
+O galpão do antigo posto de balsa está aberto, e a chuva bate no telhado de zinco com a pressa de quem chegou atrasada para uma discussão. Lá dentro, redes remendadas dividem espaço com um banco de igreja e um monte de ferramentas. Um homem procura pregos numa lata de biscoitos.
+
+— Já teve de tudo aqui — ele explica. — Escola, abrigo, casamento. Até velório de um bode, mas aí era mais por consideração ao dono.
+
+Ele se apresenta como Damião, zelador por falta de candidatos. Quando você menciona Iolanda, tira o boné. A avó ajudou a erguer uma parede do galpão depois da enchente; Anselmo levou as tábuas e discutiu com ela sobre onde colocá-las. Trabalharam brigando até anoitecer, depois dividiram o jantar como se nada tivesse acontecido.
+
+Damião oferece uma escova de aço para o cadeado da porta junto à varanda. Também indica a capela, onde o padre guarda lembranças daquele tempo.
+
+* Procurar as marcas da enchente junto à casa -> cap6_02
+* Perguntar ao velho sobre a promessa de Iolanda -> cap6_03
+
+== cap5_08
+Na rua das lamparinas, cada casa acende uma luz por quem ainda está fora. Ninguém explica essa regra com solenidade; uma menina simplesmente lhe diz que é assim e continua perseguindo um gato que carrega um peixe na boca.
+
+Uma das chamas, atrás de vidro azul, pertence a Anselmo. A vizinha que cuida dela durante o dia lhe conta que Iolanda costumava apagar a luz ao amanhecer, quando voltava para casa. Depois de sua última visita, o velho passou a manter a lamparina acesa mesmo sob sol forte.
+
+— Não é para ela encontrar o caminho — diz a vizinha. — Ele sabe muito bem. É para a casa não esquecer como se espera alguém.
+
+Você olha na direção da varanda. Uma cadeira balança em ritmo irregular, movida pelo pé de quem se senta nela. Perto dali, um sino pequeno soa na capela e se cala antes que você conte a segunda badalada.
+
+* Perguntar ao velho sobre a promessa de Iolanda -> cap6_03
+* Encontrar o fotógrafo Joaquim perto da casa -> cap6_04
+
+== cap5_09
+A capela fica sobre estacas de madeira, pequena o bastante para parecer uma casa que aprendeu a rezar. O padre Elias recolhe os bancos para protegê-los dos respingos que atravessam as frestas. Quando você oferece ajuda, ele aceita sem perguntar de onde veio.
+
+— Rezar levanta muita coisa — diz, ofegante, erguendo a outra ponta. — Banco de madeira não é uma delas.
+
+Na parede existe uma foto antiga da comunidade reunida. Você reconhece Iolanda pela maneira de inclinar o rosto, atenta mesmo quando não estava falando. Um homem ao lado dela segura uma cadeira de balanço desmontada. Elias explica que Anselmo a levou para o abrigo durante a enchente porque uma criança precisava descansar. Na época ninguém sabia que a casa resistiria.
+
+A chuva diminui até se tornar uma conversa baixa no telhado. Da porta da capela você avista a varanda onde o velho está sentado, junto da porta fechada.
+
+* Encontrar o fotógrafo Joaquim perto da casa -> cap6_04
+* Encontrar Celina e acompanhar sua visita ao velho -> cap6_05
+
+== cap5_10
+A casa sobre palafitas aparece atrás de um jambeiro. Uma única janela ilumina a água, e a luz se quebra em tantos pedaços que parece haver outras casas lá embaixo. Você distingue um velho na varanda, sentado de perfil numa cadeira de balanço. Ele observa o rio; não olha para você e não pede nada.
+
+Há uma porta pequena ao lado dele, presa por um cadeado de ferrugem antiga. Pela janela chega uma melodia assobiada em tom baixo, interrompida sempre no mesmo ponto. Você demora a perceber que conhece o trecho: Iolanda o assobiava enquanto cortava fruta, antes de mudar de assunto quando alguém perguntava de onde vinha.
+
+Uma vizinha atravessa a passarela com uma cesta de roupa. Diz que Anselmo dorme pouco, mas conversa de bom grado quando lhe dão tempo para encontrar a primeira frase. Você a agradece e fica por um instante sob o jambeiro, sentindo a chuva fina na nuca.
+
+* Aproximar-se da varanda junto com Celina -> cap6_05
+* Apresentar-se ao velho na varanda -> cap6_01
+
+== cap6_01
+Você sobe os degraus da varanda com cuidado. De perto, o velho tem uma cicatriz branca no queixo e os punhos finos de quem carregou mais coisas do que agora admite. A cadeira range sob seu peso. Ele olha primeiro para o rio, depois para você, e dá ao silêncio um lugar entre os dois.
+
+— Sou Anselmo — diz enfim. — A cadeira é mal-educada, mas costuma avisar antes de quebrar.
+
+Você diz seu nome e menciona Iolanda. O balanço para. Anselmo passa a mão na madeira do braço da cadeira, como se procurasse uma palavra na veia escura. Não pergunta pelo envelope nem estende a mão. Ao lado dele, a porta pequena permanece fechada por um cadeado.
+
+— Ela tinha o costume de chegar molhada e fingir que era culpa do rio — diz ele. O sorriso dura pouco, mas é inteiro. — Entre na varanda. A chuva não precisa ouvir tudo.
+
+Há espaço junto à cadeira e uma bacia esquecida perto da porta. Você pode se sentar ou procurar abrigo mais adiante.
+
+* Perguntar a Anselmo sobre a receita de bolo -> cap6_06
+* Examinar a ferrugem do cadeado junto à porta -> cap6_07
+
+== cap6_02
+A marca da enchente atravessa a parede da casa de Anselmo à altura do seu ombro. Acima dela, a tinta conserva um resto de azul; abaixo, a madeira adquiriu a cor de chá forte. Uma linha não consegue contar a força da água, mas oferece ao olho um começo.
+
+Da varanda, o velho acompanha sua inspeção. Você se apresenta e ele aponta com a bengala para um risco mais baixo, feito a lápis na moldura.
+
+— Esse é de uma enchente menor. Fiz para convencer Iolanda de que eu não exagerava. Ela achou bonito e desenhou um peixe ao lado.
+
+Você encontra o peixe: três traços tortos, um olho enorme. Anselmo ri antes de lembrar que estava triste. Ele explica que a água entrou até a porta pequena, onde um cadeado ainda protege o que a família não conseguiu organizar depois daquela noite. Iolanda voltaria para ajudá-lo, disse; algumas promessas sobrevivem aos calendários.
+
+O velho lhe oferece o banco junto da cadeira. Do outro lado da varanda, o cadeado brilha onde a ferrugem foi tocada pela chuva.
+
+* Examinar a ferrugem do cadeado junto à porta -> cap6_07
+* Receber o padre Elias, que se aproxima da varanda -> cap6_08
+
+== cap6_03
+Na varanda, Anselmo escuta você dizer o nome da avó e levanta a cabeça devagar. Não se parece com quem recebe uma notícia inesperada. Parece alguém que viu uma nuvem no horizonte e, anos depois, finalmente sentiu a primeira gota.
+
+— Iolanda prometeu voltar — ele conta. — Não disse que ia resolver tudo. Disse que voltaria para eu não ter de abrir aquela porta sozinho.
+
+Você olha para o cadeado na madeira. O velho explica que a avó conhecia seu medo da sala pequena, onde ficaram guardadas lembranças da enchente. Ele não queria perdê-las, nem tinha coragem de revê-las. Em vez de chamá-lo de teimoso, ela fez café e sentou ao lado dele. Naquela tarde, foi o bastante.
+
+A promessa não foi quebrada por falta de vontade. Essa verdade alivia e machuca ao mesmo tempo. Anselmo se inclina para pegar uma manta caída, e você percebe que suas mãos tremem de frio.
+
++verdade
+
+* Receber o padre Elias, que se aproxima da varanda -> cap6_08
+* Fazer companhia ao velho com uma xícara de café -> cap6_09
+
+== cap6_04
+Joaquim, o fotógrafo, entrega a você um retrato protegido por plástico. Nele, Iolanda segura uma sombrinha fechada, embora o céu pareça prestes a desabar. Anselmo, mais jovem, está ao lado dela. Uma mancha na imagem cobre a distância entre seus ombros.
+
+— Caiu água no papel quando revelei — explica Joaquim. — Passei anos achando que tinha estragado. Depois pensei: para essa família, ficou até discreto.
+
+Ele acompanha você até a varanda e reconhece o velho com um aceno. Anselmo pega o retrato pelas bordas e o aproxima da luz. Conta que a foto foi tirada no dia em que ajudaram a consertar o galpão. Brigaram por causa de uma tábua, almoçaram juntos e brigaram outra vez para decidir quem lavaria os pratos.
+
+— Ela ganhou as duas discussões — diz. — A terceira, sobre quem tinha ganhado, eu perdi também.
+
+A porta fechada fica logo atrás dele. Você percebe que a lembrança deixou seus olhos molhados, embora a boca ainda sorria.
+
+* Fazer companhia ao velho com uma xícara de café -> cap6_09
+* Escutar a melodia que Anselmo assobia -> cap6_10
+
+== cap6_05
+Dona Celina atravessa a ponte lateral primeiro, segurando a gaiola de modo que o pano não toque as grades. O bem-te-vi se agita quando a casa aparece; ela murmura alguma coisa que parece uma bronca carinhosa.
+
+Anselmo está na varanda, olhando o rio. Ao ouvir os passos, ergue o rosto e reconhece Celina. Os dois permanecem em silêncio por tempo suficiente para você acreditar que houve uma briga antiga. Então ela põe a gaiola no chão e segura a mão dele.
+
+— Ainda está perdendo no jogo de damas? — pergunta.
+
+— Só para quem vem me visitar.
+
+Celina conta que Iolanda ensinou os dois a jogar na enchente, usando tampinhas sobre um papel desenhado. Quando a água baixou, cada um guardou uma peça. Não explica por que você nunca ouviu falar daquelas pessoas, e Anselmo não pergunta por que Iolanda não veio pessoalmente. A cadeira volta a ranger. Na casa, a porta pequena continua trancada.
+
+Há uma cadeira vazia junto do velho; a ponte atrás de você já começa a desaparecer na neblina.
+
+* Escutar a melodia que Anselmo assobia -> cap6_10
+* Perguntar a Anselmo sobre a receita de bolo -> cap6_06
+
+== cap6_06
+Anselmo tira de uma lata a receita dobrada e a segura como se fosse um documento de grande importância. Você espera que ele examine as medidas; em vez disso, ele ri ao reconhecer o desenho de uma galinha no canto da página.
+
+— Iolanda dizia que era uma assinatura. A galinha discordava.
+
+A receita do bolo de fubá passou por tantas cozinhas que cada cópia manda fazer alguma coisa diferente. Numa versão, acrescenta-se erva-doce; noutra, só se pode mexer para o lado esquerdo, o que Anselmo considera invenção de quem nunca precisou limpar o fogão. Sua avó levava um pedaço para ele nas visitas, embrulhado em guardanapo.
+
+Ao falar, ele pousa o papel no colo. A cadeira para de balançar. O velho conta que, na última visita, ela prometeu ajudá-lo com a porta pequena, mas o tempo se adiantou aos dois. Você imagina Iolanda subindo as tábuas com uma fatia de bolo numa mão e a outra livre para bater.
+
+O aroma que ainda ficou na receita faz o silêncio parecer menos frio.
+
+* Aproximar-se do cadeado ao lado da cadeira -> cap7_01
+* Perguntar sobre a promessa que Iolanda fez a ele -> cap7_02
+
+== cap6_07
+O cadeado da porta pequena parece uma fruta deixada tempo demais na árvore: áspero, escuro, quase fundido à madeira. Anselmo observa você examiná-lo, sentado na cadeira de balanço.
+
+— Se der um puxão, arranca a porta inteira — avisa. — Já tentei. A porta ganhou.
+
+Ele não pede que você a abra. Conta apenas que Iolanda tinha paciência com ferrugem. Dizia que pressa e força eram parentes próximos, ambos inclinados a estragar o que queriam salvar. Você passa o dedo pela madeira, sentindo uma ranhura que a chuva não conseguiu apagar: a marca de uma régua medindo a altura de uma criança.
+
+Anselmo explica que a sala guardava pertences retirados da enchente, inclusive um rádio antigo. Não consegue dizer o que mais há ali. Em certos dias, ter esquecido o conteúdo parece alívio; em outros, parece perda repetida.
+
+Uma lamparina ilumina a fechadura. O velho ajeita a manta e espera, deixando a decisão amadurecer entre vocês.
+
+* Perguntar sobre a promessa que Iolanda fez ao velho -> cap7_02
+* Ouvir a vizinha que chama por ajuda na passarela -> cap7_03
+* [ajuda] Contar a Anselmo sobre Rosa e chamar Tião até a varanda -> cap7_05
+
+== cap6_08
+O padre Elias chega à varanda quase junto com você, protegendo a cabeça com um jornal inútil. Anselmo lhe oferece um pano para secar os óculos. Eles se tratam com a familiaridade de quem já se desentendeu e não precisa demonstrar que fez as pazes.
+
+— Vim buscar a panela que emprestei — diz Elias.
+
+— Emprestou há tanto tempo que ela já deve me chamar de pai.
+
+Você menciona Iolanda. O padre conta que ela acompanhava as famílias atingidas pela enchente, levando notícias e escutando o que ninguém tinha coragem de dizer. Anselmo acrescenta que ela sabia ouvir sem transformar toda dor numa lição. Às vezes ficava apenas na varanda, acompanhando o movimento do rio, enquanto ele procurava palavras.
+
+Elias nota a porta pequena fechada e não faz perguntas. Antes de ir, aperta o ombro do velho. Você percebe como um gesto pode reconhecer uma história sem exigir que ela seja contada de novo.
+
+O jornal molhado fica na mesa. Uma das páginas protege, por acaso, uma fotografia antiga.
+
+* Atender ao chamado urgente que vem da passarela -> cap7_03
+* Investigar a sombra de capa que aparece na varanda -> cap7_04
+* [verdade] Propor a Anselmo que enfrentem juntos a porta -> cap7_01
+
+== cap6_09
+A cadeira de balanço fica vazia enquanto Anselmo entra na casa para buscar café. Logo você ouve um barulho e o vê surgir com duas canecas. A bengala presa sob o braço torna o equilíbrio uma operação ambiciosa.
+
+Você pega uma das canecas antes que o café seja servido ao chão. Ele agradece com um movimento de cabeça e senta. A cadeira recomeça sua reclamação habitual. Ao voltar a falar de Iolanda, ele deixa a mão sobre o braço vazio do móvel ao lado.
+
+— Ela gostava de sentar aí. Dizia que o rio nunca trazia duas vezes a mesma conversa.
+
+O café está forte e doce, como o que sua avó fazia nas manhãs de chuva. Anselmo conta que não sabia de sua chegada, mas uma luz fica acesa na janela há anos. Não é um pedido feito a ninguém; é um hábito que ele ainda não quis abandonar.
+
+Você pode sentar perto dele ou olhar a janela de onde vem a luz.
+
+* Encarar a figura de capa que aparece na varanda -> cap7_04
+* Segurar o envelope quando o vento cresce na varanda -> cap7_05
+
+== cap6_10
+A melodia que chega da casa é apenas um assobio, falho em certos pontos e teimoso em outros. Anselmo o interrompe ao perceber que você escuta. Quando menciona Iolanda, ele franze a testa, procurando entre as décadas.
+
+— Ela cantava melhor do que eu — diz. — E desafinava com uma confiança admirável.
+
+Você reconhece a canção sem saber de onde. Ela esteve na cozinha da sua infância, talvez, ou numa tarde que você esqueceu de guardar. A janela iluminada projeta o contorno do velho no assoalho; ao lado da cadeira, a porta pequena conserva o cadeado enferrujado.
+
+Anselmo conta que há muito tempo ninguém termina aquela música naquela casa. Não explica por quê. Você sente vontade de perguntar, mas espera que ele encontre o próprio ritmo. O rio passa sob a varanda, levando pequenos reflexos amarelos, enquanto o velho torna a assobiar as primeiras notas.
+
+Uma lufada de vento ameaça apagar a luz da janela. Você se aproxima para protegê-la, e Anselmo acompanha seu movimento.
+
+* Proteger o envelope da ventania que sobe do rio -> cap7_05
+* Observar o cadeado da porta junto à cadeira -> cap7_01
+== cap7_01
+A porta baixa mal chega ao seu ombro. A madeira inchada pela chuva conserva riscos de lápis: um menino foi medido ali durante anos, até a última marca, traçada com a mão hesitante de quem já não tinha certeza da própria altura. O cadeado é pequeno. A espera, não.
+
+Anselmo observa a água da varanda. Celina acomodou o bem-te-vi num prego e o bicho, em vez de cantar, espia a fechadura com a concentração de um médico sem diploma.
+
+— Iolanda dizia que uma porta tem dois lados — murmura o velho. — A gente costuma lembrar só do lado em que está.
+
+Você segura o envelope junto ao peito, mas, antes que decida o que fazer, Tião chama do ancoradouro: viu uma luz azul no rio. Ao mesmo tempo, atrás da casa, o poço antigo devolve uma nota que lembra a canção de Iolanda. Anselmo continua olhando o rio, sem pedir coisa alguma. Há tempo para escutar um dos chamados antes de voltar à porta.
+
+* [chave] Guardar o envelope com a chave e acompanhar Tião até o rio -> cap7_06
+* [!chave] Guardar o envelope e acompanhar Tião até o rio -> cap7_06
+* Investigar a voz de Iolanda junto ao poço -> cap7_07
+
+== cap7_02
+Anselmo aponta para a cadeira vazia ao lado da sua. O assento é trançado com tiras de uma rede antiga, e seu peso arranca dela um suspiro comprido.
+
+— Sua avó prometeu que voltava com uma canção — diz ele. — Eu prometi que ficava vivo para escutar. Ganhei por pouco.
+
+Ele sorri, mas não faz graça da demora. Conta que Iolanda vinha trazer remédios, cartas, receitas copiadas em papel de pão. Quando o rio cresceu e a ponte caiu, ela continuou atravessando. Na última vez, deixou o cadeado fechado e a promessa pela metade.
+
+Há um embrulho de gaze sobre a mesa. Anselmo explica que o posto perdeu os estoques na enchente. Uma travessia de volta levaria o pedido ao farmacêutico antes do amanhecer. Enquanto ele termina a lista, Celina descobre a gaiola, e o canto do pássaro responde a uma nota que vem do poço atrás da casa. Cada uma das duas vozes parece conhecer um pedaço da canção que Iolanda prometeu.
+
+* Seguir a nota que vem do poço -> cap7_07
+* Perguntar a Celina sobre o canto do pássaro -> cap7_08
+
+== cap7_03
+Na ponta da ponte de tábuas, uma menina segura um pote de vidro cheio de bilhetes. Ela se chama Lúcia e explica, com a solenidade de quem já repetiu a notícia demais, que a água invadiu o posto de saúde. Restam duas doses de remédio e três pessoas com febre.
+
+— Não adianta dividir em três — ela diz. — Já fiz a conta duas vezes.
+
+Anselmo oferece um pedaço de papel para que a menina escreva os nomes do que falta. A lista é pequena; a distância até a farmácia, não. O piloto ainda pode atravessar antes do amanhecer se alguém se dispuser a acompanhá-lo.
+
+Junto ao primeiro degrau, uma capa de chuva vazia pinga sem que haja chuva. Sua manga aponta para o rio, depois para a porta de Anselmo. A espera, você percebe, também está diante de uma escolha: continuar prendendo o que lhe falta ou permitir que alguém parta para ajudar os vivos. Celina chama da varanda com a gaiola na mão; Anselmo procura um livro azul onde Iolanda anotava os nomes das pessoas da margem.
+
+* Ouvir o que Celina e o pássaro têm a contar -> cap7_08
+* Consultar com Anselmo o livro de nomes de Iolanda -> cap7_09
+
+== cap7_04
+A capa aparece na varanda como aparece uma lembrança ruim: sem bater e ocupando o espaço de mais uma pessoa. A água escorre da barra, mas não forma poça. Anselmo a reconhece e retira o chapéu.
+
+— Você ainda está por aqui.
+
+A capa inclina o capuz. De dentro vem um rumor de vozes interrompidas, promessas feitas depressa, recados que nunca encontraram dono. Uma delas é a sua, chamando Iolanda numa tarde que você julgava esquecida.
+
+— Eu não roubo — diz a espera. — Eu guardo o que ninguém consegue deixar ir.
+
+Celina aperta os dedos na gaiola. O bem-te-vi acompanha a conversa de um lado para o outro do poleiro. Atrás de vocês, o vento cresce, agitando o envelope em sua mão. Anselmo se lembra do livro em que Iolanda anotava nomes e o procura na varanda. Celina, preocupada com o vento, segue até o ancoradouro com a gaiola. Você precisa decidir se acompanha a busca do livro ou leva o envelope para perto da mulher antes que a rajada o arranque de sua mão.
+
+* Procurar com Anselmo o livro de nomes -> cap7_09
+* Levar o envelope até Celina junto ao rio -> cap7_10
+
+== cap7_05
+O primeiro sopro dobra a ponta do envelope. O segundo arranca a tampa da lata de biscoitos na mesa e a lança contra a parede. A terceira rajada vem do rio, embora as árvores da margem permaneçam imóveis.
+
+Tião está na escada. Uma canoa atravessa a névoa, e o menino se debruça tanto que Anselmo precisa agarrar a gola de sua camisa. O homem na embarcação usa uma lanterna azul. Tião conhece aquela luz: o pai a pendurava no barco para ser visto de longe.
+
+— Mas ele sumiu na enchente — diz, e a palavra parece grande demais para sua boca.
+
+O envelope vibra entre seus dedos. Você pode acompanhar o menino ao ancoradouro para reconhecer a canoa ou levar o papel até Celina, que está junto da gaiola, e pedir ajuda para protegê-lo. Tião insiste que consegue esperar um instante, embora seus pés continuem apontados para a água. Não há como segurar a noite inteira de uma vez.
+
+* Levar o envelope até Celina junto ao rio -> cap7_10
+* Acompanhar Tião ao encontro da canoa -> cap7_06
+
+== cap7_06
+Tião para na beira da ponte, com os pés descalços alinhados sobre uma tábua estreita. No rio, uma lanterna azul balança numa canoa. O menino esfrega os olhos e olha de novo.
+
+— Meu pai amarrou um vidro de doce na lamparina — ele explica. — Disse que assim eu saberia quando ele estava voltando.
+
+Anselmo conhece a história do desaparecimento: um banco de areia cedeu durante a enchente, e os barcos deixaram de cruzar aquela passagem. Fora o recado levado por um carregador, ninguém voltara a dar notícias certas dele.
+
+A luz azul aproxima-se devagar. O menino dá um passo, mas Celina o segura antes que salte na água. Atrás da casa há um poço antigo; naquela escuridão, a boca de pedra parece escutar junto com vocês. A canoa está perto o bastante para receber um chamado, e o silêncio também pede sua atenção. Lúcia, do posto, aguarda quem possa buscar remédios na outra margem.
+
+* Chamar a canoa junto com Tião -> cap8_06
+* [escuta] Seguir até o poço o chamado que você reconheceu -> cap8_07
+* Buscar remédios para a comunidade na outra margem -> cap8_03
+
+== cap7_07
+O poço atrás da casa foi coberto com tábuas tortas e um vaso onde cresce manjericão. Anselmo diz que sua avó plantou a erva para afastar mosquitos, mas Celina acrescenta, baixinho, que era também para lembrar o caminho pelo cheiro.
+
+Quando você afasta uma das tábuas, não vê água. Vê uma faixa de céu, embora o céu desta noite esteja escondido pela chuva. Do fundo vem uma voz que reconheceria em qualquer lugar: Iolanda cantarola a primeira nota de uma canção e espera que alguém encontre a segunda.
+
+Celina fica imóvel. O bem-te-vi, até então calado, põe a cabeça sob a asa. A mulher diz que há coisas no rio que só podem ser contadas por quem as guardou; outras, só por quem teve coragem de escutar. Ela pousa a mão na gaiola e depois a retira, como se não quisesse decidir pelo pássaro nem por você. Anselmo se aproxima com seu livro de nomes; a capa o segue. Lúcia aguarda ao longe com um pedido de remédios para levar à outra margem.
+
+* [escuta] Responder à voz que vem do poço -> cap8_07
+* Ler à espera os nomes que Anselmo guardou -> cap8_04
+* Ajudar a levar o pedido de remédios para a outra margem -> cap8_03
+
+== cap7_08
+Celina descobre a gaiola. O bem-te-vi estufa as penas e solta três notas curtas, muito diferentes do canto conhecido. O som lembra uma colher batendo na borda de um copo; depois, um riso engasgado.
+
+— Ela fazia isso para me chamar — diz a mulher. — Três batidinhas, quando não queria acordar a casa inteira.
+
+Você pergunta quem. Celina alisa o pano, demorando mais do que a pergunta exigia. Anselmo abre a boca, pensa melhor e se dedica a examinar o próprio sapato. O silêncio entre os dois tem idade.
+
+A porta pequena continua fechada. Dentro dela, segundo o velho, está o rádio que Iolanda deixou para trás. Talvez a gravação esclareça o que Celina ainda não consegue contar; talvez Celina possa contar sem a ajuda de nenhuma máquina. O pássaro bica a grade uma vez, exigente como quem paga aluguel e não recebe manutenção.
+
+* [celina] Ouvir de Celina o que o canto significa -> cap8_08
+* Entregar o envelope a Anselmo -> cap8_02
+* Abrir a porta e procurar a gravação -> cap8_01
+
+== cap7_09
+Anselmo traz para a varanda um livro de capa azul, inchado pela umidade. Não é um diário: cada página reúne um nome, uma data e uma frase curta. Algumas são notícias alegres; outras terminam em reticências, como se a mão não tivesse conseguido escrever o resto.
+
+— Iolanda anotava quem tinha atravessado — diz ele. — Para ninguém confundir ausência com esquecimento.
+
+Entre as folhas você encontra seu nome, escrito quando era pequeno, e a observação: “Fez perguntas demais ao peixeiro. O peixeiro fez menos perguntas de volta.” Você ri antes de perceber que está chorando. Anselmo deixa um lenço sobre o braço da cadeira, sem olhar diretamente para o seu rosto.
+
+A sombra da capa aparece no limite da varanda, atraída pelo livro aberto. Lá embaixo, Tião chama ao avistar uma canoa com uma luz azul. Você pode oferecer as páginas à espera, para que ela solte os nomes guardados, ou usar a chave do envelope e buscar a voz da avó atrás da porta.
+
+* Abrir a porta e escutar a gravação -> cap8_01
+* Ler os nomes à espera para ajudá-la a libertá-los -> cap8_04
+* [tiao] Acompanhar Tião ao encontro da canoa avistada no rio -> cap8_06
+
+== cap7_10
+A gaiola está pousada sobre uma estaca junto ao rio. Celina a levou até ali para que o bem-te-vi visse a água, mas o pássaro olha apenas para você. A chuva parou. A claridade da madrugada ainda não chegou, e a margem inteira parece prender o fôlego.
+
+— Ele não gosta de despedida — diz Celina. — Mas gosta menos ainda de mentira.
+
+Ao seu lado, o envelope estala com a brisa. A corrente do rio avança entre as estacas, rápida o bastante para carregar uma folha antes que qualquer mão consiga alcançá-la. Você pode voltar correndo à varanda para pôr o envelope em segurança. Ou pode ficar e perguntar por que o pássaro conhece o nome de sua avó antes mesmo de Celina pronunciá-lo.
+
+Mais adiante, Tião avista a luz azul de uma canoa e acena na direção dela. Lá em cima, Anselmo acende uma lamparina. Sua luz alcança o caminho de madeira, não a água. Há perguntas que só cabem na sombra, e outras que só ficam claras quando já é tarde.
+
+* Levar o envelope de volta à varanda -> cap8_05
+* [celina] Ficar e perguntar a Celina sobre o pássaro -> cap8_08
+* Ajudar Tião a chamar a canoa no rio -> cap8_06
+
+== cap8_01
+Você tira do envelope a pequena chave de latão. O cadeado resiste por um segundo e cede com um estalo cansado. Dentro da porta há apenas um armário de madeira e, sobre ele, um rádio antigo. A poeira desenha um retângulo claro onde alguém deixou uma fita identificada com a letra de Iolanda.
+
+Anselmo traz pilhas guardadas havia tanto tempo que você duvida delas. Mesmo assim, o aparelho chia, tropeça numa nota e encontra a voz de sua avó. Ela canta uma música simples sobre um barco que não conhece o próprio nome. Anselmo acompanha, primeiro baixinho, depois sem vergonha nenhuma.
+
+Ele chora e ri ao mesmo tempo. O bem-te-vi canta junto, lá fora. A gravação termina com Iolanda falando “agora é você”, como se tivesse calculado exatamente aquele silêncio.
+
+Anselmo canta mais uma vez, sozinho. Você não fecha a porta. Algumas portas não guardam coisas. Guardam esperas.
 
 FIM
 
-== fim_nome
-Você grita o nome dela, o nome inteiro, que ninguém usava. O rio fica quieto, como quem escuta.
+== cap8_02
+Você entrega o envelope a Anselmo sem abrir a porta. Ele o recebe com as duas mãos, como se pesasse mais do que papel e latão. A dobra está marcada de chuva; ele a ajeita com o polegar antes de ler a letra apertada de Iolanda.
 
-A balsa para no meio da travessia. Da água sobe, devagar, o envelope, inteiro e seco, e pousa no convés aos seus pés. A figura de capa já não está lá.
-
-Na outra margem, uma janela acende. Alguém, finalmente, sabe que você chegou.
-
-FIM
-
-== sono
-Você fecha os olhos só por um instante. O balanço da balsa é bom demais, o ronco do motor vira canção de ninar, a chuva vira lençol.
-
-Alguém senta ao seu lado. Você sente o cheiro de rio molhado numa capa de chuva.
-
-* [aviso] Lembrar do bilhete: "não durma na travessia" -> desperto
-* Deixar o sono vir -> fim_margem
-
-== desperto
-Você abre os olhos de uma vez. A figura de capa está sentada ao seu lado, a mão estendida em direção ao seu bolso, parada no ar, como quem foi pego.
-
-— Você leu o bilhete — diz ela, quase com respeito. Levanta e volta para a proa, sem pressa.
-
-+desperto
-* Ir atrás dela até a proa -> proa
-* Ficar acordado, de olhos na margem -> chegada
-
-== fim_margem
-Quando você abre os olhos, a balsa está atracada. Na margem de onde você saiu.
-
-O envelope continua no seu bolso, intacto. O homem do guichê acena de longe, como quem já sabia, e aponta para o quadro de horários: a próxima travessia noturna é daqui a um ano.
-
-Você guarda o envelope numa gaveta. Às vezes, à noite, ouve um apito de balsa que não existe.
-
-FIM
-
-== chegada
-A outra margem é uma fileira de casas de palafita com as janelas apagadas, menos uma. Na varanda, um velho sentado numa cadeira de balanço olha o rio. Não olha para você. Não pede nada.
-
-Ao lado dele, uma porta pequena com cadeado enferrujado.
-
-* [chave] Abrir o cadeado com a chave de latão -> fim_porta
-* [!chave] Entregar o envelope fechado ao velho -> fim_envelope
-* [chave] Entregar o envelope ao velho, sem abrir a porta -> fim_envelope
-
-== fim_porta
-O cadeado cede com um estalo cansado. Dentro, só um armário de madeira e, sobre ele, um rádio antigo. Você gira o botão.
-
-A voz da sua avó, gravada há muitos anos, enche a varanda: ela canta uma música que o velho acompanha, primeiro baixinho, depois sem vergonha nenhuma.
-
-Ele chora e ri ao mesmo tempo. O bem-te-vi canta junto, lá no barco.
-
-Algumas portas não guardam coisas. Guardam esperas.
-
-FIM
-
-== fim_envelope
-O velho recebe o envelope com as duas mãos, como se pesasse. Abre devagar, encontra o bilhete e lê em silêncio. Depois guarda tudo no bolso da camisa, perto do peito.
+O velho encontra a chave, reconhece o objeto e a põe de volta. Por um momento você pensa que ele vai se levantar. Em vez disso, guarda tudo no bolso da camisa, perto do peito.
 
 — Ela sempre chegava — diz. — Mesmo quando não vinha.
 
-Vocês ficam olhando o rio juntos até a chuva parar. A porta continua fechada; talvez seja assim que tem que ser.
+Vocês ficam olhando o rio até a chuva parar. Anselmo conta que conheceu sua avó numa festa em que ela roubou o último pedaço de bolo para entregá-lo a uma criança. Depois exigiu que ele fingisse não ter visto. O velho obedeceu por quarenta anos e agora parece aliviado por quebrar o segredo.
+
+Quando a manhã clareia as palafitas, a porta continua fechada. A espera, porém, já não está sozinha.
+
+FIM
+
+== cap8_03
+Você acompanha Lúcia e a lista de remédios até o ancoradouro. O barqueiro reclama do horário, da corrente e do preço das pilhas, mas desamarra a canoa antes de terminar a reclamação. Anselmo fica na varanda com o envelope guardado junto ao corpo.
+
+— A chave sabe esperar — ele diz. — Febre de criança, não.
+
+A volta é molhada e comprida. Na farmácia, você bate até o dono aparecer de chinelos diferentes, indignado com o mundo. Quando lê a lista, ele para de reclamar e embrulha os frascos com jornal. Lúcia confere cada nome, séria como uma fiscal.
+
+O sol nasce enquanto vocês retornam. Do meio do rio, a janela de Anselmo parece minúscula, mas ainda está acesa. Você não ouviu a gravação de Iolanda naquela noite. Em compensação, quando o posto abre as portas e a primeira criança recebe o remédio, entende por que sua avó atravessava carregando coisas tão pequenas.
+
+FIM
+
+== cap8_04
+Você lê os nomes em voz alta, um de cada vez. Anselmo completa aqueles de que se lembra; Celina interrompe quando uma história pede correção. A capa escuta imóvel. Sob o capuz vazio, as vozes deixam de falar todas juntas.
+
+— Não sei o que sou sem elas — diz a espera.
+
+— Talvez não precise ser uma coisa só — responde Celina.
+
+Você abre as mãos. O vento leva as palavras para a água, onde não afundam nem ficam presas: seguem corrente abaixo, tornando-se outra vez parte de quem as viveu. A capa cai no convés da varanda, vazia e comum, com um rasgo na manga que ninguém tinha notado.
+
+Anselmo recolhe a peça, torce a barra e a pendura para secar. O bem-te-vi canta. Pela primeira vez, o canto não anuncia uma chegada; anuncia que há espaço para partir.
+
+Ao amanhecer, a porta continua ali, e vocês também. Mas já não é preciso que tudo permaneça fechado para que alguém seja lembrado.
+
+FIM
+
+== cap8_05
+Você corre para salvar o envelope. Uma rajada inesperada dobra o papel contra seu peito, escapa entre seus dedos e o leva para o rio. Anselmo se levanta tão depressa que a cadeira cai para trás. Vocês alcançam a beira a tempo de ver as letras de Iolanda se desmancharem como tinta de aquarela.
+
+A chave brilha uma vez no fundo escuro e desaparece. Ninguém diz que a culpa é sua. Isso torna o silêncio mais difícil de carregar.
+
+Na volta, a balsa atraca na margem de onde você saiu. Bento apaga a luz do guichê depois de oferecer café frio, que vocês tomam sem discutir a qualidade. Em casa, você encontra uma receita da avó anotada no verso de uma conta antiga e a prende à geladeira, onde não pode ser confundida com lixo.
+
+A porta da palafita continua fechada. Você não recupera o que perdeu, mas aprende a escrever para os vivos enquanto ainda sabe onde encontrá-los.
+
+FIM
+
+== cap8_06
+Você chama a canoa com Tião. O homem da lanterna azul ergue o remo, e por um instante o menino corre sem esperar pela resposta. Vocês o alcançam no ancoradouro, bem a tempo de segurá-lo antes do salto.
+
+O barqueiro não é seu pai. Chama-se Raul e traz a lanterna porque a encontrou presa a um galho, muitos quilômetros rio abaixo. Tião abaixa a cabeça. Raul demora a continuar: na enchente, recolheu um homem ferido que falava do filho e de um vidro azul. Ele está vivo, recuperando-se numa comunidade distante, e pediu que alguém trouxesse notícias.
+
+Tião chora de um jeito desconfiado, como se a alegria ainda precisasse apresentar documento. Raul promete levá-lo ao pai quando a corrente permitir. Celina lhe oferece um pedaço de bolo embrulhado; o menino aceita e divide ao meio, porque notícia boa dá fome.
+
+Na varanda, Anselmo guarda o envelope. A canção pode esperar um pouco. Desta vez, esperar tem um rumo.
+
+FIM
+
+== cap8_07
+Você se inclina sobre o poço e encontra a segunda nota da canção. A voz de Iolanda responde com uma risada tão próxima que sua mão procura a dela no ar. Não há ninguém ali, mas o manjericão se inclina para dentro, como se também quisesse ouvir.
+
+A água mostra uma lembrança que você nunca conheceu: sua avó jovem, ainda sem cabelos brancos, pedindo a Anselmo que ensine Celina a ler. Os três tropeçam nas sílabas e acabam rindo quando o bem-te-vi imita a professora. Iolanda não era apenas a pessoa que voltava para casa com presentes; tinha uma vida inteira que não cabia nas histórias contadas à família.
+
+— Você pode ir embora sem levar tudo — diz a voz, já distante. — Não precisa me guardar sozinho.
+
+O reflexo se desfaz. Você recoloca a tábua e promete a Celina que voltará para conhecer o resto. Não há resposta mágica para a saudade. Há, na outra margem, pessoas que também se lembram.
+
+FIM
+
+== cap8_08
+Celina abre a gaiola. O bem-te-vi não voa; pula para seu ombro e encosta o bico em sua orelha, como se conferisse uma senha antiga.
+
+— Iolanda me encontrou aqui quando eu era menina — ela conta. — Eu tinha parado de falar depois de perder minha mãe. Sua avó aprendeu a esperar sem me apertar.
+
+As três notas eram o chamado que inventaram juntas. Anos mais tarde, Celina ensinou o canto ao pássaro para que ele avisasse quando a balsa encontrasse a margem. Mas naquela noite ele fez mais: repetiu a pequena risada de Iolanda, igual à que havia no fim de cada chamado. Celina nunca tinha conseguido ensiná-la.
+
+Ela fecha os olhos. O pássaro canta outra vez, e ninguém tenta explicar como sabe. Anselmo traz bolo, Tião exige a maior fatia, e a madrugada chega enquanto vocês repartem as migalhas.
+
+A porta pode ser aberta outro dia. Naquela manhã, a voz procurada encontrou um caminho pela janela.
 
 FIM

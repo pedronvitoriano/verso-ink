@@ -2,110 +2,963 @@
 @ Uma ilha, um farol apagado há três noites e um faroleiro que ninguém vê.
 
 == inicio
-O barco do correio te deixa no cais da ilha com uma caixa de lâmpadas e um aviso: "volto amanhã, se o mar deixar". Você é o técnico que a Marinha mandou. O farol está apagado há três noites, e o faroleiro, seu Tomé, não atende o rádio.
+O barco do correio encosta no cais com tanta cautela que você pensa que as tábuas podem fugir. O piloto amarra a corda, entrega sua caixa de lâmpadas e aponta para a torre no alto da ilha.
 
-O vento carrega cheiro de sal e de querosene. Lá em cima, a lanterna do farol é um olho fechado.
+— Volto amanhã, se o mar deixar.
 
-Na trilha, duas casas: a do faroleiro, com a porta entreaberta, e um galpão de redes com luz acesa.
+A Marinha mandou você consertar uma luz apagada há três noites. Seu Tomé, o faroleiro, não atende ao rádio. No relatório, a palavra “avaria” ocupa uma linha inteira; nada diz sobre o cheiro de querosene que chega com o vento, nem sobre as janelas fechadas das casas que olham o cais.
 
-* Subir direto ao farol -> escada
-* Entrar na casa do faroleiro -> casa
-* Bater no galpão iluminado -> galpao
+A lanterna do farol é um olho fechado. Mais perto, uma mulher recolhe uma rede sem cantar. Na trilha de pedra, duas construções resistem ao sal: a casa do faroleiro, com a porta entreaberta, e um galpão de onde escapa uma luz amarela.
 
-== casa
-A casa está arrumada demais. A cama feita, o fogão frio, uma xícara de café pela metade sobre a mesa, com uma película de nata por cima. No calendário da parede, os três últimos dias estão riscados com força, como se alguém contasse para trás.
+O piloto já desamarra a corda. Você aperta a alça da caixa e decide onde fazer a primeira pergunta.
 
-Na gaveta da mesa, um caderno de bordo. A última anotação: "Ela voltou a pedir a luz apagada. Não sei quanto tempo aguento dizer não."
+* Examinar a casa de seu Tomé -> cap1_a
+* Conhecer a mulher junto ao galpão -> cap1_b
+* Começar pela trilha que leva ao farol -> cap1_c
+== cap1_a
+Você toma a trilha da casa de seu Tomé com a caixa de lâmpadas batendo contra a perna. A porta entreaberta não se move, embora o vento dobre os capins em volta. Seu chamado entra antes de você. Ninguém responde.
 
-+caderno
-* Levar o caderno e subir ao farol -> escada
-* Procurar quem é "ela" no galpão -> galpao
+A casa está arrumada demais. A cama feita, o fogão frio, uma xícara de café pela metade sobre a mesa, com uma película de nata por cima. No calendário, os três últimos dias foram riscados com força, como se alguém contasse para trás. Há areia escura junto ao batente, uma mancha de óleo na toalha e, no prego onde devia estar uma capa, apenas um pedaço de barbante.
 
-== galpao
-Dentro do galpão, uma mulher remenda redes à luz de um lampião. Tem as mãos rápidas e os olhos de quem não dorme bem.
+Um homem idoso encostado na cerca, lá fora, acompanha seus movimentos.
 
-— Você é o técnico — diz, sem perguntar. — Não acenda aquilo hoje. Meu filho saiu para pescar há três noites. Se o farol acender, os barcos de fora veem a passagem pelas pedras. E os barcos de fora não são de pescador.
+— Tomé não sai sem trancar — diz. — A não ser que alguém tenha saído com ele.
 
-Ela não explica mais. Volta às redes.
+Seu nome é Nilo. Ele sustenta o corpo numa bengala feita de remo e não parece disposto a repetir o que disse para qualquer pessoa.
+
+* Mostrar a Nilo o aviso de serviço e perguntar sobre Tomé -> cap1_d
+* Examinar a gaveta que está presa sob a mesa -> cap1_e
+
+== cap1_b
+O galpão de redes tem luz acesa e cheiro de peixe seco. Você bate duas vezes. A mulher que abre segura uma agulha comprida como se pudesse usá-la contra uma pessoa, embora a linha presa à ponta denuncie serviço mais doméstico.
+
+— Você é o técnico — diz, sem perguntar. — Não acenda aquilo hoje.
+
+Ela se chama Iara. Tem as mãos rápidas, um casaco de lã sobre o vestido e olhos de quem não dorme bem. Seu filho saiu para pescar há três noites, e desde então ela remenda a mesma rede, desfazendo nós perfeitos quando precisa ocupar as mãos. O rádio está ligado bem baixo; entre os chiados não se distingue uma voz.
+
+— O farol é o único caminho de volta que ele conhece? — você pergunta.
+
+— É o caminho que eu ensinei. O problema é que todo mundo aprendeu também.
+
+Iara retorna à rede. A resposta parece uma porta fechada, mas não trancada.
 
 +dona_iara
-* Perguntar que barcos são esses -> barcos
-* Agradecer e subir ao farol -> escada
+* Perguntar onde Tomé guardava suas anotações -> cap1_e
+* Oferecer ajuda a Iara com o rádio e escutar suas razões -> cap1_f
 
-== barcos
-Ela larga a agulha.
+== cap1_c
+Você segue pela trilha que sobe à torre, mas uma cancela de madeira caiu sobre a passagem. De perto, percebe que os pregos foram arrancados, não soltos pelo vento. Um menino recolhe as tábuas e as empilha com cuidado ao lado da pedra branca que marca a curva.
 
-— Contrabando. Usam a luz para achar a passagem e descarregar na enseada. O Tomé apagava o farol para eles não virem. Aí eles vieram buscar o Tomé.
+— Foi o mar? — você pergunta.
 
-Ela aponta para o mar com o queixo. Ao longe, sem luz nenhuma, uma lancha espera, balançando.
+— O mar sobe muito, mas não traz martelo — responde ele.
 
-— Meu filho está lá fora, sem luz também. Se você acender, ele volta. E eles também.
+O menino se chama Dito, sobrinho de Iara, e quer juntar madeira para reparar o píer. Diz que seu Tomé desapareceu há três noites, junto com a luz. Não viu quem desmontou a cancela, mas ouviu motor depois da meia-noite. Quando você pergunta pelo faroleiro, Dito olha para a torre, depois para a vila.
+
+— Minha tia diz que há coisa que a gente não deve contar a qualquer estranho. O senhor ainda é estranho?
+
+A caixa de lâmpadas, nas suas mãos, parece uma apresentação insuficiente.
+
+* Ajudar Dito e procurar alguém que conheça Tomé -> cap1_d
+* Pedir que Dito apresente você a Iara -> cap1_f
+
+== cap1_d
+Nilo encontra você junto ao poço, com uma chaleira vazia e um remo transformado em bengala. Foi ele quem ensinou Tomé a distinguir pedras pela cor da espuma; está zangado por não ter percebido o desaparecimento do amigo mais cedo.
+
+— Três noites — diz. — A primeira eu achei que ele tinha dormido demais. Na segunda, achei que estava me evitando. Na terceira já não achei graça.
+
+Do outro lado da rua, Iara recolhe um lençol antes que o vento o leve. Ela pede notícias e escuta o silêncio de Nilo como se fosse outra resposta ruim. O filho dela, Bento, também está no mar há três noites. Nilo menciona motores desconhecidos próximos da enseada, sempre sem luz, mas não sabe de quem são.
+
+Você oferece a caixa de lâmpadas como apoio para a chaleira enquanto Nilo descansa o braço. Ele a encara.
+
+— A Marinha manda coisa frágil para lugar muito duro.
+
+* Acompanhar Nilo até o caminho da praia -> cap1_g
+* Ouvir o que Iara tem a dizer sobre a luz -> cap1_h
+
+== cap1_e
+Você encontra o caderno de bordo numa gaveta que só abre depois de um puxão. A madeira deixa uma farpa na sua mão; a ponta do lápis, presa entre as páginas, marca a última anotação: “Ela voltou a pedir a luz apagada. Não sei quanto tempo aguento dizer não.”
+
+As páginas anteriores registram horários de maré e contas de combustível, até os números se tornarem pequenos riscos nervosos. Tomé anotou uma lancha sem nome em duas madrugadas. Em uma margem, há um desenho de três pedras e uma seta em direção à enseada. Nenhuma explicação para “ela”.
+
+Você guarda o caderno na mochila. Na rua, Dito observa a casa com um embrulho de pão debaixo do braço. Tinha vindo deixá-lo para Tomé, como sempre, e não quer voltar para a tia com o pão ainda quente.
+
+— Ele sumiu mesmo? — pergunta.
+
+Você não tem a resposta que o menino espera.
+
++caderno
+* Seguir com Dito até o mirante da praia -> cap1_g
+* Levar o pão a Iara e perguntar sobre o caderno -> cap1_i
+
+== cap1_f
+Iara segura o rádio junto à janela enquanto você mexe no seletor. O aparelho responde com um chiado de gordura na frigideira e uma voz tão distante que pode ser apenas interferência. Ela não se afasta quando você devolve o microfone.
+
+— Meu filho, Bento, saiu para pescar há três noites. Se o farol acender, ele pode achar o caminho. Mas os barcos de fora também veem a passagem pelas pedras.
+
+Você pergunta que barcos são esses. Iara aperta os lábios. Seu Tomé, diz ela, sabia mais do assunto e desapareceu na mesma noite em que a luz foi desligada. Ela pediu que apagasse a lanterna depois de ver uma carga ser descarregada às escondidas. Não sabe onde está o faroleiro, ou ao menos não consegue dizer sem olhar para a porta.
+
+— O senhor veio consertar uma lâmpada. Desculpe entregar uma ilha inteira.
+
+Na rede sobre a mesa, um nó cede sob o dedo dela.
+
++dona_iara
+* Pedir a Iara que mostre os barcos do alto da praia -> cap1_h
+* Perguntar por quem viu a carga ser descarregada -> cap1_i
+
+== cap1_g
+Do mirante, a enseada parece uma mordida escura na costa. Nilo, um velho pescador, desenha na areia a passagem entre as pedras: larga o bastante para uma lancha, estreita demais para alguém entrar sem conhecer a maré. Seu dedo hesita perto de um recife.
+
+— Ali, quando a luz gira, o casco fica visível para quem sabe olhar.
+
+Mais adiante, a lanterna apagada da torre se recorta contra o céu. Seu Tomé não está em casa nem respondeu ao rádio; os vizinhos o procuram desde a noite em que o farol escureceu. Iara se aproxima com uma garrafa de café, e Dito corre ao encontro dela. Ela serve primeiro ao menino, embora ele reclame de ser tratado como criança.
+
+— Meu filho também está lá fora — explica a você. — Bento conhece as pedras, mas o tempo está virando.
+
+Uma sombra se move além dos arrecifes. Talvez seja uma embarcação; talvez seja uma onda que aprendeu a esperar.
+
+* Descer à vila para procurar testemunhas da lancha -> cap2_a
+* Ir com Iara ao galpão tentar uma chamada pelo rádio -> cap2_b
+
+== cap1_h
+Iara conduz você por uma escada de madeira até o alto do barranco. Lá, o vento arranca palavras inteiras antes que elas terminem. Ela aponta para a torre apagada, para a entrada da enseada e para uma mancha imóvel no mar.
+
+— Meu filho chama Bento. Ele saiu para pescar há três noites. Tomé sumiu na mesma noite, depois que eu pedi para ele deixar a luz apagada.
+
+A mancha se move um pouco contra a espuma. Iara afirma que viu barcos de fora rondando a ilha sem se anunciar, e não acredita que tragam boas intenções. Ainda assim, deseja que o filho veja a costa. A contradição não a faz baixar a mão: apenas faz seu braço tremer.
+
+Você empresta o casaco. Ela recusa, aceita e depois reclama que ele cheira a navio.
+
+— Cheira a combustível — você corrige.
+
+— Então é pior do que eu disse.
+
+Um trovão, longe, faz vocês voltarem a atenção para o mar.
+
++dona_iara
+* Ajudar Iara a chamar reforço pelo rádio do galpão -> cap2_b
+* Seguir até o ancoradouro e examinar a movimentação -> cap2_c
+
+== cap1_i
+Iara escuta você falar de uma lancha vista na enseada e interrompe o conserto de uma rede. Seu sobrinho Dito está com um pão debaixo do braço. Seu rosto não muda; só a agulha fica parada, suspensa entre as malhas.
+
+— Seu Tomé me disse para não ir à praia à noite — ela conta. — Depois parou de responder. Bento, meu filho, está pescando desde aquela madrugada. Se a luz acender, ele pode voltar. Os barcos que rondam também podem encontrar a passagem.
+
+Você pergunta se ela reconheceu alguém. Iara viu uma silhueta, não um rosto. Sabe, porém, que não eram pescadores da ilha: nenhum deles deixaria uma rede presa no fundo para salvar uma caixa.
+
+Dito ergue o pão que trouxe. A tia parte uma fatia e entrega a você; outra para ele. Depois de mastigar, o menino pergunta se a ilha é pequena demais para esconder uma pessoa.
+
+— Pequena não quer dizer simples — responde Iara.
+
++dona_iara
+* Conversar com quem trabalha no cais -> cap2_a
+* Investigar a enseada antes que a maré suba -> cap2_c
+
+== cap2_a
+Na venda, você encontra Dalva etiquetando latas. Ela foi marinheira antes de voltar à ilha para cuidar do pai e sabe distinguir motores mesmo quando não enxerga os barcos. A lancha que ouviu nas últimas noites, diz, tinha dois: um deles falhava em intervalos regulares.
+
+— Não era gente daqui. Aqui a gente conserta o motor antes de consertar a desculpa.
+
+Seu Tomé comprou querosene e pilhas três dias atrás. Pediu que Dalva guardasse o troco e saiu sem levar o recibo; desde então ninguém o viu. Iara, mãe de Bento, pergunta por ambos a cada amanhecer. A vendedora aponta a direção da enseada, onde carregadores desconhecidos foram vistos perto de um barco sem luz.
+
+Você compra um pedaço de bolo para poder ficar mais tempo sem parecer um interrogatório. Dalva recebe o dinheiro e separa uma segunda fatia.
+
+— Esta é para quando a primeira informação não bastar.
+
+* Perguntar a Dalva sobre a carga da lancha -> cap2_d
+* Procurar contato com a Marinha pelo rádio -> cap2_e
+
+== cap2_b
+No galpão de Iara, você ergue a antena do rádio enquanto ela ajusta o botão até o chiado se dividir em estalos. O filho dela, Bento, pode estar a poucas milhas dali, mas a voz que enfim aparece vem de outro pescador, longe demais para confirmar qualquer coisa.
+
+— Aqui, Iara. Viu alguma embarcação pequena perto das pedras?
+
+A resposta chega partida: uma vela, talvez; uma lancha escura, com certeza. Antes que você pergunte mais, a transmissão some. Iara fecha os olhos e pressiona o microfone contra a testa. Conta que seu Tomé desapareceu há três noites, depois de ouvir motores na enseada. Ela pediu que apagasse o farol para dificultar a entrada daqueles barcos, mas teme ter deixado o próprio filho sem caminho.
+
+— Ainda dá para chamar a base — você diz.
+
+— Dá. O difícil é saber o que eles vão fazer quando atenderem.
+
+A chuva começa no telhado, leve como dedos contando dinheiro.
+
++dona_iara
+* Tentar chamar a base da Marinha -> cap2_e
+* Acompanhar Iara até as pedras para procurar sinais de Bento -> cap2_f
+
+== cap2_c
+O ancoradouro fica numa dobra da ilha onde a praia desaparece quando a maré sobe. Você encontra marcas recentes de quilha na areia, junto a pegadas que carregam pedrinhas pretas para cima do barranco. Um caixote quebrado guarda apenas palha de embalagem e o cheiro doce de fumo.
+
+Iara aparece com uma capa sobre os ombros. Ela procura sinais do filho, Bento, perdido no mar desde que seu Tomé desapareceu. Conta que uma lancha sem luz costumava esperar além da passagem; não sabe quem estava a bordo, mas viu homens transferindo caixas para a praia.
+
+Você observa as pegadas. São de pelo menos duas pessoas, embora a chuva se prepare para torná-las uma só mancha. Uma tira de pano azul está presa numa lasca de madeira. Iara a recolhe e compara com a manga do próprio casaco.
+
+— Não é dele — diz, e a frase não esclarece se ficou aliviada.
+
+* Seguir as marcas até o depósito na encosta -> cap2_d
+* Examinar com Iara as pedras acessíveis na maré baixa -> cap2_f
+
+== cap2_d
+O depósito na encosta pertenceu a uma cooperativa desfeita. A porta não tem cadeado, mas está amarrada com fio de pesca. Por uma fresta você vê caixas cobertas por lona e uma etiqueta estrangeira parcialmente raspada. Dalva, que chegou atrás de você com uma lanterna, reconhece o símbolo de um lote de cigarros apreendido no continente.
+
+— Contrabando — diz ela, com uma tranquilidade que não combina com a mão tremendo.
+
+Entre as caixas há um casaco de Tomé, ainda úmido. No bolso, só um botão e uma moeda antiga. Dalva não sabe se o faroleiro foi mantido ali ou se alguém largou a roupa para despistar. O que sabe é que a passagem iluminada permite aos carregadores entrar e sair depressa.
+
+Iara está procurando o filho, Bento, que saiu para pescar na mesma noite em que Tomé sumiu. Você olha a porta escura do depósito: provas ajudam pouco a um barco que não encontra a costa.
 
 +contrabando
-* Prometer pensar antes de acender -> escada
-* Pedir o rádio dela para chamar a Marinha -> radio
+* Levar a informação à base pelo rádio -> cap2_g
+* Investigar a trilha usada para retirar as caixas -> cap2_h
 
-== radio
-O rádio do galpão chia como gordura na frigideira. Depois de muitas tentativas, uma voz cansada responde da base:
+== cap2_e
+O rádio chia como gordura na frigideira. Depois de muitas tentativas, uma voz cansada responde da base. Você informa que seu Tomé está desaparecido, que há uma lancha suspeita perto da enseada e que Bento, filho de Iara, não voltou da pescaria.
 
-— Lancha na enseada? Mandamos a patrulha ao amanhecer. Se o farol acender antes, eles fogem pela passagem e a gente perde.
+— Mandamos a patrulha ao amanhecer — diz a voz. — Se o farol acender antes, eles podem fugir pela passagem e a gente perde.
 
-A mulher te olha como quem já sabia a resposta.
+Você pede uma embarcação antes disso. A resposta demora: o mar está fechando, e a lancha disponível só alcançará a ilha com segurança quando a maré mudar. A pessoa do outro lado promete procurar Bento durante a aproximação, mas não pode prometer encontrá-lo.
+
+Iara, que chegou durante a chamada, ouve sem interromper. Quando o contato termina, ela segura a antena que você havia apoiado na janela.
+
+— Ao amanhecer — repete. — Eles falam isso como se a noite fosse só uma coisa que passa.
+
+Lá fora, a primeira chuva forte bate nas telhas.
 
 +marinha
-* Subir ao farol sabendo de tudo -> escada
+* Reunir detalhes para orientar a patrulha na chegada -> cap2_g
+* Procurar na vila alguém que conheça um sinal para Bento -> cap2_i
 
-== escada
-Cento e doze degraus em caracol. O farol cheira a ferro e a óleo velho. Lá em cima, a lanterna está intacta: alguém tirou o fusível principal e deixou sobre a mesa, ao lado de um bilhete na letra de quem escreveu o caderno.
+== cap2_f
+Iara ajuda você a descer até as pedras expostas pela maré baixa. A cada onda, uma poça se enche de espuma e devolve conchas pequenas ao mar. Ela chama por Bento sem gritar muito alto, como se a voz pudesse chegar ao filho e, ao mesmo tempo, chamar atenção de quem ronda a enseada.
 
-"Quem achar isto: a escolha agora é sua. Eu já fiz a minha."
+Numa reentrância, vocês encontram uma garrafa presa entre algas. Está vazia. Iara tira a rolha mesmo assim, examina o fundo e ri de si mesma, um riso curto que desaparece quando olha para a água.
 
-Pela janela, no escuro do mar, um ponto pequeno de lanterna de mão pisca três vezes. Para. Pisca de novo.
+— Eu o ensinei a pescar. Tomé ensinou a voltar. Devia ter ensinado as duas coisas.
 
-* [!contrabando] Recolocar o fusível e acender o farol -> fim_luz
-* [contrabando] Acender mesmo assim: o menino precisa voltar -> fim_luz_fuga
-* [contrabando] Deixar apagado e responder ao ponto com a sua lanterna -> lanterna
-* [marinha] Esperar o amanhecer com o farol apagado -> fim_amanhecer
+Vocês veem uma lancha escura além do recife. Está parada, ou avança devagar demais para distinguir. Tomé desapareceu na noite em que ela foi vista pela primeira vez. Um motor estala, e Iara puxa você para trás de uma pedra.
 
-== lanterna
-Você pisca três vezes com a lanterna do celular. O ponto lá fora para. Depois responde: dois piscos longos, um curto.
+* Seguir pela encosta e observar para onde leva a trilha -> cap2_h
+* Perguntar a Nilo sobre outros caminhos pelo mar -> cap2_i
 
-Devagar, sem luz, um barquinho de pescador desliza pela borda das pedras, guiado só pelos seus piscos, longe da passagem grande. Você conduz o barco por meia hora, braço doendo, até ouvir o casco raspar na areia da praia.
+== cap2_g
+Dalva espalha um mapa úmido sobre o balcão da venda. A enseada está assinalada em vermelho, assim como a passagem que a luz da torre revela. Você copia os pontos numa folha seca para que a patrulha possa usar quando chegar; se a comunicação falhar, alguém precisará entregá-la em mãos.
 
-* Descer correndo para a praia -> fim_filho
+— Seu Tomé desenhava melhor do que o cartógrafo — diz Dalva. — O cartógrafo nunca teve que passar por ali com vento contra.
 
+Ela descreve como viu uma lancha de fora rondar a costa e descarregar caixas à noite. Nilo confirma que Tomé sumiu há três noites; Iara confirma que o filho, Bento, ainda não voltou. Nenhum deles sabe se os dois estão juntos. A chuva engrossa até obrigar Dalva a prender a porta com uma caixa de leite.
+
+Pelo rádio, você informa à base os detalhes do mapa; a resposta confirma uma patrulha ao amanhecer. Você guarda a cópia. A torre se ergue no alto, inacessível aos seus olhos por um instante, engolida pela água.
+
++marinha
+* Seguir pela trilha que passa pela enseada antes de subir à torre -> cap3_a
+* Pedir a Dalva que mostre o caminho junto à costa -> cap3_b
+
+== cap2_h
+A trilha de carga sobe da praia até uma parede de pedra. Não há portão à vista, apenas marcas de sola e sulcos frescos feitos por algo pesado. Você acompanha uma pegada até o lugar onde a chuva a dissolve. O caminho segue em direção à torre, mas também permite enxergar a enseada sem ser visto de lá.
+
+Iara alcança você com uma capa a mais. Seu filho Bento está no mar desde a noite em que seu Tomé sumiu, e ela insiste que os barcos parados ao largo não vieram pescar. Na dobra da capa, traz uma fatia de bolo embrulhada em papel.
+
+— Dalva disse que técnico também precisa comer.
+
+Vocês dividem o bolo sob uma pedra inclinada. É seco o suficiente para absorver quase toda a chuva que cai nele. Por um momento Iara sorri; então um motor ronca no mar e o sorriso se fecha.
+
+* Vigiar o mar do caminho junto à costa -> cap3_b
+* Subir com Iara pela passagem que leva à torre -> cap3_c
+
+== cap2_i
+Nilo escuta sua pergunta sobre os caminhos pelo mar e pega um graveto. No chão da oficina, desenha três pedras, uma corrente e uma rota estreita demais para a lancha grande. Um bote de pesca poderia passar ali com maré favorável, se alguém o orientasse da costa.
+
+— Bento conhece o começo — diz. — Tomé ensinou a ele quando o rapaz ainda não alcançava os remos. O fim da passagem muda com a maré.
+
+O velho recorda um código simples de sinais, mas avisa que não sabe se Bento ainda se lembra dele. A mãe, Iara, procura o rapaz desde a madrugada em que Tomé desapareceu; na mesma ocasião, barcos desconhecidos foram vistos sem luz perto da enseada.
+
+Nilo oferece a você o graveto, como se aquilo encerrasse a aula. Você o coloca atrás da orelha. Ele observa com uma seriedade tão ofendida que você precisa perguntar o que fez.
+
+— Nada. Só queria ver se ainda consigo assustar alguém.
+
+* Partir para a torre com o desenho da passagem na memória -> cap3_a
+* Seguir com Nilo pela trilha protegida do vento -> cap3_c
+== cap3_a
+A enseada aparece quando a trilha se abre entre duas pedras, cinzenta sob uma lua fina. Uma corda nova está presa a uma estaca velha, e o cheiro de gasolina atravessa o de algas. Você se agacha para examinar a areia. Há marcas de botas e um sulco de casco largo, interrompidos pela última maré.
+
+Iara chega atrás de você, segurando a saia para não prender nos espinhos. Ela não parece surpresa com a corda. Puxa-a uma vez, mede sua resistência e a larga como quem toca numa cobra morta.
+
+— Bento conhece esta água desde pequeno. O que ele não conhece são homens que preferem não ser vistos.
+
+Na outra margem, uma lancha escura oscila além da arrebentação. Um objeto branco flutua preso entre as pedras. Iara acompanha a direção do seu olhar, mas não diz qual dos dois merece atenção primeiro.
+
+* Examinar o objeto junto às pedras -> cap3_d
+* Procurar sinais na área de descarga -> cap3_e
+* [caderno] Usar as anotações para procurar quem conhece os motores da lancha -> cap3_f
+
+== cap3_b
+Você encontra Iara na ponta da enseada, onde as redes secam mesmo quando ninguém tem peixe para trazer. Ela segura uma boia vermelha, que vira nas mãos até descobrir um corte no lado de dentro. O ferimento é recente; a tinta clara aparece sob a camada de sal.
+
+— Não é do barco dele — diz. — Mas estava no caminho que ele usa.
+
+No horizonte há uma lancha sem luz, imóvel o bastante para parecer uma parte mais escura do mar. Iara conta que seu filho conhece a costa e costuma fazer sinais quando regressa tarde. Não acredita que Bento ficaria três noites fora por vontade própria. Tampouco acredita que o desaparecimento de Tomé seja acidente.
+
+A maré desce, deixando à mostra uma caixa quebrada e um homem que espera perto de um barril encalhado. O vento vira uma das redes, e o estalo faz Iara se voltar tão depressa que ela própria ri, sem alegria.
+
+* Investigar a caixa quebrada -> cap3_e
+* Conversar com o homem perto do barril -> cap3_f
+
+== cap3_c
+O caminho pela praia exige cuidado: as pedras redondas se movem debaixo da bota e o mar procura o espaço entre elas. Você chega à enseada com a calça molhada até a canela. Ali, Iara vigia uma lancha parada no escuro, tão afastada que não se vê quem está a bordo.
+
+— Quando o farol funcionava, apareciam barcos que não compravam gelo nem vendiam peixe — ela diz. — Agora Bento está perdido no mesmo escuro que afasta os deles.
+
+Você tenta enxergar outra embarcação, alguma sombra menor entre a espuma e o horizonte. Nada se move, exceto uma luz distante que pode ser estrela ou janela. Mais perto, uma coisa branca enroscou numas pedras. Ao lado de um barril encalhado, um homem luta para prender o próprio chapéu sob o queixo.
+
+Iara recolhe uma ponta da rede e espera. O silêncio dela é um pedido de ajuda que ainda não quer virar ordem.
+
+* Retirar a coisa branca das pedras -> cap3_d
+* Abordar o homem do chapéu -> cap3_f
+
+== cap3_d
+O objeto branco é uma tábua estreita, lisa no centro de tanto ser segurada. De um lado, alguém riscou linhas com carvão: a costa da ilha, duas pedras compridas e uma seta torta passando entre elas. Sob a seta, lê-se apenas: MARÉ CHEIA.
+
+Iara reconhece a letra de Bento. Explica que ele desenhava caminhos na madeira para ensinar as crianças a remar sem entrar na passagem dos barcos grandes. A tábua pode ter caído de sua canoa, ou alguém pode tê-la deixado ali; você não encontra nada que permita escolher entre as hipóteses.
+
+Ela mostra, no desenho, um corredor estreito que só um barco pequeno consegue vencer. Sua lanterna revela uma mancha escura na borda, talvez óleo. Você guarda o mapa num lugar seco. O mar empurra espuma contra a areia e torna a puxá-la, como se estivesse conferindo a própria conta.
+
++mapa
+* Procurar um ponto alto de observação -> cap3_g
+* Observar o mar à procura de sinais -> cap3_h
+
+== cap3_e
+A caixa foi aberta com pressa. Sob uma camada de palha úmida você encontra um recibo de combustível com uma data de três noites atrás, o nome de uma embarcação e uma assinatura que escorreu na chuva. Não prova um crime sozinho, mas pode ajudar quem investigar a identificar o barco.
+
+Iara segura o papel pelas pontas. Seu olhar demora mais no nome do que na assinatura.
+
+— Esse eu ouvi. Um homem gritou esse nome lá do mar quando Tomé ameaçou apagar a luz. Os dois discutiram durante uma hora.
+
+Você envolve o recibo numa folha impermeável que veio com as lâmpadas. A mulher se aproxima da água e chama pelo filho uma vez. A resposta é o ruído do cabo de uma boia batendo no barril vazio. Ela aperta os lábios, irritada consigo mesma por ter chamado, e depois torna a olhar para o horizonte.
+
++prova
+* Observar o mar à procura de sinais -> cap3_h
+* Procurar quem conhecia o acordo com Tomé -> cap3_i
+
+== cap3_f
+O homem do barril se apresenta como Neco, consertador de motores, e garante que estava na praia por causa de uma vela de ignição perdida. A explicação seria mais convincente se ele não estivesse de sapatos de festa e sem ferramenta nenhuma.
+
+— A senhora Iara me pediu para olhar — admite quando ela cruza os braços. — Ela disse que se eu mentisse ao técnico não consertaria mais meu jantar.
+
+Neco aponta para a lancha ao largo. Viu homens descarregando caixas na enseada em outras noites e escutou um deles ameaçar Tomé. Não viu quem levou o faroleiro. Também não sabe onde está o filho de Iara, embora tenha saído para procurá-lo na véspera.
+
+Ele oferece sua lanterna, de lente amarela e pilhas fracas. Você testa o interruptor. O feixe sai magro, mas continua firme enquanto o polegar o aperta. Neco sorri com um orgulho desproporcional à luz.
+
+* Procurar um ponto alto de observação -> cap3_g
+* Perguntar pelo acordo com Tomé -> cap3_i
+
+== cap3_g
+Do alto da duna, a enseada parece uma tigela escura. Uma lancha espera perto da entrada larga; mais longe, uma ondulação miúda cruza a superfície. Você não consegue saber se é barco ou apenas uma dobra da água.
+
+Neco, o consertador de motores da ilha, sobe bufando atrás de você e traz uma garrafa térmica amassada. O café está frio, mas ele oferece assim mesmo. Conta que Tomé costumava reclamar da passagem principal: no tempo claro ela trazia visitas e remédios, no escuro trazia gente que não queria ser contada.
+
+— Ele brigou com alguém por causa da luz — diz Neco. — Gritou que não ia continuar ajudando. Depois pararam de vê-lo.
+
+A lua se esconde, e a forma miúda desaparece. Iara permanece na praia, atenta ao mesmo trecho de mar. De onde você está, é possível voltar pela trilha da torre ou seguir pela areia até a escada de serviço. Ambos os caminhos sobem ao farol.
+
+* Subir ao farol pela trilha -> cap4_a
+* Alcançar a escada de serviço -> cap4_b
+
+== cap3_h
+Três piscadas surgem no mar. Você conta em voz alta para Iara, que se aproxima da água tão depressa que as ondas alcançam seus pés. Por um instante ela parece prestes a entrar, mas recua quando as luzes cessam.
+
+— Ele aprendeu a sinalizar com Tomé — diz. — Não posso dizer que seja ele. Posso dizer que preciso descobrir.
+
+Vocês esperam. Um ponto acende de novo, depois some atrás de uma faixa de névoa. Não é possível ver se a lancha maior também percebeu. Iara conta que pediu a Tomé para apagar o farol quando começaram as descargas suspeitas. Ele resistiu por causa dos pescadores; acabou cedendo, e pouco depois desapareceu.
+
+Você sente o peso do serviço que veio fazer. O fusível e o mecanismo da torre talvez permitam escolher quando acender, mas da praia não se enxerga o suficiente para guiar alguém pelas pedras. O vento aumenta, e a escuridão ganha outra espessura.
+
+* Subir pela escada de serviço -> cap4_b
+* Procurar acesso à sala da lanterna -> cap4_c
+
+== cap3_i
+Neco, consertador de motores da ilha, leva você até uma cerca de estacas, onde o vento arranca fiapos de uma lona presa às pontas. De lá se vê a entrada larga da enseada e um pedaço estreito de mar entre as pedras. A lancha continua parada, sem dar luz.
+
+— Tomé aceitou ouvir aqueles homens no começo — diz ele. — Pensou que pudesse impedir coisa pior sabendo quando vinham. Depois Iara pediu que apagasse tudo. Ele disse que não podia abandonar quem estava pescando.
+
+Você pergunta se havia dinheiro envolvido. Neco sacode a cabeça, sem pressa.
+
+— Não sei. Sei que ele ficou com medo. Isso não é a mesma coisa que ser inocente, mas também não é a mesma coisa que ser culpado.
+
+Iara chega a tempo de ouvir a última frase. Não discute. Olha para a torre e diz que, de lá de cima, qualquer sinal no mar será mais fácil de distinguir. O telhado da casa de Tomé mal aparece atrás da vegetação.
+
+* Seguir pela trilha do farol -> cap4_a
+* Ir até o acesso à sala da lanterna -> cap4_c
+
+== cap4_a
+Cento e doze degraus em caracol. Você os conta porque o esforço de respirar não basta para calar as perguntas. O farol cheira a ferro e a óleo velho. Em certas curvas, a janela mostra um retalho do mar; na seguinte, só há parede e a sombra comprida do seu corpo.
+
+Lá em cima, a lanterna está intacta. Alguém tirou o fusível principal e deixou sobre a mesa, ao lado de um bilhete. A letra é firme no começo, mais apertada no fim: “Quem achar isto: a escolha agora é sua. Eu já fiz a minha.”
+
+Iara chega alguns degraus depois e se apoia no batente. Ela reconhece a letra de Tomé, mas não toca no papel. Pela janela, a lancha continua sem luz. Você pega o fusível pelo corpo isolante: recolocá-lo seria fácil. O difícil é imaginar tudo que o feixe revelaria.
+
+* Examinar os vestígios deixados na torre -> cap4_d
+* Tentar ouvir notícias pelo rádio do farol -> cap4_e
+
+== cap4_b
+A porta de serviço resiste até Iara encontrar a chave num prego escondido. Dentro, você conta cento e doze degraus em caracol. O farol cheira a ferro e a óleo velho, e cada volta leva a uma janela estreita, como se a torre quisesse mostrar o mar aos poucos.
+
+A lanterna está intacta. O fusível principal repousa sobre a mesa, junto de um bilhete na letra de Tomé: “Quem achar isto: a escolha agora é sua. Eu já fiz a minha.” Você vira o papel. No verso não há instruções, apenas uma marca circular deixada por uma xícara.
+
+— Ele tirou com cuidado — observa Iara. — Ainda queria poder colocar de volta.
+
+Da sala se veem as pedras da entrada e a linha além delas, onde a noite esconde o filho dela e também a lancha. O vento bate no vidro. Você guarda o impulso de encaixar o fusível antes de saber o que aconteceu ali.
+
+* Tentar contato pelo rádio do farol -> cap4_e
+* Verificar a luz e o mecanismo da torre -> cap4_f
+
+== cap4_c
+A subida à sala da lanterna tem cento e doze degraus em caracol. Seus joelhos protestam antes do fim; Iara sobe atrás, sem reclamar, embora pare duas vezes para recuperar o fôlego. O farol cheira a ferro e a óleo velho. No alto, a luz apagada parece menos um defeito do que uma decisão guardada numa caixa de vidro.
+
+O mecanismo está intacto. Sobre a mesa, ao lado do fusível principal retirado do encaixe, alguém deixou um bilhete: “Quem achar isto: a escolha agora é sua. Eu já fiz a minha.” Iara lê sem mover os lábios. Reconhece a letra de Tomé e dobra o papel com o cuidado de quem fecha os olhos de outra pessoa.
+
+Lá fora, as pedras da passagem dividem uma água quase preta. A lancha não acende nada. Você imagina o feixe varrendo o mar e revelando, no mesmo instante, a saída para qualquer embarcação que esteja esperando.
+
+* Procurar vestígios de Tomé na sala -> cap4_d
+* Inspecionar o mecanismo da luz -> cap4_f
+
+== cap4_d
+Um risco comprido atravessa a mesa de madeira. Debaixo dela você encontra um botão de casaco e, preso à farpa ao lado da janela, um pedaço de tecido azul. Iara o reconhece: Tomé costurara aquele remendo na manga depois de rasgá-la numa cerca.
+
+— Ele não sairia daqui deixando isso sem apanhar — diz. — Detestava desperdício. Uma vez guardou até um prego torto para fazer anzol.
+
+Você examina o batente. Há marcas de dedos na poeira e um cheiro leve de combustível que não vem do mecanismo. Neco, consertador de motores da ilha, chega ao pé da torre e grita pela janela que um homem viu Tomé sendo levado num bote naquela noite. O pescador se calou de medo, mas resolveu falar depois de saber que Iara procurava o filho.
+
+Ser levado não é o mesmo que estar morto. Essa pequena diferença muda a maneira como ela recebe a notícia. Você percebe que ainda há gente para procurar além do barco perdido.
+
+* Observar a lancha da janela -> cap4_g
+* Investigar uma voz no rádio -> cap4_h
+
+== cap4_e
+O rádio da torre chia como gordura na frigideira. Você gira o botão de sintonia devagar, tentando distinguir palavras do ruído, até alcançar uma voz cansada. O sinal falha entre as frases. A pessoa do outro lado entende “enseada”, “lancha” e “farol” antes que a estática engula o resto.
+
+— Patrulha... ao amanhecer... mantenham... — A transmissão morre num estalo.
+
+Você tenta de novo e não sabe quanto da sua resposta chegou. Iara aperta as mãos contra o parapeito. Neco, consertador de motores da ilha, vem pela trilha e chama lá de baixo e conta que uma testemunha viu Tomé ser levado num bote na noite em que o farol apagou. Ela esperou para falar por medo dos homens da lancha.
+
+Há uma patrulha possivelmente a caminho, um homem desaparecido e um filho que continua no mar. Você observa o fusível na mesa: a peça cabe na palma da mão, pequena demais para o problema que lhe entregaram.
+
+* Investigar a voz que voltou ao rádio -> cap4_h
+* Observar a passagem e o horizonte -> cap4_i
+
+== cap4_f
+Você abre a caixa do mecanismo e encontra os contatos limpos, protegidos da umidade por uma camada de graxa recente. A lâmpada de reserva ainda está embalada. Tomé não destruiu nada: deixou a torre pronta para acender, embora tenha escolhido não fazê-lo.
+
+Iara acompanha seus movimentos com um cuidado que parece conter a vontade de intervir. Lá embaixo, Neco, consertador de motores da ilha, aparece na trilha e chama pela janela. Uma testemunha acabou de admitir que viu Tomé sendo levado num bote por homens ligados à lancha. Não sabe para onde, nem se o faroleiro ainda está com eles.
+
+Você fecha a caixa sem recolocar o fusível. O rádio da sala estala sozinho, e uma voz distante menciona uma patrulha e o amanhecer antes de desaparecer. Iara olha primeiro para o aparelho, depois para o mar.
+
+— Se eles vêm de manhã, meu filho precisa aguentar até lá — diz. A frase não soa como certeza, mas como um pedido ao tempo.
+
+* Observar a lancha pela janela -> cap4_g
+* Examinar a passagem e o horizonte -> cap4_i
+
+== cap4_g
+Pela janela, a lancha escura muda de posição. Um homem risca um fósforo no convés; por um segundo, você vê um rosto curvado sobre o vento e uma mão cobrindo a chama. É pouco para reconhecê-lo. Quando a luz se apaga, resta apenas o balanço do casco.
+
+O rádio estala. Desta vez uma voz da base consegue transmitir a informação inteira: uma patrulha pode chegar ao amanhecer. A voz pede que mantenham a enseada sob observação. Se a luz principal acender antes, os homens da lancha poderão encontrar a passagem larga e fugir.
+
+— E meu filho poderá encontrar o caminho de casa — responde Iara, embora o rádio já não esteja transmitindo.
+
+Você olha de novo para o fusível sobre a mesa. A lancha pode ter levado Tomé; um bote menor pode estar perdido entre as pedras. Cada minuto permite observar melhor e deixa menos tempo para quem espera no mar.
+
+* Analisar como alcançar a passagem estreita -> cap5_a
+* Procurar uma forma de transmitir um aviso -> cap5_b
+
+== cap4_h
+Uma voz surge no rádio, entre ruídos. É da base, e desta vez você entende: uma patrulha pode chegar ao amanhecer. O operador pede que mantenham o farol apagado enquanto a lancha estiver na enseada, pois o feixe mostraria aos homens a passagem larga para escapar. A comunicação cai antes de você perguntar sobre Tomé.
+
+Iara espera que o chiado termine.
+
+— Bento também precisa enxergar as pedras. Quem falou aí tem mãe?
+
+Você não responde de imediato. No vidro, uma sombra cruza o reflexo dos dois: é apenas a asa de uma ave, mas ambos se voltam para a escuridão. Lá fora, bem distante, um ponto pisca. Não se consegue distinguir de onde vem nem quem o segura.
+
+O fusível está na mesa; a lâmpada, pronta. Acender pode orientar o rapaz e abrir caminho à lancha. Esperar pode favorecer a patrulha e custar caro a quem está à deriva.
+
+* Procurar uma forma de transmitir um aviso -> cap5_b
+* Vigiar o sinal que apareceu no mar -> cap5_c
+
+== cap4_i
+Você apaga a lanterna de mão para enxergar através do vidro. Aos poucos, a vista separa a linha das pedras da água escura. A passagem larga é uma abertura entre duas faixas de espuma; qualquer barco de fora poderia encontrá-la se o farol voltasse a girar.
+
+Iara aponta para além dela. Um ponto vacila no horizonte, desaparece e torna a surgir. Ela não garante que seja o filho, mas conhece o bastante daquela água para saber que um pescador pode estar ali em apuros.
+
+O rádio chia, depois uma voz da base informa que uma patrulha pode chegar ao amanhecer. Pede que a luz principal permaneça apagada: caso contrário, a lancha terá como fugir. Você olha para o fusível sobre a mesa e pensa no bote que levou Tomé. Acender talvez ajude o rapaz; esperar talvez permita encontrar os homens antes que escapem.
+
+Ninguém na sala possui uma certeza grande o bastante para decidir por todos.
+
+* Analisar como alcançar a passagem estreita -> cap5_a
+* Vigiar o ponto no horizonte -> cap5_c
+== cap5_a
+O vento dá a volta na torre e encontra a fresta da janela. Ali em cima, o farol não parece um monumento: é uma máquina de ferro, parafusos gastos e vidros que precisam de alguém disposto a limpá-los. O fusível está ao alcance da mão. Você o mantém fora do encaixe enquanto procura, entre o escuro e o reflexo no vidro, a pequena luz no mar.
+
+Iara acompanha seu olhar. Não pede coragem. Pede apenas que você não chame de acidente uma decisão tomada depressa. O ponto reaparece junto à linha irregular das pedras e some na mesma hora. Uma lancha maior permanece mais distante, sem se anunciar.
+
+— Se for Bento, ele conhece este lado — diz ela. — Mas a corrente muda antes da maré.
+
+Na mesa há papéis presos sob uma ferramenta. A lanterna de mão, carregada até onde a bateria permite, também está ali. Os dois recursos parecem pequenos demais para o tamanho da noite.
+
+* Examinar os papéis na cabina -> cap5_d
+* Tentar responder ao ponto no mar -> cap5_e
+* [marinha] Repetir pelo rádio o pedido de socorro ao pescador -> cap5_f
+
+== cap5_b
+Você coloca o fusível sobre a mesa. O cilindro rola alguns centímetros e para contra uma porca enferrujada, como se a própria oficina improvisada quisesse impedir uma resposta apressada. Lá fora, as ondas apagam e redesenham a faixa de espuma em volta das pedras. Um brilho curto aparece na escuridão e você não sabe se é um pedido ou apenas água refletindo o céu.
+
+Iara apoia a mão na armação da janela. A coragem dela não é uma coisa limpa: vem misturada a raiva, cansaço e medo de que Bento tenha esperado luz onde ela não deveria aparecer.
+
+— Eu já disse a ele para nunca confiar num mar muito quieto. Devia ter ensinado também a desconfiar dos homens.
+
+A lanterna de mão permite tentar uma resposta sem iluminar a passagem inteira. O rádio do alto, ligado à antena do farol, talvez alcance a patrulha. Qualquer movimento precisa ser discreto: há uma lancha lá fora.
+
+* Tentar responder ao ponto no mar -> cap5_e
+* Procurar contato pelo rádio do farol -> cap5_f
+
+== cap5_c
+A luz apagada do farol dá ao vidro uma aparência de aquário vazio. Você recolhe o fusível, protege-o da umidade e o deixa junto aos instrumentos. Mais abaixo, uma porta bate. Você se vira, mas o som não se repete; pode ter sido o vento, pode ter sido alguém aprendendo a andar sem fazer barulho.
+
+Iara conta os segundos entre uma onda e outra. O filho nunca gostou de voltar tarde, diz ela, não por medo do mar, mas porque o peixe amanhecido rendia menos na banca. Ela sorri ao lembrar e logo aperta os lábios.
+
+— Bento tem juízo. Só não sei se juízo basta quando os outros têm motor.
+
+Entre os pertences de Tomé há um maço de registros. Do outro lado, o rádio da torre espera uma voz. Qualquer um dos dois pode dar à noite uma direção mais segura; nenhum garante que o rapaz aguente até lá.
+
+* Examinar os papéis na cabina -> cap5_d
+* Procurar contato pelo rádio do farol -> cap5_f
+
+== cap5_d
+Os papéis sob a ferramenta parecem uma relação banal de manutenção. Tomé anotou a limpeza da lente, a troca de óleo e, em outra coluna, números de casco, horários e o desenho de uma enseada. As datas coincidem com noites em que barcos sem nome foram vistos perto das pedras. Na última folha, ele escreveu: “A lista que eles levaram não era a única.”
+
+Você confere os números duas vezes e guarda as folhas dentro da roupa, protegidas da chuva. A tinta está borrada em alguns pontos, mas ainda é legível. Não é uma condenação pronta; é um rastro que alguém poderá seguir se você conseguir entregá-lo.
+
+Iara passa o dedo por um registro e reconhece o nome antigo de uma embarcação.
+
+— Meu pai remendou a rede desse barco. Depois venderam para um homem que nunca pescou.
+
+No andar de baixo, um ruído metálico interrompe a conversa. A torre também tem ouvidos, e talvez pés.
+
++prova
+* Investigar com cuidado o ruído abaixo -> cap5_g
+* Vigiar a lancha pela janela estreita -> cap5_h
+
+== cap5_e
+Você cobre a lanterna com a palma, deixando uma abertura estreita entre os dedos, e aponta para a água. Três piscos curtos. Espera. O ponto responde com dois longos e um curto, tão fracos que você pensa ter imaginado. Repete o sinal. A resposta vem de novo, ligeiramente mais perto da espuma.
+
+Iara solta o ar que vinha prendendo. Não há como ter certeza absoluta de quem segura a outra luz, mas o código é o que Bento combinara com ela quando saía antes do amanhecer. Você evita varrer a entrada principal e usa o contorno da ilha como referência, apontando aos poucos para o lado protegido.
+
+O trabalho é lento. Seus braços ardem, e cada pingo no vidro multiplica a luz num pequeno fantasma. O sinal ajuda a orientar quem está no barco, sem prometer que as pedras deixaram de existir ou que a lancha não tenha visto nada.
+
++sinal
+* Vigiar a lancha pela janela estreita -> cap5_h
+* Conferir a aproximação da maré -> cap5_i
+
+== cap5_f
+O rádio do farol estala quando você pressiona o botão. Há chiado, depois uma voz de plantão, baixa e impaciente. Você informa sua posição, a presença de uma lancha suspeita e o desaparecimento de Tomé. Conta também que há um pescador do lado de fora e que a luz principal pode revelar a passagem aos dois lados.
+
+— Recebido — responde a voz. — A patrulha está a caminho. Não garanto chegada antes da mudança da maré. Mantenha o canal livre.
+
+Você pede confirmação e recebe a mensagem outra vez, com as coordenadas repetidas. Dessa vez não é esperança pendurada numa antena: alguém em terra ouviu. Também não é uma promessa de socorro imediato.
+
+Iara observa o aparelho como se pudesse puxar dele um barco inteiro. A luz vermelha do transmissor se apaga, e a escuridão torna a ocupar o vidro. Em algum ponto abaixo da torre, ferro bate em ferro.
+
++marinha
+* Investigar com cuidado o ruído abaixo -> cap5_g
+* Conferir a aproximação da maré -> cap5_i
+
+== cap5_g
+Você desce poucos degraus, devagar, até encontrar uma janela que dá para o pátio. O ruído veio da corrente de uma porta lateral, que o vento sacode contra a parede. Ainda assim há pegadas frescas na lama sob ela, largas e fundas demais para serem explicadas pelo vento. Alguém passou por ali recentemente e deixou a porta apenas encostada.
+
+Iara se abaixa perto de você. No escuro, sua voz fica ainda menor.
+
+— Tomé guardava combustível naquele anexo. Também guardava coisas que não queria que estragassem com maresia.
+
+O olhar dela encontra o seu, e os dois entendem que “coisas” pode significar muita coisa. Você volta ao patamar para não ficar preso entre a porta e a escada. A corrente raspa mais uma vez; desta vez, parece uma colher mexendo numa panela vazia. O humor da comparação dura apenas um segundo.
+
+* Descer em direção ao anexo da torre -> cap6_a
+* Observar a enseada antes de avançar -> cap6_b
+
+== cap5_h
+Da janela estreita, a lancha é uma sombra sobre sombras. Você a localiza quando uma ponta de cigarro acende e desaparece. Há pelo menos uma pessoa a bordo, talvez mais. O motor permanece silencioso, mas a embarcação oscila de um jeito diferente do pequeno ponto junto às pedras: acompanha a corrente sem se deixar levar por ela.
+
+— Estão esperando alguma coisa — diz Iara.
+
+Você não sabe se esperam a luz, uma entrega ou uma chance de sair sem testemunhas. Então o clarão breve de uma lanterna surge perto da base da torre, apontado para o chão. Não alcança o vidro e desaparece atrás do anexo. Uma pessoa corre o risco de ser vista ali; duas podem acabar encurraladas.
+
+O fusível continua guardado com você. Acender a lanterna principal ainda é possível, mas fazer isso agora significaria entregar a mesma informação ao barco pequeno e à lancha.
+
+* Observar a enseada antes de avançar -> cap6_b
+* Procurar uma passagem pela encosta -> cap6_c
+
+== cap5_i
+O relógio de maré preso à parede está parado. Para medir o tempo que resta, você compara a água com uma marca escura nas pedras. Entre duas observações, a faixa de espuma se move visivelmente. Iara explica que a corrente empurra para o lado de fora antes de virar; quem errar a entrada será levado ao redor da ilha, para uma costa sem cais.
+
+— Ele sabe disso — diz ela, e emenda, num tom menor: — Se ainda estiver acordado.
+
+Do alto, você identifica uma trilha que contorna a encosta e outra que leva ao anexo. A primeira oferece vista para a água; a segunda fica mais protegida do vento e de olhos no mar. Em algum ponto abaixo, uma porta bate. O som não diz quem está perto dela.
+
+Vocês têm pouco tempo, mas não sabem quanto. É uma medida particularmente cruel: obriga a agir sem permitir que alguém se sinta pronto.
+
+* Descer em direção ao anexo da torre -> cap6_a
+* Procurar uma passagem pela encosta -> cap6_c
+
+== cap6_a
+A escada do farol devolve seus passos com um atraso que faz parecer que há outra pessoa descendo atrás de você. No último lance, Iara segura seu braço e aponta para a porta do anexo. Uma corrente pende do trinco. A fechadura não está presa, apenas pendurada de maneira a parecer fechada para quem a vê de longe.
+
+Pela fresta sai cheiro de combustível e um fio de voz que o vento corta antes de virar palavra. Pode ser Tomé, ou pode ser alguém tentando atraí-los para perto. Mais adiante, a trilha se abre para a enseada; um caixote com inscrições raspadas está abandonado junto à parede.
+
+Você não encontra certeza, encontra escolhas. Iara pega um pedaço de madeira e o apoia no ombro como quem segura um remo.
+
+— Se for um susto, eu dou nele. Se for gente, conversamos primeiro.
+
+* Abrir o anexo e verificar a voz -> cap6_d
+* Examinar o caixote junto à parede -> cap6_e
+* [mapa] Usar o mapa para sinalizar pelo caminho estreito -> cap6_f
+
+== cap6_b
+A enseada aparece por entre as construções como uma boca estreita. No escuro, a lancha maior parece imóvel, mas sua posição mudou: agora está mais perto do único corredor fundo entre as pedras. Se sair depressa, poderá atravessá-lo antes de qualquer embarcação que venha do outro lado.
+
+Iara lhe mostra o anexo da torre. Uma corrente balança no trinco e há movimento indistinto atrás da janela suja. Perto da parede, um caixote esquecido traz um número quase apagado. Você enxerga também, muito longe, um ponto que some quando o mar cresce.
+
+— É difícil olhar para tudo ao mesmo tempo — diz ela.
+
+— Principalmente com esse farol que não ajuda — você responde.
+
+Iara lança um olhar que dura o suficiente para você se arrepender da piada. Depois solta uma risada curta, involuntária. O silêncio volta, mas ao menos os dois conseguem respirar antes de agir.
+
+* Examinar o caixote junto à parede -> cap6_e
+* Buscar uma posição discreta para sinalizar ao barco -> cap6_f
+
+== cap6_c
+A trilha da encosta termina num patamar de pedra. Dali, a passagem principal fica visível mesmo sem a luz do farol: uma fenda escura entre espumas que se desfazem. Para um barco pequeno, há outro caminho mais rente à praia, desde que alguém indique onde começam os rochedos submersos.
+
+Iara tira um mapa mental daquela confusão. Aponta uma pedra com formato de dente e outra que só aparece quando a água baixa. Suas mãos tremem. Ela fecha os dedos com força, espera, abre a mão outra vez.
+
+Atrás de vocês fica o anexo, onde uma porta se move levemente. Um som abafado vem de dentro. Pode ser madeira se acomodando, pode ser uma voz. Lá embaixo, o mar não espera o fim da investigação.
+
+Você mantém a lanterna pequena protegida do vento. Não há tempo para transformar todas as possibilidades em certezas, apenas para escolher qual delas merece seus próximos minutos.
+
+* Abrir o anexo e verificar a voz -> cap6_d
+* Buscar uma posição discreta para sinalizar ao barco -> cap6_f
+
+== cap6_d
+Vocês puxam a corrente do trinco. A porta emperra antes de ceder com um gemido comprido, e Iara ergue o pedaço de madeira. No chão do anexo está Tomé, mãos amarradas à frente, consciente e furioso por precisar de ajuda para desfazer um nó.
+
+— Se eu pegar quem fez isso, ensino amarra melhor — resmunga ele.
+
+Você corta a corda com a lâmina de uma ferramenta. O faroleiro consegue ficar de pé, mas o tornozelo inchado não permite que corra. Ele conta que os homens o mantiveram num barco e o trouxeram de volta para obrigá-lo a indicar a passagem quando precisassem fugir. Um deles saiu para verificar a lancha; o outro pode estar por perto.
+
+Iara ajuda Tomé até um abrigo de pedra fora da vista do anexo. A porta fecha, e vocês a escoram por dentro. Ele tem água, consegue andar apoiado e conhece uma saída para o pátio alto. Por enquanto está livre e abrigado.
+
++tome_salvo
+* Aproximar-se da negociação na enseada -> cap6_g
+* Preparar a travessia junto às pedras -> cap6_h
+
+== cap6_e
+O caixote tem o fundo falso mal pregado. Dentro dele, embrulhado em plástico, você encontra um caderno de carga e uma folha com números de casco, datas e quantias. As iniciais não identificam todos os envolvidos, mas alguns registros correspondem ao desenho da enseada carimbado no papel. Você fotografa as páginas e guarda o caderno para entregá-lo a quem possa investigar.
+
+Um homem surge na curva da trilha. Traz uma capa escura e uma pressa que diminui ao ver o que você tem nas mãos.
+
+— Isso é mercadoria particular.
+
+— Engraçado — diz Iara. — Faltou escrever seu nome na parte de fora.
+
+Ele estende a mão, mas não se aproxima. A lancha dá um toque curto de motor, e o homem olha para o mar antes de recuar. A prova tem valor justamente porque ele parece disposto a recuperá-la. Você protege o pacote sob a roupa; papel molhado não depõe, mas ainda pode ser lido.
+
++prova
+* Preparar a travessia junto às pedras -> cap6_h
+* Buscar um caminho protegido até o cais -> cap6_i
+
+== cap6_f
+De um recuo da encosta, você enxerga o pequeno ponto na água sem ficar exposto à lancha. Tampa a lanterna com a mão e faz três piscos curtos, depois espera. A resposta chega hesitante: dois longos e um curto. Iara agarra seu ombro.
+
+— É o combinado. Quando ele era menino, achava que código era coisa de espião. Ainda acha, provavelmente.
+
+Você aponta a luz para o primeiro trecho da costa segura, interrompe o feixe quando a onda o encobriria e volta a sinalizar. A resposta se desloca devagar. Não é possível saber se há motor, remos ou apenas uma pessoa teimosa tentando não ser levada pela corrente. Você continua até identificar o contorno de um barco pequeno entre as espumas.
+
+Ao fundo, o motor da lancha maior engasga e pega. A informação muda a urgência de tudo: vocês ajudaram o pescador a se orientar, mas ele ainda precisa atravessar a água.
+
++sinal
+* Aproximar-se da negociação na enseada -> cap6_g
+* Buscar um caminho protegido até o cais -> cap6_i
+
+== cap6_g
+Na beira da enseada, um homem de capa escura ergue as mãos ao perceber vocês. Mantém distância suficiente para correr até a lancha. A água já cobre metade da pedra que Iara usava como referência, e o barulho do motor faz as palavras saírem aos pedaços.
+
+— Quero ir embora — diz ele. — Acendam o farol e ninguém precisa se machucar.
+
+Você menciona Tomé. O homem hesita, sem esclarecer o que seus companheiros pretendiam fazer com o faroleiro. Iara dá um passo à frente, mas você a contém com um gesto: a lancha acompanha a conversa, e alguém a bordo pode reagir antes de entender qualquer acordo.
+
+O desconhecido oferece uma troca impossível de conferir naquela escuridão. No mar, uma luz pequena aparece e desaparece atrás das ondas. A decisão se aproxima enquanto o homem conta, em voz alta, um tempo que ninguém concordou em lhe dar.
+
+* Ir para a posição de onde se controla a luz -> cap7_a
+* Subir à torre para ajudar o barco pequeno -> cap7_b
+
+== cap6_h
+Vocês acompanham a água pelo caminho das pedras. Iara conhece cada saliência, mas até ela para quando a espuma cobre uma rocha e reaparece do outro lado. A maré está virando. O corredor estreito usado pelos pescadores continua aberto por enquanto, embora a corrente atravesse sua entrada em diagonal.
+
+Uma voz chama da direção da lancha. O homem de capa escura quer a luz principal acesa e promete sair sem tocar em ninguém. Você não vê o rosto de quem está a bordo e não consegue medir o valor da promessa. Iara calcula a distância até a praia em vez de responder.
+
+— Se Bento entrar rápido demais, vai bater. Se esperar demais, vai ser levado.
+
+A frase não oferece solução, apenas um limite. Você aperta a lanterna pequena e olha para o farol: há uma forma de alcançar os controles. Há também um caminho de pedra que se aproxima do barco sem atravessar a passagem principal.
+
+* Subir à torre para ajudar o barco pequeno -> cap7_b
+* Voltar à torre para procurar outra forma de ajudar -> cap7_c
+
+== cap6_i
+O caminho para o cais passa atrás de uma parede de pedra, protegido de quem observa da lancha. Você e Iara avançam agachados. Perto da curva, ela encontra um remo preso entre tábuas e o recolhe; a madeira está empenada, mas ainda pode alcançar alguém na água rasa.
+
+Do outro lado da parede, um homem chama que quer passagem livre. Sua voz tem a segurança de quem imagina estar negociando com pessoas mais assustadas do que ele. Talvez esteja certo. O medo não impede Iara de espiar e voltar com uma informação: o motor da lancha está funcionando, pronto para partir.
+
+Mais longe, a luz do barco pequeno pisca uma vez e se perde atrás de uma onda. O tempo já não cabe em conversa comprida. Vocês precisam decidir onde ficar quando a próxima oportunidade surgir: junto ao controle da luz ou perto da entrada abrigada que conduz ao cais.
+
+* Ir para a posição de onde se controla a luz -> cap7_a
+* Voltar à torre para procurar outra forma de ajudar -> cap7_c
+== cap7_a
+Você e Iara deixam a beira da enseada e voltam à torre. A madrugada estreita a ilha. O mar avança sobre a praia como se quisesse apagar as próprias pegadas, e o vidro da lanterna devolve seu rosto com uma palidez de afogado. Você separa o fusível, uma lanterna de mão e o relógio sobre a mesa. Nunca precisou de tão poucas ferramentas para uma tarefa tão difícil.
+
+Lá fora, o ponto de luz aparece outra vez. Três piscos. Uma pausa comprida. Você conta os segundos e sente o impulso infantil de prometer que tudo vai dar certo.
+
+Iara chega ao pé da torre e chama seu nome, engolido pelo vento. Você abre a janela. Ela aponta para o escuro.
+
+— Ele sempre esperava a onda passar antes de entrar. Meu menino não briga com o mar por esporte.
+
+Você procura uma resposta que seja mais útil do que coragem. Da passagem principal vem um ruído de motor; da estreita, apenas o atrito das ondas. A maré não esperará que os dois sons se expliquem.
+
+* Concentrar-se no sinal do barco pequeno -> cap7_d
+* Examinar a passagem onde se ouve o motor -> cap7_e
+
+== cap7_b
+Você e Iara sobem de volta à torre para observar a água e alcançar os controles. No relógio da torre, o ponteiro dos minutos parece andar com raiva. Você abre a janela e recebe no rosto uma chuva tão fina que, por um instante, pensa ser espuma. A ilha está dividida entre as casas sem luz, a praia e o risco negro da passagem.
+
+Iara chama de baixo:
+
+— Se ele aparecer, eu vou para a areia. Você me avisa.
+
+Você responde que sim, mas ela não se afasta. Segura a rede dobrada contra o peito, como se ainda pudesse remendá-la enquanto espera. O gesto comove e irrita você: ninguém deveria precisar costurar uma noite dessas.
+
+Do mar vem um ponto intermitente. Pode ser Bento; pode ser alguém imitando um sinal. Mais perto das pedras, o ronco abafado de um motor atravessa a chuva. A base anunciou uma patrulha para o amanhecer, mas ainda não há notícia de sua aproximação. Você precisa escolher onde prestar atenção antes que a maré mude.
+
+* Observar a lancha junto à passagem -> cap7_e
+* Preparar a comunicação e organizar quem está em terra -> cap7_f
+
+== cap7_c
+Você e Iara deixam a encosta e sobem à torre, de onde ainda poderão orientar quem estiver no mar. As nuvens correm tão baixas que a torre parece parada no fundo de um rio. Você limpa um trecho do vidro com a manga e acompanha a espuma que se desfaz sobre as pedras. Há uma claridade breve no mar, depois outra, discreta demais para iluminar um rosto.
+
+Uma voz sobe da escada: é Iara, sem fôlego e sem paciência.
+
+— Meu filho sabe onde fica a casa. O que ele não sabe é onde as pedras estão agora.
+
+Ela deixa sobre a mesa uma garrafa de café. Você experimenta; está frio e forte como um castigo. Iara observa sua careta pela primeira vez naquela noite.
+
+— Aquece a alma. A língua, não prometo.
+
+Vocês não riem muito, mas o pouco que riem dá espaço para respirar. Então o som de um motor chega da passagem. O fusível continua ao alcance da mão, pesado para um objeto tão pequeno.
+
+* Tentar distinguir o sinal de Bento no escuro -> cap7_d
+* Usar os minutos restantes para combinar uma resposta em terra -> cap7_f
+
+== cap7_d
+Você cobre a lanterna com a palma da mão e espia pela fresta entre os dedos. Três lampejos curtos surgem na distância; depois de uma pausa, dois longos e um curto. O sinal não prova quem está no barco, mas o ritmo tem a hesitação de alguém tentando se fazer entender sem ser visto.
+
+Iara acompanha a sequência em silêncio. Ela conhece as manias de Bento: o modo como esperava as ondas e a impaciência que o fazia tamborilar no casco. Não consegue jurar que seja ele àquela distância.
+
+— Se for, está pedindo uma direção. Se não for, alguém quer que a gente acredite.
+
+Você pensa no feixe do farol: com ele as pedras apareceriam, mas também a passagem usada pela lancha. Uma luz de mão alcançaria menos, exigiria tempo e talvez não atravessasse a chuva. No vidro, pequenas gotas escorrem por cima de seu reflexo.
+
+* Assumir a responsabilidade de escolher a luz -> cap7_g
+* Tentar conduzir o barco com sinais discretos -> cap7_h
+
+== cap7_e
+O motor se cala quando uma onda quebra contra a passagem principal. Você espera o som voltar, contando até vinte. Nada. Quem está na lancha também sabe escutar.
+
+Na torre, o fusível devolve um brilho opaco. Você examina os contatos e limpa a sujeira com a barra da camisa. A máquina está pronta para obedecer, mas uma máquina não distingue um pescador de quem pretende explorá-lo.
+
+Iara encosta a testa no vidro.
+
+— Quando era pequeno, Bento achava que Tomé ligava a luz soprando.
+
+— E seu Tomé deixava?
+
+— Deixava, até ele tentar soprar o gerador.
+
+A lembrança arranca de você um sorriso breve. Lá embaixo, alguém arrasta uma embarcação na areia; adiante, outro lampejo corta a noite. O amanhecer não está longe, mas é uma distância medida em água, não no relógio. Permanecer imóvel também será uma escolha, e alguém terá de suportar o resultado.
+
+* Decidir o que fazer com o fusível -> cap7_g
+* Preparar uma resposta discreta ao ponto de luz -> cap7_h
+
+== cap7_f
+Você junta o que tem à mão: uma lanterna, um pano escuro para cobrir o facho, um pedaço de corda e uma folha arrancada da embalagem das lâmpadas. Não é um plano completo. É o começo de um que outras pessoas possam entender.
+
+Iara desenha na folha a linha irregular da costa. Ao lado da passagem larga, assinala uma língua de pedras que a maré cobre primeiro.
+
+— A água sobe até aqui. Depois, quem chegar da praia não vê mais onde pisa.
+
+O vento tenta levar o mapa. Você o prende sob a caixa e pergunta sobre a lancha. Ela responde que não conhece o rosto de todos os homens que a usam. Essa ignorância, você percebe, é parte do domínio deles: ninguém sabe ao certo a quem deve temer.
+
+Ao longe aparece uma luz trêmula. É cedo para saber quem a carrega. Você pode tentar orientar o barco ou concentrar os próximos minutos no confronto com a embarcação maior.
+
+* Preparar o caminho para o barco pequeno -> cap7_h
+* Preparar a espera ou a negociação com a lancha -> cap7_i
+
+== cap7_g
+Você segura o fusível entre os dedos. A porcelana está fria, embora sua mão sue. Pelo vidro, o mar não oferece legenda: um ponto de luz, a sombra de uma lancha e uma faixa de espuma poderiam ser quase qualquer coisa.
+
+A claridade do farol alcançaria muito mais longe do que sua lanterna. A patrulha, se vier, também enxergaria a ilha; os homens da lancha enxergariam a saída. Deixar tudo escuro protege o cerco, mas entrega o pescador à própria sorte.
+
+Iara aparece à porta da sala da lanterna. Ela não pede que você acenda nem que espere. Talvez tenha entendido que uma ordem também pode se tornar uma maneira de fugir da escolha.
+
+— Faça o que conseguir sustentar depois — diz.
+
+Você olha mais uma vez para a torre, para o fusível e para a noite. Daqui em diante, a decisão já não cabe num relatório de manutenção.
+
+* Acender o farol para abrir caminho aos barcos -> fim_luz
+* Manter a luz apagada e priorizar o cerco -> fim_ausencia
+* [prova] Usar a prova para exigir ajuda e revelar o esquema -> fim_prova
+
+== cap7_h
+O ponto no mar volta a piscar. Você responde três vezes, cobrindo a lanterna com o pano entre um clarão e outro. A distância parece grande demais para um facho tão modesto. Ainda assim, depois de um intervalo, vêm dois piscos longos e um curto.
+
+Iara pega uma segunda luz e desce para a praia. Seu vulto encolhe na escada, mas a voz ainda sobe:
+
+— Eu fico onde ele possa ouvir!
+
+Você pode continuar conduzindo o barco sem acender a torre. É um trabalho lento, e a lancha dos contrabandistas continua em algum lugar entre o recife e a passagem. O farol inteiro ofereceria uma rota mais segura ao pescador, por um preço que você já conhece.
+
+Outra onda estoura contra as pedras. A mão com que você segura a lanterna começa a doer, e a pequena luz oscila. Não há como impedir que todos paguem alguma parte daquela noite; resta escolher a quem pedir o esforço.
+
+* Acender o farol e trazer o barco pela passagem larga -> fim_fuga
+* Guiar o barco à mão, mantendo a torre apagada -> fim_filho
+* [sinal] Aproveitar o sinal combinado para conduzi-lo pelo canal estreito -> fim_canal
+
+== cap7_i
+Ao pé da torre, a água já lambe o primeiro degrau de pedra da trilha. A noite perdeu parte da escuridão, mas não o suficiente para distinguir os rostos em um barco.
+
+Uma voz masculina chega da direção da enseada. Oferece falar, desde que ninguém ligue o farol nem chame mais gente. A proposta pode ser uma chance de ganhar tempo ou uma armadilha para a patrulha, caso esteja a caminho. Iara aperta a lanterna apagada contra o corpo.
+
+— Ele sabe que a gente tem medo — ela diz. — Não quer dizer que mande na ilha.
+
+O motor dá uma breve partida e silencia. Se vocês esperarem a manhã, talvez a patrulha feche a passagem; talvez o barquinho desapareça antes. Se aceitarem conversar, terão de oferecer alguma coisa que os homens valorizem.
+
+Você escuta o mar por um instante. É um som contínuo, sem conselho. Então escolhe onde pôr seu próprio corpo.
+
+* Esperar a patrulha com a luz apagada -> fim_amanhecer
+* Ir à enseada e negociar a saída do pescador -> fim_troca
+* [tome_salvo] Usar a liberdade de Tomé para armar um testemunho inesperado -> fim_tome
 == fim_luz
-O fusível encaixa com um estalo. A lanterna gira, o feixe varre o mar e, por um instante, ilumina tudo: as pedras, a passagem, uma lancha escura que liga o motor e foge para longe.
+O fusível encaixa com um estalo. A lanterna gira, e o feixe varre o mar: pedras brancas de espuma, uma passagem aberta, um barquinho baixo e uma lancha escura. Por um instante, tudo parece simples porque tudo pode ser visto.
 
-Você cumpriu o serviço. De manhã, um barco de pescador entra no cais, e uma mulher do galpão corre para abraçar um rapaz encharcado. Ninguém te agradece. Ninguém te culpa.
+A lancha liga o motor e foge. O barco menor hesita, depois encontra a rota para o cais. Quando o rapaz salta em terra, Iara o abraça com tanta força que ele protesta. Ela não afrouxa os braços.
 
-Você nunca soube o que teria acontecido no escuro.
+A patrulha chega depois do sol. Um oficial anota a direção em que a lancha desapareceu e pergunta quanto tempo a luz ficou acesa. Você sabe responder exatamente; para as outras perguntas, tem menos certeza.
+
+Na manhã seguinte, antes de partir, você confere a instalação. A lâmpada gira sem tremer. Iara e Bento passam pelo cais carregando uma rede, e a mulher levanta a mão. Não é uma absolvição. É um cumprimento, e por enquanto basta.
 
 FIM
 
-== fim_luz_fuga
-A luz gira e o mar inteiro aparece. A lancha liga o motor e some pela passagem antes que alguém possa segui-la. No meio da claridade, um barquinho de pescador acha o caminho de casa.
+== fim_ausencia
+Você deixa o fusível sobre a mesa. A torre permanece escura, e o ponto de luz no mar pisca cada vez mais devagar. Ao pé da escada, Iara chama pelo filho até a voz falhar. O vento devolve apenas o barulho de água nas pedras.
 
-De manhã, a patrulha da Marinha chega tarde e encontra a enseada vazia. A mãe do galpão te dá um peixe embrulhado em jornal, sem dizer nada. Você aceita, sem dizer nada também.
+A patrulha chega quando o céu começa a perder o preto. A lancha é cercada junto à enseada, e os homens entregam os motores antes de entregar os nomes. O oficial aperta sua mão e diz que o apagão facilitou o trabalho.
 
-Algumas escolhas salvam uma pessoa e soltam outras. O farol não sabe a diferença.
+Você procura Iara para contar. Ela caminha pela praia e não para quando a chama. Mais tarde encontram o barquinho de Bento do outro lado da ilha, virado entre as pedras. A busca termina na manhã seguinte, quando o mar devolve seu corpo numa enseada.
+
+O relatório registra uma apreensão bem-sucedida. Você acompanha Iara ao enterro, sem uniforme nem desculpa. Ela leva a agulha de rede no bolso e a conserva fechada na mão durante toda a cerimônia. Na volta, entrega a você o fusível de reserva que Tomé deixara em sua casa.
+
+— Ponha no lugar — diz. — Quem ainda está no mar precisa voltar.
+
+A luz gira naquela noite. Cada passagem do facho encontra a janela do galpão acesa.
+
+FIM
+
+== fim_prova
+Você transmite pelo rádio os detalhes da prova ao oficial que responde ao chamado e exige que o resgate de Bento faça parte da operação. Os dados ajudam a identificar a lancha e seu ponto de descarga; não bastam para dizer quem está em cada barco, nem para impedir um tiro. Você guardará o original para entregá-lo quando a patrulha chegar.
+
+A patrulha entra pela extremidade da ilha, sem esperar que você acenda o farol. Quando o motor dos contrabandistas tenta escapar, outra embarcação fecha a passagem. Na confusão, Iara e dois pescadores encontram Bento abrigado atrás de uma pedra, agarrado ao casco do barco avariado.
+
+Ele está vivo, tremendo de frio e furioso por ter perdido a rede. Iara lhe dá uma bronca tão comprida que o oficial oferece registrar também aquela ocorrência.
+
+Nas semanas seguintes, a investigação alcança gente em terra firme. Não resolve a pesca nem devolve as noites perdidas, mas a ilha deixa de precisar fingir que não viu a lancha. Seu nome aparece no processo; o de Tomé, nos depoimentos. A luz volta a girar sob vigilância.
+
+FIM
+
+== fim_fuga
+O farol acende. O feixe passa pela janela, pela espuma, pelo casco do pequeno barco. Bento ergue um braço para proteger os olhos e segue a água iluminada até o cais.
+
+Ao mesmo tempo, a lancha maior arranca pela passagem. Você vê a esteira branca se apagar antes de ouvir o ronco desaparecer. A patrulha chega depois, tarde demais para fechar a saída. O oficial pergunta por que você não esperou. Você aponta para o rapaz que Iara cobre com um casaco.
+
+— Eu vi — diz o oficial. Anota mesmo assim.
+
+De manhã, a mulher lhe entrega um peixe embrulhado em jornal. Você aceita sem dizer nada; ela também não diz nada. A notícia da fuga virá impressa no mesmo jornal do dia seguinte, em letras menores do que você esperava.
+
+Bento ajuda a arrumar a instalação antes de voltar ao mar. Ele não chama sua escolha de certa. Pergunta apenas como se troca um fusível. Você ensina.
 
 FIM
 
 == fim_filho
-Na areia, um rapaz magro tira o boné e olha para o farol apagado, depois para você, sem entender. A mãe chega correndo do galpão, descalça.
+Você pisca três vezes. O ponto lá fora para, depois responde: dois longos, um curto. Devagar, o barquinho desliza pela borda das pedras. Você conduz o casco durante quase meia hora, até o braço doer e sua sombra na parede parecer a de outra pessoa.
 
-Ao amanhecer, a patrulha da Marinha cerca a enseada. A lancha não tinha para onde fugir no escuro.
+Na praia, Bento tira o boné encharcado e olha para a torre apagada, sem entender. Iara chega descalça e o abraça. Ele reclama do frio; ela lhe diz que reclame mais alto, para ter certeza de que está ouvindo.
 
-Só então você recoloca o fusível. O farol acende num dia já claro, quase sem precisar. Seu Tomé aparece no cais dois dias depois, num barco da Marinha, magro e vivo, perguntando quem mexeu no fusível dele.
+Ao amanhecer, a patrulha fecha a enseada e alcança a lancha no escuro que ainda resta entre as pedras. Só então você recoloca o fusível. O farol acende num dia já claro, quase sem precisar.
+
+Dois dias depois, seu Tomé aparece no cais, magro e vivo, acompanhado por gente da Marinha. Examina a torre, torce a boca e pergunta quem mexeu no fusível dele. Bento aponta para você. Pela primeira vez, Tomé sorri.
+
+FIM
+
+== fim_canal
+A sequência que você combinou alcança o barco apesar da chuva. Dois longos indicam que Bento está vendo o recife; um curto pede que espere. Você responde devagar, guiando-o pelo canal estreito enquanto Iara o acompanha da areia, sem acender sua própria luz.
+
+O casco raspa uma pedra. Bento prende a respiração e você também. Uma onda o ergue, depois o deposita numa poça mais funda. Alguns metros adiante, o rapaz salta em terra e puxa o barco pela proa. Iara se ajoelha para ajudá-lo; os dois ficam cobertos de lama antes de se abraçar.
+
+A lancha não percebe a manobra. Quando a patrulha fecha a enseada, seus ocupantes descobrem que o caminho de fuga está ocupado. O testemunho de Bento ajuda a esclarecer o que aconteceu na enseada e onde os homens haviam escondido Tomé.
+
+Muito tempo depois, Iara costura três pequenos pontos brancos na borda da rede do filho. Não servem para pescar. Servem para lembrar que uma luz pequena pode indicar um caminho que o farol inteiro não conhece.
 
 FIM
 
 == fim_amanhecer
-Você passa a noite sentado ao lado da lanterna apagada, ouvindo o mar. Às cinco, a patrulha surge no horizonte e fecha a enseada. Pelo rádio, a voz cansada agradece.
+Você espera com o farol apagado. Às cinco, a patrulha surge no horizonte e fecha a enseada. Pelo rádio, uma voz cansada agradece. Na praia, Iara não escuta; está procurando o ponto que parou de piscar há pouco.
 
-Mas o ponto de luz no mar parou de piscar à meia-noite. De manhã, o barquinho do rapaz é achado inteiro numa praia do outro lado da ilha, vazio, com os remos guardados com cuidado.
+Ao amanhecer, encontram o barquinho inteiro numa praia do outro lado da ilha. Os remos estão guardados com cuidado. De Bento, nenhuma pegada que a maré não tenha alcançado.
 
-Ninguém sabe ainda onde ele está. A mãe continua remendando redes, olhando o mar. Você fica mais um dia, e mais outro.
+Os homens da lancha são detidos, mas dizem não saber de pescador algum. A busca dura dias. Você percorre pedras que não aparecem nos mapas e aprende a distinguir uma camisa presa num galho da espuma que fica entre os arbustos. Aprende também que essas duas coisas podem parecer iguais de longe.
+
+Iara continua remendando redes, olhando o mar. Você adia o barco de volta uma vez, depois outra. A luz da torre gira todas as noites, e cada volta ilumina a praia onde um dia talvez alguém apareça.
+
+FIM
+
+== fim_troca
+Você desce à enseada com as mãos visíveis. Na beira da água, um homem sem capa se apresenta como Damião e oferece a localização do barco de Bento em troca de tempo para a lancha sair. Ele não promete devolver nada além da informação.
+
+— Se estiver mentindo, eu encontro você — diz Iara atrás de você.
+
+— Muita gente já prometeu — responde ele, mas não sorri.
+
+Você aceita a troca e observa a lancha se afastar. A indicação leva a uma pequena enseada onde Bento se abrigou depois que o motor falhou. Está machucado no tornozelo, vivo e zangado por terem gasto a noite com ele.
+
+A patrulha chega quando a esteira da lancha já sumiu. Você conta tudo ao oficial, inclusive o acordo. A busca pelos contrabandistas continua e seu relatório recebe mais de uma assinatura.
+
+Iara agradece pelo filho, depois pergunta quantos outros filhos aquela lancha vai ameaçar. Você não inventa uma resposta. Ajuda Bento a subir a trilha, deixando à mulher a mão que ela precisa para segurá-lo.
+
+FIM
+
+== fim_tome
+Você chama Tomé, agora livre, e pede que fale pelo rádio no lugar de se esconder. O faroleiro ouve a proposta e reconhece a voz que o ameaçou: pertence a Damião, um dos homens da lancha. Dessa vez, o homem do outro lado não sabe que o velho está ouvindo.
+
+Tomé alcança a patrulha pelo rádio da torre. Depois desce à enseada e conversa com Damião apenas o tempo necessário para que os homens da Marinha fechem a passagem indicada. Enquanto Damião discute os termos, Iara aponta a claridade distante do barco de Bento. Pescadores saem pelo lado protegido da ilha para procurá-lo; a patrulha fecha a passagem principal.
+
+O cerco não é bonito nem silencioso. Uma corda arrebenta, alguém cai na água e precisa ser puxado. Mas ao amanhecer Bento está em terra e Tomé presta seu depoimento com uma manta nos ombros.
+
+Antes de você partir, o faroleiro lhe mostra a marca de ferrugem deixada pelo fusível na mesa.
+
+— Guardei o lugar — diz. — Não queria que pensassem que ele tinha sumido sozinho.
+
+Você ajuda a fixar uma pequena placa ali. Nela se lê apenas: “A luz é de todos”.
 
 FIM

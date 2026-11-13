@@ -725,9 +725,9 @@ mod tests {
             assert!(!p.paragraphs.is_empty(), "{name} sem texto");
         }
         assert!(s.passages.values().filter(|p| p.end).count() >= 2);
-        let proa = &s.passages["proa"];
-        assert_eq!(proa.choices[0].need, Some((true, "chave".into())));
-        assert_eq!(proa.choices[1].need, Some((false, "chave".into())));
+        // As escolhas condicionadas por marca ([x] e [!x]) existem e são lidas.
+        assert!(s.passages.values().flat_map(|p| &p.choices).any(|c| c.need.as_ref().is_some_and(|n| n.0)));
+        assert!(s.passages.values().flat_map(|p| &p.choices).any(|c| c.need.as_ref().is_some_and(|n| !n.0)));
     }
 
     /// Toda história que vem com o Verso Ink anda sempre para a frente: nenhum caminho volta a um

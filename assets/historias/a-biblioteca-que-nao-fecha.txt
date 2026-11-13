@@ -2,118 +2,1026 @@
 @ Uma biblioteca onde os livros escolhem os leitores, e um que está fugindo.
 
 == inicio
-A placa na porta diz "Aberto. Sempre." Você só entrou para fugir da chuva, mas a bibliotecária, uma senhora de óculos redondos e um gato no ombro, já te esperava com uma ficha preenchida no seu nome.
+A placa na porta diz “Aberto. Sempre.” Você entrou apenas para fugir da chuva, que caía sobre a cidade com a insistência de quem cobra uma dívida antiga. Lá dentro, o cheiro de papel aquecido substitui o de asfalto molhado. Uma senhora de óculos redondos está atrás do balcão, com um gato no ombro e uma ficha preenchida com o seu nome.
 
-— Finalmente — diz ela. — Um livro fugiu da seção de finais. Os livros sem final ficam perigosos depois da meia-noite. Preciso de alguém que ainda não tenha lido nada aqui.
+— Finalmente — diz ela. — Sou Celina. Um livro fugiu da seção de finais e preciso de alguém que ainda não tenha lido nada aqui.
 
-O relógio da parede marca 23h14.
+O relógio na parede marca 23h14. Você não se lembra de ter visto aquela biblioteca na rua antes, embora passe ali com frequência. Tenta perguntar como ela sabe seu nome, mas a ficha já apresenta outra informação, escrita numa letra miúda: “Chegou antes de ser tarde”.
 
-* Aceitar a tarefa -> corredor
-* Perguntar o que acontece com um livro sem final -> perigo
-* Pedir para levar o gato junto -> gato
+— Ele é perigoso? — você pergunta.
 
-== perigo
-— Eles começam a terminar outras coisas — diz a bibliotecária, ajeitando os óculos. — Conversas, amizades, verões. Um livro sem final não suporta ver nada continuar.
+Dona Celina olha para a porta, onde a água escorre por dentro do vidro.
 
-Ela te entrega um marcador de páginas de couro gasto.
+— Depende de quanto tempo permanecer sozinho.
 
-— Se encontrar o fugitivo, isto prende ele numa página. Mas só uma vez.
+* Perguntar o que um livro sem final pode fazer -> cap1_a
+* Pedir a companhia do gato -> cap1_b
+* Aceitar a tarefa e escutar o que a biblioteca tem a dizer -> cap1_c
+
+== cap1_a
+Dona Celina puxa uma gaveta que parece funda demais para caber no balcão. Enquanto procura alguma coisa, os olhos dela passam pelo relógio com a frequência de quem vigia uma panela prestes a ferver.
+
+— Livros sem final começam a terminar outras coisas — explica. — Conversas, amizades, verões. Um livro sem final não suporta ver nada continuar.
+
+Você lembra da discussão que teve com seu amigo, a frase atravessada que decidiu deixar para amanhã. A lembrança é nítida, mas o nome dele vacila por um instante, como reflexo na água. Celina percebe o esforço que você faz para segurá-lo.
+
+Ela lhe entrega um marcador de couro gasto, com um fio vermelho preso na ponta.
+
+— Se encontrar o fugitivo, isto o prende numa página. Uma vez só. Pense antes de usar: aquilo que se imobiliza numa história pode interromper outra.
+
+A gaveta fecha com um suspiro. No corredor, algo pequeno tilinta contra o chão.
 
 +marcador
-* Partir para o corredor das estantes -> corredor
+* Seguir o som até as estantes -> cap1_d
+* Investigar o livro de registros sobre o balcão -> cap1_e
 
-== gato
-O gato desce do ombro da bibliotecária e sobe no seu sem pedir licença. É pesado e ronrona como um motor velho.
+== cap1_b
+O gato desce do ombro da bibliotecária e sobe no seu sem pedir licença. É pesado e ronrona como um motor velho. A unha atravessa de leve sua roupa; ele parece disposto a cobrar o transporte adiantado.
 
-— O Dostoiévski conhece todos os atalhos — diz ela. — E nunca concorda com ninguém.
+— Dostoiévski conhece todos os atalhos — diz Dona Celina. — E nunca concorda com ninguém.
+
+— Ele sabe encontrar livros fugitivos?
+
+— Sabe encontrar lugares onde não deveria estar. Às vezes dá no mesmo.
+
+Dostoiévski encosta o focinho na ficha com seu nome, espirra e deixa uma pegada sobre a palavra “tarde”. A bibliotecária tenta limpá-la, mas a tinta da almofada parece ter surgido do próprio papel. Você ergue a mão para acariciar o animal. Ele permite durante exatos dois segundos e depois lhe oferece, em troca, a parte menos apresentável do corpo.
+
+Lá no fundo, algo tilinta contra o chão. Celina se endireita, alerta.
+
+— Vocês têm pouco tempo. Não prometo que ele será educado, mas nunca deixou um visitante para trás.
 
 +gato
-* Partir para o corredor das estantes -> corredor
+* Seguir o tilintar entre as estantes -> cap1_d
+* Examinar o registro antes de partir -> cap1_e
 
-== corredor
-O corredor das estantes não tem fim visível. Os livros sussurram quando você passa, cada um contando a primeira frase de si mesmo, todos ao mesmo tempo.
+== cap1_c
+Você aceita. A palavra parece pequena demais para a tarefa, mas Dona Celina a recebe com uma inclinação de cabeça e tira um lápis detrás da orelha. O gato observa a cena com a expressão de quem já ouviu promessas piores.
 
-Num cruzamento, três caminhos: uma escada que desce para a seção de poesia, uma porta pequena com a placa "Esquecidos" e, no chão, um rastro de vírgulas soltas, como migalhas.
+— Não precisa correr logo de início — diz ela. — Primeiro, escute. Os livros costumam contar a verdade quando acham que ninguém está ouvindo.
 
-* Seguir o rastro de vírgulas -> virgulas
-* Entrar na sala dos Esquecidos -> esquecidos
-* [gato] Deixar o gato escolher o caminho -> atalho
+Você fecha os olhos. Por baixo do tamborilar da chuva, percebe um murmúrio de centenas de vozes. Uma fala de uma janela aberta para o mar; outra procura uma colher; uma terceira insiste que já é tarde para pedir desculpas. De repente, todas se calam, exceto uma, fina como papel molhado: “Não quero desaparecer”.
 
-== atalho
-Dostoiévski pula do seu ombro, ignora os três caminhos e se espreme por trás de uma estante de enciclopédias. Você vai atrás, de lado, pedindo desculpas a volumes de botânica.
+Ao abrir os olhos, você vê que Celina também ouviu. Ela aperta o lápis até a madeira estalar.
 
-Do outro lado, uma sala redonda, iluminada por uma janela que mostra uma lua que não é desta noite. No centro, um livro fino, de capa azul, tremendo sobre uma mesa.
+— Pode ser ele. Ou alguém que perdeu alguma coisa por causa dele. Nesta casa, as duas coisas acontecem juntas.
 
-+achou_cedo
-* Aproximar devagar -> fugitivo
+* Seguir o tilintar que vem das estantes -> cap1_d
+* Examinar o livro de registros da bibliotecária -> cap1_e
 
-== virgulas
-As vírgulas levam até a seção de poesia, onde os versos estão bagunçados: alguém passou correndo e derrubou rimas pelo chão. Um soneto chora porque perdeu os dois últimos versos.
+== cap1_d
+O corredor das estantes não tem fim visível. Os livros sussurram quando você passa, cada um contando a primeira frase de si mesmo, todos ao mesmo tempo. O resultado lembra uma festa em que todos querem apresentar o próprio cachorro, mesmo quem não tem cachorro.
 
-* Ajudar o soneto a achar os versos -> soneto
-* Ignorar e seguir as vírgulas -> fugitivo
+O tilintar vem de uma colher de prata que rola pelo assoalho, foge do seu sapato e desaparece numa fresta. No lugar dela fica uma vírgula de metal, quente ao toque. Outras brilham adiante, espalhadas como migalhas.
 
-== soneto
-Você recolhe os versos caídos e devolve um por um. O soneto se recompõe, agradecido, e recita a si mesmo inteiro pela primeira vez em anos. É sobre o mar. É bonito.
+No alto da estante, um atlas abre sozinho e mostra uma cidade cuja praça termina abruptamente no branco do papel. Uma voz rouca sai de suas páginas:
 
-Em troca, ele sussurra:
+— Ele passou com pressa. Não olhou para trás.
 
-— O fugitivo tem medo de ser lido até o fim. Não persiga. Ofereça.
+Você pergunta se o livro azul machucou alguém. O atlas demora a responder; um mapa se dobra sobre outro.
 
-+conselho
-* Seguir as vírgulas até o fim -> fugitivo
+— Não sei se foi por querer. Uma rua da minha cidade acabou no meio da feira. As pessoas ainda esperam as barracas voltarem.
 
-== esquecidos
-A sala dos Esquecidos é cheia de livros que ninguém abre há décadas. O pó é tão grosso que parece neve. Numa estante baixa, um caderno de capa dura com o seu nome escrito na lombada, numa letra de criança.
+* Seguir as vírgulas até a escada de poesia -> cap1_f
+* Procurar a entrada da seção dos Esquecidos -> cap1_g
 
-Dentro, uma história que você começou aos nove anos e nunca terminou: um dragão que tinha medo de altura.
+== cap1_e
+O livro de registros é tão grosso que precisa de duas dobradiças de latão. Dona Celina permite que você o abra, mas mantém a mão sobre a última página, como quem impede o vento de levar uma carta.
+
+As fichas registram leitores e empréstimos em letras de épocas diferentes. Num espaço reservado ao título há uma linha azul, seguida de um aviso: “Não concluir por outra pessoa”. O nome do leitor anterior foi coberto com uma tira de papel, presa com cuidado, não com pressa.
+
+— Quem escreveu esse aviso? — você pergunta.
+
+— Alguém que aprendeu tarde — responde Celina.
+
+Ela afasta a mão. Sob os dedos há um desenho infantil de uma casa, uma janela amarela e uma figura à porta. Não dá para saber se a figura está chegando ou saindo. A bibliotecária fecha o registro antes que você consiga perguntar mais.
+
+Do corredor chega um som de metal, seguido de um “desculpe” quase inaudível. Dona Celina empalidece.
+
+— Vá. Esta noite as estantes estão mudando de lugar.
+
+* Partir pela escada que conduz à poesia -> cap1_f
+* Procurar a seção dos Esquecidos -> cap1_g
+
+== cap1_f
+A escada para a poesia desce apenas três degraus, embora o teto do salão lá embaixo esteja muito distante. A cada passo, uma palavra escapa de algum corrimão e pousa no seu braço. “Quase”, diz uma. “Ainda”, diz outra. Você as devolve ao ar, sem saber qual pertence a quem.
+
+Uma funcionária de tranças grisalhas, ajoelhada junto à porta, tenta recolher pontos de exclamação com uma pá de lixo. Chama-se Dalva e está furiosa com o estado do chão.
+
+— O livro azul cruzou por aqui e bagunçou as rimas. Agora até os manuais querem declamar.
+
+Do outro lado do salão, uma voz reclama que perdeu os dois últimos versos. Mais adiante, uma porta entreaberta deixa escapar um cheiro de pó e infância. Dalva estende a pá para impedir que você pise num ponto particularmente nervoso.
+
+— Seja lá por onde for, escolha logo. Já vi uma noite terminar antes do horário nesta biblioteca. Ninguém gostou do expediente seguinte.
+
+* Ir ao salão de poesia e procurar o soneto -> cap2_a
+* Seguir o cheiro de pó até os Esquecidos -> cap2_b
+
+== cap1_g
+A placa “Esquecidos” está pendurada de lado numa porta baixa. Há uma maçaneta, mas também uma campainha que toca antes de você encostar. A cada badalada, algo range atrás da madeira, como se uma gaveta tentasse lembrar seu próprio endereço.
+
+Perto dali, uma funcionária de tranças grisalhas empilha fichas que insistem em escapar. Ela se apresenta como Dalva e mantém os joelhos cobertos de poeira prateada.
+
+— O livro azul fugiu por este setor — diz. — Ou o setor fugiu dele. Com estantes móveis, testemunha é o que não falta; acordo entre testemunhas é outra história.
+
+Você se oferece para ajudar com as fichas. Dalva lhe entrega uma, que está em branco de um lado e traz do outro um desenho de onda. Antes que possa perguntar de quem é, a mulher recupera o cartão e aponta para a escada ao lado.
+
+— Também mexeram na poesia. Se alguém puder entender aquela confusão, é você. Os Esquecidos talvez tenham outra resposta.
+
+* Descer para procurar a resposta na poesia -> cap2_a
+* Entrar na sala dos Esquecidos -> cap2_b
+
+== cap2_a
+O salão de poesia tem o tamanho de uma estação de trem e o silêncio inquieto de uma plataforma depois da partida. Rimas se espalham pelo chão em pares desencontrados: “janela” procura “aquarela”, enquanto “paixão” garante que não conhece nenhuma “solidão”.
+
+Um soneto de capa verde está aberto sobre um púlpito, chorando tinta pelas bordas.
+
+— Eu tinha catorze versos — diz. — Contei três vezes. Agora só tenho doze e uma crise de identidade.
+
+Perto da porta, uma ficha caída exibe o desenho de uma pequena asa. Uma corrente de ar a carrega em direção à sala vizinha, de onde vem cheiro de pó. Já na galeria superior, um molho de chaves tilinta em mãos invisíveis.
+
+Você pergunta ao soneto se viu o livro azul.
+
+— Passou por mim sem olhar. Parecia assustado com uma sombra que não consegui ver. Eu o teria seguido, se não estivesse ocupado perdendo o final.
+
+A estante atrás de você desliza um pouco. O salão tem mais de uma saída, e todas parecem ficar menores a cada minuto.
+
+* Ajudar o soneto a recuperar seus versos -> cap2_d
+* Seguir a ficha com a asa até os Esquecidos -> cap2_c
+* Subir à galeria e investigar o tilintar -> cap2_e
+
+== cap2_b
+Na sala dos Esquecidos, o pó é tão grosso que parece neve. Alguns livros se cobrem até a lombada, como quem se prepara para um inverno comprido. Outros deixam partes de si expostas, na esperança de que um visitante reconheça o título.
+
+Uma escadinha caminha devagar entre as estantes. Em seu degrau mais alto há uma ficha com o desenho de uma asa. Você a apanha antes que escape pela janela, e ela se aquece na sua mão. Do salão próximo vem um soluço de papel e uma voz contando: “Dez, onze, doze... não é possível”.
+
+Um molho de chaves tilinta acima da sua cabeça. A sombra de seu dono se move pela galeria, enquanto o dono permanece escondido atrás das prateleiras.
+
+Em um canto você vê um relógio sem ponteiros. Mesmo assim, o tique-taque continua. Ao lado dele, uma placa pede: “Se encontrou alguma coisa sua, trate-a com delicadeza”.
+
+Talvez a biblioteca saiba mais sobre você do que a ficha no balcão indicava. Talvez tenha apenas aprendido a reconhecer o modo como as pessoas procuram.
+
+* Investigar a ficha com a asa -> cap2_c
+* Ir ao salão ajudar a voz que soluça -> cap2_d
+* Chamar quem carrega as chaves -> cap2_e
+
+== cap2_c
+A ficha com a asa encontra uma lombada baixa, e seu nome aparece nela numa letra de criança. Você retira o caderno de capa dura, sem entender como veio parar ali. Dentro está uma história que começou aos nove anos e nunca terminou: a de um dragão chamado Bento, que tinha medo de altura.
+
+Bento construíra uma escada para subir ao telhado, mas a largara no terceiro degrau. Na última página, uma frase acaba no meio: “E então ele decidiu que talvez pudesse”. Há uma mancha de suco junto ao ponto em que o lápis parou. Você lembra do copo virado, do adulto chamando para jantar, da certeza infantil de que voltaria no dia seguinte.
+
+Uma folha se ergue e roça seus dedos. Você guarda o caderno, com mais cuidado do que teria julgado necessário alguns minutos antes. Perto dali, uma luz azul se move atrás das estantes. Outra passagem conduz ao rumor de gente trabalhando, e uma terceira cheira a chuva fresca.
 
 +caderno_antigo
-* Levar o caderno junto -> fugitivo
-* Deixar o caderno e voltar ao corredor das vírgulas -> virgulas
+* Seguir a luz azul -> cap2_f
+* Procurar quem trabalha atrás das estantes -> cap2_g
+* Avançar para a passagem com cheiro de chuva -> cap2_h
 
-== fugitivo
-O fugitivo é um livro fino, de capa azul, sem título. Quando você se aproxima, ele se fecha com força e as páginas tremem.
+== cap2_d
+Você encontra o primeiro verso perdido sob uma antologia de receitas e o segundo preso na dobra de uma cortina. O soneto os recebe com tanto cuidado que suas páginas deixam de tremer. Recomposto, recita a si mesmo inteiro pela primeira vez em anos. É sobre o mar. É bonito.
 
-O relógio, de algum lugar, bate 23h58.
+Quando termina, você ainda consegue ouvir a espuma se retirando das pedras, embora o salão esteja seco. O soneto se inclina no púlpito, satisfeito e um pouco envergonhado.
 
-* [marcador] Prender o livro com o marcador -> fim_preso
-* [conselho] Sentar ao lado e oferecer escrever um final junto -> fim_final_junto
-* [caderno_antigo] Mostrar o seu caderno, a sua história também sem fim -> fim_dois_livros
-* Tentar pegar o livro com as mãos -> fim_meia_noite
+— O fugitivo tem medo de ser lido até o fim — sussurra. — Não persiga. Ofereça.
 
-== fim_preso
-O marcador desliza entre as páginas e o livro para de tremer, preso num parágrafo qualquer do meio. A bibliotecária aparece, satisfeita, e o devolve à seção de finais, onde ele vai esperar alguém escrever o resto.
+Você pergunta por que ele sabe disso. O soneto indica um risco azul na margem de seu último verso.
 
-Você sai para a rua. A chuva parou. Mas a conversa que você ia ter amanhã com um amigo, por algum motivo, você já não lembra qual era.
+— Ele o segurou para que não caísse na fenda. Depois ouviu alguém chegando e correu.
 
-Livros presos no meio deixam coisas pela metade.
+Na parede, uma porta recém-aparecida conduz a uma luz azul. Dali também se ouve gente trabalhando. Uma terceira passagem deixa entrar o cheiro da chuva, embora não haja janela próxima.
 
-FIM
++conselho
+* Seguir a luz que atravessa a porta -> cap2_f
+* Procurar as pessoas atrás das estantes -> cap2_g
+* Avançar pela passagem com cheiro de chuva -> cap2_h
+
+== cap2_e
+A pessoa que carrega as chaves se revela quando você chama: é um menino de colete grande demais, com um lápis atrás da orelha e uma expressão de quem gostaria de parecer mais velho. Apresenta-se como Tomás, ajudante de Dona Celina, e admite que está tentando trancar uma porta que insiste em fugir de seu batente.
+
+— Se eu deixar a porta aberta, os finais incompletos passam para as outras seções — explica. — Ela já tentou entrar no dicionário duas vezes. O verbete “adeus” quase desapareceu.
+
+Você segura a madeira enquanto ele encontra a fechadura. A porta protesta, esbarra em seu ombro e finalmente aceita a chave. Em agradecimento, Tomás lhe dá uma pequena chave de cobre, marcada com o desenho de uma casa.
+
+— Achei perto do livro azul. Talvez abra alguma coisa dele. Não tentei; a fechadura pode não gostar de mim.
+
+Uma luz azul pisca entre as estantes. Além dela, há vozes de trabalhadores e, noutro corredor, o cheiro improvável de chuva fresca.
+
+* Seguir a luz azul -> cap2_f
+* Procurar as vozes atrás das estantes -> cap2_g
+* Avançar pela passagem com cheiro de chuva -> cap2_h
+
+== cap2_f
+A luz azul pisca por trás de uma fileira de enciclopédias. Você passa de lado entre as lombadas, pedindo desculpas aos volumes de botânica, e chega a uma sala redonda com uma janela que mostra uma lua que não é desta noite. No centro há uma mesa vazia. Uma folha azulada cai sobre ela, mas, ao tentar pegá-la, você descobre que é apenas o reflexo da janela.
+
+A cadeira ainda balança. Quem quer que estivesse ali saiu há pouco. Sobre a madeira, uma frase foi escrita com o dedo na poeira: “Não deixem fechar”. Não diz o que não deve fechar, e você não está seguro de querer adivinhar.
+
+A funcionária Dalva aparece pela outra entrada, ofegante, trazendo uma lanterna. Conta que viu uma capa azul atravessar a galeria rumo às oficinas, mas também ouviu páginas se agitando perto da sala dos relógios.
+
+— Pode ser a mesma passagem — diz ela. — Esta casa gosta de dar dois nomes às coisas quando está nervosa.
+
+Você deixa a cadeira balançar sozinha e escolhe por onde continuar.
+
+* Ir às oficinas seguindo a pista da capa azul -> cap3_a
+* Procurar a sala dos relógios -> cap3_b
+
+== cap2_g
+As vozes levam a uma oficina de restauração, onde duas mesas estão cobertas de prensas, agulhas e páginas soltas. Um homem de mãos manchadas de cola costura a lombada de um atlas enquanto uma menina segura a linha. Ele se chama Anselmo; ela, Lia, insiste em dizer que é aprendiz, não assistente.
+
+— Se eu fosse assistente, ele mandava em mim — explica, e dá um puxão tão firme que Anselmo reclama do outro lado da mesa.
+
+Eles viram o livro azul passar. Lia afirma que ele levava uma folha dobrada sob a capa. Anselmo jura que a folha levava o livro. Os dois concordam apenas que alguma coisa no teto começou a se mover depois da passagem.
+
+Uma fresta abre-se no reboco, deixando cair um grão de areia. Na parede, o relógio avança um minuto de uma vez. Anselmo olha para ele com preocupação e aponta duas saídas: uma para as bancadas do fundo, outra para os mecanismos do relógio.
+
+— Descubram o que está acontecendo antes que a casa perca mais páginas — pede.
+
+* Investigar as bancadas do fundo -> cap3_a
+* Ir aos mecanismos do relógio -> cap3_b
+
+== cap2_h
+O corredor cheira a chuva fresca, mas suas paredes estão secas. Cada gota que você ouve cai do lado de dentro de um quadro: ruas, telhados, árvores e uma praça pintada em tons de cinza. Numa das imagens, uma mulher guarda a roupa do varal; noutra, um menino abre um guarda-chuva furado e ri quando a água lhe molha a cabeça.
+
+Você observa uma porta desenhada na última tela. Ela se abre, e um pedacinho de papel azul escapa para o assoalho. Nele há apenas uma palavra: “volta”. Antes que você possa decidir se é ordem ou desejo, o papel se desfaz em água na sua mão.
+
+Uma funcionária aparece com um pano e se apresenta como Dalva. Ela vê a poça e franze a testa.
+
+— O azul esteve aqui. Toda vez que ele passa, uma história tenta sair de onde foi guardada.
+
+Dalva conhece duas saídas: uma leva às oficinas, onde se consertam livros feridos; a outra, à sala dos relógios, de onde se consegue ouvir quase toda a biblioteca.
+
+* Ir às oficinas procurar quem conserta livros -> cap3_a
+* Seguir para a sala dos relógios -> cap3_b
+== cap3_a
+O corredor desemboca num balcão comprido, atrás do qual se acumulam livros devolvidos em todas as estações do ano. Um volume pinga chuva de março sobre outro que cheira a manga madura. No centro da pilha, um homem de colete escuro confere fichas com a solenidade de quem conta passageiros de um navio.
+
+— Álvaro, encarregado das devoluções — apresenta-se ele. — Se veio devolver alguma coisa, espero que tenha trazido também a data em que pretende sentir falta dela.
+
+Você pergunta pelo livro azul. O lápis dele para no ar. Álvaro olha para uma campainha sem badalo e depois para a porta fechada ao fundo.
+
+— Passou por aqui. Levou a ficha de empréstimo e deixou um desenho de uma casa. Se a biblioteca fechar, não sei quem vai procurar esses nomes. Nem o que será de mim.
+
+Ele oferece acesso ao arquivo, mas insiste em registrar sua passagem. Atrás dele, uma gaveta dá pequenas pancadas, impaciente por ser aberta.
+
+* Examinar o desenho e o arquivo de plantas -> cap3_c
+* Conversar com Álvaro antes de assinar -> cap3_d
+
+== cap3_b
+Uma portinhola despeja você no arquivo das devoluções. O chão está coberto por carimbos vermelhos: DEVOLVIDO, VENCIDO, RECOMENDADO POR UMA TIA. Atrás de um balcão, um homem de colete tenta separar os carimbos dos besouros, que aprenderam a andar com as datas nas costas.
+
+— Não esmague os de terça-feira — avisa ele. — São os únicos pontuais.
+
+Seu nome é Álvaro. Ao ouvir sobre o fugitivo, fecha a gaveta com cuidado e conta que um livro azul passou correndo com um desenho preso entre as páginas. Na folha havia uma casa e, atrás dela, uma sombra grande como a rua inteira.
+
+— A biblioteca continua aberta para que ninguém seja esquecido. Se fechar, até os registros podem desaparecer. Meu emprego também, naturalmente. Não finjo ser santo.
+
+Na parede, um sino miúdo treme sozinho. Álvaro estende uma ficha em branco e espera, sem fazer menção de impedir sua passagem.
+
+* Prometer ajuda a Álvaro e ouvir sua história -> cap3_d
+* Examinar o sino que treme na parede -> cap3_e
+* Procurar a planta da casa no arquivo -> cap3_c
+
+== cap3_c
+A gaveta de plantas abre com um suspiro tão comprido que levanta seu cabelo. Dentro há mapas de prédios demolidos, quartos mudados de lugar e jardins que só existem no inverno. Você encontra a casa desenhada: um sobrado de janelas amarelas, perto de uma praça sem nome.
+
+Álvaro vem olhar por cima do balcão. No verso da planta, alguém anotou: QUANDO A ÚLTIMA LUZ APAGAR, NINGUÉM SABERÁ O CAMINHO DE VOLTA. Uma linha azul atravessa a página, passa pelo arquivo e termina junto à sala dos finais.
+
+— Fizeram esse mapa antes de a rua desaparecer — diz ele. — Não sei se a casa é real, uma lembrança ou as duas coisas. Aqui essas categorias vivem trocando de chapéu.
+
+Você dobra a planta. O papel conserva o calor de uma mão que acabou de soltá-lo. Ao longe, ouve-se um estalo de madeira: alguma porta está cedendo, talvez ao vento, talvez à pressa.
+
+* Levar o mapa até a mesa de registros -> cap3_f
+* Seguir a linha azul pela passagem de serviço -> cap3_g
+
+== cap3_d
+Álvaro alisa a ficha em branco até as bordas deixarem de enrolar. Conta que trabalha ali há tanto tempo que já se esqueceu de seu primeiro dia, mas não da primeira leitora: uma menina que devolveu um livro molhado e pediu desculpas a cada página.
+
+— Se a biblioteca fechar, perco o emprego — diz. — Pior: perco o lugar onde sei encontrar as pessoas que não vejo mais.
+
+Você promete procurar uma maneira de preservar o arquivo, mesmo que o livro azul não aceite voltar à prateleira. Ele desconfia da promessa como quem examina uma nota suspeita contra a luz; depois entrega uma ficha pequena, com uma casa desenhada a lápis.
+
+— Não me deve milagre. Só não decida que o arquivo é menos importante sem olhar para ele.
+
+A gaveta atrás de vocês bate três vezes. Um sino responde da parede oposta, e o homem se sobressalta. O prazo está diminuindo mesmo ali, onde o tempo costuma se demorar.
+
+* Ajudar Álvaro a registrar a última devolução -> cap3_f
+* Investigar o aviso que veio pelo corredor -> cap3_h
+
+== cap3_e
+O sino é do tamanho de uma noz e tem gravada na borda a palavra AINDA. Quando você o toca, ele emite uma nota fina, quase uma pergunta. Os livros sobre o balcão param de se agitar, e uma gaveta se abre sozinha.
+
+Lá dentro, uma ficha descreve o livro azul: sem título, origem incerta, retirado da seção de finais depois de repetidas tentativas de escapar. No campo destinado ao assunto alguém escreveu CASA, riscou e acrescentou: ALGUÉM PRECISA VOLTAR.
+
+Álvaro remove o sino do prego e o entrega a você. Seu rosto, antes fechado, amolece um pouco.
+
+— Ele chama atenção sem obrigar ninguém a responder. Inventaram para leitores que não sabem começar uma conversa. Ou para bibliotecários, que às vezes têm o mesmo problema.
+
+Uma vibração atravessa a parede. Do outro lado, relógios começam a bater horas diferentes. Álvaro aponta para duas saídas: a passagem de serviço e a escada que leva à sala dos finais.
+
+* Tomar a passagem de serviço, atento às paredes -> cap3_g
+* Subir a escada dos relógios -> cap3_h
+
+== cap3_f
+Álvaro prepara uma ficha com a precisão de quem arruma a mesa para uma visita importante. Na linha do título escreve apenas um ponto de interrogação. Você observa o gesto e pergunta se um livro pode escolher não ser devolvido.
+
+— Pode tentar — responde ele. — Um dia destes um atlas comprou passagem para o litoral. Tivemos de discutir sobre bagagem.
+
+O humor não esconde o cansaço do homem. Ele mostra as fichas de pessoas que vieram uma vez e nunca mais retornaram. Enquanto o arquivo existir, diz, ninguém precisará provar que elas estiveram ali. A biblioteca não fecha porque a escuridão, para certas lembranças, funciona como borracha.
+
+Um risco azul surge debaixo da porta, como uma linha desenhada por uma mão invisível. Ele aponta para a sala dos finais. Álvaro pega outra ficha para si, depois se põe diante da estante onde os registros estremecem.
+
+— Eu seguro isso aqui. Você vá. E procure alguém chamado Lia; ela conhece aquelas salas melhor do que eu.
+
+* Seguir o risco azul até o relógio quebrado -> cap4_a
+* Ir pela porta da sala dos finais e procurar Lia -> cap4_b
+
+== cap3_g
+A passagem de serviço é tão estreita que os aventais pendurados lhe fazem cócegas. Você avança entre baldes e vassouras até um guichê gradeado. Do outro lado, Álvaro organiza fichas numa bandeja e parece surpreendido ao encontrar você de novo por ali.
+
+— O prédio costuma fazer isso. Se continuar dobrando os corredores, um dia vai caber numa bolsa.
+
+Uma ficha escapa da bandeja e cai a seus pés. Nela há o desenho de uma casa, uma janela acesa e uma data apagada. Álvaro explica que o livro azul passou pelo guichê, mas recusou o carimbo de devolução. Quis saber se, depois do ponto final, alguém ainda poderia entrar naquela casa.
+
+— Não soube responder — admite. — Procure Lia na sala dos finais. Ela não tem medo de perguntas difíceis, embora cobre caro por perguntas bobas.
+
+Um trovão bate sob o piso. As grades tremem, e a agulha de um relógio minúsculo na lapela de Álvaro dá um salto preocupante.
+
+* Ir pela galeria onde os relógios pararam -> cap4_a
+* Procurar Lia pela entrada da sala dos finais -> cap4_b
+
+== cap3_h
+A escada se enrosca em torno de uma coluna revestida de relógios. Alguns têm ponteiros de osso, outros de papel dobrado. Um relógio de cozinha grita que faltam dez minutos; outro garante, ofendido, que ainda é ontem.
+
+Álvaro alcança você no primeiro patamar. Traz uma lanterna cujo feixe ilumina somente as coisas que alguém está tentando esconder. Quando aponta para o corrimão, surge a frase: NÃO TRANQUE A CASA COM ALGUÉM DENTRO.
+
+— O livro deixou isto? — você pergunta.
+
+— Ou alguém que sabe o que há nele. De qualquer forma, não tenho mais coragem de fingir que não vi.
+
+Ele devolve a lanterna ao bolso. Precisa ficar com o arquivo, cujas fichas começam a se desprender umas das outras, mas oferece uma informação: há uma menina chamada Lia tomando conta da sala dos finais. Conhece o livro azul e talvez a casa desenhada.
+
+Em cima, uma batida seca atravessa os relógios. Uma porta acaba de se abrir, ou de ser arrombada.
+
+* Subir até o relógio quebrado -> cap4_a
+* Entrar pela porta dos finais e procurar Lia -> cap4_b
+
+== cap4_a
+No alto da escada há um relógio de parede com o vidro rachado. Os ponteiros estão presos entre dois minutos, mas o pêndulo continua indo e voltando com uma insistência quase ofensiva. Uma menina de casaco amarelo tenta alcançá-lo de cima de uma escada dobrável.
+
+— Se veio consertar, chegou tarde. Se veio atrapalhar, tire o sapato: o degrau já está ocupado — diz ela.
+
+Você segura a escada enquanto ela desce. É Lia, aprendiz de restauração e encarregada de guardar a sala dos finais porque consegue ouvir o que os livros dizem baixinho. Seus olhos têm o vermelho de quem passou horas acordada, não de quem pretende desistir.
+
+Quando você menciona o livro azul, ela aperta o bolso do casaco.
+
+— Estou procurando minha irmã. Acho que ela entrou naquela história. Não diga que é impossível: já ouvi isso de três dicionários e de uma enciclopédia inteira.
+
+Além do relógio há um armário de mecanismos, uma cesta de linhas e uma porta com o nome dos antigos guardiões.
+
+* Perguntar o que aconteceu com o livro azul -> cap4_c
+* Ajudar Lia com a linha presa no pêndulo -> cap4_d
+* Examinar o registro dos guardiões -> cap4_e
+
+== cap4_b
+A sala dos finais cheira a tinta fresca e casca de laranja. Nas prateleiras, os livros dormem com fitas amarradas na lombada; um deles ronca numa língua que você quase compreende. À mesa central, uma menina de casaco amarelo confere fechaduras desenhadas em cartões.
+
+— Sou Lia, aprendiz de restauração e guardiã daqui. Se veio atrás do livro azul, entre depressa. Se veio atrás de um final feliz, pegue senha.
+
+Ela aponta para um relógio rachado, encostado à parede. O pêndulo funciona, mas os ponteiros pararam; a meia-noite verdadeira, explica, não depende do que aqueles ponteiros mostram. Você observa o espaço vazio numa prateleira. O veludo ainda guarda a marca de um livro fino.
+
+Lia diz que procura a irmã e suspeita que esteja dentro da história fugitiva. Não sabe abrir o caminho sem pôr a casa em perigo. Seu bolso está cheio de linhas coloridas e, diante dela, há um registro antigo dos guardiões.
+
+O relógio dá um solavanco. Uma das fitas nas estantes começa a se desfazer sozinha.
+
+* Ouvir o que Lia sabe sobre a fuga -> cap4_c
+* Oferecer ajuda com as linhas e as fitas -> cap4_d
+* Ler o registro antigo dos guardiões -> cap4_e
+
+== cap4_c
+Lia encosta a palma na marca vazia da prateleira. Durante um instante, o veludo parece afundar sob o peso de um livro invisível.
+
+— Ele não fugiu porque queria fazer mal. Fugiu porque sempre que alguém chegava ao fim, a casa dele desaparecia. Dona Celina prometeu encontrar outro jeito, mas a meia-noite se aproximava e todos estavam com medo.
+
+Você pergunta o que acontece se o imobilizarem com um marcador. Lia mostra uma ficha de advertência: o feitiço segura o livro numa página e cobra uma lembrança de quem o usa. A perda pode parecer pequena no começo. É assim que encontra lugar para crescer.
+
+— Não estou dizendo que você nunca deva usá-lo — ela acrescenta. — Estou dizendo que precisa saber o preço.
+
+O silêncio pesa, interrompido pelo tic-tac desigual do relógio rachado. Lia dobra a ficha e devolve ao bolso. Sua irmã pode estar na história, mas ela não quer trocá-la pela memória de outra pessoa sem nem perguntar.
+
+* Procurar com Lia a próxima passagem do fugitivo -> cap4_f
+* Ouvir o relógio antes que ele pare de vez -> cap4_g
+
+== cap4_d
+Você segura a ponta de uma linha enquanto Lia sobe na escada. O fio atravessa o pêndulo, passa por uma fissura no vidro e desaparece na parede. Quando ela puxa, um pequeno bordado vem junto: duas meninas diante de uma casa, uma delas mais alta, ambas sem rosto.
+
+— Minha irmã me ensinou a costurar estrelas — conta Lia. — Eu sempre fazia quadradas. Ela dizia que o céu devia gostar de variedade.
+
+A linha cede, e vocês quase caem. O fio que se solta é comprido e resistente, embora não pareça preso a nada. Lia oferece uma ponta para você guardar.
+
+— Se encontrar um caminho que desapareça atrás de nós, talvez ajude a lembrar por onde alguém passou. Não puxa ninguém à força. Já tentei.
+
+Do lado de fora da sala, o pêndulo faz uma pausa longa demais. Lia ergue a cabeça, preocupada. O ruído de páginas correndo se afasta pela galeria, e a pequena estrela bordada brilha uma vez antes de apagar.
+
++fio
+* Seguir com Lia o som das páginas -> cap4_f
+* Inspecionar a galeria além do relógio -> cap4_h
+
+== cap4_e
+O registro dos guardiões tem páginas grossas e uma capa de couro que se fecha sobre seus dedos quando você a abre sem pedir licença. Lia pigarreia, e o livro cede imediatamente.
+
+— Ele gosta de boas maneiras. E de ameaçar dedos.
+
+Em meio a nomes de guardiões, você encontra duas anotações na mesma letra: LIA, responsável pela sala; NINA, responsável pelas chaves da casa. Ao lado do segundo nome, o espaço da assinatura está em branco. Lia passa o dedo por ele, com cuidado.
+
+— Nina é minha irmã. Ela disse que voltava antes da chuva e me deixou tomando conta daqui. A chuva não parou mais.
+
+A menina não sabe há quanto tempo espera. Na biblioteca, datas às vezes se dobram quando ninguém olha. Você diz o nome de Nina em voz alta, e a página vibra como uma corda dedilhada.
+
+— Guarde esse nome — pede Lia. — Se ela se esqueceu de quem é, talvez reconheça quando ouvir. Mas não prometa que vai encontrá-la: prometa apenas que vai escutar.
+
++nome
+* Examinar com Lia o relógio rachado -> cap4_g
+* Seguir a vibração do nome até a galeria -> cap4_h
+
+== cap4_f
+Lia conduz você por uma fileira de finais que ainda não foram escolhidos. Há um casamento em que ninguém aparece, um navio que chega antes de partir e uma receita de bolo terminada em reticências. Ao fundo, o corredor se divide diante de uma janela redonda.
+
+— A casa da história tinha uma janela assim — diz ela. — Nina gostava de desenhar o que via por ela, mesmo quando a vista mudava.
+
+Um vento morno atravessa o vidro fechado. Por um segundo você enxerga uma cozinha, uma cadeira vazia e um copo de água. Depois a paisagem se desfaz numa nuvem de palavras. Lia encosta a testa na janela, mas não tenta atravessar.
+
+— Se for ela, precisa saber que estou aqui. Se não for, talvez alguém ali também esteja esperando.
+
+Um estrondo agita os livros. A menina indica uma porta com a pintura de uma casa e outra com um fecho de bronze. As duas levam adiante; o vento sopra mais forte pela primeira.
+
+* Abrir a porta pintada com a casa -> cap5_a
+* Investigar o fecho de bronze -> cap5_b
+
+== cap4_g
+O relógio rachado emite um chiado. Você aproxima o ouvido e distingue, por baixo das engrenagens, uma voz que enumera coisas simples: uma chaleira, dois pratos, uma pessoa voltando pela rua. A voz se interrompe antes de dizer quem volta.
+
+Lia toca o vidro. As rachaduras desenham uma casa de telhado inclinado; a última linha termina junto a uma janela sem luz. Ela explica que certos relógios guardam o tempo das histórias, não o do mundo. Quando uma história tem medo de acabar, seu relógio pode parar por fora e continuar correndo por dentro.
+
+— A meia-noite ainda está chegando — diz. — Só não sei por qual porta.
+
+Você poderia ouvir até decifrar toda a frase, mas o pêndulo começa a bater contra a caixa. A cada golpe, uma letra se solta dos títulos mais próximos. Lia recolhe um A e o coloca de volta em seu lugar, com delicadeza.
+
+Mais adiante, uma porta pintada de casa se abre uma fresta; junto dela há um fecho de bronze vibrando.
+
+* Seguir pela porta pintada de casa -> cap5_a
+* Abrir caminho pelo fecho de bronze -> cap5_b
+
+== cap4_h
+A galeria atrás da sala dos finais parece construída de páginas viradas ao contrário. Em cada parede há uma frase interrompida, e cada frase aponta para uma porta diferente. Uma começa com "Quando ela voltou"; outra, com "No dia em que a casa". Nenhuma termina.
+
+Lia passa a mão sobre a segunda inscrição. Seu rosto se ilumina por um instante, depois volta a se fechar.
+
+— Nina dizia que uma casa é feita de quem cabe nela. Eu achava que ela estava tentando justificar a bagunça.
+
+Você ouve um murmúrio por trás da parede, seguido de uma risada que pode ser de menina ou apenas de encanamento. Lia chama pela irmã. Não recebe resposta, mas as letras tremem e se rearranjam, deixando visível uma porta pintada de azul. Ao lado, outra entrada tem um fecho de bronze que gira sem parar.
+
+O ar fica mais frio. Ao longe, um relógio tenta dar uma badalada e consegue apenas metade. Lia segura a maçaneta mais próxima, esperando sua decisão.
+
+* Escolher a porta pintada de azul -> cap5_a
+* Parar o fecho e atravessar a outra entrada -> cap5_b
+== cap5_a
+A passagem se estreita até caber numa frase. Você atravessa o ponto final de lado e cai sobre um tapete áspero, na sala de uma casa que parecia maior por dentro do que qualquer desenho poderia mostrar. A lâmpada acesa cheira a poeira quente. Uma chaleira sibila no fogão, mas o vapor permanece imóvel, como um lenço preso num prego.
+
+Na parede há dois riscos de lápis, marcando a altura de duas meninas. Um se chama Lia; o outro foi raspado com tanta força que o papel da parede abriu uma ferida branca. Você toca o reboco e ouve, do outro lado, alguém contar até dez sem jamais chegar ao nove.
+
+— A casa ainda existe — diz uma voz de menina, vinda da cozinha. — É o caminho para fora que estão tentando terminar sem mim.
+
+O soalho inclina. A janela oferece abrigo; uma fresta sob a porta deixa escapar a voz. Em algum lugar, uma folha arranca a si mesma de um caderno.
+
+* Abrir a janela e proteger o que resta da casa -> cap5_c
+* Seguir a voz até a cozinha -> cap5_d
+* Procurar a folha que se soltou -> cap5_e
+
+== cap5_b
+A lombada azul se abre como uma ponte. Você a atravessa e encontra uma rua feita de frases interrompidas, diante de uma casa estreita. A chuva cai sobre os telhados e para um palmo antes do chão. Na fachada, uma placa de aluguel se alterna com uma placa de venda; nenhuma das duas consegue se decidir.
+
+Um carteiro de papel entrega envelopes vazios. Quando você pergunta pela irmã de Lia, ele endireita o boné.
+
+— Nina?
+
+— Ela está na última frase. Ou estava antes de a senhora da biblioteca mandar o ponto atrás dela.
+
+— Por que mandar um ponto?
+
+— Dizem que um fim bem colocado impede que o resto desabe. O problema é escolher onde.
+
+Ele aponta uma janela iluminada e uma porta por cuja fresta vem um canto baixinho. Um envelope diferente, com as beiradas azuis, treme na bolsa do carteiro. As gotas suspensas começam a cair uma a uma, fazendo no chão um barulho de relógio muito impaciente.
+
+* Entrar pela janela iluminada -> cap5_c
+* Seguir o canto pela porta -> cap5_d
+* Pedir o envelope azul ao carteiro -> cap5_e
+
+== cap5_c
+A janela dá para um quarto onde duas camas dividem o espaço com um guarda-chuva aberto. O tecido segura um buraco no teto. Sobre uma colcha, um urso sem um olho traz uma etiqueta: PERTENCE À CASA ENQUANTO HOUVER CASA. Você encosta a mão na parede e sente a madeira tremer.
+
+Um menino desenhado a lápis aparece debaixo da cama. Chama-se Teo e tem medo de que a história termine antes de alguém recolher os brinquedos. Você ajuda a puxar uma mesa para debaixo do buraco; o menino prende o guarda-chuva à luminária com um cadarço.
+
+— Não precisa consertar tudo — você diz. — Só manter o teto enquanto decidimos.
+
+Teo lhe oferece a etiqueta do urso, agora dobrada como um pequeno telhado. Ao guardá-la, você percebe que as tábuas param de gemer perto de você. A casa reconhece quem protegeu um dos seus cantos, embora não possa prometer que o resto permaneça de pé.
+
+* Levar a etiqueta até o corredor das fotografias -> cap5_f
+* Examinar a mesa onde alguém tentou escrever o fim -> cap5_g
+* [nome] Chamar Nina pelo nome e seguir sua resposta pelo encanamento -> cap5_h
+
+== cap5_d
+Na cozinha, uma menina de tranças conta até oito diante de uma panela. A chama não a alcança: entre a boca do fogão e o fundo do metal há uma linha branca, fina e imóvel. Ao ver você, ela fecha a tampa com o susto de quem já esperava outra visita.
+
+— Eu sou Nina. Quando chego ao nove, eles tentam escrever que fui embora. Eu não disse que queria ir.
+
+Você pergunta quem são eles. Nina mostra letras apertadas na azulejaria: dezenas de finais começaram com a mesma mão, obediente e cansada. Em alguns, a casa queima; em outros, Nina se cala. Nenhum pergunta pela irmã.
+
+— Se eu contar até oito, fico aqui — ela diz. — Só que a Lia fica lá fora.
+
+Você não promete uma solução fácil. Em vez disso, pede que ela diga seu nome em voz alta. Nina hesita, então diz; a palavra atravessa a parede. Ela lhe ensina a nota exata desse chamado.
+
+* Levar o chamado até o corredor das fotografias -> cap5_f
+* Investigar quem escreveu os finais na mesa -> cap5_g
+* Seguir as letras que escapam pelo encanamento -> cap5_h
+
+== cap5_e
+A folha azul tem o tamanho de uma mão e uma margem roída. Você a segura contra a luz e vê um texto escrito por cima de outro. Na camada mais funda, duas irmãs esperam a mãe voltar para casa; na de cima, alguém decretou que a espera acabara. Mas a tinta não conseguiu cobrir inteiramente os nomes.
+
+Um suspiro sacode o papel. A própria folha fala, numa voz de professora com soluço:
+
+— Ninguém nos perguntou se a frase já estava pronta. Tentaram colar uma resposta sobre uma pergunta.
+
+Na borda há um pequeno símbolo, semelhante à fechadura de um armário. A folha lhe pede que a carregue dobrada, para que os dois textos não se apaguem um ao outro. Quando você concorda, ela esquenta entre seus dedos, e uma linha antes invisível aparece: A CASA NÃO É A PRISÃO.
+
+No chão, as letras soltas correm para dois lados. O relógio da casa anda um minuto, embora seus ponteiros estejam desenhados.
+
+* Seguir as letras até a mesa de escrita -> cap5_g
+* Seguir as letras pelo encanamento -> cap5_h
+
+== cap5_f
+O corredor das fotografias exibe aniversários, tardes de chuva e uma briga por causa da última fatia de bolo. Em todas as molduras há espaço para duas meninas, mas o rosto de uma aparece coberto por uma película de vidro embaçado. Você passa a manga por cima e o vidro devolve uma pergunta: QUEM DECIDE QUANDO ACABA?
+
+A voz de uma menina vibra distante, vinda de algum lugar da casa. Uma fotografia responde com a voz de Lia, gravada num dia em que ela ainda usava franja torta:
+
+— Quando eu crescer, vou ser corajosa por nós duas.
+
+Depois, bem baixo, a outra menina corrige: “Você pode ter medo também.” A moldura cai. Você a apanha antes de quebrar, mas deixa escapar uma fotografia menor, que desliza sob a porta no fim do corredor.
+
+Uma corrente de ar traz o cheiro de couro e papel da biblioteca. A casa oferece duas saídas, nenhuma delas discreta; o corredor vai se apagando atrás de você.
+
+* Sair pela porta que leva à biblioteca -> cap6_a
+* Seguir a fotografia pela passagem estreita -> cap6_b
+
+== cap5_g
+Na mesa de escrita, uma xícara de chá criou raízes dentro do pires. Ao lado dela repousam versões da última página: “Nina foi embora”, “a casa caiu”, “ninguém mais esperou”. Todas terminam com a mesma assinatura, C., repetida numa letra que se torna menor e mais apressada a cada tentativa.
+
+Você encontra também uma folha em branco, presa sob um peso. Quando a puxa, a xícara protesta com voz de adulto ofendido:
+
+— Cuidado com a mobília histórica!
+
+— Então pare de crescer em cima das provas.
+
+As raízes se encolhem, indignadas. Debaixo delas há uma anotação: “Não deixar que Lia veja. Ela vai querer entrar.” A data é antiga, mas a tinta mancha seu dedo como se tivesse sido escrita agora. Você copia mentalmente a frase; uma corrente de ar rouba o resto dos papéis e os espalha pela sala.
+
+Por uma janela, a biblioteca parece próxima. Pelo corredor, uma escada desce para a costura entre as páginas.
+
+* Abrir a janela para a biblioteca -> cap6_a
+* Descer pela escada da costura -> cap6_b
+
+== cap5_h
+Você acompanha as letras pelo encanamento e sai no fundo de uma caixa-d'água vazia. Um eco conta uma história incompleta: duas irmãs se esconderam ali para ouvir a chuva sem que ninguém mandasse parar. Quando você repete o fim da frase, o eco responde com um começo diferente.
+
+— Esta casa tem muitos jeitos de lembrar — diz ele. — Só lhe deram um jeito de terminar.
+
+No fundo da caixa há um ralo entupido por pontos finais. Você os recolhe num punhado. São frios como pedrinhas de rio e se debatem entre seus dedos, procurando frases às quais possam pôr fim. Você abre a mão e os deixa cair longe do ralo; a água enfim encontra passagem, trazendo consigo um cheiro conhecido de biblioteca.
+
+A corrente não é forte, mas carrega o silêncio da casa, que vai se tornando mais difícil de ouvir. Uma claraboia dá para o teto da sala de leitura; um túnel de serviço segue abaixo das estantes.
+
+* Subir pela claraboia da sala de leitura -> cap6_a
+* Rastejar pelo túnel sob as estantes -> cap6_b
+
+== cap6_a
+Você sai da história e retorna à sala da biblioteca, onde esbarra numa mesa e espalha fichas de empréstimo. Dona Celina está ali. Segura uma caixa de pontos finais com as duas mãos, como se tentasse impedir que uma ninhada fugisse.
+
+— Encontrou o livro? — pergunta ela. Ao ver seu rosto, tira os óculos. — Encontrou a casa.
+
+Você conta que a menina ainda espera. Celina fecha os olhos, e por um instante parece muito mais velha do que a biblioteca. Depois abre a caixa. Os pontos, inquietos, giram em círculos sem encontrar uma frase onde pousar.
+
+— Tentei salvá-las — diz ela. — Uma história que não termina começa a terminar outras coisas. Eu conheço o preço.
+
+Ela não diz de imediato quem são “elas”. No mostrador acima da mesa, o ponteiro salta um espaço. Entre as fichas espalhadas há uma carta selada e uma chave azul presa a uma fita. Celina espera que você decida se vai escutá-la ou procurar o que ela esconde.
+
+* Pedir que conte tudo, sem interrompê-la -> cap6_c
+* Examinar a carta selada -> cap6_d
+* Perguntar para que serve a chave azul -> cap6_e
+
+== cap6_b
+O túnel termina numa escotilha sob o balcão de empréstimos. Você a empurra e quase derruba Dona Celina, que está ajoelhada no chão. Ela segura uma caixa de pontos finais; cada ponto bate no fundo como um caroço de fruta impaciente.
+
+— Não esperava que alguém voltasse por aí — ela diz, ajudando você a levantar. — Na verdade, não esperava que voltasse da casa.
+
+Você pergunta por que a irmã de Lia está presa. Celina diz o nome dela, Nina, quase num sussurro. A bibliotecária olha para o relógio, que se aproxima de 23h58, e pousa a caixa no balcão.
+
+— Quando o livro começou a fugir, pensei que pudesse terminar a história antes que ela ferisse alguém. Já tentei antes. Falhei de maneiras que não quero repetir.
+
+Na madeira, um risco de régua separa uma carta lacrada de uma pequena chave azul. Você percebe que Celina dispõe os objetos como quem monta uma barricada: não para impedir sua passagem, mas para adiar uma pergunta.
+
+* Pedir a Celina que conte o que aconteceu -> cap6_c
+* Examinar a carta lacrada -> cap6_d
+* Perguntar para que serve a chave azul -> cap6_e
+
+== cap6_c
+Dona Celina apoia os cotovelos no balcão. Demora tanto a começar que você pensa ter feito a pergunta errada. Mas a bibliotecária apenas está escolhendo palavras capazes de suportar o próprio peso.
+
+— Lia queria entrar no livro para trazer Nina. Eu tinha visto histórias arrancarem lembranças de leitores. Achei que, se separasse as duas e encontrasse um final seguro, poderia protegê-las.
+
+Ela confessa ter escondido o caminho de Lia e tentado impor um desfecho à casa. Cada tentativa apertou mais a última frase. Foi por medo, ela diz; e a explicação não faz o estrago desaparecer.
+
+— Você devia ter deixado que elas escolhessem — você responde.
+
+— Devia. Passei anos confundindo cuidado com fechar a porta.
+
+Você aceita ouvir seu pedido de desculpas, sem falar em nome das meninas. Celina solta o ar devagar e oferece ajuda, mesmo que a escolha delas não seja a que ela deseja. Na estante atrás dela, uma porta entreabre, e uma escada aparece no lugar antes ocupado por atlas.
+
+* Pedir que Celina acompanhe você até a escada -> cap6_f
+* Levar a confissão para a sala do relógio -> cap6_g
+
+== cap6_d
+O lacre da carta mostra uma casa de janelas quadradas. Celina não impede que você o rompa. Dentro há o rascunho de uma ordem, redigida por ela: manter Lia na seção de finais, impedir que visite a história azul e entregar à casa um desfecho definitivo antes da meia-noite.
+
+Uma segunda folha, mais antiga, contém uma frase atravessada tantas vezes pela pena que quase furou o papel: “Se uma irmã chegar à outra, ambas poderão desaparecer.” Não há prova dessa ameaça, apenas a letra de Celina e uma data.
+
+— Era o que eu temia — admite ela. — Separei as duas e disse a mim mesma que era temporário. Então continuei adiando.
+
+Você pergunta se ela contou a Lia. Celina balança a cabeça. A biblioteca estala em volta, como se também aguardasse a resposta. Você dobra as folhas e guarda as duas: a ordem e a dúvida precisam ser lidas juntas.
+
+— Ela merece saber — você diz.
+
+— Merece — responde Celina, sem se desculpar pela evidência.
+
+* Levar os papéis pela escada atrás da estante -> cap6_f
+* Levar os papéis à sala do relógio -> cap6_g
+* Mostrar a ordem na passagem dos leitores -> cap6_h
+
+== cap6_e
+A chave azul é pequena e fria. Não combina com a solenidade da fechadura que Celina desenha no ar: o contorno de uma porta alta surge entre duas estantes, completo até na maçaneta que falta.
+
+— Abre a passagem para a última frase — ela explica. — Eu a tranquei quando Lia tentou entrar. Disse que procuraria um fim que mantivesse as duas a salvo.
+
+— E procurou?
+
+— Sim. Mas também tive medo de encontrá-lo. Se eu terminasse, podia perdê-las. Se não terminasse, podia fingir que ainda havia tempo.
+
+A honestidade chega tarde, e Celina sabe disso. Ela pousa a chave na palma da sua mão, sem pedir que você concorde com suas razões. Você sente um arranhão na haste: do outro lado, alguém tentou abrir a porta durante muito tempo.
+
+— Não sei se ela vai querer voltar por aqui — você diz.
+
+— Então pergunte. Desta vez, pergunte antes de fechar qualquer coisa.
+
+Você guarda a chave. A porta desenhada permanece no ar, aguardando.
+
+* Mostrar a passagem a quem estiver na escada -> cap6_f
+* Levar a chave à sala do relógio -> cap6_g
+* Procurar Lia pela passagem dos leitores -> cap6_h
+
+== cap6_f
+A escada atrás da estante conduz a um patamar onde as tábuas respiram. A cada degrau, você escuta uma voz diferente pedindo que alguém não vá embora. No alto, uma porta entreaberta deixa ver o mecanismo de um relógio; uma segunda passagem leva à sala dos leitores, iluminada por lâmpadas baixas.
+
+Dona Celina aparece no pé da escada. Ela não sabe se deve acompanhá-lo. Você percebe que, durante anos, a bibliotecária resolveu esse tipo de dúvida tomando a decisão por todo mundo. Agora ela segura o corrimão e espera.
+
+— Tenho medo de que elas não me perdoem — diz.
+
+— Elas podem não perdoar.
+
+— Eu sei. Ainda assim, preciso ajudá-las.
+
+O relógio emite um clique seco. Celina recolhe uma ficha caída e, num gesto pequeno, deixa-a sobre o degrau em vez de guardá-la. Você escolhe por onde continuar. Há pouco tempo, mas ainda há duas portas; nenhuma exige que a outra seja fechada para sempre.
+
+* Entrar pela porta do mecanismo -> cap7_a
+* Seguir pela sala dos leitores -> cap7_b
+
+== cap6_g
+Na sala do relógio, engrenagens do tamanho de pratos giram sem fazer os ponteiros avançarem regularmente. Um velho pêndulo balança debaixo de uma placa: NÃO ATRASE O TEMPO DOS OUTROS. Alguém rabiscou abaixo: “O meu pode atrasar cinco minutos?”
+
+Dona Celina vem até a soleira. Você conta a ela o que descobriu, e a resposta que recebe é um silêncio cansado. A bibliotecária afasta uma cadeira para revelar, no chão, dois pares de pegadas pequenas gravados na madeira. Um para em frente à parede. O outro continua até a porta.
+
+— Eu as separei aqui — diz. — Não houve uma porta que se fechou sozinha. Fui eu.
+
+As engrenagens engasgam. Celina segura o pêndulo, mas o solta quando você alerta que parará também os relógios de fora. Ela já não tenta convencê-lo a prender a história antes de falar com as meninas. O mecanismo oferece uma passagem entre os dentes; à direita, uma cortina conduz à sala dos leitores.
+
+* Atravessar o mecanismo -> cap7_a
+* Abrir a cortina da sala dos leitores -> cap7_b
+
+== cap6_h
+Na passagem dos leitores, as paredes exibem nomes de pessoas que devolveram livros com areia entre as páginas, folhas secas ou bilhetes que esqueceram de retirar. Você encontra uma criança tentando destacar um desses nomes com a unha.
+
+— É o meu — diz ela. — Eu devolvi um livro e deixei uma pergunta dentro.
+
+Chama-se Rita. Você pergunta qual era a pergunta, mas ela sacode a cabeça: se a disser em voz alta, teme que a resposta venha antes de estar pronta. No corredor, Dona Celina a observa sem se aproximar. Depois recolhe uma escada para que Rita possa alcançar melhor a parede.
+
+O gesto parece simples; ainda assim, a bibliotecária se surpreende quando a criança sobe sem pedir autorização. A passagem desemboca diante de um relógio de portas abertas e da entrada da sala dos leitores. Rita decide continuar com sua pergunta por mais algum tempo.
+
+— Se encontrar uma resposta perdida, não jogue fora — ela pede.
+
+Você promete procurar o dono antes de entregá-la.
+
+* Passar pelo relógio de portas abertas -> cap7_a
+* Entrar na sala dos leitores -> cap7_b
+== cap7_a
+A casa no livro azul tem agora duas portas onde antes havia uma só. Uma abre para a sala de leitura; a outra, para uma rua que cheira a pão queimado. Entre as duas, Lia passa o dedo pela marca deixada na madeira, procurando a altura de Nina. A marca sobe um centímetro enquanto vocês observam.
+
+— Ela está crescendo? — pergunta você.
+
+— Está esperando — diz Lia. — É outra forma de crescer.
+
+Dona Celina entrega à menina uma caixa de lápis curtos. Procura palavras que não tentem apressar o perdão de Lia, e espera em silêncio. O relógio atrás da parede estala, e uma linha de luz se arrasta sob as portas. Você entende que as duas saídas conduzem ao último salão, mas uma passa pela cozinha da casa e a outra pelo relógio. Lia segura a caixa junto ao peito. Desta vez, é ela quem escolhe acompanhá-lo, e não uma bibliotecária quem decide onde deve ficar.
+
+* Entrar na cozinha e procurar Nina -> cap7_c
+* Abrir o relógio e examinar suas engrenagens -> cap7_d
+* Seguir a luz pela rua desenhada -> cap7_e
+
+== cap7_b
+O livro azul abre uma página tão larga que o chão se transforma numa praça. Em volta da fonte, pessoas feitas de letras aguardam a continuação de gestos interrompidos: uma mulher ergue uma sacola, um menino estende a língua para pegar chuva, um padeiro tenta lembrar o resto de uma receita. Ninguém parece gostar de ser chamado de personagem.
+
+— Somos moradores — corrige o padeiro. — Personagem é o nome que dão a gente quando esquecem de perguntar.
+
+Lia avista, atrás da praça, o telhado da casa de Nina. Dona Celina observa os moradores com uma expressão que mistura alívio e vergonha. Ela tentou salvar cada um mantendo a página aberta, mas o padeiro aponta para seu pão, congelado antes de crescer. Você pode ouvir os moradores, investigar a máquina que segura o tempo ou seguir a rua até a casa. As três direções levam adiante; ninguém naquela praça aceita a ideia de esperar mais um século.
+
+* Perguntar aos moradores sobre a casa -> cap7_c
+* Acompanhar Dona Celina até o relógio -> cap7_d
+* Andar pela rua em direção ao telhado -> cap7_e
+
+== cap7_c
+Na cozinha há uma xícara sobre a mesa e um bilhete preso debaixo dela: «Volto antes do bolo esfriar». A caligrafia é redonda, um pouco torta. Lia reconhece a letra de Nina e fica sem falar. Você toca a xícara; o chá dentro ainda está morno, embora uma fina teia prenda a asa ao pires.
+
+— Ela escreveu isso para mim — diz Lia. — Eu achei que tinha ido embora sem avisar.
+
+Do forno vem um ruído de massa crescendo. O bolo não fica pronto porque a frase que devia terminar o almoço foi interrompida. Você abre a porta só o suficiente para deixar sair um cheiro de laranja, e Lia guarda o bilhete. Nina não está na cozinha, mas deixou ali um caminho: pequenas pegadas de farinha sobem pela parede em direção à página seguinte. Se o livro puder escolhê-las, talvez também possa escolher como recebê-la de volta.
+
+* Seguir as pegadas até a margem iluminada -> cap7_f
+* Levar o bilhete ao salão das últimas frases -> cap7_g
+* Perguntar à casa por onde Nina passou -> cap7_h
+
+== cap7_d
+O relógio aparece atrás de uma parede de vidro, maior que uma igreja e mais mal-humorado. Suas engrenagens são feitas de pontos-finais. Cada vez que um dente se encaixa, alguém, em algum lugar, consegue terminar uma frase. Uma mola partida pende do mecanismo como um bigode triste.
+
+Dona Celina aproxima a mão do vidro e a retira antes de tocá-lo.
+
+— Parei o relógio quando a casa começou a desaparecer. Achei que podia consertar a história antes de deixar o tempo passar.
+
+— E conseguiu? — pergunta você.
+
+— Consegui fazer um problema durar cem anos. Não recomendo como método.
+
+No fundo da caixa há uma pequena alavanca que pode soltar o mecanismo quando chegar a hora. Você memoriza sua posição. Agora ainda não é hora: sem uma decisão sobre a última página, o relógio levaria embora o que estiver suspenso nela. A bibliotecária deixa a alavanca em paz e oferece a você o lugar à frente.
+
+* Atravessar a passagem de vidro em busca da margem -> cap7_f
+* Levar a descoberta ao salão das últimas frases -> cap7_g
+* Seguir o som da mola até a casa -> cap7_h
+
+== cap7_e
+A rua desenhada acaba num muro coberto de nomes. Alguns estão completos; outros perderam letras na chuva que atravessa a página. Lia passa a mão por uma sequência de riscos até encontrar NINA, escrito baixo, na altura de uma criança. A última letra está se apagando.
+
+Você cobre o nome com a palma. A chuva escorre pelos seus dedos e, por um instante, a parede se torna uma janela. Do outro lado, uma menina de vestido amarelo segura um guarda-chuva fechado. Ela não parece assustada, apenas cansada de responder à mesma pergunta.
+
+— Vocês vão decidir por mim também? — pergunta Nina.
+
+Lia bate no vidro e diz seu nome. A janela treme; Nina ergue a cabeça, surpresa, e dá um passo. A parede volta a ser parede antes que as irmãs possam se tocar. Mas você ouviu Nina e sabe que qualquer saída que a trate como prêmio ou objeto repetirá o erro que a manteve ali.
+
+* Acompanhar Lia até a margem da página -> cap7_f
+* Procurar uma maneira de abrir a janela no salão -> cap7_g
+* Perguntar à casa como alcançar Nina -> cap7_h
+
+== cap7_f
+A margem da página tem a largura de uma calçada e despenca para um branco sem fundo. Penduradas acima dela, palavras que ninguém escolheu ainda brilham como roupas num varal. Lia tenta alcançar uma, mas o vento a arranca: a palavra era «depois».
+
+Do outro lado da fenda, Nina aparece junto à casa. Sua voz atravessa o vazio com esforço.
+
+— Não quero que queimem a história para me tirar daqui. Tem gente morando nela.
+
+Lia responde que não quer perdê-la outra vez. Entre as duas, o livro azul estremece. Você compreende o impasse: uma história não é só uma gaiola, e uma casa não deve ser uma prisão. Dona Celina encontra uma ponte estreita feita de papel dobrado. Ela aguenta uma pessoa por vez, talvez duas se ambas forem muito honestas sobre o próprio peso. Lia olha para você, esperando uma proposta que Nina também possa recusar.
+
+* Cruzar a ponte para conversar com Nina -> cap8_a
+* Buscar no salão uma saída para toda a casa -> cap8_b
+* [gato] Confiar a travessia ao faro de Dostoiévski -> fim_gato
+
+== cap7_g
+O salão das últimas frases é um depósito de finais possíveis. Gavetas etiquetadas com «e viveram», «mas nunca» e «na manhã seguinte» se abrem e fecham como bocas indecisas. Uma delas tenta morder sua manga. Dona Celina pede desculpas à gaveta, que pede desculpas de volta; a educação, aqui, é uma forma de contenção.
+
+Lia encontra um fichário de capa azul. Dentro há tentativas de acabar a história da casa: numa, a casa desaparece; noutra, Nina esquece o nome da irmã; na terceira, todos dormem para sempre. A menina fecha o fichário com firmeza.
+
+— Não é porque está escrito que precisa acontecer.
+
+A bibliotecária concorda. Os finais guardados são rascunhos, não sentenças. No centro da sala, um tinteiro vazio reflete a imagem de Nina na janela, enquanto uma porta baixa conduz à casa. Você pode ir ao encontro dela ou ajudar a preparar uma página onde moradores e leitor tenham espaço para opinar.
+
+* Ir até Nina pela porta baixa -> cap8_a
+* Preparar uma página com espaço para todos -> cap8_b
+* [conselho] Seguir o conselho do soneto e oferecer escuta ao livro -> cap8_c
+
+== cap7_h
+A casa responde à sua pergunta fazendo cair uma telha. Você se esquiva por pouco; Dona Celina observa a telha quebrada e comenta que a arquitetura sempre foi mais franca que ela. Em seguida, uma janela se abre, e uma voz atravessa o vidro.
+
+— Não deixem que fechem minha porta por fora — diz Nina.
+
+Lia corre até a parede, mas a distância entre as duas se dobra como uma folha. Nina fica perto o suficiente para ser vista e longe demais para ser abraçada. A casa inteira parece prender a respiração, inclusive o telhado, o que explica a segunda telha.
+
+A solução não é simples. Um final pode abrir uma porta, mas também pode apagar aquilo que não couber nele. Um final imposto pelo medo só trocaria o nome da fechadura. Dona Celina aponta um caminho por dentro da casa; outro passa pelo salão, onde o livro guarda espaço para uma nova frase. As irmãs se olham pela janela enquanto você decide por onde começar.
+
+* Entrar na casa para ouvir Nina de perto -> cap8_a
+* Ir ao salão preparar uma passagem -> cap8_b
+
+== cap8_a
+Você atravessa a soleira e encontra Nina sentada no último degrau da escada. Ela segura o guarda-chuva como quem segura uma espada, mas abaixa a ponta quando vê Lia aproximar-se. As irmãs não correm uma para a outra. Primeiro conferem se são reais: Nina pergunta o nome do cachorro da vizinha; Lia responde que era Pimenta e mordia só guarda-chuvas.
+
+— O meu também? — pergunta Nina.
+
+— Principalmente o seu.
+
+Então elas se abraçam. A casa range, comovida ou ciumenta. Dona Celina fica na porta e promete que não vai separá-las de novo. Nina escuta, ainda sem saber se acredita. Ela quer ver a rua e quer que os moradores continuem tendo onde morar; as duas coisas parecem caber em seu desejo, mesmo que não caibam nos finais antigos. O relógio anuncia que resta um minuto. Há trabalho a fazer com palavras, memória e uma ponte que começa a se desfazer.
+
+* Pedir a Nina que dite o que deseja -> cap8_c
+* Preparar uma saída para a casa inteira -> cap8_d
+* Examinar a ponte antes que ela se parta -> cap8_e
+
+== cap8_b
+Você encontra uma página em branco no centro do salão. Não está vazia: sob a superfície, escutam-se passos, uma torneira pingando e alguém ensaiando no piano. É o espaço que a história ainda não teve coragem de ocupar. Dona Celina traz uma pena; Lia, uma cadeira; o livro azul arrasta-se até a mesa, desconfiado como um animal que já foi tratado à força.
+
+— A página aceita mais de uma letra? — pergunta Lia.
+
+— Aceita até letra feia — responde a bibliotecária, examinando a própria mão.
+
+Nina surge no reflexo do tinteiro e, quando Lia estende a mão, atravessa a superfície para chegar ao salão. Pede que não a escrevam como uma princesa resgatada: quer abrir a própria porta. Os moradores da praça, cujas vozes chegam pela folha, também querem ser consultados. A ponte de papel geme sob o peso das possibilidades. Você pode começar ouvindo Nina, buscar lugar para a casa inteira ou examinar o que sustenta a passagem entre livro e biblioteca.
+
+* Ouvir Nina antes de escrever -> cap8_c
+* Dar espaço aos moradores da casa e da praça -> cap8_d
+* Verificar o que mantém a ponte de pé -> cap8_e
+
+== cap8_c
+A página deixa Nina aproximar-se da mesa; ela põe o guarda-chuva sobre a madeira e fala devagar, como quem não quer deixar nenhuma palavra cair. Deseja visitar Lia, caminhar na chuva de verdade e voltar para casa quando sentir saudade. Não quer que a casa seja sacrificada por ela, tampouco quer ficar presa para que os outros se sintam seguros.
+
+O livro azul abre uma fresta entre as capas. Sua primeira frase aparece na página: «Havia uma casa que tinha medo de perder as pessoas». A última continua em branco. Você encosta a pena na mesa, sem escrever ainda.
+
+— Eu também tinha medo — confessa Dona Celina. — Achei que uma casa imóvel seria mais segura.
+
+— Era muito segura — diz Nina. — Para uma fotografia.
+
+Lia solta uma risada curta, a primeira daquela noite. Há três formas de prosseguir: ajudar o livro a encontrar uma frase, segurar a passagem com o próprio corpo ou procurar uma regra diferente no catálogo. O relógio faz um ruído de garganta sendo limpa.
+
+* Escrever com Nina e o livro -> cap8_f
+* Sustentar a passagem para as irmãs atravessarem -> cap8_g
+* Consultar o catálogo por uma regra esquecida -> cap8_h
+
+== cap8_d
+Os moradores formam fila diante da página. O padeiro quer tempo para terminar o pão; a mulher da sacola quer levar os remédios para casa; o menino quer pegar uma gota de chuva com a língua e saber se ela tem gosto de papel. Suas vontades são pequenas, e por isso mesmo não cabem em um final que apague a rua inteira.
+
+Você escreve seus pedidos numa folha solta, sem colocá-los ainda dentro do livro. Dona Celina distribui lápis e pede que cada um confira o próprio nome. Lia ajuda quem tem mãos trêmulas. Nina insiste para que a casa seja ouvida também; a casa responde abrindo todas as janelas e deixando entrar o cheiro do bolo de laranja.
+
+— Acho que isso é um sim — diz o padeiro. — Ou é uma crítica à minha receita.
+
+O relógio avança. A folha de pedidos pode orientar uma última frase, sustentar uma travessia ou servir de prova para mudar as regras da biblioteca.
+
+* Construir uma última frase com o livro -> cap8_f
+* Sustentar a passagem para quem quiser atravessar -> cap8_g
+* Levar os pedidos ao catálogo de regras -> cap8_h
+
+== cap8_e
+Sob a ponte, o branco não está vazio. Há ali lembranças deixadas como garantia: um aniversário sem data, uma canção sem refrão, o rosto de uma pessoa que quase se consegue reconhecer. Dona Celina empalidece ao enxergá-las. Cada vez que manteve uma história suspensa, alguma lembrança ficou presa no vão para segurar o peso.
+
+— Eu chamava isso de manutenção — diz ela. — Era uma cobrança.
+
+Você toca a borda da ponte e sente uma lembrança sua ameaçar se soltar. Ainda não sabe qual. A passagem só resistirá até o relógio completar a próxima batida, a menos que alguém aceite um custo ou encontre uma forma de distribuir o peso. Nina pede que ninguém escolha por ela; Lia promete escutá-la. O livro azul se abre numa página que parece respirar. Você tem um instante para decidir o que oferecer: palavras, o próprio lugar na ponte ou uma busca pela regra que permitiu à biblioteca cobrar tanto.
+
+* Procurar com o livro uma frase que liberte a ponte -> cap8_f
+* Ficar na ponte até todos decidirem -> cap8_g
+* Procurar a regra da cobrança no catálogo -> cap8_h
+
+== cap8_f
+A pena espera entre você e o livro azul. Nina e Lia estão lado a lado; Dona Celina mantém as mãos abertas sobre a mesa, para que todos vejam que não vai agarrar ninguém. Da página sobem as vozes da rua, o estalo da casa e o som de uma chuva que está quase terminando.
+
+— Eu não sei como acabar — diz o livro. Sua voz parece a de uma criança falando debaixo de um cobertor.
+
+— Então podemos descobrir — responde Nina.
+
+Você percebe que um final não precisa resolver todas as coisas futuras. Precisa apenas dizer a verdade sobre este momento e deixar que seus habitantes sigam. Também percebe o perigo da solução mais rápida: se você prender o livro, a página ficará imóvel, e uma lembrança servirá de pagamento. O relógio inspira antes da última batida. A pena toca a folha. Ninguém além de você pode escolher o gesto seguinte, mas todos terão de viver com ele.
+
+* Oferecer ao livro uma frase escrita em conjunto -> fim_final_junto
+* Deixar a última página aberta e guardar o livro com cuidado -> fim_espera
+* [marcador] Prender o livro com o marcador de couro -> fim_preso
+
+== cap8_g
+A ponte se solta de uma ponta. Você a segura com as duas mãos, sentindo as dobras cortarem seus dedos. Para organizar a travessia, Nina voltou ao lado da casa; Lia permaneceu do lado de cá, sem tirá-la de vista. Elas combinam a travessia aos gritos, recusando a pressa que durante tanto tempo decidiu tudo por elas.
+
+— Primeiro a rua ou primeiro nós? — pergunta Lia.
+
+— Primeiro cada um escolhe — responde Nina.
+
+A ponte não é larga para todo mundo ao mesmo tempo. Você pode sustentar a passagem até as irmãs cruzarem e aceitar que talvez não reste caminho para você; pode largá-la, segurando o livro na esperança de atravessar com ele; ou, se trouxe a história antiga do dragão, oferecer ao livro azul uma companhia capaz de inventar outra travessia. A última batida do relógio começa antes de terminar o pensamento. O papel vibra entre seus dedos, tão frágil quanto uma promessa e tão difícil de rasgar.
+
+* Segurar a ponte para que todos possam escolher sua travessia -> fim_sacrificio
+* Segurar o livro azul quando a ponte cair -> fim_meia_noite
+* [caderno_antigo] Abrir o caderno do dragão ao lado do livro -> fim_dois_livros
+
+== cap8_h
+O catálogo de regras é um livro grosso, com cheiro de cola e um fecho que nunca teve chave. Na primeira página está escrito: «A biblioteca permanecerá aberta enquanto alguém precisar dela». Dona Celina lê em voz alta e depois vira as folhas, surpresa.
+
+— Eu me lembrava de outra coisa. Achava que estava proibido fechar.
+
+A diferença é pequena no papel e enorme no rosto dela. A regra não exige uma porta aberta para sempre; exige que haja quem possa encontrá-la. Lia aponta uma nota na margem, escrita por outra bibliotecária: «Uma casa pode viajar, se seus moradores consentirem». Nina sorri ao ouvir. O relógio começa a bater, e as letras se desprendem do catálogo como pássaros escuros. Você pode confiar a biblioteca a seus leitores, pedir que Nina escolha o destino da casa ou, se trouxe um fio da sala dos finais, tentar costurar uma passagem que as regras antigas não previam.
+
+* Entregar as chaves da biblioteca aos seus leitores -> fim_biblioteca
+* Deixar Nina e os moradores escolherem o destino da casa -> fim_casa
+* [fio] Costurar uma passagem entre a casa e a biblioteca -> fim_secreto
 
 == fim_final_junto
-Você senta no chão ao lado dele, abre na última página em branco e pergunta como ele queria terminar. As palavras aparecem devagar, como se ele estivesse com vergonha.
+Você senta no chão ao lado do livro azul e pergunta como ele queria terminar. As palavras aparecem devagar, como se ele estivesse com vergonha. Nina sugere uma porta; Lia sugere uma janela; o padeiro exige que ninguém esqueça o forno. Dona Celina pede licença antes de acrescentar uma vírgula, e até a vírgula parece apreciar a consideração.
 
-Vocês escrevem juntos até o relógio bater meia-noite. O final é simples: alguém volta para casa, e a casa ainda está lá.
+Vocês escrevem juntos até o relógio bater meia-noite. O final é simples: alguém volta para casa, e a casa ainda está lá. Nina abraça Lia mais uma vez, sabendo que poderá atravessar a soleira e retornar quando desejar. Na praça, o pão finalmente cresce. O livro ganha um título na capa: A casa de portas abertas.
 
-O livro ganha um título na capa. A bibliotecária chora um pouquinho, fingindo que é o pó.
+A bibliotecária chora um pouquinho, fingindo que é o pó. Na rua, a chuva diminui, e você lembra da conversa que precisa ter amanhã. Ainda não sabe como começá-la. Isso já não parece motivo suficiente para deixá-la sem fim.
 
 FIM
 
-== fim_dois_livros
-Você abre o caderno do dragão com medo de altura e coloca ao lado do fugitivo. Ele para de tremer, se abre devagar e lê. As duas histórias, sem fim, se reconhecem.
+== fim_espera
+Você fecha o livro azul com delicadeza, sem apertar sua capa, e o coloca ao lado da janela. Nina fica na soleira da casa; Lia senta perto dela, ao alcance da voz. A última página ainda não tem final. Pela primeira vez, porém, ninguém promete que ela deverá esperar sozinha até que outro decida.
 
-À meia-noite, os dois livros se fecham juntos e, quando você os abre de novo, as duas histórias terminaram: o dragão aprendeu a voar com o livro azul, e o livro azul aprendeu a terminar com o dragão.
+O relógio bate meia-noite. A biblioteca não desaba, mas uma faixa de sombra atravessa a praça desenhada, e o padeiro esquece por um instante o cheiro do pão. O perigo continua: histórias suspensas cobram das coisas ao redor, mesmo quando cuidadas com carinho. Dona Celina anota a cobrança e combina turnos com os moradores para que o livro seja acompanhado.
 
-Você leva o caderno para casa. Nunca mais teve medo de terminar as coisas.
+Ao sair, você encontra uma cadeira vazia junto à porta. É para quando voltar. Não há garantia de que a espera terminará bem, mas agora ela tem testemunhas, e o livro tem a possibilidade de dizer não.
+
+FIM
+
+== fim_preso
+O marcador de couro desliza entre as páginas. O livro para de tremer, preso num parágrafo qualquer do meio. A ponte se estabiliza; Lia consegue alcançar Nina, mas a menina fica imóvel ao lado da casa, com o braço erguido num aceno que nunca se completa. Nenhum morador desaparece. Nenhum consegue terminar o que começou.
+
+Dona Celina recolhe o livro e o devolve à seção de finais. Já não parece satisfeita. Na ficha, escreve «contenção» e, abaixo, «não confundir com solução». Promete procurar um jeito de retirar o marcador sem perder a casa. Você quer acreditar nela; também queria acreditar que não havia outro preço.
+
+Na rua, a chuva parou. Você sabe que ia ter uma conversa amanhã com um amigo, mas, por algum motivo, já não lembra qual era. O número dele está no celular. Você olha para a tela, sentindo a falta de alguma coisa que não consegue nomear. Livros presos no meio deixam coisas pela metade.
+
+FIM
+
+== fim_sacrificio
+Você mantém a ponte esticada enquanto Lia atravessa em direção a Nina. As duas ajudam os moradores que querem sair, e cada pessoa que passa deixa um pouco de seu nome nas tábuas de papel. Quando a última chega, porém, o vão se abre de novo. Você ainda está do lado do livro.
+
+— Venha! — grita Lia.
+
+Você tenta, mas a ponte se desfaz sob seus pés. Não cai no branco: cai numa frase. A casa o recebe como recebe a chuva, com um rangido e uma janela aberta. Do outro lado, Dona Celina promete procurar uma passagem que respeite os dois mundos. Nina escolhe ficar com você até encontrarem essa saída; Lia promete visitá-la todas as noites que puder.
+
+Os anos passam de maneira estranha dentro de uma história. Você aprende a fazer pão com o padeiro e sente saudade de ruas que não têm margens. Às vezes, pela janela da biblioteca, alguém lê seu nome em voz alta. É assim que você sabe que não foi esquecido.
 
 FIM
 
 == fim_meia_noite
-As suas mãos se fecham sobre a capa no exato instante em que o relógio bate meia-noite. O livro se abre de uma vez e as páginas viram como vento.
+Suas mãos se fecham sobre a capa no exato instante em que o relógio bate meia-noite. O livro se abre de uma vez e as páginas viram como vento. Lia alcança a mão de Nina; a casa e a praça desaparecem atrás de uma cortina de letras. Você protege o rosto, e o vento arranca a placa da porta.
 
-Quando a ventania passa, a biblioteca está escura e a placa da porta diz "Fechado". Pela primeira vez em cem anos.
+Quando a ventania passa, a biblioteca está escura e a placa diz «Fechado». Pela primeira vez em cem anos. Dona Celina encontra as irmãs na soleira e percebe que o livro ficou com você. Ele está quieto, mas uma janela azul se move na capa, pequena demais para saber quem olha de dentro.
 
-Na rua, a chuva continua. Você ainda tem o livro azul nas mãos, agora quieto, esperando. Talvez ele só precisasse de alguém que não soltasse.
+Na rua, a chuva continua. Você leva o livro para casa. Às vezes ele abre sozinho numa página que cheira a bolo; outras vezes, recusa qualquer toque. Não é um final feliz nem uma sentença definitiva. Talvez ele só precisasse de alguém que não soltasse. Talvez você ainda precise aprender quando abrir as mãos.
+
+FIM
+
+== fim_dois_livros
+Você abre o caderno do dragão com medo de altura e o coloca ao lado do fugitivo. O livro azul para de tremer, se abre devagar e lê. As duas histórias, sem fim, se reconhecem. O dragão aparece numa margem, examinando a ponte desfeita.
+
+— Tenho uma proposta — diz ele. — Desde que ninguém use a palavra voar.
+
+Nina sugere planar. Lia sugere começar por um degrau. O dragão aceita os dois, contanto que possa reclamar durante o trajeto. À meia-noite, ele leva uma ponta da ponte no focinho e atravessa o vão num voo baixo, tão baixo que quase pode ser chamado de caminhada com entusiasmo. As irmãs se encontram; a casa permanece onde seus moradores escolheram.
+
+Os livros se fecham juntos e, quando você os abre, as duas histórias terminaram: o dragão aprendeu a voar com o livro azul, e o livro azul aprendeu a terminar com o dragão. Você leva o caderno para casa. Da próxima vez que tiver medo de terminar alguma coisa, saberá que pode pedir companhia.
+
+FIM
+
+== fim_biblioteca
+Você coloca as chaves sobre o balcão e chama os moradores, as irmãs e Dona Celina para decidir quem cuidará da biblioteca. Ninguém aceita ser dono de todas as histórias. Depois de uma discussão longa, e de uma pausa para o padeiro testar seu pão, eles concordam em se revezar. Algumas portas poderão fechar durante a noite; haverá sempre um endereço onde pedir que sejam abertas.
+
+Dona Celina entrega seu crachá a Lia por uma hora, só para experimentar. Lia o prende ao contrário, o que não a impede de catalogar o primeiro volume: «Livro azul. Moradores consultados. Prazo de devolução: quando quiser». Nina ri da última linha e escolhe visitar a irmã sem abandonar sua casa.
+
+Ao amanhecer, a placa diz «Voltamos já». Você a lê duas vezes. O mundo não acaba. A bibliotecária sai para tomar café, coisa que não fazia havia cem anos, e pergunta se a padaria da esquina ainda existe. Existe, e o pão está quente.
+
+FIM
+
+== fim_casa
+Você não escolhe pela casa. Abre o catálogo na página em branco, entrega a pena a Nina e pede que cada morador diga onde deseja viver. Alguns querem ficar na praça; outros desejam conhecer a cidade além da biblioteca. A própria casa range, e Nina traduz com cautela: ela quer poder receber visitas sem deixar de ser casa.
+
+A solução ocupa uma frase comprida, cheia de vírgulas discutidas uma a uma. À meia-noite, a rua desenhada se dobra dentro do livro, mas sua porta aparece no fim de um corredor da biblioteca. Quem mora ali pode sair e voltar. Quem visita precisa bater antes. O padeiro reclama do trabalho de mudar a placa, mas admite que o endereço novo é excelente.
+
+Lia e Nina atravessam juntas para ver a chuva. Dona Celina acompanha as duas até a porta e para, deixando que saiam sozinhas. Quando voltam, trazem três guarda-chuvas: um para cada irmã e um, muito pequeno, para a casa.
+
+FIM
+
+== fim_secreto
+Você passa o fio pela agulha que a própria página oferece. Não costura o livro fechado. Une a margem azul à borda do catálogo, ponto por ponto, deixando espaço suficiente para uma porta abrir. Lia segura uma ponta; Nina segura a outra; Dona Celina aprende a dar nó sem apertar demais. Na última batida da meia-noite, a costura brilha.
+
+Uma portinha surge entre as letras. É pequena, mas cresce quando alguém bate e espera resposta. Os moradores da casa podem visitar a biblioteca; os leitores convidados podem conhecer a praça. E há outra descoberta: pelos pontos soltos chegam bilhetes de histórias esquecidas em outras casas, outros cadernos, outras vidas. Nenhuma exige ser terminada naquela mesma noite. Todas pedem para ser ouvidas.
+
+Na manhã seguinte, você encontra um bilhete no bolso: «Ainda cabe mais uma passagem. Traga linha». Está assinado por um dragão que afirma ter medo de altura e pergunta, em letra miúda, se há escada. No rodapé, uma patinha de tinta acrescenta uma vírgula.
+
+FIM
+
+== fim_gato
+Dostoiévski salta do seu ombro para a ponte de papel. O vão é enorme, mas ele examina a distância com a calma de quem já recusou saltos bem menores por puro princípio. Então dá meia-volta, senta e começa a lamber a pata.
+
+— Esse é o plano? — pergunta Lia.
+
+O gato abre a boca e deixa cair uma vírgula, depois outra. Elas se alinham no ar, formando uma trilha curva que passa por baixo da ponte quebrada. Nina é a primeira a entender: uma vírgula oferece pausa sem obrigar ninguém a parar para sempre. As irmãs atravessam juntas, e os moradores escolhem se ficam ou visitam a biblioteca. A casa continua na página, com a porta destrancada por dentro.
+
+Dona Celina encontra o gato dormindo sobre o livro azul e dá a ele o cargo de guardião das passagens. Dostoiévski aceita o cargo, mas não o crachá. Na saída, ele volta para o ombro dela, levando consigo uma vírgula de reserva.
 
 FIM
