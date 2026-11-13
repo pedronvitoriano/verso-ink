@@ -1466,7 +1466,7 @@ impl App {
         };
         let what = match self.screen {
             Screen::Mini => {
-                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else if self.mini_back == Screen::ChessHub { "Puzzle do dia".to_string() } else if self.mini_back == Screen::Home { "Aprender".to_string() } else if self.mini_slot == Some(106) { "Diário".to_string() } else if self.mini_slot == Some(107) { "Hábitos e tarefas".to_string() } else { "Receitas".to_string() }
+                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else if self.mini_back == Screen::ChessHub { "Puzzle do dia".to_string() } else if self.mini_back == Screen::Home { "Aprender".to_string() } else if self.mini_slot == Some(106) { "Diário".to_string() } else if self.mini_slot == Some(107) { "Hábitos e tarefas".to_string() } else if self.mini_slot == Some(108) { "Calculadora".to_string() } else { "Receitas".to_string() }
             }
             Screen::Sudoku | Screen::SudokuWon => "Sudoku".into(),
             Screen::Chess | Screen::ChessEnd | Screen::ChessReview => "Xadrez".into(),
@@ -1521,7 +1521,7 @@ impl App {
         match self.screen {
             Screen::Mini => {
                 let name = apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("jogo");
-                let name = if self.mini_back == Screen::Games { name } else if self.mini_back == Screen::ChessHub { "Puzzle do dia" } else if self.mini_back == Screen::Home { "Aprender" } else if self.mini_slot == Some(106) { "Diário" } else if self.mini_slot == Some(107) { "Hábitos e tarefas" } else { "Receitas" };
+                let name = if self.mini_back == Screen::Games { name } else if self.mini_back == Screen::ChessHub { "Puzzle do dia" } else if self.mini_back == Screen::Home { "Aprender" } else if self.mini_slot == Some(106) { "Diário" } else if self.mini_slot == Some(107) { "Hábitos e tarefas" } else if self.mini_slot == Some(108) { "Calculadora" } else { "Receitas" };
                 parts.push(format!("Pedro está em {name}, no Kindle."));
                 if let Some(g) = &self.mini {
                     let c = g.context();
@@ -3052,6 +3052,14 @@ impl App {
                 self.mini_back = Screen::Module(Module::Mais);
                 self.go(Screen::Mini);
             }
+            (Screen::Module(Module::Mais), Row(9)) => {
+                let mut g = self.mini_cache.remove(&108).unwrap_or_else(|| Box::new(crate::calculadora::Calculadora::new()));
+                g.resume();
+                self.mini = Some(g);
+                self.mini_slot = Some(108);
+                self.mini_back = Screen::Module(Module::Mais);
+                self.go(Screen::Mini);
+            }
             (Screen::Edicao | Screen::Artigos | Screen::Retrato | Screen::Terminal, Back) => self.go(Screen::Module(Module::Mais)),
             (Screen::Edicao, Row(k)) => {
                 if let Some((_, act)) = self.ed_hits.get(k).cloned() {
@@ -4338,6 +4346,29 @@ mod raio_x {
         shot(&mut app, "habitos-confirmar-apagar");
         app.mini_tap(0, 0);
         assert!(!std::fs::read_to_string(home.join("data/dia.txt")).unwrap().contains("- Comprar pão"));
+        app.go(Screen::Module(Module::Mais));
+        app.activate(Target::Row(9), 0);
+        shot(&mut app, "calculadora-menu");
+        app.mini_tap(900, 0);
+        for id in [0, 15, 10, 19] { app.mini_tap(id, 0); }
+        shot(&mut app, "calculadora-conta");
+        app.mini_tap(801, 0);
+        shot(&mut app, "calculadora-historico");
+        app.mini_tap(802, 0);
+        app.activate(Target::Back, 0);
+        app.mini_tap(901, 0);
+        shot(&mut app, "calculadora-conversoes");
+        app.mini_tap(910, 0);
+        app.mini_tap(100, 0);
+        shot(&mut app, "calculadora-conversao");
+        app.mini_tap(804, 0);
+        app.mini_tap(915, 0);
+        shot(&mut app, "calculadora-moedas-sem-cotacao");
+        app.mini_tap(804, 0);
+        app.mini_tap(803, 0);
+        app.mini_tap(902, 0);
+        for id in [106, 110, 109, 110, 106, 832, 111, 107] { app.mini_tap(id, 0); }
+        shot(&mut app, "calculadora-gorjeta");
         // Revisão de um erro real: coordenadas, alternativa e cobertura da análise.
         app.saved_games = vec![crate::coach::Saved {
             file: home.join("data/xadrez/partidas/exemplo.txt"),

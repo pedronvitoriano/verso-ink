@@ -51,6 +51,7 @@ mod matematica;
 mod diario;
 mod flashcards;
 mod organizacao;
+mod calculadora;
 mod claude_ui;
 mod clock;
 mod update;
