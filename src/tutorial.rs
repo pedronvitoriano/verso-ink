@@ -52,6 +52,8 @@ pub fn pages(game: usize) -> &'static [Page] {
         17 => &REVERSI,
         18 => &GO,
         19 => &CRUZADAS,
+        20 => &DOMINIO,
+        21 => &DETETIVE,
         _ => &[],
     }
 }
@@ -182,6 +184,19 @@ static CRUZADAS: [Page; 3] = [
     p("Uma por dia", "Cada dia traz uma grade nova. Toque em uma casa para escolher a palavra e leia a dica abaixo da grade.", "", ""),
     p("Escrever", "Toque em Escrever e digite a palavra inteira. Acentos são retirados na grade. No cruzamento, toque de novo para trocar a direção.", "", ""),
     p("Conferir e revelar", "Use Conferir para destacar letras erradas ou Revelar letra para preencher a casa escolhida. Seu progresso fica guardado no dia.", "", ""),
+];
+
+static DOMINIO: [Page; 4] = [
+    p("Conquistar", "O mapa tem 16 territórios. Os lisos são seus; listras e pontos identificam os adversários. O número indica os soldados em cada território.", "", ""),
+    p("Reforçar e atacar", "Receba um reforço para cada três territórios, com mínimo de três. Toque para distribuir. No ataque, escolha uma origem com pelo menos dois soldados e um vizinho inimigo.", "", ""),
+    p("A batalha", "Sem sorte: todos os soldados da origem, menos um, atacam. Se superarem os defensores, os sobreviventes ocupam o destino. Caso contrário, os atacantes são perdidos; os defensores perdem essa quantidade, mas ao menos um permanece.", "", ""),
+    p("Mover e desfazer", "Ao terminar os ataques, mova soldados entre territórios seus e vizinhos, deixando um na origem. Desfaça passos no mesmo turno. Nas fases e no desafio de hoje, conquiste tudo em três turnos.", "", ""),
+];
+
+static DETETIVE: [Page; 3] = [
+    p("O caso do dia", "Uma joia desapareceu. Os inocentes dizem a verdade, mas o culpado mentiu sobre onde estava. Descubra a pessoa, o objeto usado e o motivo.", "", ""),
+    p("Investigar", "Interrogue suspeitos e visite locais para comparar os álibis com os registros. Cada visita ou interrogatório custa uma das 12 horas, inclusive se for repetido.", "", ""),
+    p("Caderno e acusação", "O caderno guarda as descobertas e não gasta horas. Quando estiver pronto, escolha culpado, objeto e motivo. A resposta encerra o caso do dia e mostra a explicação.", "", ""),
 ];
 
 static HISTORIAS: [Page; 2] = [

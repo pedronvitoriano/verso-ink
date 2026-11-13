@@ -1,2 +1,6 @@
 [target.armv7-unknown-linux-musleabi]
 linker = "rust-lld"
+
+[target.armv7-unknown-linux-musleabihf]
+linker = "rust-lld"
+rustflags = ["-C", "target-cpu=cortex-a9"]

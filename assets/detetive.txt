@@ -1,0 +1,45 @@
+[suspeitos]
+Ana|restauradora de quadros
+Bruno|jardineiro atento
+Clara|musicista reservada
+Davi|cozinheiro falante
+Elisa|bibliotecária curiosa
+Fábio|relojoeiro meticuloso
+Lívia|fotógrafa observadora
+Nuno|motorista discreto
+[locais]
+Biblioteca
+Jardim
+Cozinha
+Ateliê
+Garagem
+Salão
+Varanda
+Escritório
+[objetos]
+uma chave de bronze
+uma luva de couro
+uma fita vermelha
+uma lanterna
+uma caneta dourada
+um cordão azul
+um relógio de bolso
+um lenço bordado
+[motivos]
+vingança
+ciúme
+uma dívida
+um segredo
+uma herança
+medo de ser demitido
+uma promessa quebrada
+um contrato perdido
+[horarios]
+8h
+9h
+10h
+11h
+12h
+13h
+14h
+15h

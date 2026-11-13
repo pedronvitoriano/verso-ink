@@ -121,3 +121,24 @@ TXT não informa idioma e o leitor atual de MOBI não expõe um metadado de idio
 ### Itens 2 a 18
 
 Ainda não implementados nem verificados nesta worktree.
+## 13. Domínio
+
+- **O que foi feito:** mapa de 16 territórios com padrões, reforço, combate determinístico, movimento, desfazer, fases, desafio diário e CPU para um ou dois adversários.
+- **Onde está:** `src/dominio.rs`, registro em Jogar e tutorial; progresso em `data/fases/dominio.txt` e `data/dominio-dia.txt`.
+- **Testes:** combate, reforços, CPU, desfazer, sequência diária e solução de 1.000 fases; build e suíte release sem avisos ou falhas.
+- **Prints conferidos:** Jogar, menu, partida e fim, gerados pelo teste `todas_as_telas`.
+- **Limitações:** o desafio diário percorre 20 configurações e se repete; as fases têm limite de três turnos. Teste físico no Kindle ainda é necessário. O sprite específico não estava disponível e será usado quando adicionado.
+
+## 14. Detetive
+
+- **O que foi feito:** caso diário com cinco suspeitos, depoimentos, locais, pistas, caderno automático, doze horas de investigação, acusação em três partes, explicação e sequência.
+- **Onde está:** `src/detetive.rs`, listas em `assets/detetive.txt`, registro em Jogar e tutorial; progresso em `data/detetive.txt`.
+- **Testes:** geração de 200 casos e enumeração das soluções compatíveis com as pistas, limite de horas, alvos ao esgotar o tempo e reprodução pela data; suíte release aprovada.
+- **Prints conferidos:** Jogar, menu, introdução, suspeitos, pista, caderno, acusação e fim, gerados pelo teste `todas_as_telas`.
+- **Limitações:** os casos compartilham a estrutura de roubo de uma joia, com personagens, locais e elementos variáveis; a acusação encerra o caso do dia. O sprite específico não estava disponível. É necessário validar toque e e-ink no Kindle físico.
+
+## Ambiente desta execução
+
+- Esta pasta estava na branch `codex/jogos2`; `codex/funcionalidades` está em outra worktree e não foi alterada.
+- Os commits solicitados não puderam ser criados: o diretório Git compartilhado foi montado somente para leitura (`index.lock`: `Read-only file system`). As alterações permanecem na worktree.
+- A atualização automática do Brain não rodou: o `pwsh` instalado recusou a execução por uma falha do ambiente snap-confine.

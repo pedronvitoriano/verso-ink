@@ -45,6 +45,8 @@ mod velha;
 mod reversi;
 mod go;
 mod cruzadas;
+mod dominio;
+mod detetive;
 mod puzzle_dia;
 mod geografia;
 mod matematica;
@@ -482,4 +484,16 @@ fn main() {
         }
     };
     std::process::exit(code);
+}
+
+/// Baixa a prioridade da linha de execução atual (só ela): trabalho pesado em segundo plano,
+/// como preparar a próxima fase, não disputa o único núcleo do Kindle com a tela e o toque.
+pub fn background_priority() {
+    extern "C" {
+        fn setpriority(which: i32, who: u32, prio: i32) -> i32;
+    }
+    // PRIO_PROCESS = 0; no Linux, quem = 0 é a própria thread.
+    unsafe {
+        setpriority(0, 0, 19);
+    }
 }

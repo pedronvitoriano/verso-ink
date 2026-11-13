@@ -400,6 +400,49 @@ impl App {
             app.render(false);
         }
         println!("{:<22} desenho {:>6.1} ms", "Aprender", t.elapsed().as_secs_f64() * 1000.0 / 5.0);
+        // Jogos: começar a partida (cria a fase) e, nela, desenhar e responder a um toque.
+        // VERSO_INK_BENCH_SEM_JOGOS=1 pula esta parte.
+        if std::env::var("VERSO_INK_BENCH_SEM_JOGOS").is_ok() {
+            return;
+        }
+        let f = &app.fonts;
+        for (i, (name, _)) in crate::apps::GAMES.iter().enumerate() {
+            let Some(mut g) = crate::minigame::make(i) else { continue };
+            let mut fb = Framebuffer::memory();
+            g.draw(&mut fb, f);
+            let t = Instant::now();
+            // Primeira opção do menu: fase 1, contra a CPU ou a primeira história.
+            if let Some((id, _)) = g.targets().into_iter().find(|(id, _)| *id == 900) {
+                g.tap(id, 0, 0);
+            }
+            let start = t.elapsed().as_secs_f64() * 1000.0;
+            let t = Instant::now();
+            for _ in 0..3 {
+                g.draw(&mut fb, f);
+            }
+            let draw = t.elapsed().as_secs_f64() * 1000.0 / 3.0;
+            let tg = g.targets();
+            let t = Instant::now();
+            if let Some((id, r)) = tg.iter().find(|(id, _)| *id < 800).copied() {
+                g.tap(id, r.x + r.w / 2, r.y + r.h / 2);
+                g.draw(&mut fb, f);
+            }
+            let tap = t.elapsed().as_secs_f64() * 1000.0;
+            let t = Instant::now();
+            let mut cpu = 0;
+            while g.cpu_turn() && cpu < 3 {
+                g.cpu_move();
+                cpu += 1;
+            }
+            let cpu_ms = t.elapsed().as_secs_f64() * 1000.0;
+            println!("jogo {name:<16} começar {start:>7.1} · desenho {draw:>6.1} · toque+desenho {tap:>6.1} · CPU {cpu_ms:>6.1} ms");
+        }
+        // Coroas: criar a fase de cada nível (o que a pessoa espera quando a próxima não ficou pronta).
+        for k in [1u32, 5, 10, 15, 20, 30] {
+            let t = Instant::now();
+            let _ = crate::coroas::generate_fase(k, Duration::from_secs(6));
+            println!("coroas fase {k:<3} criar {:>7.0} ms", t.elapsed().as_secs_f64() * 1000.0);
+        }
     }
 
     pub fn new(fb: Framebuffer) -> Self {
@@ -3260,7 +3303,8 @@ impl App {
             (Screen::Home, Header) => self.go(Screen::Light),
             // "Continuar" do jogo na tela inicial: abre a partida direto.
             (Screen::Home, Game(i)) => {
-                self.go(Screen::Games);
+                // Direto ao jogo: a tela Jogar fica por baixo (para o Voltar), sem ser desenhada antes.
+                self.screen = Screen::Games;
                 self.activate(Game(i), x);
             }
             (Screen::Home, Phrase) => self.phrase_action(),
@@ -4157,6 +4201,15 @@ mod raio_x {
     }
 
     #[test]
+    fn jogo_em_destaque_abre_direto() {
+        let mut app = App::new(Framebuffer::memory());
+        app.go(Screen::Home);
+        app.activate(Target::Game(2), 0);
+        // Abre o jogo (ou, na primeira vez, o Como jogar dele), nunca para na tela Jogar.
+        assert!(matches!(app.screen, Screen::Mini | Screen::Tutorial), "{:?}", app.screen);
+    }
+
+    #[test]
     fn acordar_volta_para_onde_estava() {
         let mut app = App::new(Framebuffer::memory());
         // No meio de um jogo: volta ao jogo.
@@ -4340,6 +4393,24 @@ mod raio_x {
                     if name == "go" {
                         app.mini = Some(Box::new(crate::go::Go::final_para_print()));
                         shot(&mut app, "jogo-go-fim");
+                    }
+                    if name == "detetive" {
+                        app.mini_tap(803, 0);
+                        shot(&mut app, "jogo-detetive-pessoas");
+                        app.mini_tap(0, 0);
+                        shot(&mut app, "jogo-detetive-pista");
+                        app.mini_tap(803, 0);
+                        app.mini_tap(801, 0);
+                        shot(&mut app, "jogo-detetive-caderno");
+                        app.mini_tap(812, 0);
+                        app.mini_tap(802, 0);
+                        shot(&mut app, "jogo-detetive-acusacao");
+                        app.mini = Some(Box::new(crate::detetive::Detetive::final_para_print()));
+                        shot(&mut app, "jogo-detetive-fim");
+                    }
+                    if name == "dominio" {
+                        app.mini = Some(Box::new(crate::dominio::Dominio::final_para_print()));
+                        shot(&mut app, "jogo-dominio-fim");
                     }
                     if name == "cruzadas" {
                         let mut g = crate::cruzadas::Cruzadas::new();

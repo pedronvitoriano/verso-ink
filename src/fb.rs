@@ -98,6 +98,14 @@ fn u32_at(b: &[u8], off: usize) -> u32 {
     u32::from_le_bytes([b[off], b[off + 1], b[off + 2], b[off + 3]])
 }
 
+/// Mistura `v` sobre `old` com opacidade `a` (0 a 255), arredondando: igual a
+/// `(old*(255-a) + v*a + 127) / 255`, mas sem divisão (o ARM do Kindle não divide em hardware).
+#[inline(always)]
+pub fn mix(old: u8, v: u8, a: u32) -> u8 {
+    let t = old as u32 * (255 - a) + v as u32 * a + 128;
+    ((t + (t >> 8)) >> 8) as u8
+}
+
 impl Framebuffer {
     /// Tela em memória: desenha no `buf` sem mandar ao e-ink (cenas dos tutoriais, testes no PC).
     pub fn memory() -> Self {
@@ -200,8 +208,7 @@ impl Framebuffer {
     pub fn blend(&mut self, x: i32, y: i32, v: u8, a: u8) {
         if x >= 0 && y >= 0 && x < self.width && y < self.height {
             let i = (y * self.width + x) as usize;
-            let old = self.buf[i] as u32;
-            self.buf[i] = ((old * (255 - a as u32) + v as u32 * a as u32 + 127) / 255) as u8;
+            self.buf[i] = mix(self.buf[i], v, a as u32);
         }
     }
 
@@ -508,6 +515,22 @@ mod desenho_igual {
             a.round_frame_ref(r, rad, t, 0x10, 0xEE, sh, 0x2E);
             b.round_frame(r, rad, t, 0x10, 0xEE, sh, 0x2E);
             assert!(a.buf == b.buf, "round_frame {w}x{h} r{rad} t{t}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod mistura {
+    /// A mistura sem divisão dá o mesmo resultado da divisão por 255 em todas as combinações.
+    #[test]
+    fn mix_igual_a_divisao_para_todos_os_valores() {
+        for old in 0..=255u32 {
+            for v in 0..=255u32 {
+                for a in 0..=255u32 {
+                    let div = ((old * (255 - a) + v * a + 127) / 255) as u8;
+                    assert_eq!(super::mix(old as u8, v as u8, a), div, "old {old} v {v} a {a}");
+                }
+            }
         }
     }
 }

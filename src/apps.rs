@@ -286,7 +286,7 @@ pub fn clips_rect() -> Rect {
     Rect::new(W - MARGIN - 250, 76, 250, 84)
 }
 /// Jogos na tela Jogar (a ordem define o índice usado pelo app).
-pub const GAMES: [(&str, &str); 20] = [
+pub const GAMES: [(&str, &str); 22] = [
     ("Sudoku", "Três níveis, anotações e dicas"),
     ("Xadrez", "Treinadores, revisão e duas pessoas"),
     ("Coroas", "Uma por linha, coluna e reino"),
@@ -307,14 +307,16 @@ pub const GAMES: [(&str, &str); 20] = [
     ("Reversi", "Cerque peças contra a CPU ou a dois"),
     ("Go", "Cercar espaços e capturar pedras"),
     ("Cruzadas", "Uma cruzadinha diferente por dia"),
+    ("Domínio", "Conquiste territórios por estratégia"),
+    ("Detetive", "Um mistério para resolver por dia"),
 ];
 
 /// Seções da tela Jogar: (nome, índices em GAMES).
 pub const GAME_GROUPS: [(&str, &[usize]); 4] = [
-    ("Quebra-cabeças", &[0, 2, 6, 7, 9, 10, 19]),
+    ("Quebra-cabeças", &[0, 2, 6, 7, 9, 10, 19, 20]),
     ("Tabuleiro", &[1, 15, 3, 16, 17, 18, 5, 4]),
     ("Cartas", &[8, 11]),
-    ("Aventura", &[12, 13, 14]),
+    ("Aventura", &[12, 13, 14, 21]),
 ];
 
 /// Disposição da tela Jogar: quatro seções, cartões em duas colunas. Devolve (jogo, retângulo)
