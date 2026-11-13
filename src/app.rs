@@ -160,6 +160,8 @@ pub struct App {
     before_sleep: Option<Screen>,
     /// Revendo a partida de xadrez: quantos lances mostrar (None = a partida ao vivo).
     chess_peek: Option<usize>,
+    /// Expressão do treinador agora (muda com o que acontece na partida).
+    coach_mood: crate::coach::Mood,
     /// Página da lista de redes Wi-Fi.
     wifi_page: usize,
     /// Início da leitura em andamento no leitor próprio (segundos, para o reading.log).
@@ -408,6 +410,7 @@ impl App {
             mini_slot: None,
             before_sleep: None,
             chess_peek: None,
+            coach_mood: crate::coach::Mood::Normal,
             wifi_page: 0,
             reading_since: None,
             achado_new: None,
@@ -607,7 +610,7 @@ impl App {
                     crate::chess::draw(fb, f, g, sp, &b);
                     if let crate::chess::Mode::Coach { level, .. } = g.mode {
                         let c = crate::coach::coach(level);
-                        crate::chess_ui::draw_coach_line(fb, f, &format!("{} ({})", c.name, c.rating), &self.coach_msg);
+                        crate::chess_ui::draw_coach_line(fb, f, &format!("{} ({})", c.name, c.rating), &self.coach_msg, self.coach_mood);
                     }
                     crate::chess::draw_clocks(fb, f, g);
                 }
@@ -2269,7 +2272,7 @@ impl App {
         self.coach_msg = text.to_string();
         if let Some(level) = self.coach_level() {
             let c = crate::coach::coach(level);
-            crate::chess_ui::draw_coach_line(&mut self.fb, &self.fonts, &format!("{} ({})", c.name, c.rating), text);
+            crate::chess_ui::draw_coach_line(&mut self.fb, &self.fonts, &format!("{} ({})", c.name, c.rating), text, self.coach_mood);
             if let Some(g) = &self.chess {
                 crate::chess::draw_clocks(&mut self.fb, &self.fonts, g);
             }
@@ -2287,6 +2290,7 @@ impl App {
         crate::coach::clear_current();
         self.pre_eval = None;
         let c = crate::coach::coach(level);
+        self.coach_mood = crate::coach::Mood::Normal;
         self.coach_msg = if level == crate::coach::CLAUDE {
             format!("Oi, Pedro! Vamos jogar. Você está de {}. Vou comentando os lances.", if user_white { "brancas" } else { "pretas" })
         } else {
@@ -2309,6 +2313,7 @@ impl App {
         self.chess = Some(g);
         self.records = if coach { crate::coach::load_current() } else { Vec::new() };
         self.coach_msg = "Partida retomada. Sua vez.".into();
+        self.coach_mood = crate::coach::Mood::Normal;
         self.go(Screen::Chess);
         if coach && self.ensure_engine() {
             if self.chess.as_ref().is_some_and(|g| g.engine_turn()) {
@@ -2348,11 +2353,13 @@ impl App {
             let why = if class as u8 >= crate::coach::Class::Inaccuracy as u8 { crate::coach::explain(&before, last, &best, user_white, pre) } else { String::new() };
             log(&format!("lance {san}: {} (perda {loss})", class.name()));
             self.records.push(crate::coach::Record { ply, san: san.clone(), analyzed: true, class, loss, best_uci: best, best_san, why: why.clone() });
-            self.coach_msg = if crate::coach::should_comment(rating, class) {
-                format!("{}: {why}", class.name())
-            } else {
-                crate::coach::praise(rating, class).map(str::to_string).unwrap_or_else(|| format!("{san}. Agora é minha vez."))
-            };
+            // Fala de gente, sem análise (o porquê fica guardado para a revisão).
+            let took = before.board[last.to].filter(|p| p.white != user_white).map(|p| p.kind);
+            let roll = self.rng.next();
+            let (line, mood) = crate::coach::react_to_user(&crate::coach::Moment { class, user_eval: Some(after.cp()), took }, roll);
+            let _ = rating;
+            self.coach_mood = mood;
+            self.coach_msg = line.to_string();
         } else {
             // Uma resposta ausente do Stockfish não pode virar um "bom lance" artificial.
             // Guardamos a lacuna para a cobertura ficar transparente na revisão.
@@ -2367,7 +2374,10 @@ impl App {
                 best_san: String::new(),
                 why: String::new(),
             });
-            self.coach_msg = format!("{san}. Não consegui analisar este lance agora; ele não entra na precisão.");
+            let took = before.board[last.to].filter(|p| p.white != user_white).map(|p| p.kind);
+            let (line, mood) = crate::coach::react_to_user(&crate::coach::Moment { class: crate::coach::Class::Good, user_eval: None, took }, self.rng.next());
+            self.coach_mood = mood;
+            self.coach_msg = line.to_string();
         }
         crate::coach::save_current(&self.records);
         if self.chess.as_ref().is_some_and(|g| g.result().is_some()) {
@@ -2443,15 +2453,22 @@ impl App {
         if spent < min_ms {
             std::thread::sleep(Duration::from_millis(min_ms - spent));
         }
+        let own_take = |uci: &str| crate::chess::parse_uci(uci).and_then(|(m, _)| pos.board[m.to]).filter(|p| p.white != pos.white_to_move).map(|p| p.kind);
+        let took = mv.as_deref().and_then(own_take);
         let mut san = mv.and_then(|m| self.chess.as_mut().and_then(|g| g.play_uci(&m)));
         if san.is_none() {
             // Lance recusado pela posição (não devia acontecer): joga um válido em vez de travar.
             log("treinador: lance do motor recusado; jogando um lance válido");
             san = crate::coach::random_legal(&pos, &mut self.rng).and_then(|m| self.chess.as_mut().and_then(|g| g.play_uci(&m)));
         }
-        self.coach_msg = match san {
-            Some(s) => format!("{comment} Joguei {s}.").trim().to_string(),
-            None => "Não consegui jogar.".into(),
+        let brag = if san.is_some() { crate::coach::react_to_own(took, self.rng.next()) } else { None };
+        if let Some((_, mood)) = brag {
+            self.coach_mood = mood;
+        }
+        self.coach_msg = match (san, brag) {
+            (Some(s), Some((line, _))) => format!("Joguei {s}. {line}"),
+            (Some(s), None) => format!("{comment} Joguei {s}.").trim().to_string(),
+            (None, _) => "Não consegui jogar.".into(),
         };
         if let Some(g) = &self.chess {
             g.save();
@@ -2577,6 +2594,10 @@ impl App {
             (_, Some(r)) => format!("{r} Contra {} ({}).", c.name, c.rating),
             _ => String::new(),
         };
+        // A última fala do treinador, com a cara do resultado.
+        let (line, mood) = crate::coach::react_to_end(score, self.rng.next());
+        self.coach_mood = mood;
+        let detail = format!("{detail} {}: “{line}”", c.name).trim().to_string();
         log(&format!("partida contra {} terminou: {label}, rating {} → {}", c.name, ratings.0, ratings.1));
         let _ = std::fs::remove_file(home_dir().join("data/xadrez.txt"));
         self.engine = None;
@@ -2598,7 +2619,7 @@ impl App {
             let msg = self.coach_msg.clone();
             if let Some(level) = self.coach_level() {
                 let c = crate::coach::coach(level);
-                crate::chess_ui::draw_coach_line(&mut self.fb, &self.fonts, &format!("{} ({})", c.name, c.rating), &msg);
+                crate::chess_ui::draw_coach_line(&mut self.fb, &self.fonts, &format!("{} ({})", c.name, c.rating), &msg, self.coach_mood);
             }
         }
         crate::chess::draw_clocks(&mut self.fb, &self.fonts, g);

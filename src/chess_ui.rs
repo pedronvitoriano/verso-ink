@@ -253,13 +253,16 @@ pub fn bubble_rect() -> Rect {
 
 /// Treinador em cima do tabuleiro, como num app de jogo: o busto recortado no papel (sem
 /// moldura), apoiado na borda do tabuleiro, e o que ele diz num balão ao lado.
-pub fn draw_coach_line(fb: &mut Framebuffer, f: &Fonts, who: &str, text: &str) {
+pub fn draw_coach_line(fb: &mut Framebuffer, f: &Fonts, who: &str, text: &str, mood: crate::coach::Mood) {
     let r = coach_line_rect();
     fb.fill(r, PAPER);
     let name = who.split(" (").next().unwrap_or(who);
     let slug = crate::apps::fold(name).split_whitespace().collect::<Vec<_>>().join("-");
     let side = r.y + r.h - 170 + 2;
-    if !crate::sprites::draw(fb, &format!("busto-{slug}"), Rect::new(MARGIN - 44, 170, side, side))
+    // A expressão do momento (feliz, preocupado…), se a variação do busto existir.
+    let face = Rect::new(MARGIN - 44, 170, side, side);
+    let mood_drawn = mood.slug().is_some_and(|m| crate::sprites::draw(fb, &format!("busto-{slug}-{m}"), face));
+    if !mood_drawn && !crate::sprites::draw(fb, &format!("busto-{slug}"), face)
         && !draw_portrait(fb, name, MARGIN, 190, 200, false)
     {
         // Sem retrato (o Claude): a faísca dele, grande, num disco.

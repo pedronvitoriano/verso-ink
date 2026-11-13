@@ -231,23 +231,6 @@ pub fn best_san(pos: &Pos, best_uci: &str) -> String {
 }
 
 /// Treinadores mais fortes comentam deslizes menores.
-pub fn should_comment(coach_rating: u32, c: Class) -> bool {
-    let min = match coach_rating {
-        0..=500 => Class::Blunder,
-        501..=1200 => Class::Mistake,
-        _ => Class::Inaccuracy,
-    };
-    c.code() >= min.code()
-}
-
-pub fn praise(coach_rating: u32, c: Class) -> Option<&'static str> {
-    match (c, coach_rating) {
-        (Class::Best, 0..=1200) => Some("Ótimo lance! Era o melhor."),
-        (Class::Best, _) => Some("Preciso. Melhor lance."),
-        _ => None,
-    }
-}
-
 // ---------- Partidas guardadas ----------
 
 pub struct Saved {
@@ -491,5 +474,115 @@ mod tests {
         let unavailable_previous = saved("previous-unavailable", false, 0);
         let notes = insights(&current_measured, &[unavailable_previous]);
         assert!(!notes.iter().any(|line| line.contains("média recente")));
+    }
+}
+
+// ---------- Reações do treinador (falas de gente, sem análise) ----------
+
+/// Expressão do treinador na partida; cada uma é uma variação do mesmo busto
+/// (`busto-<nome>-<humor>.png`); sem a imagem, aparece o busto normal.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum Mood {
+    #[default]
+    Normal,
+    Feliz,
+    Preocupado,
+    Chocado,
+    Triste,
+}
+
+impl Mood {
+    pub fn slug(self) -> Option<&'static str> {
+        match self {
+            Mood::Normal => None,
+            Mood::Feliz => Some("feliz"),
+            Mood::Preocupado => Some("preocupado"),
+            Mood::Chocado => Some("chocado"),
+            Mood::Triste => Some("triste"),
+        }
+    }
+}
+
+fn pick(list: &[&'static str], roll: u64) -> &'static str {
+    list[(roll % list.len() as u64) as usize]
+}
+
+/// O que aconteceu no lance de quem joga contra o treinador, para ele reagir.
+pub struct Moment {
+    pub class: Class,
+    /// Vantagem de quem joga, em centipeões, depois do lance (None sem análise).
+    pub user_eval: Option<i32>,
+    /// Peça do treinador que acabou de ser capturada.
+    pub took: Option<crate::chess::Kind>,
+}
+
+/// Reação ao lance da pessoa: a frase e a expressão. Nunca explica o lance (isso fica na revisão).
+pub fn react_to_user(m: &Moment, roll: u64) -> (&'static str, Mood) {
+    use crate::chess::Kind;
+    match m.took {
+        Some(Kind::Queen) => return (pick(&["Nãoo, minha rainha!", "Minha dama! Não acredito…", "Ai, ai… lá se foi a rainha."], roll), Mood::Chocado),
+        Some(Kind::Rook) => return (pick(&["Ai, minha torre…", "Perdi a torre? Sério?"], roll), Mood::Preocupado),
+        _ => {}
+    }
+    match m.class {
+        Class::Blunder => return (pick(&["Eita, vacilou…", "Opa! Essa eu não deixo passar.", "Obrigado pelo presente!", "Xiii… olha o que você fez."], roll), Mood::Feliz),
+        Class::Mistake => return (pick(&["Hmm, deu uma brecha aí.", "Opa, gostei dessa… pra mim.", "Interessante… vou aproveitar."], roll), Mood::Feliz),
+        _ => {}
+    }
+    let eval = m.user_eval.unwrap_or(0);
+    if eval > 300 {
+        return (pick(&["Tô ficando em apuros…", "Calma, calma, ainda dá…", "Você tá apertando, hein."], roll), Mood::Preocupado);
+    }
+    if eval < -300 {
+        return (pick(&["Tá ficando bom pra mim!", "Hehe, gosto dessa posição.", "Vai ser difícil sair dessa."], roll), Mood::Feliz);
+    }
+    match m.class {
+        Class::Best => (pick(&["Uau, boa jogada!", "Essa foi forte.", "Tá jogando sério hoje, hein?"], roll), if eval > 100 { Mood::Preocupado } else { Mood::Normal }),
+        Class::Inaccuracy => (pick(&["Hmm, ok…", "Dava pra mais, hein.", "Certo, certo…"], roll), Mood::Normal),
+        _ => (pick(&["Hmm, entendi.", "Certo…", "Vamos ver…", "Deixa eu pensar…"], roll), Mood::Normal),
+    }
+}
+
+/// Reação ao próprio lance do treinador, quando ele captura algo grande.
+pub fn react_to_own(took: Option<crate::chess::Kind>, roll: u64) -> Option<(&'static str, Mood)> {
+    use crate::chess::Kind;
+    match took? {
+        Kind::Queen => Some((pick(&["Peguei sua rainha!", "Essa dama agora é minha!"], roll), Mood::Feliz)),
+        Kind::Rook => Some((pick(&["Torre no bolso.", "Obrigado pela torre!"], roll), Mood::Feliz)),
+        _ => None,
+    }
+}
+
+/// Fim de partida: (frase, expressão) do ponto de vista do treinador.
+pub fn react_to_end(user_score: f32, roll: u64) -> (&'static str, Mood) {
+    if user_score >= 1.0 {
+        (pick(&["Ah, você venceu. Boa partida!", "Perdi… mas quero revanche!"], roll), Mood::Triste)
+    } else if user_score <= 0.0 {
+        (pick(&["Ganhei! Boa partida, viu?", "Essa foi minha! Bora outra?"], roll), Mood::Feliz)
+    } else {
+        ("Empate! Ninguém cedeu.", Mood::Normal)
+    }
+}
+
+#[cfg(test)]
+mod reacoes {
+    use super::*;
+    use crate::chess::Kind;
+
+    #[test]
+    fn rainha_perdida_choca_e_vacilo_alegra() {
+        let m = Moment { class: Class::Good, user_eval: Some(0), took: Some(Kind::Queen) };
+        assert_eq!(react_to_user(&m, 0), ("Nãoo, minha rainha!", Mood::Chocado));
+        let m = Moment { class: Class::Blunder, user_eval: Some(-500), took: None };
+        assert_eq!(react_to_user(&m, 0).1, Mood::Feliz);
+        let m = Moment { class: Class::Good, user_eval: Some(450), took: None };
+        assert_eq!(react_to_user(&m, 1).1, Mood::Preocupado);
+        // Nenhuma reação traz análise (nada de "Erro grave:" nem "Melhor era").
+        for c in [Class::Best, Class::Good, Class::Inaccuracy, Class::Mistake, Class::Blunder] {
+            for roll in 0..6 {
+                let (t, _) = react_to_user(&Moment { class: c, user_eval: None, took: None }, roll);
+                assert!(!t.contains(':') && !t.contains("Melhor"), "{t}");
+            }
+        }
     }
 }
