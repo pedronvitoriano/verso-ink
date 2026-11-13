@@ -606,7 +606,7 @@ impl App {
                         crate::chess::draw(fb, f, &v, sp, &b);
                         if let crate::chess::Mode::Coach { level, .. } = g.mode {
                             let c = crate::coach::coach(level);
-                            crate::chess_ui::draw_coach_line(fb, f, &format!("{} ({})", c.name, c.rating), "Revendo a partida. Toque em Partida para voltar.", crate::coach::Mood::Normal);
+                            crate::chess_ui::draw_coach_line(fb, f, &format!("{} ({})", c.name, c.rating), "Revendo a partida. Toque em Voltar à partida quando quiser.", crate::coach::Mood::Normal);
                         }
                         return;
                     }

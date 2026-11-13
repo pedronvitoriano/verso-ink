@@ -1041,10 +1041,27 @@ pub fn draw_coords(fb: &mut Framebuffer, f: &Fonts, flip: bool) {
 pub fn draw_square(fb: &mut Framebuffer, g: &Game, sp: &Sprites, i: usize) {
     let r = square_rect(i, g.flipped());
     let dark = (i / 8 + i % 8) % 2 == 1;
-    let last = g.last.is_some_and(|m| m.from == i || m.to == i);
-    fb.fill(r, if dark { 0xB0 } else { 0xF2 });
-    if last {
+    let from = g.last.is_some_and(|m| m.from == i);
+    let to = g.last.is_some_and(|m| m.to == i);
+    let bg = if dark { 0xB0 } else { 0xF2 };
+    fb.fill(r, bg);
+    if from || to {
         fb.fill(Rect::new(r.x + 4, r.y + 4, r.w - 8, r.h - 8), if dark { 0x90 } else { 0xD8 });
+    }
+    // Último lance bem visível no e-ink: de onde saiu, um anel; onde chegou, cantoneiras grossas.
+    if from {
+        let d = r.w / 3;
+        let c = Rect::new(r.x + (r.w - d) / 2, r.y + (r.h - d) / 2, d, d);
+        fb.round_outline(c, d / 2, 5, INK, if dark { 0x90 } else { 0xD8 });
+    }
+    if to {
+        let (t, l) = (7, r.w / 3);
+        for (x, y, sx, sy) in [(r.x, r.y, 1, 1), (r.x + r.w, r.y, -1, 1), (r.x, r.y + r.h, 1, -1), (r.x + r.w, r.y + r.h, -1, -1)] {
+            let hx = if sx > 0 { x + 2 } else { x - 2 - l };
+            let vy = if sy > 0 { y + 2 } else { y - 2 - l };
+            fb.fill(Rect::new(hx, if sy > 0 { y + 2 } else { y - 2 - t }, l, t), INK);
+            fb.fill(Rect::new(if sx > 0 { x + 2 } else { x - 2 - t }, vy, t, l), INK);
+        }
     }
     if g.selected == Some(i) {
         fb.round_outline(Rect::new(r.x + 3, r.y + 3, r.w - 6, r.h - 6), 10, 7, INK, if dark { 0xB0 } else { 0xF2 });
@@ -1116,7 +1133,14 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites, btn: &Butto
         crate::ui::button(fb, f, r, label, rotate_enabled());
     }
     if !g.moves.is_empty() {
-        crate::ui::button(fb, f, peek_rect(g.mode == Mode::Local), if btn.peek { "Partida" } else { "Lances" }, btn.peek);
+        let local = g.mode == Mode::Local;
+        let label = match (btn.peek, local) {
+            (true, false) => "Voltar à partida",
+            (true, true) => "Partida",
+            (false, false) => "‹ Lances anteriores",
+            (false, true) => "Lances",
+        };
+        crate::ui::button(fb, f, peek_rect(local), label, btn.peek);
     } else if g.mode != Mode::Local {
         let tw = f.measure(Face::Strong, 34.0, "Xadrez");
         f.draw(fb, Face::Strong, 34.0, 1072 - 72 - tw, 128, INK, "Xadrez");
@@ -1154,7 +1178,7 @@ pub fn draw(fb: &mut Framebuffer, f: &Fonts, g: &Game, sp: &Sprites, btn: &Butto
 
 /// Botão "Lances": rever a partida lance a lance sem sair dela.
 pub fn peek_rect(local: bool) -> Rect {
-    if local { Rect::new(1072 - 72 - 270 - 16 - 190, 76, 190, 84) } else { Rect::new(1072 - 72 - 190, 76, 190, 84) }
+    if local { Rect::new(1072 - 72 - 270 - 16 - 190, 76, 190, 84) } else { Rect::new(1072 - 72 - 340, 76, 340, 84) }
 }
 
 /// A mesma partida parada depois dos primeiros `k` lances (para rever).
