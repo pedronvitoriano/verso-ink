@@ -242,11 +242,7 @@ impl MiniGame for Lig4 {
                     2 if crate::sprites::draw(fb, "peca-disco-claro", disc) => {}
                     1 => fb.round_rect(disc, rad, INK),
                     2 => fb.round_outline(disc, rad, 5, INK, PAPER),
-                    _ => {
-                        // Buraco vazio: claro, com um anel escuro por dentro (profundidade).
-                        fb.round_rect(disc, rad, 0x6E);
-                        fb.round_rect(Rect::new(disc.x + 4, disc.y + 6, disc.w - 8, disc.h - 8), rad - 4, 0xF2);
-                    }
+                    _ => hole(fb, disc, rad),
                 }
                 if win.contains(&(r, c)) {
                     // Marca as quatro da vitória com um ponto no centro.
@@ -439,6 +435,66 @@ mod tempo {
             let t = std::time::Instant::now();
             g.cpu_move();
             eprintln!("fase {k} {:?}: {:?}", g.strength(), t.elapsed());
+        }
+    }
+}
+
+thread_local! {
+    /// O buraco vazio desenhado uma vez (sobre o fundo do tabuleiro) e depois só copiado:
+    /// 42 discos com borda suave custavam ~80 ms por tela no Kindle.
+    static HOLE: std::cell::RefCell<Option<(i32, Vec<u8>)>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Buraco vazio: claro, com um anel escuro por dentro (profundidade). Idêntico a desenhar na hora.
+fn hole(fb: &mut Framebuffer, disc: Rect, rad: i32) {
+    let draw = |fb: &mut Framebuffer, d: Rect| {
+        fb.round_rect(d, rad, 0x6E);
+        fb.round_rect(Rect::new(d.x + 4, d.y + 6, d.w - 8, d.h - 8), rad - 4, 0xF2);
+    };
+    let (w, h) = (disc.w, disc.h);
+    let inside = disc.x >= 0 && disc.y >= 0 && disc.x + w <= fb.width && disc.y + h <= fb.height;
+    if !inside {
+        return draw(fb, disc);
+    }
+    HOLE.with(|c| {
+        let mut c = c.borrow_mut();
+        if c.as_ref().is_none_or(|(r, _)| *r != rad) {
+            let mut tmp = Framebuffer::memory();
+            tmp.fill(Rect::new(0, 0, w, h), 0x9A);
+            draw(&mut tmp, Rect::new(0, 0, w, h));
+            let mut px = Vec::with_capacity((w * h) as usize);
+            for y in 0..h {
+                let i = (y * tmp.width) as usize;
+                px.extend_from_slice(&tmp.buf[i..i + w as usize]);
+            }
+            *c = Some((rad, px));
+        }
+        let (_, px) = c.as_ref().unwrap();
+        for y in 0..h {
+            let d = ((disc.y + y) * fb.width + disc.x) as usize;
+            fb.buf[d..d + w as usize].copy_from_slice(&px[(y * w) as usize..((y + 1) * w) as usize]);
+        }
+    });
+}
+
+#[cfg(test)]
+mod buraco {
+    use super::*;
+
+    /// O buraco copiado do cache é idêntico ao desenhado na hora sobre o fundo do tabuleiro.
+    #[test]
+    fn buraco_em_cache_igual_ao_desenhado() {
+        for rad in [30, 47, 52] {
+            let d = Rect::new(200, 300, rad * 2, rad * 2);
+            let (mut a, mut b) = (Framebuffer::memory(), Framebuffer::memory());
+            for fb in [&mut a, &mut b] {
+                fb.fill(Rect::new(100, 200, 400, 400), 0x9A);
+            }
+            a.round_rect(d, rad, 0x6E);
+            a.round_rect(Rect::new(d.x + 4, d.y + 6, d.w - 8, d.h - 8), rad - 4, 0xF2);
+            hole(&mut b, d, rad);
+            hole(&mut b, d, rad);
+            assert!(a.buf == b.buf, "rad {rad}");
         }
     }
 }
