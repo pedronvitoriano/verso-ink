@@ -2866,14 +2866,19 @@ impl App {
     }
 
     fn set_light_with(&mut self, level: i32, wave: Wave) {
+        self.apply_light(level);
+        ui::draw_light_level(&mut self.fb, &self.fonts, &self.light);
+        self.fb.refresh(LIGHT_BAND, wave, false);
+    }
+
+    /// Muda o nível (a luz de verdade muda em segundo plano) sem desenhar.
+    fn apply_light(&mut self, level: i32) {
         let level = level.clamp(0, self.light.max);
         if level != self.light.level {
-            let _ = sh("lipc-set-prop", &["com.lab126.powerd", "flIntensity", &level.to_string()]);
+            set_light_async(level);
             self.light.level = level;
             log(&format!("luz {level}"));
         }
-        ui::draw_light_level(&mut self.fb, &self.fonts, &self.light);
-        self.fb.refresh(Rect::new(0, 440, 1072, 380), wave, false);
     }
 
     fn start_pomodoro(&mut self, kind: Kind) {
@@ -3912,7 +3917,14 @@ impl App {
                 self.pressed = None;
                 self.swipe_from = None;
                 let lv = self.bar_level(x);
-                self.set_light_with(lv, Wave::Quality);
+                // As atualizações rápidas (DU, só preto e branco) do arrasto deixam rastros do
+                // botão da barra no painel; a memória da tela fica certa, o painel não. Ao soltar:
+                // espera as rápidas terminarem e limpa a faixa com uma atualização completa.
+                // Vale também no modo escuro (lá a troca de tela só pisca 1 vez em 6).
+                self.fb.wait();
+                self.apply_light(lv);
+                ui::draw_light_level(&mut self.fb, &self.fonts, &self.light);
+                self.fb.refresh_full(LIGHT_BAND);
             }
             Touch::Move(x, y) if self.gesture.is_some() => self.gesture_move(x, y),
             Touch::Move(x, y) => {
@@ -3974,6 +3986,16 @@ impl App {
                     }
                     self.light_return = Some(self.screen);
                     return self.go(Screen::Light);
+                }
+                // Na lista de livros, arrastar para o lado passa a página, como num livro:
+                // para a esquerda vê os seguintes, para a direita volta (além do botão Próxima).
+                if self.screen == Screen::Library {
+                    if let Some(t) = from.and_then(|(fx, fy)| lib_swipe(x - fx, y - fy, self.lib.page, self.lib.pages())) {
+                        if let Some(h) = self.pressed.take() {
+                            self.flip(h, false);
+                        }
+                        return self.activate(t, x);
+                    }
                 }
                 if self.screen == Screen::Home && swipe_down {
                     if let Some(h) = self.pressed.take() {
@@ -4214,6 +4236,60 @@ impl App {
 
 fn chess_promo(uci: &str) -> Option<crate::chess::Kind> {
     crate::chess::parse_uci(uci).and_then(|(_, p)| p)
+}
+
+/// Faixa da tela Luz e tela com o nível e a barra.
+const LIGHT_BAND: Rect = Rect { x: 0, y: 440, w: 1072, h: 380 };
+
+/// Muda a luz sem travar a tela. Cada `lipc-set-prop` abre um processo e leva dezenas de ms no
+/// único núcleo do Kindle; chamado direto, a barra só andava depois de cada chamada terminar.
+/// Agora um ajudante em segundo plano faz a chamada e, se o dedo andou enquanto isso, pula
+/// direto para o último nível pedido.
+fn set_light_async(level: i32) {
+    use std::sync::{mpsc, OnceLock};
+    static TX: OnceLock<mpsc::Sender<i32>> = OnceLock::new();
+    let tx = TX.get_or_init(|| {
+        let (tx, rx) = mpsc::channel::<i32>();
+        std::thread::spawn(move || {
+            while let Ok(mut lv) = rx.recv() {
+                while let Ok(n) = rx.try_recv() {
+                    lv = n;
+                }
+                let _ = sh("lipc-set-prop", &["com.lab126.powerd", "flIntensity", &lv.to_string()]);
+            }
+        });
+        tx
+    });
+    let _ = tx.send(level);
+}
+
+/// Arrasto lateral na lista de livros: claramente horizontal (mais de 150 px e o dobro do
+/// vertical, para não confundir com rolar ou com os gestos de cima e de baixo) e com página
+/// para onde ir.
+fn lib_swipe(dx: i32, dy: i32, page: usize, pages: usize) -> Option<Target> {
+    if dx.abs() < 150 || dx.abs() < 2 * dy.abs() {
+        return None;
+    }
+    if dx < 0 {
+        (page + 1 < pages).then_some(Target::Next)
+    } else {
+        (page > 0).then_some(Target::Prev)
+    }
+}
+
+#[cfg(test)]
+mod lib_swipe_tests {
+    use super::*;
+
+    #[test]
+    fn arrasto_lateral_passa_a_pagina_so_quando_ha_para_onde_ir() {
+        assert_eq!(lib_swipe(-400, 30, 0, 18), Some(Target::Next));
+        assert_eq!(lib_swipe(400, -30, 3, 18), Some(Target::Prev));
+        assert_eq!(lib_swipe(400, 0, 0, 18), None); // primeira página
+        assert_eq!(lib_swipe(-400, 0, 17, 18), None); // última página
+        assert_eq!(lib_swipe(-100, 0, 0, 18), None); // curto: é toque
+        assert_eq!(lib_swipe(-300, 200, 0, 18), None); // diagonal demais
+    }
 }
 
 #[cfg(test)]

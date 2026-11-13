@@ -436,6 +436,28 @@ fn main() {
             }
             Err(_) => 1,
         },
+        // Troca rápida com a Amazon: guarda a tela dela ao congelar e devolve ao descongelar.
+        // O X lê a própria memória da tela; se ela ficar com o desenho do Verso Ink, a Amazon
+        // só repinta o que muda (relógio, bateria) e o resto do Verso fica por cima.
+        Some("tela-guardar") => match (Framebuffer::open(), args.get(2)) {
+            (Ok(mut fb), Some(p)) => match fb.load_screen().and_then(|_| std::fs::write(p, &fb.buf)) {
+                Ok(()) => 0,
+                Err(e) => {
+                    eprintln!("tela-guardar: {e}");
+                    1
+                }
+            },
+            _ => 2,
+        },
+        Some("tela-restaurar") => match (Framebuffer::open(), args.get(2).map(std::fs::read)) {
+            (Ok(mut fb), Some(Ok(b))) if b.len() == fb.buf.len() => {
+                fb.buf = b;
+                fb.present(Wave::Quality, true);
+                fb.wait();
+                0
+            }
+            _ => 1,
+        },
         // drag X0 Y0 X1 Y1 [ms]: arraste em linha reta (testes)
         Some("drag") => {
             let n = |i: usize| args.get(i).and_then(|s| s.parse::<i32>().ok());

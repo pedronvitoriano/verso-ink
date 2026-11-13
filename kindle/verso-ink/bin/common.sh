@@ -44,6 +44,8 @@ tunel_up() {
 }
 
 amazon_stop() {
+    # Processo parado não morre com TERM: solta antes, ou o `stop` fica esperando.
+    amazon_unstick
     # O job do framework manda TERM ao parar; ignoramos para não cair junto (como o KOReader).
     trap "" TERM
     stop lab126_gui >/dev/null 2>&1
@@ -59,21 +61,39 @@ amazon_stop() {
 # voltar), ela fica congelada (SIGSTOP no Java do framework, o cvm) enquanto o Verso Ink está na
 # tela. Xorg e awesome continuam vivos (como quando a interface está parada) e não atrapalham.
 amazon_pids() {
-    pgrep -f "/usr/java/bin/cvm" 2>/dev/null || pgrep cvm 2>/dev/null
+    { pgrep -f "/usr/java/bin/cvm" || pgrep cvm; } 2>/dev/null
+    # A barra de status da Amazon (relógio, bateria) é de outro processo, o pillowd: congela
+    # junto, senão o relógio dela aparece por cima do Verso Ink a cada minuto.
+    pgrep pillowd 2>/dev/null
 }
 
+# Congelada de verdade só se o Java ainda existe: com ele morto, sobrar o pillowd não basta
+# (a Amazon precisa ser religada, não descongelada).
 amazon_frozen() {
-    [ -f /tmp/verso-ink.amazon-frozen ] && [ -n "$(amazon_pids)" ]
+    [ -f /tmp/verso-ink.amazon-frozen ] && pgrep -f "/usr/java/bin/cvm" >/dev/null 2>&1
 }
+
+# Antes de religar a interface: solta o que tenha ficado parado e esquece a tela guardada.
+amazon_unstick() {
+    for p in $(amazon_pids); do kill -CONT "$p" 2>/dev/null; done
+    rm -f /tmp/verso-ink.amazon-frozen "$AMAZON_TELA"
+}
+
+# A tela da Amazon é guardada ao congelar e devolvida ao descongelar: o X lê a própria memória
+# da tela, e sem isso a Amazon só repinta o que muda (relógio, bateria), com o Verso por baixo.
+AMAZON_TELA=/tmp/verso-ink.amazon-tela
 
 amazon_freeze() {
     for p in $(amazon_pids); do kill -STOP "$p" 2>/dev/null; done
+    "$RUN/verso-ink" tela-guardar "$AMAZON_TELA" 2>>"$LOG" || rm -f "$AMAZON_TELA"
     touch /tmp/verso-ink.amazon-frozen
     lipc-set-prop com.lab126.blanket unload splash 2>/dev/null
     log "interface da Amazon congelada"
 }
 
 amazon_thaw() {
+    [ -f "$AMAZON_TELA" ] && "$RUN/verso-ink" tela-restaurar "$AMAZON_TELA" 2>>"$LOG" && log "tela da Amazon devolvida"
+    rm -f "$AMAZON_TELA"
     for p in $(amazon_pids); do kill -CONT "$p" 2>/dev/null; done
     rm -f /tmp/verso-ink.amazon-frozen
     # A interface não sabe que a tela foi redesenhada por nós: pede a tela inicial da Amazon,
@@ -90,7 +110,16 @@ amazon_wait_home() {
         sleep 2; t=$((t + 2))
         ctx="$(lipc-get-prop com.lab126.appmgrd activeContext 2>/dev/null)"
         case "$ctx" in
-            *KPPMainApp*) [ "$left" = 1 ] && return 0; [ "$t" -ge "${AMAZON_HOME_TIMEOUT:-300}" ] && return 0 ;;
+            *KPPMainApp*)
+                if [ "$left" = 1 ] || [ "$t" -ge "${AMAZON_HOME_TIMEOUT:-300}" ]; then
+                    # Um segundo para a tela inicial terminar de desenhar (ela é guardada ao
+                    # congelar) e a confirmação de que a pessoa não saiu de novo nesse meio-tempo.
+                    sleep 1
+                    case "$(lipc-get-prop com.lab126.appmgrd activeContext 2>/dev/null)" in
+                        *KPPMainApp*) return 0 ;;
+                        *) left=1; continue ;;
+                    esac
+                fi ;;
             "") ;;
             *) left=1 ;;
         esac
@@ -98,6 +127,7 @@ amazon_wait_home() {
 }
 
 amazon_start() {
+    amazon_unstick
     # Marca para o job de boot não reabrir o Verso Ink quando a interface subir.
     touch /tmp/verso-ink.no-autostart
     # A interface da Amazon leva cerca de um minuto para desenhar: avisamos na tela.

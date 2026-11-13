@@ -183,7 +183,9 @@ impl Framebuffer {
             stride,
             yoffset: u32_at(&var, 20),
             buf: vec![0xFF; width as usize * height as usize],
-            marker: 1,
+            // Marcador das atualizações a partir do PID: dois processos (o app e o
+            // `tela-restaurar`) não esperam pelo número um do outro.
+            marker: (std::process::id() << 12).max(1),
             invert: false,
             rot180: false,
             night_full: 0,
@@ -340,10 +342,21 @@ impl Framebuffer {
     }
 
     /// Copia a região do buffer para a memória da tela e pede a atualização.
+    /// Atualização completa (pisca) que vale também no modo escuro: para limpar rastros que
+    /// as atualizações rápidas deixaram numa faixa onde a memória já tem o desenho final
+    /// (uma parcial não mexe nesses pixels).
+    pub fn refresh_full(&mut self, r: Rect) {
+        self.refresh_with(r, Wave::Quality, true, true);
+    }
+
     pub fn refresh(&mut self, r: Rect, wave: Wave, flash: bool) {
+        self.refresh_with(r, wave, flash, false);
+    }
+
+    fn refresh_with(&mut self, r: Rect, wave: Wave, flash: bool, force: bool) {
         // No modo escuro o "flash" do e-ink vira um clarão: troca de tela sem piscar e
         // só uma atualização completa a cada 6, para limpar os rastros.
-        let flash = flash && (!self.invert || {
+        let flash = force || flash && (!self.invert || {
             self.night_full = self.night_full.wrapping_add(1);
             self.night_full % 6 == 0
         });
@@ -411,6 +424,17 @@ impl Framebuffer {
         let r = self.screen();
         self.refresh(r, wave, flash);
     }
+
+    /// Copia para o buffer o que está na memória da tela agora (desenhado por outro programa,
+    /// como a interface da Amazon), sem inverter nem girar: é para devolver igual depois.
+    pub fn load_screen(&mut self) -> std::io::Result<()> {
+        let w = self.width as usize;
+        for y in 0..self.height as usize {
+            let off = (y as u64 + self.yoffset as u64) * self.stride as u64;
+            self.file.read_exact_at(&mut self.buf[y * w..(y + 1) * w], off)?;
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -430,6 +454,22 @@ mod tests {
             rot180: false,
             night_full: 0,
         }
+    }
+
+    #[test]
+    fn ler_a_tela_respeita_stride_e_deslocamento() {
+        // Memória de tela 4×2 com stride 6 (2 bytes de sobra por linha) e yoffset 1.
+        let path = std::env::temp_dir().join(format!("verso-ink-fb-{}", std::process::id()));
+        let mut mem = vec![0xEEu8; 6];
+        mem.extend_from_slice(&[1, 2, 3, 4, 0xEE, 0xEE, 5, 6, 7, 8, 0xEE, 0xEE]);
+        std::fs::write(&path, &mem).unwrap();
+        let mut fb = fake(4, 2);
+        fb.file = File::open(&path).unwrap();
+        fb.stride = 6;
+        fb.yoffset = 1;
+        fb.load_screen().unwrap();
+        std::fs::remove_file(&path).unwrap();
+        assert_eq!(fb.buf, vec![1, 2, 3, 4, 5, 6, 7, 8]);
     }
 
     #[test]
