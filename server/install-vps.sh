@@ -13,7 +13,9 @@ id versoink >/dev/null 2>&1 || useradd -m -s /bin/bash versoink
 install -d -m 755 /opt/verso-ink
 install -m 755 "$SRC/claude-bridge.py" /opt/verso-ink/claude-bridge.py
 install -m 644 "$SRC/verso_extras.py" /opt/verso-ink/verso_extras.py
+install -m 644 "$SRC/verso_cotacoes.py" /opt/verso-ink/verso_cotacoes.py
 install -d -m 750 -o root -g versoink /etc/verso-ink
+install -d -m 700 -o versoink -g versoink /home/versoink/verso-ink-backup
 if [ ! -s /etc/verso-ink/token ]; then
     head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' >/etc/verso-ink/token
 fi
@@ -72,8 +74,8 @@ cat >/etc/nginx/snippets/verso-ink.conf <<'EOF'
 location /verso-ink/ {
     proxy_pass http://127.0.0.1:8790/;
     proxy_read_timeout 600s;
-    # Fotos mandadas do celular (o navegador reduz antes; 15 MB é folga).
-    client_max_body_size 15m;
+    # A ponte valida limites por rota; o backup aceita até 50 MB.
+    client_max_body_size 50m;
 }
 EOF
 BACKUP=""
@@ -98,4 +100,5 @@ if [ -x /home/versoink/.local/bin/codex ]; then
     echo "Login do Codex:  su - versoink -c '/home/versoink/.local/bin/codex login --device-auth'"
 fi
 echo "Imagens: copie uma chave da OpenAI para /etc/verso-ink/openai-image-api-key (root:versoink, modo 640)."
+echo "Agenda: cole a URL iCal secreta em /etc/verso-ink/agenda-ical-url (root:versoink, modo 640)."
 echo "ok"

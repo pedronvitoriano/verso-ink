@@ -26,24 +26,32 @@ Configuração: token em /etc/verso-ink/token; porta em VERSO_INK_PORT (padrão 
 entra na conversa, nos arquivos do chat ou nos logs.
 """
 import base64
+import datetime
+import gzip
 import hashlib
+import io
 import json
 import mimetypes
 import os
 import re
 import secrets
 import shutil
+import stat
 import struct
 import subprocess
+import tarfile
+import tempfile
 import threading
 import time
 import urllib.parse
 import urllib.error
 import urllib.request
+import zlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from verso_extras import ID_RE as XID_RE, SEND_PAGE, Extras
+from verso_cotacoes import Cotacoes
 
 TOKEN = Path(os.environ.get("VERSO_INK_TOKEN_FILE", "/etc/verso-ink/token")).read_text().strip()
 DATA = Path(os.environ.get("VERSO_INK_DATA", str(Path.home() / "chats")))
@@ -80,6 +88,83 @@ FILE_RE = re.compile(r"^[^/\\\x00]{1,120}$")
 PROVIDERS = ("claude", "codex")
 CHAT_LOCKS = {}
 CHAT_LOCKS_LOCK = threading.Lock()
+BACKUP_RE = re.compile(r"^[0-9]{8}-[0-9]{6}\.tar\.gz$")
+BACKUP_LIMIT = 50_000_000
+BACKUP_EXPANDED_LIMIT = 1_000_000_000
+BACKUP_LOCK = threading.Lock()
+
+
+def valid_backup(data):
+    """Verifica gzip, tar e nomes antes de guardar; nunca extrai o arquivo."""
+    try:
+        with gzip.GzipFile(fileobj=io.BytesIO(data), mode="rb") as stream:
+            expanded = 0
+            while chunk := stream.read(1024 * 1024):
+                expanded += len(chunk)
+                if expanded > BACKUP_EXPANDED_LIMIT:
+                    return False
+        with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
+            for member in archive:
+                name = member.name
+                if (not name or name.startswith("/") or "\\" in name
+                        or re.match(r"^[A-Za-z]:", name)
+                        or ".." in name.split("/")
+                        or not (member.isfile() or member.isdir())):
+                    return False
+                if member.isfile():
+                    with archive.extractfile(member) as contents:
+                        while contents.read(1024 * 1024):
+                            pass
+        return True
+    except (OSError, EOFError, ValueError, tarfile.TarError, zlib.error):
+        return False
+
+
+def backup_dir():
+    return DATA.parent / "verso-ink-backup"
+
+
+def backup_list():
+    directory = backup_dir()
+    if not directory.is_dir():
+        return []
+    result = []
+    for path in sorted(directory.iterdir(), key=lambda p: p.name, reverse=True):
+        if not BACKUP_RE.fullmatch(path.name) or path.is_symlink() or not path.is_file():
+            continue
+        try:
+            date = datetime.datetime.strptime(path.name, "%Y%m%d-%H%M%S.tar.gz")
+            result.append({"nome": path.name, "tamanho": path.stat().st_size, "data": date.isoformat()})
+        except (ValueError, OSError):
+            continue
+    return result
+
+
+def save_backup(data):
+    if not valid_backup(data):
+        return 400, {"error": "backup tar.gz inválido ou inseguro"}
+    with BACKUP_LOCK:
+        directory = backup_dir()
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+            name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S.tar.gz")
+            target = directory / name
+            if target.exists() or target.is_symlink():
+                return 409, {"error": "já existe um backup neste segundo; tente novamente"}
+            tmp_name = None
+            try:
+                with tempfile.NamedTemporaryFile(dir=directory, prefix=".backup-", delete=False) as tmp:
+                    tmp_name = tmp.name
+                    tmp.write(data)
+                os.replace(tmp_name, target)
+            finally:
+                if tmp_name:
+                    Path(tmp_name).unlink(missing_ok=True)
+            for old in backup_list()[14:]:
+                (directory / old["nome"]).unlink(missing_ok=True)
+            return 200, {"nome": name, "tamanho": len(data)}
+        except OSError:
+            return 500, {"error": "não foi possível salvar o backup"}
 
 
 def load(cid):
@@ -677,6 +762,26 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_bytes(SEND_PAGE.encode(), "text/html; charset=utf-8")
         if not self.authorized():
             return
+        if parts == ["backup"]:
+            return self.reply(200, backup_list())
+        if len(parts) == 2 and parts[0] == "backup" and BACKUP_RE.fullmatch(parts[1]):
+            try:
+                fd = os.open(backup_dir() / parts[1], os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0))
+                with os.fdopen(fd, "rb") as source:
+                    if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+                        raise OSError("backup não é arquivo regular")
+                    data = source.read(BACKUP_LIMIT + 1)
+                if len(data) > BACKUP_LIMIT:
+                    raise OSError("backup grande demais")
+                return self.send_bytes(data, "application/gzip")
+            except OSError:
+                return self.reply(404, {"error": "backup não encontrado"})
+        if parts == ["agenda"]:
+            out, err = EXTRAS.agenda()
+            return self.reply(502, {"error": "não foi possível carregar a agenda"}) if err else self.reply(200, out)
+        if parts == ["cotacoes"]:
+            status, dados = COTACOES.obter()
+            return self.reply(status, dados)
         if parts == ["inbox"]:
             return self.reply(200, EXTRAS.inbox())
         if len(parts) == 3 and parts[0] == "inbox" and XID_RE.match(parts[2]):
@@ -751,6 +856,21 @@ class Handler(BaseHTTPRequestHandler):
         if not self.authorized():
             return
         parts = self.path_parts()
+        if parts == ["backup"]:
+            length = self.headers.get("Content-Length", "")
+            if not re.fullmatch(r"[0-9]{1,10}", length):
+                self.close_connection = True
+                return self.reply(400, {"error": "tamanho do backup inválido"})
+            size = int(length)
+            if size > BACKUP_LIMIT:
+                self.close_connection = True
+                return self.reply(413, {"error": "backup grande demais (máx. 50 MB)"})
+            data = self.rfile.read(size)
+            if len(data) != size:
+                self.close_connection = True
+                return self.reply(400, {"error": "backup incompleto"})
+            code, out = save_backup(data)
+            return self.reply(code, out)
         if parts == ["anexos"]:
             # Arquivo mandado do Kindle para uma pergunta ao Claude (livro, artigo, foto, destaques).
             data = self.raw(16_000_000)
@@ -864,6 +984,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 EXTRAS = Extras(DATA.parent / "verso-ink-estado", run_claude)
+COTACOES = Cotacoes()
 
 
 if __name__ == "__main__":

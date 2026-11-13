@@ -29,17 +29,145 @@ menos a página /enviar, que só pede o token no próprio navegador):
 """
 import html
 import json
+import os
 import re
 import secrets
 import threading
 import time
 import urllib.parse
 import urllib.request
+from datetime import date, datetime, time as daytime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ID_RE = re.compile(r"^[a-f0-9]{12}$")
 APPROVAL_TTL = 600  # 10 minutos sem resposta = negado
 MANAUS = -4 * 3600
+SAO_PAULO = ZoneInfo("America/Sao_Paulo")
+ICAL_MAX = 2_000_000
+
+
+def _ical_datetime(value, params):
+    """Converte DATE, horário local de São Paulo ou UTC; rejeita outros fusos."""
+    if re.fullmatch(r"\d{8}", value):
+        return datetime.strptime(value, "%Y%m%d").date(), True
+    tzid = params.get("TZID", "").strip('"')
+    if tzid and tzid != "America/Sao_Paulo":
+        raise ValueError("fuso não suportado")
+    match = re.fullmatch(r"(\d{8}T\d{6})(Z?)", value)
+    if not match:
+        raise ValueError("data inválida")
+    dt = datetime.strptime(match.group(1), "%Y%m%dT%H%M%S")
+    return dt.replace(tzinfo=timezone.utc if match.group(2) else SAO_PAULO).astimezone(SAO_PAULO), False
+
+
+def _ical_text(value):
+    # RFC 5545: vírgula, ponto e vírgula, barra e quebras de linha escapados.
+    return re.sub(r"\\([nN,;\\])", lambda m: "\n" if m[1] in "nN" else m[1], value)[:500]
+
+
+def _ical_events(content, today):
+    """Interpreta o subconjunto de iCalendar usado pela agenda, sem expandir séries antigas."""
+    if "BEGIN:VCALENDAR" not in content.upper() or "END:VCALENDAR" not in content.upper():
+        raise ValueError("calendário inválido")
+    lines = re.sub(r"\r?\n[ \t]", "", content).splitlines()
+    events, current, depth = [], None, 0
+    for line in lines:
+        if line.upper() == "BEGIN:VEVENT":
+            current, depth = {}, 0
+            continue
+        if current is None:
+            continue
+        if line.upper() == "END:VEVENT":
+            events.append(current)
+            if len(events) > 1000:
+                raise ValueError("eventos demais")
+            current = None
+            continue
+        if line.upper().startswith("BEGIN:"):
+            depth += 1
+            continue
+        if line.upper().startswith("END:"):
+            depth = max(0, depth - 1)
+            continue
+        if depth or ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        pieces = key.split(";")
+        name = pieces[0].upper()
+        if name in ("DTSTART", "DTEND", "SUMMARY", "LOCATION", "RRULE"):
+            params = dict(p.split("=", 1) for p in pieces[1:] if "=" in p)
+            current[name] = (value, {k.upper(): v for k, v in params.items()})
+
+    results = []
+    for event in events:
+        try:
+            start, all_day = _ical_datetime(*event["DTSTART"])
+            end, end_all_day = _ical_datetime(*event["DTEND"]) if "DTEND" in event else (start + (timedelta(days=1) if all_day else timedelta()), all_day)
+            if all_day != end_all_day or end < start:
+                continue
+            duration = end - start
+            rule = dict(x.split("=", 1) for x in event.get("RRULE", ("", {}))[0].upper().split(";") if "=" in x)
+            if rule and (rule.get("FREQ") not in ("DAILY", "WEEKLY") or set(rule) - {"FREQ", "INTERVAL", "COUNT", "UNTIL", "BYDAY", "WKST"} or rule.get("WKST", "MO") != "MO"):
+                continue
+            if rule and duration > timedelta(days=366):
+                raise RuntimeError("recorrência longa demais")
+            interval = int(rule.get("INTERVAL", "1"))
+            count = int(rule["COUNT"]) if "COUNT" in rule else None
+            if interval < 1 or interval > 10000 or (count is not None and count < 1):
+                continue
+            weekdays = {"MO": 0, "TU": 1, "WE": 2, "TH": 3, "FR": 4, "SA": 5, "SU": 6}
+            start_day = start if all_day else start.date()
+            byday = rule.get("BYDAY", "").split(",") if rule.get("BYDAY") else []
+            if any(d not in weekdays for d in byday) or (byday and rule.get("FREQ") != "WEEKLY"):
+                continue
+            days = sorted({weekdays[d] for d in byday}) if byday else [start_day.weekday()]
+            start_week = start_day - timedelta(days=start_day.weekday())
+            until = _ical_datetime(rule["UNTIL"], {})[0] if "UNTIL" in rule else None
+            title = _ical_text(event.get("SUMMARY", ("", {}))[0])
+            location = _ical_text(event.get("LOCATION", ("", {}))[0])
+            for offset in (0, 1):
+                day = today + timedelta(days=offset)
+                # Eventos únicos podem durar mais de um ano sem expandir séries.
+                first = max(start_day, day - timedelta(days=duration.days + 1)) if rule else start_day
+                cursor = first
+                while cursor <= day:
+                    delta = (cursor - start_day).days
+                    index = 0
+                    if not rule:
+                        valid = delta == 0
+                    elif rule["FREQ"] == "DAILY":
+                        valid = delta % interval == 0
+                        index = delta // interval + 1
+                    else:
+                        week = (cursor - start_week).days // 7
+                        valid = week % interval == 0 and cursor.weekday() in days
+                        index = (week // interval) * len(days) + sum(d <= cursor.weekday() for d in days) - sum(d < start_day.weekday() for d in days)
+                    occurrence = start + timedelta(days=delta)
+                    if count is not None and index > count:
+                        valid = False
+                    if until is not None:
+                        # DATE e DATE-TIME são comparados em suas próprias representações.
+                        until_date = until.date() if isinstance(until, datetime) else until
+                        if cursor > until_date or (isinstance(until, datetime) and isinstance(occurrence, datetime) and occurrence > until):
+                            valid = False
+                    if valid:
+                        occurrence_end = occurrence + duration
+                        if all_day:
+                            overlaps = occurrence <= day < occurrence_end
+                        else:
+                            day_start = datetime.combine(day, daytime.min, SAO_PAULO)
+                            overlaps = occurrence < day_start + timedelta(days=1) and (occurrence_end > day_start or (duration == timedelta() and occurrence >= day_start))
+                        if overlaps:
+                            results.append({"inicio": "dia todo" if all_day else occurrence.strftime("%H:%M"), "fim": "dia todo" if all_day else occurrence_end.strftime("%H:%M"), "titulo": title, "local": location, "dia": "hoje" if offset == 0 else "amanha"})
+                            if len(results) > 2000:
+                                raise RuntimeError("ocorrências demais")
+                    if not rule:
+                        break
+                    cursor += timedelta(days=1)
+        except (KeyError, TypeError, ValueError, OverflowError):
+            continue
+    return sorted(results, key=lambda e: (e["dia"] != "hoje", e["inicio"] != "dia todo", e["inicio"], e["titulo"]))
 
 
 def md_paras(text):
@@ -80,9 +208,44 @@ class Extras:
         for d in ("artigos", "fotos", "cifras", "sessoes", "avisos", "aprovacoes", "edicoes", "missoes", "semanas"):
             (base / d).mkdir(parents=True, exist_ok=True)
         self.lock = threading.Lock()
+        self.agenda_lock = threading.Lock()
+        self.agenda_cache = None
         threading.Thread(target=self.morning_loop, daemon=True).start()
 
     # ---------- utilidades ----------
+
+    def agenda(self):
+        """Consulta calendário privado; a URL e erros da rede nunca saem na resposta."""
+        agenda_file = Path(os.environ.get("VERSO_INK_AGENDA_FILE", "/etc/verso-ink/agenda-ical-url"))
+        try:
+            with agenda_file.open("rb") as f:
+                raw_url = f.read(8193)
+        except FileNotFoundError:
+            return {"configured": False}, None
+        except OSError:
+            return None, "não foi possível ler a configuração da agenda"
+        try:
+            url = raw_url.decode("utf-8").strip()
+            parsed = urllib.parse.urlsplit(url)
+            if len(raw_url) > 8192 or not url or re.search(r"[\x00-\x20\x7f]", url) or parsed.scheme not in ("https", "http") or not parsed.hostname:
+                raise ValueError("URL inválida")
+            with self.agenda_lock:
+                now = time.monotonic()
+                if self.agenda_cache and self.agenda_cache[0] == url and now - self.agenda_cache[1] < 900:
+                    content = self.agenda_cache[2]
+                else:
+                    req = urllib.request.Request(url, headers={"User-Agent": "Verso-Ink/1.0"})
+                    with urllib.request.urlopen(req, timeout=15) as response:
+                        data = response.read(ICAL_MAX + 1)
+                    if len(data) > ICAL_MAX:
+                        raise ValueError("calendário grande demais")
+                    content = data.decode("utf-8-sig")
+                    # Valide antes de pôr no cache, para não prolongar erros.
+                    _ical_events(content, datetime.now(SAO_PAULO).date())
+                    self.agenda_cache = (url, time.monotonic(), content)
+            return _ical_events(content, datetime.now(SAO_PAULO).date()), None
+        except Exception:
+            return None, "não foi possível consultar a agenda"
 
     def read(self, p: Path, default=None):
         try:
