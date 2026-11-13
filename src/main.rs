@@ -130,7 +130,7 @@ fn injected_command() -> Option<String> {
 }
 
 fn run() -> i32 {
-    log(&format!("início, pid {}", std::process::id()));
+    log(&format!("início, pid {}, versão {}", std::process::id(), env!("VERSO_GIT")));
     // Teste das saídas de emergência: simula um Verso Ink que cai logo ao abrir.
     if home_dir().join("settings/dev_crash").exists() {
         log("dev_crash: saindo com falha de propósito");

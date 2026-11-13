@@ -4000,6 +4000,9 @@ mod raio_x {
         app.on_touch(Touch::Down(x, y));
         app.on_touch(Touch::Up(x, y));
         assert_eq!(app.chess_peek, Some(2), "o toque em Lances anteriores não entrou na revisão");
+        if let Ok(d) = std::env::var("VERSO_INK_SHOTS") {
+            app.fb.save_pgm(&std::path::Path::new(&d).join("toque-lances.pgm"));
+        }
         let p = crate::chess::undo_rect();
         app.on_touch(Touch::Down(p.x + 20, p.y + 20));
         app.on_touch(Touch::Up(p.x + 20, p.y + 20));

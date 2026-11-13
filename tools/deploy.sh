@@ -9,7 +9,9 @@ IP="${1:-${KINDLE_IP:-192.168.0.21}}"
 KEY="${KINDLE_KEY:-$HOME/.ssh/kindle_ed25519}"
 TARGET=armv7-unknown-linux-musleabi
 
+export VERSO_GIT="$(git describe --always --dirty=+)"
 cargo build --release --target "$TARGET"
+echo "versão $VERSO_GIT"
 
 # Porta 2223 = SSH do Verso Ink; 2222 = SSH do KOReader (reserva).
 PORT=""
