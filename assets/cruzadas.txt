@@ -1,0 +1,691 @@
+ABELHA;Inseto que produz mel
+ABERTO;Contrário de fechado
+ABISMO;Grande precipício
+ABOBORA;Legume usado em doces e sopas
+ABRACO;Gesto de envolver alguém com os braços
+ABRIL;Mês que vem depois de março
+ACAFRAO;Tempero amarelo extraído de flores ou raízes
+ACASO;O que acontece sem planejamento
+ACENTO;Sinal gráfico sobre algumas letras
+ACEROLA;Fruta pequena e vermelha rica em vitamina C
+ACIDO;Sabor típico do limão
+ACORDE;Conjunto de notas tocadas juntas
+ACUDE;Reservatório artificial de água
+ADEGA;Lugar onde se guardam vinhos
+ADUBO;Material usado para enriquecer a terra
+AGASALHO;Roupa para proteger do frio
+AGENCIA;Unidade de atendimento de banco ou correio
+AGOSTO;Mês que vem depois de julho
+AGULHA;Peça fina usada para costurar
+AJUDA;Auxílio dado a alguém
+ALADO;Que possui asas
+ALFACE;Folha muito usada em saladas
+ALFINETE;Pequeno objeto pontudo que prende tecido
+ALGODAO;Fibra branca usada para fazer tecido
+ALIADO;Pessoa que apoia outra
+ALICATE;Ferramenta usada para segurar ou cortar
+ALIMENTO;Aquilo que serve para nutrir
+ALMOCO;Refeição feita no meio do dia
+ALMOFADA;Peça macia usada no sofá
+ALTURA;Medida de baixo para cima
+ALUNO;Pessoa que estuda
+AMARELO;Cor do ouro e do girassol
+AMAVEL;Que trata os outros com gentileza
+AMENDOIM;Semente usada para fazer paçoca
+AMIGO;Pessoa por quem se tem amizade
+AMORA;Fruta pequena que pode ser preta ou vermelha
+AMPOLA;Pequeno recipiente de vidro para líquido
+ANCORA;Peça que mantém o barco parado
+ANEL;Joia usada no dedo
+ANGULO;Abertura formada por duas linhas
+ANIMAL;Ser vivo como o cachorro ou o gato
+ANO;Período de doze meses
+ANTENA;Peça que recebe sinais de rádio
+APAGADOR;Objeto que apaga escrita do quadro
+APITO;Objeto que produz som agudo ao soprar
+APLAUSO;Palmas para demonstrar aprovação
+APOIO;Aquilo que sustenta ou ajuda
+APOSTA;Palpite em que se arrisca algo
+APRENDIZ;Pessoa que está aprendendo um ofício
+ARANHA;Animal de oito patas que pode tecer teias
+ARARA;Ave brasileira de plumagem colorida
+ARCO;Forma curva também usada para lançar flechas
+AREIA;Grãos que cobrem grande parte da praia
+ARGILA;Terra usada para fazer vasos de cerâmica
+ARMARIO;Móvel com portas para guardar objetos
+AROMA;Cheiro agradável ou característico
+ARROZ;Grão que costuma acompanhar o feijão
+ARTE;Expressão criativa como pintura ou música
+ARTISTA;Pessoa que cria ou interpreta obras de arte
+ASA;Parte do corpo que ajuda uma ave a voar
+ASFALTO;Material escuro usado para pavimentar ruas
+ASSADO;Preparado no forno ou na brasa
+ASSENTO;Lugar destinado a sentar
+ASTRO;Corpo celeste como o Sol
+ATLETA;Pessoa que pratica esporte
+ATOR;Artista que interpreta personagens
+ATRASO;Chegada depois do horário combinado
+ATRIZ;Mulher que interpreta personagens
+AUDACIA;Coragem para enfrentar riscos
+AULA;Encontro dedicado ao ensino
+AURORA;Claridade que surge antes do nascer do Sol
+AUTOR;Pessoa que escreveu uma obra
+AVENIDA;Via larga de uma cidade
+AVIAO;Veículo que voa com asas e motores
+AVISO;Comunicado que chama atenção para algo
+AZEITE;Óleo extraído da azeitona
+AZEDO;Sabor de fruta ainda verde
+AZUL;Cor de um céu sem nuvens
+BACIA;Recipiente largo usado para lavar
+BAIRRO;Divisão de uma cidade
+BALEIA;Grande mamífero marinho
+BALAO;Objeto inflável comum em festas
+BALDE;Recipiente com alça para carregar água
+BALSA;Embarcação usada para atravessar pessoas ou veículos
+BAMBU;Planta de caule oco usado em artesanato
+BANANA;Fruta comprida de casca amarela
+BANCO;Móvel para sentar ou instituição financeira
+BANDEIRA;Pano com cores que representa um país
+BANHO;Lavagem do corpo com água
+BARALHO;Conjunto de cartas para jogos
+BARATA;Inseto que costuma aparecer em cozinhas
+BARBA;Pelos que crescem no rosto
+BARCO;Veículo que navega na água
+BARRO;Terra misturada com água
+BARRACA;Abrigo de lona usado em acampamentos
+BARRIGA;Parte do corpo onde fica o umbigo
+BARULHO;Som alto ou incômodo
+BATATA;Tubérculo usado para fazer purê
+BATERIA;Conjunto de instrumentos de percussão
+BATOM;Cosmético aplicado nos lábios
+BAU;Caixa grande usada para guardar objetos
+BEBE;Criança com poucos meses de vida
+BEIJO;Gesto de carinho feito com os lábios
+BEIRA;Margem ou extremidade
+BELEZA;Qualidade do que é belo
+BENGALA;Bastão usado como apoio ao caminhar
+BIBLIA;Livro sagrado dos cristãos
+BICO;Parte dura da boca das aves
+BICHO;Outra palavra para animal
+BIFE;Fatia de carne preparada para comer
+BILHETE;Mensagem curta escrita em papel
+BISCOITO;Alimento assado que pode ser doce ou salgado
+BLOCO;Conjunto ou pedaço compacto de material
+BOCA;Parte do rosto usada para falar e comer
+BOLA;Objeto redondo usado no futebol
+BOLO;Doce assado comum em aniversários
+BOLSA;Acessório usado para carregar objetos
+BOMBA;Aparelho que impulsiona água
+BONECA;Brinquedo que representa uma pessoa
+BONITO;Agradável de se ver
+BORBOLETA;Inseto de asas coloridas que nasce lagarta
+BORRACHA;Objeto escolar que apaga lápis
+BOTA;Calçado que cobre o tornozelo
+BOTAO;Peça que fecha uma camisa
+BRACO;Membro entre o ombro e a mão
+BRANCO;Cor da neve e do leite
+BRASA;Pedaço de carvão ou madeira em combustão
+BRINCO;Joia usada na orelha
+BRISA;Vento leve e agradável
+BROA;Pão rústico feito com fubá
+BROTO;Primeiro crescimento de uma planta
+BRUXA;Personagem de histórias que faz feitiços
+BUCHA;Esponja usada para lavar louça
+BULE;Recipiente com bico para servir chá
+BUNDA;Parte do corpo usada para sentar
+BURACO;Abertura ou cavidade em uma superfície
+BURRO;Animal de carga parecido com o cavalo
+BUSCA;Ato de procurar algo
+CABECA;Parte do corpo onde fica o rosto
+CABELO;Fios que crescem na cabeça
+CABIDE;Objeto usado para pendurar roupas
+CABO;Parte pela qual se segura uma panela
+CADERNO;Conjunto de folhas para escrever
+CADEIRA;Móvel com encosto para uma pessoa sentar
+CADEADO;Fechadura portátil usada com chave
+CAFE;Bebida feita com grãos torrados
+CAIXA;Recipiente usado para guardar ou transportar
+CAJU;Fruto amarelo ou vermelho com castanha
+CALCA;Roupa que cobre as pernas
+CALCADA;Parte da rua destinada aos pedestres
+CALDO;Líquido quente de uma sopa
+CALOR;Sensação causada por temperatura alta
+CAMA;Móvel usado para dormir
+CAMADA;Porção que cobre outra superfície
+CAMARAO;Crustáceo comestível de corpo curvado
+CAMINHO;Percurso para chegar a algum lugar
+CAMISA;Peça de roupa que cobre o tronco
+CAMPAINHA;Aparelho que toca ao ser apertado na porta
+CAMPO;Área aberta fora da cidade
+CANAL;Passagem por onde corre água
+CANARIO;Pequena ave conhecida pelo canto
+CANECA;Recipiente com alça para bebidas
+CANETA;Instrumento de escrita que usa tinta
+CANO;Tubo por onde passa água
+CANOA;Embarcação estreita movida a remo
+CANSACO;Sensação depois de muito esforço
+CANTO;Lugar onde duas paredes se encontram
+CAPA;Cobertura externa de um livro
+CAPIM;Planta rasteira que serve de pasto
+CARACOL;Molusco que carrega uma concha espiral
+CARIMBO;Objeto que marca papel com tinta
+CARNE;Alimento que pode ser bovino ou suíno
+CARRO;Veículo de quatro rodas
+CARTA;Mensagem enviada pelo correio
+CARTEIRA;Objeto pequeno para guardar dinheiro e documentos
+CASA;Lugar onde uma pessoa mora
+CASACO;Roupa usada sobre outras para aquecer
+CASCATA;Queda de água natural
+CASCO;Cobertura dura de uma tartaruga
+CASTELO;Grande construção antiga com torres
+CATAVENTO;Brinquedo que gira com o vento
+CAVALO;Animal usado para montaria
+CEBOLA;Bulbo de cozinha que pode fazer chorar
+CEBOLINHA;Erva verde usada para temperar comida
+CEIA;Refeição feita à noite
+CELA;Pequeno quarto de prisão
+CELEIRO;Construção onde se guardam grãos
+CENARIO;Ambiente onde acontece uma cena
+CENOURA;Raiz alaranjada usada em saladas
+CENTAVO;Centésima parte de um real
+CENTRO;Ponto no meio de algo
+CERCA;Barreira que delimita um terreno
+CEREJA;Fruta pequena e vermelha com caroço
+CERTO;Contrário de errado
+CESTA;Recipiente trançado para carregar objetos
+CEU;Espaço acima de nossas cabeças
+CHAPEU;Acessório usado na cabeça
+CHAVE;Objeto que abre uma fechadura
+CHINELO;Calçado aberto muito usado em casa
+CHUVA;Água que cai das nuvens
+CICLO;Sequência de etapas que se repete
+CIDADE;Área urbana onde vivem muitas pessoas
+CINEMA;Lugar onde se assiste a filmes
+CINZA;Cor entre o branco e o preto
+CIRCO;Espetáculo com artistas e palhaços
+CISNE;Ave aquática de pescoço comprido
+CLARO;Que tem muita luz
+CLASSE;Turma de estudantes
+CLIMA;Conjunto das condições de tempo de uma região
+COBRA;Réptil comprido e sem patas
+COCO;Fruto do coqueiro com água no interior
+COELHO;Animal de orelhas longas
+COFRE;Caixa reforçada para guardar valores
+COLA;Produto usado para unir papel
+COLAR;Acessório usado em volta do pescoço
+COLHER;Talher usado para tomar sopa
+COLINA;Pequena elevação de terreno
+COLUNA;Estrutura vertical que sustenta uma construção
+COMIDA;Aquilo que se prepara para comer
+COMETA;Astro que pode apresentar uma cauda luminosa
+COMPASSO;Instrumento usado para desenhar círculos
+CONCHA;Casca dura de muitos moluscos
+CONTO;Narrativa curta de ficção
+COPA;Parte superior de uma árvore
+COPO;Recipiente usado para beber água
+CORACAO;Órgão que bombeia o sangue
+CORDA;Conjunto de fios torcidos para amarrar
+CORO;Grupo que canta junto
+CORPO;Conjunto das partes de um ser vivo
+CORREIO;Serviço que entrega cartas e encomendas
+CORRENTE;Sequência de elos de metal
+CORUJA;Ave de hábitos noturnos e olhos grandes
+COSTA;Faixa de terra junto ao mar
+COURO;Material feito a partir de pele animal
+COUVE;Folha verde usada na feijoada
+COVA;Buraco aberto na terra
+COZINHA;Cômodo onde se preparam refeições
+CRAVO;Flor que dá nome a uma cantiga de roda
+CRIADO;Pequeno móvel ao lado da cama
+CRIANCA;Pessoa que ainda não chegou à adolescência
+CRISE;Período de dificuldade intensa
+CRISTAL;Material transparente usado em taças
+CROSTA;Camada externa endurecida
+CRUZ;Figura formada por duas linhas que se cruzam
+CUBO;Sólido com seis faces quadradas
+CUCA;Doce assado coberto com farofa
+CUMBUCA;Vasilha funda usada para preparar ou servir comida
+CUIDADO;Atenção para evitar um acidente
+CULTURA;Costumes e expressões de um povo
+CURVA;Trecho de caminho que muda de direção
+DADO;Pequeno cubo numerado usado em jogos
+DANCA;Arte de se mover ao ritmo da música
+DATA;Indicação de dia, mês e ano
+DEDO;Cada uma das extremidades da mão
+DEGRAU;Cada um dos níveis de uma escada
+DENTE;Peça da boca usada para mastigar
+DESENHO;Imagem feita com linhas em uma superfície
+DESERTO;Região muito seca e com pouca chuva
+DESTINO;Lugar a que se pretende chegar
+DIA;Período entre uma meia-noite e outra
+DIAMANTE;Pedra preciosa de grande dureza
+DIARIO;Registro escrito do dia a dia
+DICIONARIO;Livro que explica o significado das palavras
+DINHEIRO;Meio usado para pagar compras
+DIREITA;Lado oposto ao esquerdo
+DISCO;Objeto circular usado para guardar música
+DOCE;Alimento com sabor de açúcar
+DOMINGO;Dia entre sábado e segunda-feira
+DONO;Pessoa que possui algo
+DORMIR;Descansar durante o sono
+DRAGAO;Animal imaginário que aparece em lendas
+DUCHA;Aparelho que lança água para o banho
+DUNA;Monte de areia formado pelo vento
+DUVIDA;Falta de certeza sobre algo
+ECO;Repetição de um som refletido
+EDICAO;Preparação de um texto para publicação
+EDIFICIO;Construção com vários andares
+ELEFANTE;Animal terrestre de tromba comprida
+ELENCO;Conjunto de atores de uma obra
+EMBALAGEM;Invólucro que protege um produto
+EMPADA;Salgado assado com recheio
+EMPATE;Resultado em que ninguém vence
+ENCONTRO;Ocasião em que pessoas se reúnem
+ENFEITE;Objeto colocado para decorar
+ENGANO;Erro cometido por distração
+ENIGMA;Pergunta ou problema difícil de decifrar
+ENXADA;Ferramenta usada para revolver a terra
+EQUIPE;Grupo de pessoas que trabalha junto
+ESCADA;Estrutura com degraus para subir
+ESCOLA;Lugar onde se ensina e aprende
+ESCOVA;Objeto com cerdas usado para limpar
+ESCRITA;Registro de palavras por meio de letras
+ESCUDO;Peça usada para proteção em combate
+ESPELHO;Superfície que reflete uma imagem
+ESPIGA;Parte do milho que reúne os grãos
+ESPONJA;Material macio que absorve água
+ESPORTE;Atividade física como futebol ou natação
+ESQUINA;Encontro de duas ruas
+ESTACAO;Cada uma das quatro divisões do ano
+ESTANTE;Móvel com prateleiras para livros
+ESTRELA;Astro que emite luz própria
+ESTRADA;Via que liga lugares distantes
+ESTUDO;Dedicação a aprender um assunto
+ETAPA;Cada fase de um processo
+FACA;Talher com lâmina usado para cortar
+FACHADA;Parte da frente de uma construção
+FADA;Personagem mágico de contos infantis
+FAMILIA;Grupo formado por parentes
+FARINHA;Pó obtido da moagem de grãos
+FAROL;Torre luminosa que orienta embarcações
+FATIA;Pedaço fino cortado de pão ou bolo
+FATO;Aquilo que realmente aconteceu
+FAZENDA;Propriedade rural de produção agrícola
+FECHADURA;Mecanismo que mantém uma porta trancada
+FEIJAO;Grão que costuma acompanhar o arroz
+FEIRA;Mercado de barracas montadas ao ar livre
+FELINO;Animal da família dos gatos
+FELIZ;Que sente alegria
+FERIADO;Dia de descanso previsto no calendário
+FERRADURA;Peça de metal colocada no casco do cavalo
+FESTA;Reunião para comemorar algo
+FICCAO;Narrativa criada pela imaginação
+FIGO;Fruto macio com muitas sementes pequenas
+FILA;Pessoas uma atrás da outra esperando a vez
+FILHO;Pessoa em relação a seus pais
+FILME;Obra contada por imagens em movimento
+FILTRO;Objeto que retém impurezas
+FINAL;Parte que encerra alguma coisa
+FIO;Linha fina usada para costurar
+FITA;Tira estreita de tecido ou papel
+FLAUTA;Instrumento musical de sopro
+FLECHA;Projétil lançado por um arco
+FLOR;Parte da planta que pode produzir frutos
+FOCA;Mamífero marinho que se desloca com nadadeiras
+FOGAO;Aparelho usado para cozinhar
+FOGO;Chama produzida pela combustão
+FOLHA;Parte geralmente verde de uma planta
+FOME;Vontade ou necessidade de comer
+FONTE;Lugar de onde brota água
+FORCA;Capacidade de empurrar ou levantar peso
+FORMA;Molde usado para assar um bolo
+FORNO;Compartimento aquecido para assar alimentos
+FOTO;Imagem registrada por uma câmera
+FOZ;Lugar onde um rio deságua
+FRACO;Contrário de forte
+FRADE;Religioso que vive em comunidade
+FRANGO;Ave criada para alimentação
+FRASE;Conjunto de palavras com sentido completo
+FREIO;Mecanismo que reduz a velocidade de um veículo
+FRENTE;Lado oposto à parte de trás
+FRIO;Sensação de baixa temperatura
+FRUTA;Alimento como maçã, banana ou manga
+FUMACA;Nuvem produzida por uma combustão
+FUNDO;Parte mais baixa ou mais distante
+FUTEBOL;Esporte disputado com bola e gols
+GADO;Conjunto de bois e vacas
+GAIOLA;Estrutura com grades para abrigar uma ave
+GALHO;Ramo que sai do tronco de uma árvore
+GALINHA;Ave doméstica que bota ovos
+GALO;Macho da galinha
+GANGORRA;Brinquedo que sobe de um lado e desce do outro
+GARFO;Talher com pontas usado à mesa
+GARRAFA;Recipiente de gargalo estreito para líquidos
+GATO;Animal doméstico que mia
+GAVETA;Compartimento deslizante de um móvel
+GEADA;Camada de gelo fino formada pelo frio
+GELO;Água em estado sólido
+GEMA;Parte amarela do ovo
+GENTE;Conjunto de pessoas
+GIRASSOL;Flor amarela que lembra o Sol
+GIZ;Bastão usado para escrever no quadro
+GOIABA;Fruta de polpa clara ou rosada usada em doce
+GOLA;Parte da camisa que fica em volta do pescoço
+GOLFINHO;Mamífero marinho conhecido por seus saltos
+GOTA;Pequena porção arredondada de líquido
+GOVERNO;Conjunto de autoridades que administra um país
+GRADE;Estrutura de barras que protege uma abertura
+GRAMA;Planta baixa que cobre jardins
+GRANDE;Contrário de pequeno
+GRANJA;Lugar de criação de aves
+GRAO;Pequena semente como a de arroz
+GRAVATA;Tira de tecido usada em volta do colarinho
+GRILO;Inseto conhecido pelo canto noturno
+GRUTA;Cavidade natural em uma rocha
+GUARDA;Pessoa responsável por vigiar um lugar
+GUERRA;Conflito armado entre grupos ou países
+GUIA;Pessoa que mostra o caminho
+GUITARRA;Instrumento de cordas muito usado no rock
+HABITO;Ação que se repete com frequência
+HARPA;Instrumento musical de muitas cordas
+HELICE;Peça giratória que impulsiona um helicóptero
+HERBARIO;Coleção de plantas secas identificadas
+HERANCA;Bens deixados por uma pessoa após sua morte
+HEROI;Personagem conhecido por atos corajosos
+HORTA;Terreno onde se cultivam verduras
+HOSPITAL;Lugar onde pessoas recebem cuidados médicos
+HOTEL;Lugar que oferece hospedagem
+HORA;Período de sessenta minutos
+IDADE;Número de anos vividos por alguém
+IDEIA;Pensamento ou solução imaginada
+IGREJA;Templo de uma comunidade cristã
+ILHA;Porção de terra cercada de água
+IMAGEM;Representação visual de algo
+IMPOSTO;Valor cobrado pelo governo sobre bens ou renda
+INDIO;Termo tradicional para uma pessoa indígena
+INICIO;Parte em que algo começa
+INSETO;Animal de seis patas como a formiga
+INVERNO;Estação mais fria do ano
+IRMAO;Filho dos mesmos pais em relação a outro
+JACARE;Réptil de focinho comprido que vive perto da água
+JANELA;Abertura na parede por onde entram luz e ar
+JANTAR;Refeição geralmente feita à noite
+JARDIM;Espaço onde se cultivam flores
+JARRA;Recipiente com alça para servir suco
+JATO;Fluxo de água lançado com força
+JEITO;Maneira de fazer alguma coisa
+JOANINHA;Pequeno inseto vermelho com pintas pretas
+JOELHO;Articulação entre a coxa e a perna
+JOGO;Atividade com regras para diversão
+JORNAL;Publicação que reúne notícias
+JUDEU;Pessoa pertencente ao povo ou à religião judaica
+JUIZ;Pessoa que aplica a lei em um tribunal
+JUMENTO;Animal de orelhas grandes usado para carga
+JUNHO;Mês das festas juninas
+JUNTA;União entre duas partes
+JURADO;Pessoa escolhida para compor um júri
+LAGO;Grande extensão de água cercada por terra
+LAGOA;Pequena extensão de água cercada por terra
+LAPIS;Instrumento de grafite usado para escrever
+LARANJA;Fruta cítrica que dá nome a uma cor
+LATA;Recipiente de metal para conservar alimentos
+LAVOURA;Área de terra destinada ao cultivo
+LEAO;Grande felino cuja juba é típica dos machos
+LEITE;Bebida branca produzida por mamíferos
+LEITOR;Pessoa que lê um livro
+LENCO;Pedaço de tecido usado no pescoço ou bolso
+LENTE;Peça transparente usada em óculos
+LETRA;Sinal escrito que compõe o alfabeto
+LEVADA;Ritmo característico de uma música
+LIGACAO;Chamada feita pelo telefone
+LIMAO;Fruta cítrica de sabor azedo
+LIMITE;Linha que marca o fim de uma área
+LINGUA;Órgão da boca usado para sentir sabores
+LIVRO;Conjunto de páginas encadernadas
+LOBO;Mamífero selvagem semelhante ao cão
+LOJA;Estabelecimento onde se vendem produtos
+LOUSA;Quadro usado para escrever em sala de aula
+LUA;Satélite natural da Terra
+LUGAR;Espaço ocupado por alguém ou algo
+LUPA;Lente que amplia objetos pequenos
+LUVA;Peça que protege a mão
+MACACO;Animal que costuma viver em árvores
+MACA;Fruta associada à história de Branca de Neve
+MADEIRA;Material retirado do tronco das árvores
+MAESTRO;Pessoa que rege uma orquestra
+MAGIA;Poder imaginário presente em contos
+MALA;Objeto usado para levar roupas em viagem
+MALHA;Tecido usado em camisetas
+MAMAE;Forma carinhosa de chamar a mãe
+MANGA;Fruta tropical de polpa amarela
+MANHA;Período entre o amanhecer e o meio-dia
+MANTEIGA;Alimento feito da gordura do leite
+MAPA;Representação de um território
+MAR;Grande extensão de água salgada
+MARCA;Sinal que identifica um produto
+MARTELO;Ferramenta usada para bater pregos
+MASSA;Mistura de farinha e água usada em pães
+MATO;Vegetação que cresce sem cultivo
+MEDICO;Profissional que cuida da saúde
+MEDIDA;Resultado de uma medição
+MEIA;Peça usada nos pés dentro do sapato
+MEL;Alimento doce produzido por abelhas
+MEMORIA;Capacidade de guardar lembranças
+MENINO;Criança do sexo masculino
+MENSAGEM;Informação enviada a alguém
+MESA;Móvel com tampo usado nas refeições
+METAL;Material como ferro ou cobre
+METRO;Unidade de medida de comprimento
+MILHO;Grão amarelo usado para fazer pipoca
+MINUTO;Período de sessenta segundos
+MOCHILA;Bolsa carregada nas costas
+MOEDA;Peça de metal usada como dinheiro
+MOINHO;Construção que transforma grãos em farinha
+MOLA;Peça elástica que pode ser comprimida
+MONTANHA;Grande elevação natural do terreno
+MORANGO;Fruta vermelha com pequenas sementes por fora
+MORRO;Elevação de terreno menor que uma montanha
+MOSCA;Inseto voador comum perto de alimentos
+MOTOR;Máquina que produz movimento
+MUSEU;Lugar que preserva e exibe coleções
+MUSICA;Arte de organizar sons e silêncios
+NACAO;Povo organizado em um país
+NARIZ;Parte do rosto usada para cheirar
+NATAL;Festa cristã celebrada em dezembro
+NAVIO;Embarcação de grande porte
+NEBLINA;Nuvem baixa que dificulta a visão
+NINHO;Abrigo construído por aves para seus ovos
+NOITE;Período entre o pôr do Sol e o amanhecer
+NOME;Palavra que identifica alguém
+NOTA;Registro de uma avaliação escolar
+NOVA;Feminino de novo
+NUVEM;Conjunto de gotículas de água no céu
+OASIS;Lugar com água e vegetação no deserto
+OCULOS;Acessório com lentes usado para enxergar
+OESTE;Ponto cardeal onde o Sol se põe
+OFERTA;Produto oferecido por preço reduzido
+OLHAR;Dirigir a visão para algo
+OLHO;Órgão usado para enxergar
+OLIVA;Outro nome para a azeitona
+OMBRO;Parte que liga o braço ao tronco
+ONDA;Movimento da água na superfície do mar
+ONIBUS;Veículo coletivo que transporta passageiros
+ONCA;Grande felino encontrado no Brasil
+ONTEM;Dia anterior ao de hoje
+ORELHA;Parte externa do ouvido
+ORIGEM;Lugar ou momento em que algo começa
+OVELHA;Animal criado por sua lã
+OVO;Alimento de casca que pode vir da galinha
+PACOTE;Conjunto embrulhado para transporte
+PADARIA;Estabelecimento onde se vende pão
+PAGINA;Cada lado de uma folha de livro
+PAI;Homem em relação aos seus filhos
+PAIS;Território organizado sob um governo
+PAIXAO;Sentimento muito intenso
+PALAVRA;Conjunto de letras com significado
+PALCO;Lugar elevado onde artistas se apresentam
+PALHA;Haste seca de plantas como o trigo
+PALMA;Parte interna da mão
+PANELA;Recipiente usado para cozinhar
+PANO;Pedaço de tecido usado para limpar
+PAPEL;Material feito de fibras para escrever
+PARAFUSO;Peça com rosca usada para fixação
+PAREDE;Estrutura vertical que divide cômodos
+PARQUE;Área pública com árvores e espaços de lazer
+PASSARO;Animal com penas, bico e asas
+PASSO;Movimento de um pé ao caminhar
+PASTA;Material macio como o usado na escova de dentes
+PATINS;Calçado com rodas usado para deslizar
+PATO;Ave aquática que grasna
+PEDRA;Pedaço de rocha
+PEIXE;Animal aquático que respira por brânquias
+PELE;Camada que cobre o corpo
+PENA;Estrutura que cobre o corpo das aves
+PENTE;Objeto com dentes usado para arrumar cabelo
+PESO;Medida indicada por uma balança
+PETECA;Brinquedo com penas lançado com a mão
+PIANO;Instrumento musical de teclas
+PICO;Ponto mais alto de uma montanha
+PILHA;Fonte pequena de energia para aparelhos
+PIMENTA;Tempero que pode provocar ardência
+PIPA;Brinquedo que voa preso a uma linha
+PISCINA;Tanque construído para nadar
+PISTA;Faixa destinada a corrida ou trânsito
+PIZZA;Disco de massa assado com cobertura
+PLANETA;Astro que gira ao redor de uma estrela
+PLANTA;Ser vivo que pode ter raízes e folhas
+PLUMA;Pena leve e macia de ave
+POCO;Buraco cavado para alcançar água subterrânea
+PONTE;Construção que permite atravessar um rio
+PORTA;Abertura usada para entrar em um cômodo
+PORTO;Lugar onde embarcações atracam
+PRACA;Espaço público aberto em uma cidade
+PRATO;Peça da louça usada para servir comida
+PRAIA;Faixa de areia junto ao mar
+PREGO;Peça de metal que se fixa com martelo
+PRETO;Cor do carvão
+PRIMO;Filho de um tio ou de uma tia
+PROVA;Avaliação feita por estudantes
+PUDIM;Sobremesa cremosa geralmente coberta de calda
+PULGA;Pequeno inseto que salta e vive em animais
+PUNHO;Articulação que liga a mão ao braço
+QUEIJO;Alimento feito a partir do leite
+QUENTE;Que tem temperatura elevada
+QUERIDO;Pessoa por quem se tem carinho
+QUINTAL;Área aberta nos fundos de uma casa
+RADIO;Aparelho que recebe transmissões sonoras
+RAIO;Descarga elétrica que ocorre em tempestades
+RAIZ;Parte da planta que cresce sob a terra
+RAMO;Pequena divisão do galho de uma árvore
+RATO;Roedor pequeno de cauda comprida
+RECEITA;Instruções para preparar um prato
+REDE;Trama de fios usada para pescar ou descansar
+REGUA;Instrumento reto usado para medir
+RELOGIO;Objeto que marca as horas
+REMO;Peça usada para impulsionar um barco
+RETRATO;Imagem que representa uma pessoa
+REVISTA;Publicação periódica com textos e imagens
+RIACHO;Curso de água menor que um rio
+RIMA;Semelhança de sons no fim de palavras
+RIO;Curso natural de água que corre para outro lugar
+ROCHA;Material sólido que forma montanhas
+RODA;Peça circular que gira em um veículo
+RODO;Objeto com borracha usado para puxar água do chão
+ROSA;Flor conhecida por suas pétalas e espinhos
+ROSTO;Parte da cabeça onde ficam olhos e nariz
+ROUPA;Peça usada para vestir o corpo
+RUA;Via urbana por onde passam pessoas e veículos
+SABAO;Produto usado para lavar as mãos
+SABADO;Dia da semana anterior ao domingo
+SACO;Recipiente flexível usado para guardar coisas
+SALA;Cômodo da casa usado para receber visitas
+SALADA;Prato preparado com verduras ou legumes
+SALTO;Movimento de sair do chão com impulso
+SAPATO;Calçado fechado que protege os pés
+SAPO;Animal que coaxa e vive perto de água
+SAUDADE;Sentimento de falta de alguém ou de um lugar
+SEDE;Vontade ou necessidade de beber água
+SEGREDO;Informação que não se quer divulgar
+SELVA;Floresta densa de clima quente
+SEMENTE;Parte da planta que pode dar origem a outra
+SERRA;Ferramenta com dentes usada para cortar madeira
+SINO;Objeto metálico que soa ao ser tocado
+SITIO;Pequena propriedade rural
+SOFA;Móvel estofado usado para sentar
+SOL;Estrela que ilumina a Terra
+SOMBRA;Área escura formada quando algo bloqueia a luz
+SONHO;Sequência de imagens vividas durante o sono
+SOPA;Prato líquido geralmente servido quente
+SORRISO;Expressão de alegria feita com a boca
+SORVETE;Sobremesa gelada feita em vários sabores
+SOTAQUE;Modo de pronunciar típico de uma região
+SUCO;Bebida feita a partir de frutas
+TABELA;Organização de dados em linhas e colunas
+TABUA;Pedaço comprido e achatado de madeira
+TALHER;Utensílio como garfo, faca ou colher
+TAMPA;Peça que fecha a abertura de um recipiente
+TARDE;Período entre o meio-dia e a noite
+TARTARUGA;Animal de casco que se move lentamente
+TEATRO;Arte de representar histórias no palco
+TECLADO;Conjunto de teclas usado para digitar
+TELA;Superfície onde aparecem imagens de um aparelho
+TELEFONE;Aparelho usado para conversar a distância
+TELHADO;Cobertura superior de uma casa
+TEMPO;Condição atmosférica ou passagem das horas
+TENIS;Calçado esportivo com cadarços
+TERRA;Planeta onde vivemos
+TESOURO;Conjunto de objetos preciosos escondidos
+TESOURA;Instrumento de duas lâminas usado para cortar
+TETO;Superfície acima da cabeça dentro de um cômodo
+TIGELA;Recipiente fundo usado para servir alimentos
+TIGRE;Grande felino de pelo listrado
+TIJOLO;Bloco usado para construir paredes
+TIMBRE;Qualidade que distingue sons de mesma nota
+TINTA;Líquido colorido usado para pintar
+TITULO;Nome de um livro ou de uma obra
+TOALHA;Tecido usado para secar o corpo
+TOCA;Abrigo de certos animais
+TOMATE;Fruto vermelho muito usado em saladas
+TORRE;Construção alta e estreita
+TRABALHO;Atividade realizada para produzir algo
+TRAVESSEIRO;Apoio macio para a cabeça na cama
+TREM;Veículo que se desloca sobre trilhos
+TRIGO;Cereal usado para fazer farinha de pão
+TRILHA;Caminho estreito em meio à natureza
+TRONCO;Parte principal do caule de uma árvore
+TROVA;Poema curto geralmente formado por quatro versos
+TROVOADA;Conjunto de trovões de uma tempestade
+TUBO;Peça oca e comprida por onde passam líquidos
+TUCANO;Ave tropical conhecida pelo bico grande
+TURMA;Grupo de alunos de uma classe
+URSO;Grande mamífero de pelo espesso
+URUBU;Ave escura que se alimenta de animais mortos
+USINA;Instalação onde se produz energia
+VALE;Área baixa entre montanhas
+VARA;Pedaço comprido e fino de madeira
+VASO;Recipiente onde se cultivam plantas
+VELA;Objeto de cera com pavio que produz luz
+VELHO;Que tem muitos anos de existência
+VENTO;Ar em movimento
+VERAO;Estação mais quente do ano
+VERDE;Cor típica das folhas
+VERME;Animal de corpo mole e alongado
+VERSO;Cada linha de um poema
+VIAGEM;Deslocamento para um lugar distante
+VIDA;Condição dos seres vivos
+VIDRO;Material transparente usado em janelas
+VILA;Povoação menor que uma cidade
+VINHO;Bebida produzida pela fermentação da uva
+VIOLA;Instrumento musical brasileiro de cordas
+VIOLETA;Flor pequena de cor roxa
+VIRADA;Mudança de direção ou de situação
+VITRINE;Janela onde uma loja expõe produtos
+VIZINHO;Pessoa que mora perto de outra
+VOLEI;Esporte em que a bola passa por cima de uma rede
+VONTADE;Desejo de fazer ou ter algo
+XADREZ;Jogo de tabuleiro com rei e rainha
+XAROPE;Líquido espesso usado em remédios ou bebidas
+XICARA;Pequeno recipiente com alça para café
+ZEBRA;Animal africano de listras pretas e brancas
+ZELADOR;Pessoa que cuida da conservação de um prédio
+ZONA;Área ou região delimitada

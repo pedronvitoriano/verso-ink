@@ -19,6 +19,8 @@ pub enum Redraw {
 
 pub trait MiniGame {
     fn draw(&self, fb: &mut Framebuffer, f: &Fonts);
+    /// Toques contínuos para módulos que desenham diretamente com o dedo.
+    fn touch(&mut self, _touch: crate::input::Touch) -> Option<Redraw> { None }
     /// Alvos de toque (id do jogo, retângulo). O botão Início é do app.
     fn targets(&self) -> Vec<(u32, Rect)>;
     fn tap(&mut self, id: u32, x: i32, y: i32) -> Redraw;
@@ -122,7 +124,11 @@ pub fn draw_menu(fb: &mut Framebuffer, f: &Fonts, title: &str, subtitle: &str, o
 
 /// A ilustração do jogo num cartão, ocupando o espaço livre do menu (de `top` até o rodapé).
 pub fn menu_art(fb: &mut Framebuffer, title: &str, top: i32) {
-    let bottom = 1390;
+    menu_art_ate(fb, title, top, 1390);
+}
+
+/// Ilustração com limite inferior escolhido para telas que reservam margem maior.
+pub fn menu_art_ate(fb: &mut Framebuffer, title: &str, top: i32, bottom: i32) {
     let h = bottom - top;
     if h < 200 {
         return;
@@ -171,6 +177,9 @@ pub fn make(i: usize) -> Option<Box<dyn MiniGame>> {
         14 => Box::new(crate::historias::Historias::new()),
         15 => Box::new(crate::damas::Damas::new()),
         16 => Box::new(crate::velha::Velha::new()),
+        17 => Box::new(crate::reversi::Reversi::new()),
+        18 => Box::new(crate::go::Go::new()),
+        19 => Box::new(crate::cruzadas::Cruzadas::new()),
         _ => return None,
     })
 }

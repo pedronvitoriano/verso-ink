@@ -49,6 +49,9 @@ pub fn pages(game: usize) -> &'static [Page] {
         14 => &HISTORIAS,
         15 => &DAMAS,
         16 => &VELHA,
+        17 => &REVERSI,
+        18 => &GO,
+        19 => &CRUZADAS,
         _ => &[],
     }
 }
@@ -161,6 +164,24 @@ static VELHA: [Page; 3] = [
     p("O clássico", "Três em linha (deitado, em pé ou na diagonal) ganha. Você é o X. Quem começa troca a cada partida.", "", ""),
     p("O super", "O tabuleiro tem 9 velhas pequenas. A casa onde você joga dentro de uma velha manda o outro jogar na velha de mesma posição: jogou no canto de cima, ele vai para a velha do canto de cima.", "", ""),
     p("Vencer o super", "Ganhe uma velha pequena para marcá-la com o seu símbolo. Três velhas em linha vencem. Se a velha para onde você foi mandado já acabou, jogue em qualquer uma.", "", ""),
+];
+
+static REVERSI: [Page; 3] = [
+    p("O objetivo", "Tenha mais peças que o adversário ao fim. As pretas começam.", "", ""),
+    p("Virar peças", "Coloque uma peça para cercar uma ou mais peças adversárias entre ela e outra peça sua. As peças cercadas viram, inclusive na diagonal.", "", ""),
+    p("Sua vez", "Os pontos mostram onde você pode jogar. Sem jogada, a vez passa automaticamente. Quando nenhum dos dois pode jogar, conte as peças.", "", ""),
+];
+
+static GO: [Page; 3] = [
+    p("O objetivo", "Cerque mais espaço que o adversário. As pretas começam e as brancas recebem 6,5 pontos de vantagem.", "", ""),
+    p("Liberdades", "Coloque pedras nas interseções. Pedras ligadas precisam de espaços livres ao lado; um grupo sem espaços é capturado. Não vale repetir imediatamente a posição anterior.", "", ""),
+    p("Fim da partida", "Duas passagens encerram a partida. Capture as pedras presas antes de passar: as pedras que restarem contam na área de cada jogador.", "", ""),
+];
+
+static CRUZADAS: [Page; 3] = [
+    p("Uma por dia", "Cada dia traz uma grade nova. Toque em uma casa para escolher a palavra e leia a dica abaixo da grade.", "", ""),
+    p("Escrever", "Toque em Escrever e digite a palavra inteira. Acentos são retirados na grade. No cruzamento, toque de novo para trocar a direção.", "", ""),
+    p("Conferir e revelar", "Use Conferir para destacar letras erradas ou Revelar letra para preencher a casa escolhida. Seu progresso fica guardado no dia.", "", ""),
 ];
 
 static HISTORIAS: [Page; 2] = [

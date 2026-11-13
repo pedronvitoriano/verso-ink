@@ -35,14 +35,14 @@ fn wrap(f: &Fonts, face: Face, size: f32, text: &str, max_w: i32) -> Vec<String>
 // ---------- Central ----------
 
 pub fn hub_row(k: usize) -> Rect {
-    Rect::new(MARGIN, 600 + k as i32 * 136, W - 2 * MARGIN, 118)
+    Rect::new(MARGIN, 600 + k as i32 * 112, W - 2 * MARGIN, 100)
 }
 
 /// Linhas do menu do xadrez e o que cada uma abre (0 continuar, 1 treinadores, 4 Claude,
-/// 2 duas pessoas, 3 partidas anteriores).
+/// 2 duas pessoas, 3 partidas anteriores, 5 puzzle do dia).
 pub fn hub_ids(has_resume: bool) -> Vec<usize> {
     let mut v = if has_resume { vec![0] } else { vec![] };
-    v.extend([1, 4, 2, 3]);
+    v.extend([1, 5, 4, 2, 3]);
     v
 }
 
@@ -58,6 +58,7 @@ pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, resume: Option<String>) {
     let rows: Vec<(String, String, bool)> = [
         resume.map(|s| ("Continuar partida".to_string(), s, true)),
         Some(("Treinadores".to_string(), format!("Escada de 100 a 3000 · liberado até {}", coach::coach(coach::unlocked()).rating), false)),
+        Some(("Puzzle do dia".to_string(), "Encontre um lance melhor de uma partida sua".to_string(), false)),
         Some(("Contra o Verso".to_string(), "Ele joga, comenta cada lance e analisa a partida no fim".to_string(), false)),
         Some(("Duas pessoas".to_string(), "Partida local, no mesmo Kindle".to_string(), false)),
         Some(("Partidas anteriores".to_string(), "Revisão com os melhores lances".to_string(), false)),
@@ -69,8 +70,8 @@ pub fn draw_hub(fb: &mut Framebuffer, f: &Fonts, resume: Option<String>) {
         let r = hub_row(k);
         let (fg, sub) = if *filled { (PAPER, 0xCC) } else { (INK, MUTED) };
         ui::card(fb, r, 40, if *filled { INK } else { PAPER }, false);
-        f.draw(fb, Face::Display, 46.0, r.x + 36, r.y + 58, fg, t);
-        f.draw(fb, Face::Body, 26.0, r.x + 38, r.y + 96, sub, &fit(f, Face::Body, 26.0, s, r.w - 80));
+        f.draw(fb, Face::Display, 40.0, r.x + 36, r.y + 49, fg, t);
+        f.draw(fb, Face::Body, 24.0, r.x + 38, r.y + 82, sub, &fit(f, Face::Body, 24.0, s, r.w - 80));
     }
     // Relógio das próximas partidas.
     let r = clock_row_rect();

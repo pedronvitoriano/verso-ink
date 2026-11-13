@@ -176,10 +176,15 @@ pub struct App {
     sys: SysInfo,
     confirm: Option<(u8, Instant)>,
     pub last_minute: u32,
+    last_reminder_minute: i64,
     low_warned: bool,
     items: Vec<crate::day::Item>,
     today_hits: Vec<(usize, Rect)>,
     reminder: Option<crate::day::Item>,
+    reminder_once: Option<crate::lembretes_ui::Avulso>,
+    reminder_day: i64,
+    reminder_error: bool,
+    reminder_page: usize,
     /// Tela para onde voltar depois de um lembrete.
     before_reminder: Screen,
     sudoku: Option<crate::sudoku::Game>,
@@ -422,10 +427,15 @@ impl App {
             sys: SysInfo { wifi_on: true, connected: false, essid: None, ip: None, firmware: String::new() },
             confirm: None,
             last_minute: 99,
+            last_reminder_minute: i64::MIN,
             low_warned: false,
             items: Vec::new(),
             today_hits: Vec::new(),
             reminder: None,
+            reminder_once: None,
+            reminder_day: 0,
+            reminder_error: false,
+            reminder_page: 0,
             before_reminder: Screen::Home,
             sudoku: None,
             sudoku_note: String::new(),
@@ -562,7 +572,9 @@ impl App {
             }
             Screen::Reminder => {
                 if let Some(it) = &self.reminder {
-                    crate::today_ui::draw_reminder(fb, f, it);
+                    if self.reminder_page == 0 { crate::today_ui::draw_reminder(fb, f, it); }
+                    else { crate::today_ui::draw_reminder_page(fb, f, it, self.reminder_page); }
+                    if self.reminder_error { f.draw(fb, crate::text::Face::Strong, 28.0, 72, 1350, ui::INK, "Não foi possível confirmar. Tente de novo."); }
                 }
             }
             Screen::Games => {
@@ -714,7 +726,7 @@ impl App {
                 }
             }
             Screen::MiniText => {
-                let kicker = if self.mini_game == 14 { "HISTÓRIAS" } else { "JOGO" };
+                let kicker = if self.mini_back == Screen::Games && self.mini_game == 14 { "HISTÓRIAS" } else { "ESCREVER" };
                 ui::draw_field_header(fb, f, kicker, &self.mini_prompt);
                 crate::today_ui::draw_field(fb, f, &self.compose_text, &self.compose_hint);
                 self.keys = crate::keyboard::layout(self.kb_mode, self.kb_shift);
@@ -1032,7 +1044,14 @@ impl App {
                 v.extend(self.today_hits.iter().map(|(i, r)| (Item(*i), *r)));
                 v
             }
-            Screen::Reminder => vec![(Primary, crate::today_ui::reminder_ok_rect())],
+            Screen::Reminder => {
+                let mut v = vec![(Primary, crate::today_ui::reminder_ok_rect())];
+                if let Some(it) = &self.reminder {
+                    if self.reminder_page > 0 { v.push((Prev, crate::today_ui::reminder_prev_rect())); }
+                    if self.reminder_page + 1 < crate::today_ui::reminder_page_count(&self.fonts, &it.text) { v.push((Next, crate::today_ui::reminder_next_rect())); }
+                }
+                v
+            }
             Screen::Calendar => vec![(Back, ui::back_rect())],
             Screen::Tutorial => vec![(Back, ui::back_rect()), (Prev, crate::tutorial::prev_rect()), (Next, crate::tutorial::next_rect())],
             Screen::Games => {
@@ -1467,7 +1486,7 @@ impl App {
         };
         let what = match self.screen {
             Screen::Mini => {
-                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else { "Receitas".to_string() }
+                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else if self.mini_back == Screen::ChessHub { "Puzzle do dia".to_string() } else if self.mini_back == Screen::Home { "Aprender".to_string() } else if self.mini_slot == Some(106) { "Diário".to_string() } else if self.mini_slot == Some(107) { "Hábitos e tarefas".to_string() } else if self.mini_slot == Some(108) { "Calculadora".to_string() } else if self.mini_slot == Some(109) { "Lembretes".to_string() } else if self.mini_slot == Some(110) { "Caderno".to_string() } else { "Receitas".to_string() }
             }
             Screen::Sudoku | Screen::SudokuWon => "Sudoku".into(),
             Screen::Chess | Screen::ChessEnd | Screen::ChessReview => "Xadrez".into(),
@@ -1522,7 +1541,7 @@ impl App {
         match self.screen {
             Screen::Mini => {
                 let name = apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("jogo");
-                let name = if self.mini_back == Screen::Games { name } else { "Receitas" };
+                let name = if self.mini_back == Screen::Games { name } else if self.mini_back == Screen::ChessHub { "Puzzle do dia" } else if self.mini_back == Screen::Home { "Aprender" } else if self.mini_slot == Some(106) { "Diário" } else if self.mini_slot == Some(107) { "Hábitos e tarefas" } else if self.mini_slot == Some(108) { "Calculadora" } else if self.mini_slot == Some(109) { "Lembretes" } else if self.mini_slot == Some(110) { "Caderno" } else { "Receitas" };
                 parts.push(format!("Pedro está em {name}, no Kindle."));
                 if let Some(g) = &self.mini {
                     let c = g.context();
@@ -2116,16 +2135,19 @@ impl App {
             self.compose_hint = "Escreva alguma coisa antes de tocar em OK.".into();
             return self.render(false);
         }
-        self.fb.fill(self.fb.screen(), ui::PAPER);
-        ui::draw_field_header(&mut self.fb, &self.fonts, "UM MOMENTO", "Escrevendo…");
-        let hint = "O Verso está escrevendo a continuação. Leva até um minuto.";
-        self.fonts.draw(&mut self.fb, crate::text::Face::Body, 32.0, 72, 460, ui::MUTED, hint);
-        self.fb.refresh(self.fb.screen(), Wave::Quality, true);
-        self.fb.wait();
+        if self.mini_back == Screen::Games && self.mini_game == 14 {
+            self.fb.fill(self.fb.screen(), ui::PAPER);
+            ui::draw_field_header(&mut self.fb, &self.fonts, "UM MOMENTO", "Escrevendo…");
+            let hint = "O Verso está escrevendo a continuação. Leva até um minuto.";
+            self.fonts.draw(&mut self.fb, crate::text::Face::Body, 32.0, 72, 460, ui::MUTED, hint);
+            self.fb.refresh(self.fb.screen(), Wave::Quality, true);
+            self.fb.wait();
+        }
         if let Some(g) = self.mini.as_mut() {
             g.text_input(&text);
         }
         self.go(Screen::Mini);
+        if self.mini_slot == Some(109) { self.check_reminders(); }
     }
 
     fn mini_tap(&mut self, id: u32, x: i32) {
@@ -2153,7 +2175,7 @@ impl App {
         if let Some(prompt) = g.wants_text() {
             self.mini_prompt = prompt;
             self.compose_text.clear();
-            self.compose_hint = "Escreva o que acontece agora e toque em OK.".into();
+            self.compose_hint = if self.mini_back == Screen::Games && self.mini_game == 14 { "Escreva o que acontece agora e toque em OK." } else { "Digite e toque em OK." }.into();
             return self.go(Screen::MiniText);
         }
         self.apply_mini_redraw(r);
@@ -2654,6 +2676,7 @@ impl App {
     /// passagem (teclado, atualização, pedido de permissão, tutorial) voltam para a Início.
     pub fn wake_screen(&self) -> Screen {
         match self.before_sleep {
+            Some(Screen::Reminder) if self.reminder.is_some() => Screen::Reminder,
             Some(
                 Screen::Sleep
                 | Screen::Compose
@@ -3054,6 +3077,40 @@ impl App {
                 self.mini_back = Screen::Module(Module::Mais);
                 self.go(Screen::Mini);
             }
+            (Screen::Module(Module::Mais), Row(7)) => {
+                self.mini = Some(self.mini_cache.remove(&106).unwrap_or_else(|| Box::new(crate::diario::Diario::new())));
+                self.mini_slot = Some(106);
+                self.mini_back = Screen::Module(Module::Mais);
+                self.go(Screen::Mini);
+            }
+            (Screen::Module(Module::Mais), Row(8)) => {
+                let mut g = self.mini_cache.remove(&107).unwrap_or_else(|| Box::new(crate::organizacao::Organizacao::new()));
+                g.resume();
+                self.mini = Some(g);
+                self.mini_slot = Some(107);
+                self.mini_back = Screen::Module(Module::Mais);
+                self.go(Screen::Mini);
+            }
+            (Screen::Module(Module::Mais), Row(9)) => {
+                let mut g = self.mini_cache.remove(&108).unwrap_or_else(|| Box::new(crate::calculadora::Calculadora::new()));
+                g.resume();
+                self.mini = Some(g);
+                self.mini_slot = Some(108);
+                self.mini_back = Screen::Module(Module::Mais);
+                self.go(Screen::Mini);
+            }
+            (Screen::Module(Module::Mais), Row(10)) => {
+                self.mini = Some(self.mini_cache.remove(&109).unwrap_or_else(|| Box::new(crate::lembretes_ui::Lembretes::new())));
+                self.mini_slot = Some(109);
+                self.mini_back = Screen::Module(Module::Mais);
+                self.go(Screen::Mini);
+            }
+            (Screen::Module(Module::Mais), Row(11)) => {
+                self.mini = Some(self.mini_cache.remove(&110).unwrap_or_else(|| Box::new(crate::caderno::Caderno::new())));
+                self.mini_slot = Some(110);
+                self.mini_back = Screen::Module(Module::Mais);
+                self.go(Screen::Mini);
+            }
             (Screen::Edicao | Screen::Artigos | Screen::Retrato | Screen::Terminal, Back) => self.go(Screen::Module(Module::Mais)),
             (Screen::Edicao, Row(k)) => {
                 if let Some((_, act)) = self.ed_hits.get(k).cloned() {
@@ -3408,6 +3465,13 @@ impl App {
                 self.go(Screen::Coaches);
             }
             (Screen::ChessHub, Game(4)) => self.start_coach_game(crate::coach::CLAUDE),
+            (Screen::ChessHub, Game(5)) => {
+                self.mini_cache.remove(&105);
+                self.mini = Some(Box::new(crate::puzzle_dia::PuzzleDia::new(crate::offset_min())));
+                self.mini_slot = Some(105);
+                self.mini_back = Screen::ChessHub;
+                self.go(Screen::Mini);
+            }
             (Screen::ChessHub, Game(2)) => {
                 self.engine = None;
                 let g = crate::chess::Game::new();
@@ -3679,11 +3743,23 @@ impl App {
                 }
             }
             (Screen::Reminder, Primary) => {
-                if let Some(it) = self.reminder.take() {
-                    crate::day::toggle(data::today(self.status.offset_min), &it.key());
-                }
+                let saved = if let Some(item) = &self.reminder_once {
+                    crate::lembretes_ui::confirmar(item).is_ok_and(|ok| ok)
+                } else if let Some(item) = &self.reminder {
+                    crate::day::confirmar(self.reminder_day, &item.key()).is_ok()
+                } else { false };
+                if !saved { self.reminder_error = true; return self.render(false); }
+                self.reminder = None;
+                self.reminder_once = None;
+                self.reminder_error = false;
                 let back = self.before_reminder;
                 self.go(back);
+                self.check_reminders();
+            }
+            (Screen::Reminder, Prev) => { self.reminder_page = self.reminder_page.saturating_sub(1); self.render(false); }
+            (Screen::Reminder, Next) => {
+                if self.reminder.as_ref().is_some_and(|it| self.reminder_page + 1 < crate::today_ui::reminder_page_count(&self.fonts, &it.text)) { self.reminder_page += 1; }
+                self.render(false);
             }
             _ => {}
         }
@@ -3701,6 +3777,20 @@ impl App {
         } else {
             t
         };
+        // A folha recebe o movimento completo antes dos gestos de navegação.
+        if self.screen == Screen::Mini {
+            if let Some(redraw) = self.mini.as_mut().and_then(|g| g.touch(t)) {
+                match redraw {
+                    crate::minigame::Redraw::Part(rect) => {
+                        if let Some(g) = &self.mini { g.draw(&mut self.fb, &self.fonts); }
+                        let wave = if matches!(t, Touch::Up(_, _)) { Wave::Quality } else { Wave::Fast };
+                        self.fb.refresh(rect, wave, false);
+                    }
+                    other => self.apply_mini_redraw(other),
+                }
+                return;
+            }
+        }
         match t {
             Touch::Down(x, y) => {
                 self.swipe_from = Some((x, y));
@@ -3861,7 +3951,35 @@ impl App {
     }
 
     /// Chamado várias vezes por segundo: relógio, Pomodoro, confirmação e bateria.
+    /// Mostra o próximo aviso pendente, inclusive logo depois de acordar.
+    pub fn check_reminders(&mut self) -> bool {
+        if matches!(self.screen, Screen::Reminder | Screen::Sleep) { return false; }
+        let now = clock::now(self.status.offset_min);
+        if !now.plausible() { return false; }
+        let once = crate::lembretes_ui::vencido(data::epoch());
+        let item = if let Some(a) = &once {
+            let local = (a.epoch + self.status.offset_min * 60).rem_euclid(86_400) / 60;
+            Some(crate::day::Item { kind: crate::day::Kind::Reminder, text: a.texto.clone(), at: Some(local as u32), days: None })
+        } else {
+            crate::day::due_reminder(&crate::day::load_items(), self.status.offset_min, now.hour * 60 + now.minute)
+        };
+        let Some(item) = item else { return false };
+        self.before_reminder = if self.screen == Screen::LowBattery { Screen::Home } else { self.screen };
+        self.reminder_day = data::today(self.status.offset_min);
+        self.reminder_once = once;
+        self.reminder = Some(item);
+        self.reminder_error = false;
+        self.reminder_page = 0;
+        self.go(Screen::Reminder);
+        true
+    }
+
     pub fn tick(&mut self) {
+        let reminder_minute = data::epoch().div_euclid(60);
+        if reminder_minute != self.last_reminder_minute {
+            self.last_reminder_minute = reminder_minute;
+            if self.check_reminders() { return; }
+        }
         if self.gesture.is_some() {
             self.check_hold();
         }
@@ -3936,16 +4054,6 @@ impl App {
             }
             if self.status.wifi {
                 crate::backup::maybe_check_update(data::today(self.status.offset_min));
-            }
-        }
-        // Lembretes: na hora (ou ao acordar, se passou), em tela cheia.
-        if !matches!(self.screen, Screen::Reminder | Screen::Sleep) && now.plausible() {
-            let items = crate::day::load_items();
-            if let Some(it) = crate::day::due_reminder(&items, self.status.offset_min, now.hour * 60 + now.minute) {
-                log(&format!("lembrete: {}", it.text));
-                self.before_reminder = if matches!(self.screen, Screen::LowBattery) { Screen::Home } else { self.screen };
-                self.reminder = Some(it);
-                return self.go(Screen::Reminder);
             }
         }
         // Aviso de bateria fraca: uma vez por descarga, só fora do carregador.
@@ -4104,6 +4212,7 @@ mod raio_x {
         std::fs::create_dir_all(&documents).unwrap();
         std::env::set_var("VERSO_INK_HOME", &home);
         std::env::set_var("VERSO_INK_DOCUMENTS", &documents);
+        crate::geografia::Geografia::verificar_registro();
         // Arte do repositório (sprites e rostos), como no Kindle.
         let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets");
         for d in ["sprites", "treinadores"] {
@@ -4185,6 +4294,20 @@ mod raio_x {
                         app.render(false);
                         shot(&mut app, "historias-escolha-anterior");
                     }
+                    if name == "reversi" {
+                        app.mini = Some(Box::new(crate::reversi::Reversi::final_para_print()));
+                        shot(&mut app, "jogo-reversi-fim");
+                    }
+                    if name == "go" {
+                        app.mini = Some(Box::new(crate::go::Go::final_para_print()));
+                        shot(&mut app, "jogo-go-fim");
+                    }
+                    if name == "cruzadas" {
+                        let mut g = crate::cruzadas::Cruzadas::new();
+                        g.screenshot_finish();
+                        app.mini = Some(Box::new(g));
+                        shot(&mut app, "jogo-cruzadas-fim");
+                    }
                     if name == "coroas" {
                         for id in [0, 1, 7] {
                             app.mini_tap(id, 0);
@@ -4252,6 +4375,188 @@ mod raio_x {
                 app.coach_mood = crate::coach::Mood::Normal;
             }
         }
+        app.go(Screen::ChessHub);
+        shot(&mut app, "xadrez-central-com-puzzle");
+        app.mini_cache.insert(103, Box::new(crate::violao::Violao::open_aula()));
+        app.activate(Target::Game(5), 0);
+        assert_eq!(app.mini_slot, Some(105));
+        assert!(app.mini_cache.contains_key(&103));
+        app.activate(Target::Back, 0);
+        app.mini_cache.remove(&103);
+        app.mini_back = Screen::ChessHub;
+        for (g, name) in [
+            (crate::puzzle_dia::PuzzleDia::print_vazio(), "puzzle-vazio"),
+            (crate::puzzle_dia::PuzzleDia::print_partida(), "puzzle-partida"),
+            (crate::puzzle_dia::PuzzleDia::print_fim(), "puzzle-fim"),
+            (crate::puzzle_dia::PuzzleDia::print_falha(), "puzzle-falha-salvar"),
+        ] {
+            app.mini = Some(Box::new(g));
+            app.go(Screen::Mini);
+            shot(&mut app, name);
+        }
+        app.mini_back = Screen::Home;
+        for (g, name) in [
+            (crate::geografia::Geografia::print_menu(), "geografia-menu"),
+            (crate::geografia::Geografia::print_intro(), "geografia-intro"),
+            (crate::geografia::Geografia::print_questao(), "geografia-questao"),
+            (crate::geografia::Geografia::print_feedback(), "geografia-resposta"),
+            (crate::geografia::Geografia::print_fim(), "geografia-fim"),
+        ] {
+            app.mini = Some(Box::new(g));
+            app.go(Screen::Mini);
+            shot(&mut app, name);
+        }
+        let _ = std::fs::remove_file(home.join("data/geografia.txt"));
+        let _ = std::fs::remove_file(home.join("data/aprender.txt"));
+        let _ = crate::aprender::add(10, "matematica");
+        for (g, name) in [
+            (crate::matematica::Matematica::print_menu(), "matematica-menu"),
+            (crate::matematica::Matematica::print_questao(), "matematica-questao"),
+            (crate::matematica::Matematica::print_feedback(), "matematica-resposta"),
+            (crate::matematica::Matematica::print_fim(), "matematica-fim"),
+        ] {
+            app.mini = Some(Box::new(g));
+            app.go(Screen::Mini);
+            shot(&mut app, name);
+        }
+        let _ = std::fs::remove_file(home.join("data/aprender.txt"));
+        app.go(Screen::Module(Module::Mais));
+        shot(&mut app, "mais-com-diario");
+        app.activate(Target::Row(7), 0);
+        shot(&mut app, "diario-inicio");
+        app.mini_tap(1, 0);
+        shot(&mut app, "diario-teclado");
+        app.compose_text = "A conversa durante o café ficou na memória.".into();
+        app.mini_text_done();
+        shot(&mut app, "diario-resposta");
+        let yesterday = crate::data::today(crate::offset_min()) - 1;
+        std::fs::write(home.join(format!("data/diario/{yesterday}.txt")), "Um passeio curto no fim da tarde.").unwrap();
+        app.mini_tap(2, 0);
+        shot(&mut app, "diario-historico");
+        app.mini_tap(101, 0);
+        shot(&mut app, "diario-antigo");
+        app.mini_back = Screen::Home;
+        app.mini = Some(Box::new(crate::flashcards::Flashcards::new()));
+        app.go(Screen::Mini);
+        shot(&mut app, "flashcards-vazio");
+        app.mini = Some(Box::new(crate::flashcards::Flashcards::para_print()));
+        shot(&mut app, "flashcards-baralhos");
+        app.mini_tap(900, 0);
+        shot(&mut app, "flashcards-frente");
+        app.mini_tap(810, 0);
+        shot(&mut app, "flashcards-verso");
+        app.mini_tap(802, 0);
+        shot(&mut app, "flashcards-fim");
+        let plan = std::fs::read_to_string(home.join("data/dia.txt")).unwrap();
+        std::fs::write(home.join("data/dia.txt"), "").unwrap();
+        app.mini = Some(Box::new(crate::organizacao::Organizacao::new()));
+        app.mini_back = Screen::Module(Module::Mais);
+        app.mini_slot = Some(107);
+        app.go(Screen::Mini);
+        shot(&mut app, "habitos-vazio");
+        std::fs::write(home.join("data/dia.txt"), plan).unwrap();
+        std::fs::write(home.join("data/tarefas_rapidas.txt"), "0\tComprar frutas\n1\tEnviar resposta\n").unwrap();
+        app.go(Screen::Home);
+        shot(&mut app, "inicio-habitos-tarefas");
+        app.go(Screen::Module(Module::Mais));
+        app.activate(Target::Row(8), 0);
+        shot(&mut app, "habitos-lista");
+        app.mini_tap(0, 0);
+        shot(&mut app, "habitos-marcado");
+        app.mini_tap(800, 0);
+        shot(&mut app, "habitos-teclado");
+        app.go(Screen::Mini);
+        let mut g = crate::organizacao::Organizacao::new();
+        g.screenshot_delete();
+        app.mini = Some(Box::new(g));
+        shot(&mut app, "habitos-apagar");
+        app.mini_tap(0, 0);
+        shot(&mut app, "habitos-confirmar-apagar");
+        app.mini_tap(0, 0);
+        assert!(!std::fs::read_to_string(home.join("data/dia.txt")).unwrap().contains("- Comprar pão"));
+        app.go(Screen::Module(Module::Mais));
+        app.activate(Target::Row(9), 0);
+        shot(&mut app, "calculadora-menu");
+        app.mini_tap(900, 0);
+        for id in [0, 15, 10, 19] { app.mini_tap(id, 0); }
+        shot(&mut app, "calculadora-conta");
+        app.mini_tap(801, 0);
+        shot(&mut app, "calculadora-historico");
+        app.mini_tap(802, 0);
+        app.activate(Target::Back, 0);
+        app.mini_tap(901, 0);
+        shot(&mut app, "calculadora-conversoes");
+        app.mini_tap(910, 0);
+        app.mini_tap(100, 0);
+        shot(&mut app, "calculadora-conversao");
+        app.mini_tap(804, 0);
+        app.mini_tap(915, 0);
+        shot(&mut app, "calculadora-moedas-sem-cotacao");
+        app.mini_tap(804, 0);
+        app.mini_tap(803, 0);
+        app.mini_tap(902, 0);
+        for id in [106, 110, 109, 110, 106, 832, 111, 107] { app.mini_tap(id, 0); }
+        shot(&mut app, "calculadora-gorjeta");
+        let plano_lembretes = std::fs::read_to_string(home.join("data/dia.txt")).unwrap();
+        std::fs::write(home.join("data/dia.txt"), "").unwrap();
+        app.go(Screen::Module(Module::Mais));
+        app.activate(Target::Row(10), 0);
+        app.mini = Some(Box::new(crate::lembretes_ui::Lembretes::print_vazio()));
+        shot(&mut app, "lembretes-vazio");
+        app.mini = Some(Box::new(crate::lembretes_ui::Lembretes::print_hora()));
+        shot(&mut app, "lembretes-hora");
+        let arquivo_lembretes = home.join("data/lembretes_avulsos.txt");
+        std::fs::write(&arquivo_lembretes, format!("{}\tLigar para a família\n", data::epoch() + 3600)).unwrap();
+        app.mini = Some(Box::new(crate::lembretes_ui::Lembretes::new()));
+        shot(&mut app, "lembretes-lista");
+        let longo = "Conferir os livros que ficaram na mesa, separar os documentos da semana e levar tudo para a reunião. Lembrar também de conversar com a família sobre os próximos dias e organizar os horários antes de sair de casa.".repeat(3);
+        std::fs::write(&arquivo_lembretes, format!("{}\t{}\n{}\tSegundo aviso\n", data::epoch() - 120, longo, data::epoch() - 60)).unwrap();
+        app.go(Screen::Home);
+        assert!(app.check_reminders());
+        assert!(crate::today_ui::reminder_page_count(&app.fonts, &longo) > 1);
+        shot(&mut app, "lembrete-aviso");
+        app.activate(Target::Next, 0);
+        shot(&mut app, "lembrete-aviso-pagina-2");
+        app.activate(Target::Primary, 0);
+        assert_eq!(app.reminder.as_ref().unwrap().text, "Segundo aviso");
+        shot(&mut app, "lembrete-segundo");
+        app.activate(Target::Primary, 0);
+        assert!(crate::lembretes_ui::pendentes().is_empty());
+        std::fs::write(home.join("data/dia.txt"), plano_lembretes).unwrap();
+        std::fs::remove_file(arquivo_lembretes).unwrap();
+        app.go(Screen::Module(Module::Mais));
+        shot(&mut app, "mais-com-caderno");
+        app.activate(Target::Row(11), 0);
+        shot(&mut app, "caderno-vazio");
+        // Percorre o mesmo caminho dos eventos reais do sensor, incluindo movimento e soltura.
+        for path in [
+            &[(200, 600), (260, 470), (320, 600), (380, 470), (440, 600)][..],
+            &[(500, 570), (550, 510), (610, 570), (660, 510), (720, 570)][..],
+            &[(230, 780), (320, 700), (410, 790), (500, 700), (590, 790), (680, 700), (770, 780)][..],
+        ] {
+            app.on_touch(Touch::Down(path[0].0, path[0].1));
+            for &(x, y) in &path[1..] { app.on_touch(Touch::Move(x, y)); }
+            let &(x, y) = path.last().unwrap();
+            app.on_touch(Touch::Up(x, y));
+        }
+        let primeira = home.join("data/caderno/pagina-0001.png");
+        assert!(primeira.exists());
+        shot(&mut app, "caderno-desenho");
+        app.mini_tap(801, 0);
+        app.on_touch(Touch::Down(310, 595));
+        app.on_touch(Touch::Move(335, 565));
+        app.on_touch(Touch::Up(335, 565));
+        shot(&mut app, "caderno-borracha");
+        app.mini_tap(811, 0);
+        assert!(home.join("data/caderno/pagina-0002.png").exists());
+        shot(&mut app, "caderno-nova-pagina");
+        app.mini_tap(810, 0);
+        shot(&mut app, "caderno-pagina-anterior");
+        app.mini_tap(802, 0);
+        app.mini_tap(802, 0);
+        let limpa = image::open(&primeira).unwrap().to_luma8();
+        assert!(limpa.pixels().all(|p| p.0[0] == crate::ui::PAPER));
+        shot(&mut app, "caderno-limpo");
         // Revisão de um erro real: coordenadas, alternativa e cobertura da análise.
         app.saved_games = vec![crate::coach::Saved {
             file: home.join("data/xadrez/partidas/exemplo.txt"),
