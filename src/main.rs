@@ -45,6 +45,8 @@ mod velha;
 mod reversi;
 mod go;
 mod cruzadas;
+mod dominio;
+mod detetive;
 mod puzzle_dia;
 mod geografia;
 mod matematica;
