@@ -1,0 +1,119 @@
+# A biblioteca que não fecha
+@ Uma biblioteca onde os livros escolhem os leitores, e um que está fugindo.
+
+== inicio
+A placa na porta diz "Aberto. Sempre." Você só entrou para fugir da chuva, mas a bibliotecária, uma senhora de óculos redondos e um gato no ombro, já te esperava com uma ficha preenchida no seu nome.
+
+— Finalmente — diz ela. — Um livro fugiu da seção de finais. Os livros sem final ficam perigosos depois da meia-noite. Preciso de alguém que ainda não tenha lido nada aqui.
+
+O relógio da parede marca 23h14.
+
+* Aceitar a tarefa -> corredor
+* Perguntar o que acontece com um livro sem final -> perigo
+* Pedir para levar o gato junto -> gato
+
+== perigo
+— Eles começam a terminar outras coisas — diz a bibliotecária, ajeitando os óculos. — Conversas, amizades, verões. Um livro sem final não suporta ver nada continuar.
+
+Ela te entrega um marcador de páginas de couro gasto.
+
+— Se encontrar o fugitivo, isto prende ele numa página. Mas só uma vez.
+
++marcador
+* Partir para o corredor das estantes -> corredor
+
+== gato
+O gato desce do ombro da bibliotecária e sobe no seu sem pedir licença. É pesado e ronrona como um motor velho.
+
+— O Dostoiévski conhece todos os atalhos — diz ela. — E nunca concorda com ninguém.
+
++gato
+* Partir para o corredor das estantes -> corredor
+
+== corredor
+O corredor das estantes não tem fim visível. Os livros sussurram quando você passa, cada um contando a primeira frase de si mesmo, todos ao mesmo tempo.
+
+Num cruzamento, três caminhos: uma escada que desce para a seção de poesia, uma porta pequena com a placa "Esquecidos" e, no chão, um rastro de vírgulas soltas, como migalhas.
+
+* Seguir o rastro de vírgulas -> virgulas
+* Entrar na sala dos Esquecidos -> esquecidos
+* [gato] Deixar o gato escolher o caminho -> atalho
+
+== atalho
+Dostoiévski pula do seu ombro, ignora os três caminhos e se espreme por trás de uma estante de enciclopédias. Você vai atrás, de lado, pedindo desculpas a volumes de botânica.
+
+Do outro lado, uma sala redonda, iluminada por uma janela que mostra uma lua que não é desta noite. No centro, um livro fino, de capa azul, tremendo sobre uma mesa.
+
++achou_cedo
+* Aproximar devagar -> fugitivo
+
+== virgulas
+As vírgulas levam até a seção de poesia, onde os versos estão bagunçados: alguém passou correndo e derrubou rimas pelo chão. Um soneto chora porque perdeu os dois últimos versos.
+
+* Ajudar o soneto a achar os versos -> soneto
+* Ignorar e seguir as vírgulas -> fugitivo
+
+== soneto
+Você recolhe os versos caídos e devolve um por um. O soneto se recompõe, agradecido, e recita a si mesmo inteiro pela primeira vez em anos. É sobre o mar. É bonito.
+
+Em troca, ele sussurra:
+
+— O fugitivo tem medo de ser lido até o fim. Não persiga. Ofereça.
+
++conselho
+* Seguir as vírgulas até o fim -> fugitivo
+
+== esquecidos
+A sala dos Esquecidos é cheia de livros que ninguém abre há décadas. O pó é tão grosso que parece neve. Numa estante baixa, um caderno de capa dura com o seu nome escrito na lombada, numa letra de criança.
+
+Dentro, uma história que você começou aos nove anos e nunca terminou: um dragão que tinha medo de altura.
+
++caderno_antigo
+* Levar o caderno junto -> fugitivo
+* Deixar o caderno e voltar ao corredor das vírgulas -> virgulas
+
+== fugitivo
+O fugitivo é um livro fino, de capa azul, sem título. Quando você se aproxima, ele se fecha com força e as páginas tremem.
+
+O relógio, de algum lugar, bate 23h58.
+
+* [marcador] Prender o livro com o marcador -> fim_preso
+* [conselho] Sentar ao lado e oferecer escrever um final junto -> fim_final_junto
+* [caderno_antigo] Mostrar o seu caderno, a sua história também sem fim -> fim_dois_livros
+* Tentar pegar o livro com as mãos -> fim_meia_noite
+
+== fim_preso
+O marcador desliza entre as páginas e o livro para de tremer, preso num parágrafo qualquer do meio. A bibliotecária aparece, satisfeita, e o devolve à seção de finais, onde ele vai esperar alguém escrever o resto.
+
+Você sai para a rua. A chuva parou. Mas a conversa que você ia ter amanhã com um amigo, por algum motivo, você já não lembra qual era.
+
+Livros presos no meio deixam coisas pela metade.
+
+FIM
+
+== fim_final_junto
+Você senta no chão ao lado dele, abre na última página em branco e pergunta como ele queria terminar. As palavras aparecem devagar, como se ele estivesse com vergonha.
+
+Vocês escrevem juntos até o relógio bater meia-noite. O final é simples: alguém volta para casa, e a casa ainda está lá.
+
+O livro ganha um título na capa. A bibliotecária chora um pouquinho, fingindo que é o pó.
+
+FIM
+
+== fim_dois_livros
+Você abre o caderno do dragão com medo de altura e coloca ao lado do fugitivo. Ele para de tremer, se abre devagar e lê. As duas histórias, sem fim, se reconhecem.
+
+À meia-noite, os dois livros se fecham juntos e, quando você os abre de novo, as duas histórias terminaram: o dragão aprendeu a voar com o livro azul, e o livro azul aprendeu a terminar com o dragão.
+
+Você leva o caderno para casa. Nunca mais teve medo de terminar as coisas.
+
+FIM
+
+== fim_meia_noite
+As suas mãos se fecham sobre a capa no exato instante em que o relógio bate meia-noite. O livro se abre de uma vez e as páginas viram como vento.
+
+Quando a ventania passa, a biblioteca está escura e a placa da porta diz "Fechado". Pela primeira vez em cem anos.
+
+Na rua, a chuva continua. Você ainda tem o livro azul nas mãos, agora quieto, esperando. Talvez ele só precisasse de alguém que não soltasse.
+
+FIM

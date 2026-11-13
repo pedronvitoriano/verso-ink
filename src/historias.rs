@@ -25,7 +25,46 @@ use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
 use std::path::PathBuf;
 
-const EXAMPLES: [(&str, &str); 1] = [("a-ultima-balsa.txt", include_str!("../assets/historias/a-ultima-balsa.txt"))];
+const EXAMPLES: [(&str, &str); 5] = [
+    ("a-ultima-balsa.txt", include_str!("../assets/historias/a-ultima-balsa.txt")),
+    ("o-farol-desligado.txt", include_str!("../assets/historias/o-farol-desligado.txt")),
+    ("estacao-omega.txt", include_str!("../assets/historias/estacao-omega.txt")),
+    ("o-bolo-da-tia-zuleica.txt", include_str!("../assets/historias/o-bolo-da-tia-zuleica.txt")),
+    ("a-biblioteca-que-nao-fecha.txt", include_str!("../assets/historias/a-biblioteca-que-nao-fecha.txt")),
+];
+
+/// Tira os caminhos que voltam para trás (um trecho que leva a um anterior dele), olhando só a
+/// estrutura, sem as marcas: usado nas histórias geradas, que às vezes fazem "tente de novo".
+/// Trecho que fica sem escolha vira final.
+fn break_loops(s: &mut Story) {
+    fn dfs(s: &Story, n: &str, on: &mut Vec<String>, done: &mut BTreeSet<String>, cut: &mut Vec<(String, String)>) {
+        if done.contains(n) {
+            return;
+        }
+        on.push(n.to_string());
+        if let Some(p) = s.passages.get(n) {
+            for c in &p.choices {
+                if on.contains(&c.to) {
+                    cut.push((n.to_string(), c.to.clone()));
+                } else {
+                    dfs(s, &c.to, on, done, cut);
+                }
+            }
+        }
+        on.pop();
+        done.insert(n.to_string());
+    }
+    let mut cut = Vec::new();
+    dfs(s, &s.first.clone(), &mut Vec::new(), &mut BTreeSet::new(), &mut cut);
+    for (from, to) in cut {
+        if let Some(p) = s.passages.get_mut(&from) {
+            p.choices.retain(|c| c.to != to);
+            if p.choices.is_empty() {
+                p.end = true;
+            }
+        }
+    }
+}
 const TEXT_TOP: i32 = 250;
 const BODY: f32 = 36.0;
 const LINE: i32 = 54;
@@ -131,9 +170,12 @@ fn load_all() -> Vec<(PathBuf, Story)> {
     let d = dir();
     let fresh = !d.exists();
     let _ = std::fs::create_dir_all(&d);
-    if fresh {
-        for (name, body) in EXAMPLES {
-            let _ = std::fs::write(d.join(name), body);
+    let _ = fresh;
+    // As histórias que vêm com o Verso Ink: novas são copiadas e as corrigidas, atualizadas.
+    for (name, body) in EXAMPLES {
+        let p = d.join(name);
+        if std::fs::read_to_string(&p).ok().as_deref() != Some(body) {
+            let _ = std::fs::write(p, body);
         }
     }
     let mut v: Vec<_> = std::fs::read_dir(&d)
@@ -141,7 +183,16 @@ fn load_all() -> Vec<(PathBuf, Story)> {
         .flatten()
         .flatten()
         .filter(|e| e.path().extension().is_some_and(|x| x == "txt"))
-        .filter_map(|e| std::fs::read_to_string(e.path()).ok().map(|s| (e.path(), parse(&s))))
+        .filter_map(|e| {
+            let bundled = EXAMPLES.iter().any(|(n, _)| e.file_name() == *n);
+            std::fs::read_to_string(e.path()).ok().map(|s| {
+                let mut st = parse(&s);
+                if !bundled {
+                    break_loops(&mut st);
+                }
+                (e.path(), st)
+            })
+        })
         .filter(|(_, s)| !s.title.is_empty() && !s.passages.is_empty())
         .collect();
     v.sort_by(|a, b| a.1.title.cmp(&b.1.title));
@@ -173,6 +224,8 @@ pub struct Historias {
     list_page: usize,
     /// Pediu ao app o texto do rumo novo.
     want_text: bool,
+    /// O texto pedido é o tema de uma história nova (e não o rumo da atual).
+    want_new: bool,
     /// Recado na leitura (erro ao gerar, por exemplo).
     note: Option<String>,
     list: Vec<(PathBuf, Story)>,
@@ -197,7 +250,7 @@ fn wrap(f: &Fonts, face: Face, size: f32, text: &str, max_w: i32) -> Vec<String>
 
 impl Historias {
     pub fn new() -> Self {
-        Historias { list: load_all(), read: None, hits: RefCell::new(Vec::new()), want_text: false, note: None, list_page: 0 }
+        Historias { list: load_all(), read: None, hits: RefCell::new(Vec::new()), want_text: false, want_new: false, note: None, list_page: 0 }
     }
 
     fn open(&mut self, k: usize) {
@@ -233,6 +286,8 @@ impl Historias {
 
     fn draw_list(&self, fb: &mut Framebuffer, f: &Fonts) {
         f.draw(fb, Face::Display, 130.0, MARGIN - 6, 330, INK, "Histórias");
+        let gen = gen_rect();
+        ui::button(fb, f, gen, "Gerar história", true);
         let n = self.list.len();
         f.draw(fb, Face::Strong, 30.0, MARGIN, 400, MUTED, &format!("{n} {} · você escolhe o caminho ou cria outro", if n == 1 { "história" } else { "histórias" }));
         let mut hits = Vec::new();
@@ -269,8 +324,12 @@ impl Historias {
             let w = f.measure(Face::Strong, 28.0, &t);
             f.draw(fb, Face::Strong, 28.0, (W - w) / 2, 1356, MUTED, &t);
         } else {
-            let tip = "Durante a leitura, \"Seguir outro rumo\" cria uma história nova com o Verso.";
+            let tip = "Em Gerar, o Verso escreve uma história nova sobre o que você pedir.";
             f.draw(fb, Face::Body, 26.0, MARGIN, 1356, MUTED, &crate::apps::fit(f, Face::Body, 26.0, tip, W - 2 * MARGIN));
+        }
+        hits.push((730, gen));
+        if let Some(n) = &self.note {
+            f.draw(fb, Face::Strong, 28.0, MARGIN, 1256, INK, &crate::apps::fit(f, Face::Strong, 28.0, n, W - 2 * MARGIN));
         }
         *self.hits.borrow_mut() = hits;
     }
@@ -433,6 +492,12 @@ impl MiniGame for Historias {
             }
             710 => {
                 self.want_text = true;
+                self.want_new = false;
+                Redraw::None
+            }
+            730 => {
+                self.want_text = true;
+                self.want_new = true;
                 Redraw::None
             }
             i => {
@@ -456,11 +521,13 @@ impl MiniGame for Historias {
     }
 
     fn wants_text(&mut self) -> Option<String> {
-        std::mem::take(&mut self.want_text).then(|| "Para onde a história vai?".to_string())
+        let new = self.want_new;
+        std::mem::take(&mut self.want_text).then(|| if new { "Sobre o que é a história? (tema, gênero ou uma frase)".to_string() } else { "Para onde a história vai?".to_string() })
     }
 
     fn text_input(&mut self, text: &str) -> Redraw {
-        self.note = match self.new_branch(text) {
+        let r = if std::mem::take(&mut self.want_new) { self.new_story(text) } else { self.new_branch(text) };
+        self.note = match r {
             Ok(()) => None,
             Err(e) => Some(e),
         };
@@ -481,13 +548,36 @@ impl Historias {
 Português do Brasil, prosa literária enxuta (trechos de 60 a 140 palavras), de 8 a 14 trechos, 2 ou 3 escolhas por trecho, pelo menos 3 finais diferentes. \
 Responda SÓ com o texto da história neste formato (sem comentários, sem cercas de código):\n\
 # Título novo\n@ Uma frase de resumo\n\n== inicio\nTexto do trecho.\n\n* Texto da escolha -> nome_do_trecho\n* Outra escolha -> outro_trecho\n\n== nome_do_trecho\nTexto...\n\n\
+A história sempre anda para a frente: nenhuma escolha volta a um trecho anterior. \
 Nomes de trecho em minúsculas, sem acento e sem espaço. Trecho final não tem escolhas. Toda escolha leva a um trecho que existe."
         );
-        let id = crate::chat::send(None, &prompt, Some(&context))?;
+        self.generate(&prompt, Some(&context))
+    }
+
+    /// História nova do zero, sobre o tema pedido (vazio: o Verso escolhe).
+    fn new_story(&mut self, theme: &str) -> Result<(), String> {
+        let theme = theme.trim();
+        let about = if theme.is_empty() { "um tema e um gênero que você escolher (surpreenda)".to_string() } else { format!("«{theme}»") };
+        let prompt = format!(
+            "Escreva uma história interativa NOVA sobre {about}. \
+Português do Brasil, prosa literária enxuta e viva (trechos de 60 a 140 palavras), de 9 a 14 trechos, 2 ou 3 escolhas por trecho, de 3 a 5 finais diferentes e marcantes. \
+A história SEMPRE anda para a frente: nenhuma escolha volta a um trecho anterior (nada de \"tente de novo\" ou \"recomeçar\"); um erro vira um final próprio. \
+Use marcas para lembrar escolhas: a linha +nome marca algo, e uma escolha com [nome] só aparece com a marca ([!nome], sem ela). \
+Responda SÓ com o texto da história neste formato (sem comentários, sem cercas de código):\n\
+# Título\n@ Uma frase de resumo\n\n== inicio\nTexto do trecho.\n\n+marca\n* Texto da escolha -> nome_do_trecho\n* [marca] Escolha só com a marca -> outro_trecho\n\n== nome_do_trecho\n...\n\n== um_final\nTexto do final.\n\nFIM\n\
+Nomes de trecho em minúsculas, sem acento e sem espaço. Trecho final termina com a linha FIM e não tem escolhas. Toda escolha leva a um trecho que existe."
+        );
+        self.generate(&prompt, None)
+    }
+
+    /// Manda o pedido ao Verso, confere o formato, tira loops, salva e abre a história.
+    fn generate(&mut self, prompt: &str, context: Option<&str>) -> Result<(), String> {
+        let id = crate::chat::send(None, prompt, context)?;
         let chat = crate::chat::open(&id)?;
         let reply = chat.messages.iter().rev().find(|m| !m.user).map(|m| m.text.clone()).ok_or("O Verso não respondeu.")?;
         let body: String = reply.lines().filter(|l| !l.trim_start().starts_with("```")).collect::<Vec<_>>().join("\n");
         let mut new = parse(&body);
+        break_loops(&mut new);
         // Escolhas para trechos que não existem saem; o que ficar sem saída vira final.
         let names: BTreeSet<String> = new.passages.keys().cloned().collect();
         for p in new.passages.values_mut() {
@@ -533,6 +623,72 @@ mod tests {
         assert_eq!(proa.choices[1].need, Some((false, "chave".into())));
     }
 
+    /// Toda história que vem com o Verso Ink anda sempre para a frente: nenhum caminho volta a um
+    /// trecho já visto (com as mesmas marcas), todo trecho é alcançável, todo caminho termina num
+    /// final, e há pelo menos 3 finais alcançáveis.
+    #[test]
+    fn historias_sem_loop_e_com_finais() {
+        for (file, src) in EXAMPLES {
+            let s = parse(src);
+            assert!(!s.title.is_empty() && s.passages.contains_key(&s.first), "{file}: sem título ou início");
+            for (name, p) in &s.passages {
+                assert!(!p.paragraphs.is_empty(), "{file}/{name} sem texto");
+                assert!(p.end || !p.choices.is_empty(), "{file}/{name} não tem saída");
+                assert!(!(p.end && !p.choices.is_empty()), "{file}/{name}: final com escolhas");
+                for c in &p.choices {
+                    assert!(s.passages.contains_key(&c.to), "{file}/{name} → {} não existe", c.to);
+                }
+            }
+            // Busca em profundidade pelos estados (trecho, marcas): achar um estado já na pilha é loop.
+            type St = (String, BTreeSet<String>);
+            fn enter(s: &Story, n: &str, mut f: BTreeSet<String>) -> St {
+                let p = &s.passages[n];
+                f.extend(p.set.iter().cloned());
+                for u in &p.unset {
+                    f.remove(u);
+                }
+                (n.to_string(), f)
+            }
+            fn walk(s: &Story, st: St, path: &mut Vec<St>, seen: &mut std::collections::HashSet<St>, ends: &mut BTreeSet<String>, nodes: &mut BTreeSet<String>, file: &str) {
+                assert!(!path.contains(&st), "{file}: loop ao voltar para '{}'", st.0);
+                nodes.insert(st.0.clone());
+                if !seen.insert(st.clone()) {
+                    return;
+                }
+                let p = &s.passages[&st.0];
+                if p.end {
+                    ends.insert(st.0.clone());
+                    return;
+                }
+                let open: Vec<_> = p.choices.iter().filter(|c| c.need.as_ref().is_none_or(|(want, f)| st.1.contains(f) == *want)).collect();
+                assert!(!open.is_empty(), "{file}/{}: nenhuma escolha disponível com {:?}", st.0, st.1);
+                path.push(st.clone());
+                for c in open {
+                    let next = enter(s, &c.to, st.1.clone());
+                    walk(s, next, path, seen, ends, nodes, file);
+                }
+                path.pop();
+            }
+            let (mut ends, mut nodes) = (BTreeSet::new(), BTreeSet::new());
+            let start = enter(&s, &s.first, BTreeSet::new());
+            walk(&s, start, &mut Vec::new(), &mut std::collections::HashSet::new(), &mut ends, &mut nodes, file);
+            assert!(ends.len() >= 3, "{file}: só {} finais alcançáveis", ends.len());
+            let missing: Vec<_> = s.passages.keys().filter(|k| !nodes.contains(*k)).collect();
+            assert!(missing.is_empty(), "{file}: trechos inalcançáveis {missing:?}");
+        }
+    }
+
+    #[test]
+    fn historia_gerada_com_loop_vira_linha_reta() {
+        let src = "# T\n@ r\n\n== inicio\nA.\n\n* ir -> meio\n\n== meio\nB.\n\n* voltar -> inicio\n* seguir -> fim\n\n== erro\nC.\n\n* tente de novo -> inicio\n\n== fim\nD.\n\nFIM\n";
+        let mut s = parse(src);
+        break_loops(&mut s);
+        assert!(s.passages["meio"].choices.iter().all(|c| c.to != "inicio"));
+        assert_eq!(s.passages["meio"].choices.len(), 1);
+        // "erro" não é alcançável a partir do início: fica como está.
+        assert_eq!(s.passages["erro"].choices.len(), 1);
+    }
+
     #[test]
     fn todo_final_e_alcancavel() {
         let s = parse(EXAMPLES[0].1);
@@ -545,4 +701,9 @@ mod tests {
         }
         assert_eq!(seen.len(), s.passages.len());
     }
+}
+
+pub fn gen_rect() -> Rect {
+    // Ao lado do título (o canto de cima é do "Como jogar").
+    Rect::new(W - MARGIN - 330, 248, 330, 92)
 }

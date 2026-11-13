@@ -73,7 +73,7 @@ A voz é gentil, convincente. A mão está aberta, paciente, molhada de chuva.
 * [chave] Lembrar do bilhete da avó e recusar -> recusa
 * [!chave] Entregar o envelope -> engano
 * [chave] Entregar o envelope mesmo assim -> engano
-* Voltar para dentro sem responder -> sono
+* [!desperto] Voltar para dentro sem responder -> sono
 
 == recusa
 — Não — você diz. — A senhora pediu.
@@ -89,26 +89,54 @@ A mão se fecha sobre o envelope. A capa se vira e não tem rosto, só o reflexo
 
 A balsa dá um tranco e começa a voltar.
 
-— Quem só quer ir, o rio devolve — você lembra.
+— Quem só quer ir, o rio devolve — você lembra, tarde demais.
 
-* Recomeçar a travessia -> inicio
+* Correr até a amurada e olhar a água -> fim_devolvido
+* [pista] Gritar o nome da sua avó para o rio -> fim_nome
+
+== fim_devolvido
+Na água preta, por um segundo, você vê papel boiando, as letras da sua avó se desmanchando como tinta de aquarela.
+
+A balsa atraca na margem de onde você saiu. O homem do guichê não diz nada; só desliga a luz da cabine.
+
+Em casa, a chave de latão, se você a tinha, está no seu bolso, seca, como se nunca tivesse molhado. Ela vai esperar. As coisas da sua avó sempre souberam esperar.
+
+FIM
+
+== fim_nome
+Você grita o nome dela, o nome inteiro, que ninguém usava. O rio fica quieto, como quem escuta.
+
+A balsa para no meio da travessia. Da água sobe, devagar, o envelope, inteiro e seco, e pousa no convés aos seus pés. A figura de capa já não está lá.
+
+Na outra margem, uma janela acende. Alguém, finalmente, sabe que você chegou.
+
+FIM
 
 == sono
-Você fecha os olhos só por um instante.
+Você fecha os olhos só por um instante. O balanço da balsa é bom demais, o ronco do motor vira canção de ninar, a chuva vira lençol.
 
-Quando abre, a balsa está atracada. Na margem de onde você saiu.
+Alguém senta ao seu lado. Você sente o cheiro de rio molhado numa capa de chuva.
 
-O homem do guichê acena de longe, como quem já sabia.
+* [aviso] Lembrar do bilhete: "não durma na travessia" -> desperto
+* Deixar o sono vir -> fim_margem
 
-* [aviso] Lembrar do aviso no bilhete: "não durma na travessia" -> sono_aviso
-* Tentar de novo -> inicio
+== desperto
+Você abre os olhos de uma vez. A figura de capa está sentada ao seu lado, a mão estendida em direção ao seu bolso, parada no ar, como quem foi pego.
 
-== sono_aviso
-Estava escrito no verso do bilhete. Você leu e mesmo assim dormiu. O rio não perdoa distração, mas também não guarda rancor.
+— Você leu o bilhete — diz ela, quase com respeito. Levanta e volta para a proa, sem pressa.
 
-O homem do guichê empurra outro bilhete pelo vão do vidro. Desta vez, sem cobrar.
++desperto
+* Ir atrás dela até a proa -> proa
+* Ficar acordado, de olhos na margem -> chegada
 
-* Embarcar de novo, de olhos abertos -> embarque
+== fim_margem
+Quando você abre os olhos, a balsa está atracada. Na margem de onde você saiu.
+
+O envelope continua no seu bolso, intacto. O homem do guichê acena de longe, como quem já sabia, e aponta para o quadro de horários: a próxima travessia noturna é daqui a um ano.
+
+Você guarda o envelope numa gaveta. Às vezes, à noite, ouve um apito de balsa que não existe.
+
+FIM
 
 == chegada
 A outra margem é uma fileira de casas de palafita com as janelas apagadas, menos uma. Na varanda, um velho sentado numa cadeira de balanço olha o rio. Não olha para você. Não pede nada.

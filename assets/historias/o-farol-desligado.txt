@@ -1,0 +1,111 @@
+# O farol desligado
+@ Uma ilha, um farol apagado há três noites e um faroleiro que ninguém vê.
+
+== inicio
+O barco do correio te deixa no cais da ilha com uma caixa de lâmpadas e um aviso: "volto amanhã, se o mar deixar". Você é o técnico que a Marinha mandou. O farol está apagado há três noites, e o faroleiro, seu Tomé, não atende o rádio.
+
+O vento carrega cheiro de sal e de querosene. Lá em cima, a lanterna do farol é um olho fechado.
+
+Na trilha, duas casas: a do faroleiro, com a porta entreaberta, e um galpão de redes com luz acesa.
+
+* Subir direto ao farol -> escada
+* Entrar na casa do faroleiro -> casa
+* Bater no galpão iluminado -> galpao
+
+== casa
+A casa está arrumada demais. A cama feita, o fogão frio, uma xícara de café pela metade sobre a mesa, com uma película de nata por cima. No calendário da parede, os três últimos dias estão riscados com força, como se alguém contasse para trás.
+
+Na gaveta da mesa, um caderno de bordo. A última anotação: "Ela voltou a pedir a luz apagada. Não sei quanto tempo aguento dizer não."
+
++caderno
+* Levar o caderno e subir ao farol -> escada
+* Procurar quem é "ela" no galpão -> galpao
+
+== galpao
+Dentro do galpão, uma mulher remenda redes à luz de um lampião. Tem as mãos rápidas e os olhos de quem não dorme bem.
+
+— Você é o técnico — diz, sem perguntar. — Não acenda aquilo hoje. Meu filho saiu para pescar há três noites. Se o farol acender, os barcos de fora veem a passagem pelas pedras. E os barcos de fora não são de pescador.
+
+Ela não explica mais. Volta às redes.
+
++dona_iara
+* Perguntar que barcos são esses -> barcos
+* Agradecer e subir ao farol -> escada
+
+== barcos
+Ela larga a agulha.
+
+— Contrabando. Usam a luz para achar a passagem e descarregar na enseada. O Tomé apagava o farol para eles não virem. Aí eles vieram buscar o Tomé.
+
+Ela aponta para o mar com o queixo. Ao longe, sem luz nenhuma, uma lancha espera, balançando.
+
+— Meu filho está lá fora, sem luz também. Se você acender, ele volta. E eles também.
+
++contrabando
+* Prometer pensar antes de acender -> escada
+* Pedir o rádio dela para chamar a Marinha -> radio
+
+== radio
+O rádio do galpão chia como gordura na frigideira. Depois de muitas tentativas, uma voz cansada responde da base:
+
+— Lancha na enseada? Mandamos a patrulha ao amanhecer. Se o farol acender antes, eles fogem pela passagem e a gente perde.
+
+A mulher te olha como quem já sabia a resposta.
+
++marinha
+* Subir ao farol sabendo de tudo -> escada
+
+== escada
+Cento e doze degraus em caracol. O farol cheira a ferro e a óleo velho. Lá em cima, a lanterna está intacta: alguém tirou o fusível principal e deixou sobre a mesa, ao lado de um bilhete na letra de quem escreveu o caderno.
+
+"Quem achar isto: a escolha agora é sua. Eu já fiz a minha."
+
+Pela janela, no escuro do mar, um ponto pequeno de lanterna de mão pisca três vezes. Para. Pisca de novo.
+
+* [!contrabando] Recolocar o fusível e acender o farol -> fim_luz
+* [contrabando] Acender mesmo assim: o menino precisa voltar -> fim_luz_fuga
+* [contrabando] Deixar apagado e responder ao ponto com a sua lanterna -> lanterna
+* [marinha] Esperar o amanhecer com o farol apagado -> fim_amanhecer
+
+== lanterna
+Você pisca três vezes com a lanterna do celular. O ponto lá fora para. Depois responde: dois piscos longos, um curto.
+
+Devagar, sem luz, um barquinho de pescador desliza pela borda das pedras, guiado só pelos seus piscos, longe da passagem grande. Você conduz o barco por meia hora, braço doendo, até ouvir o casco raspar na areia da praia.
+
+* Descer correndo para a praia -> fim_filho
+
+== fim_luz
+O fusível encaixa com um estalo. A lanterna gira, o feixe varre o mar e, por um instante, ilumina tudo: as pedras, a passagem, uma lancha escura que liga o motor e foge para longe.
+
+Você cumpriu o serviço. De manhã, um barco de pescador entra no cais, e uma mulher do galpão corre para abraçar um rapaz encharcado. Ninguém te agradece. Ninguém te culpa.
+
+Você nunca soube o que teria acontecido no escuro.
+
+FIM
+
+== fim_luz_fuga
+A luz gira e o mar inteiro aparece. A lancha liga o motor e some pela passagem antes que alguém possa segui-la. No meio da claridade, um barquinho de pescador acha o caminho de casa.
+
+De manhã, a patrulha da Marinha chega tarde e encontra a enseada vazia. A mãe do galpão te dá um peixe embrulhado em jornal, sem dizer nada. Você aceita, sem dizer nada também.
+
+Algumas escolhas salvam uma pessoa e soltam outras. O farol não sabe a diferença.
+
+FIM
+
+== fim_filho
+Na areia, um rapaz magro tira o boné e olha para o farol apagado, depois para você, sem entender. A mãe chega correndo do galpão, descalça.
+
+Ao amanhecer, a patrulha da Marinha cerca a enseada. A lancha não tinha para onde fugir no escuro.
+
+Só então você recoloca o fusível. O farol acende num dia já claro, quase sem precisar. Seu Tomé aparece no cais dois dias depois, num barco da Marinha, magro e vivo, perguntando quem mexeu no fusível dele.
+
+FIM
+
+== fim_amanhecer
+Você passa a noite sentado ao lado da lanterna apagada, ouvindo o mar. Às cinco, a patrulha surge no horizonte e fecha a enseada. Pelo rádio, a voz cansada agradece.
+
+Mas o ponto de luz no mar parou de piscar à meia-noite. De manhã, o barquinho do rapaz é achado inteiro numa praia do outro lado da ilha, vazio, com os remos guardados com cuidado.
+
+Ninguém sabe ainda onde ele está. A mãe continua remendando redes, olhando o mar. Você fica mais um dia, e mais outro.
+
+FIM

@@ -1,0 +1,160 @@
+# O bolo da tia Zuleica
+@ Uma missão simples: levar o bolo do casamento do outro lado da cidade. Nada é simples.
+
+== inicio
+Tia Zuleica te liga às sete da manhã com a voz de quem está prestes a desmaiar:
+
+— Meu amor, o casamento é ao meio-dia e a confeitaria só entrega amanhã. Você vai buscar o bolo. Três andares. Chantilly. Uma noivinha de porcelana que era da sua bisavó. Se cair, eu não sobrevivo, e você também não.
+
+A confeitaria fica do outro lado da cidade. Você tem um carro pequeno, um primo disponível e quatro horas.
+
+* Ir sozinho, de carro, agora -> carro
+* Chamar o primo Juninho para ajudar -> juninho
+* Pedir um carro de aplicativo maior -> aplicativo
+
+== juninho
+Juninho chega de bermuda, sandália e uma confiança que nunca foi justificada por nada.
+
+— Bolo? Tranquilo. Já carreguei geladeira sozinho.
+
+Ele não carregou geladeira sozinho. Você sabe disso. Ele sabe que você sabe.
+
++juninho
+* Ir de carro com o Juninho segurando o bolo -> carro
+* Ir de aplicativo, os dois -> aplicativo
+
+== aplicativo
+O motorista do aplicativo chega numa caminhonete enorme e olha para a caixa do bolo com respeito religioso.
+
+— Bolo de casamento? Já levei três. Um chegou inteiro.
+
+Ele dirige como quem carrega nitroglicerina. Vocês levam quarenta minutos para atravessar seis quarteirões.
+
++devagar
+* Pedir para ele acelerar um pouco -> pressa
+* Aceitar o ritmo e avisar a tia que vai atrasar -> atraso
+
+== carro
+O bolo vai no banco de trás, preso com o cinto de segurança, como um passageiro muito importante. Na primeira lombada, a noivinha de porcelana balança e você sente o coração na garganta.
+
+Na segunda lombada, um ruído suspeito vem lá de trás: "pof".
+
+* [juninho] Perguntar ao Juninho o que foi esse barulho -> pof_juninho
+* [!juninho] Parar o carro e olhar -> amassado
+
+== pof_juninho
+— Nada não — diz o Juninho, rápido demais. Tem chantilly na sobrancelha dele.
+
+Você para o carro. O terceiro andar do bolo tem uma cratera perfeita do tamanho de uma colher, e a colher está no bolso da bermuda do Juninho.
+
+— Eu tava provando se tava bom — ele explica. — Tava.
+
+* Comprar chantilly no mercado e consertar -> conserto
+* Girar o bolo para o buraco ficar de costas -> girar
+
+== amassado
+Um canto do segundo andar afundou. Não muito. O suficiente para a tia Zuleica notar a dois quilômetros de distância.
+
+Do outro lado da rua, uma padaria de bairro com um senhor de avental na porta, varrendo.
+
+* Pedir ajuda ao padeiro -> padeiro
+* Girar o bolo para o amassado ficar de costas -> girar
+
+== padeiro
+O padeiro olha o estrago, estala a língua e diz:
+
+— Me dá dez minutos.
+
+Volta com uma espátula, um saco de confeitar e o olhar de um cirurgião. Quando termina, o canto amassado virou uma rosa de chantilly tão bonita que parece de propósito.
+
+— Casamento é assim mesmo — ele diz. — Tudo que dá errado vira enfeite.
+
++rosa
+* Agradecer e correr para o salão -> salao
+
+== conserto
+No mercado, você compra duas latas de chantilly spray, um pacote de confeitos prateados e uma dignidade que já tinha perdido. O conserto fica... aceitável. De longe. Com pouca luz.
+
+Juninho segura a lanterna do celular e opina sobre cada movimento.
+
+* Correr para o salão -> salao
+
+== girar
+Você gira o bolo com o cuidado de quem desarma uma bomba. O defeito agora está de costas. De frente, o bolo é perfeito. De costas, é um mistério.
+
+— Ninguém olha bolo por trás — você diz, sem acreditar.
+
++escondido
+* Correr para o salão -> salao
+
+== pressa
+O motorista acelera um pouco. Na primeira curva, a caixa escorrega e para na porta, inteira, mas a noivinha de porcelana tomba de lado e fica ali, deitada sobre o chantilly, como se tivesse desmaiado de emoção.
+
+* Pôr a noivinha de pé com todo o cuidado -> salao
+* Deixar como está: parece romântico -> salao_noivinha
+
+== atraso
+Você manda mensagem para a tia: "vou atrasar um pouco, mas o bolo está perfeito". Ela responde com quarenta e dois emojis, nenhum deles calmo.
+
+A caminhonete chega ao salão às 12h20, com o bolo intacto, glorioso, tão perfeito quanto saiu da confeitaria.
+
+* Entrar com o bolo -> fim_perfeito
+
+== salao
+O salão está cheio de flores e de parentes que você não vê desde a infância. Tia Zuleica corre na sua direção com o vestido levantado e o rosto de quem não dormiu.
+
+Ela olha o bolo. Olha de novo. Olha mais de perto.
+
+* [rosa] Esperar o veredito -> fim_rosa
+* [escondido] Torcer para ela não dar a volta na mesa -> fim_costas
+* [!rosa] Esperar o veredito -> fim_aceitavel
+
+== salao_noivinha
+Tia Zuleica vê a noivinha deitada sobre o chantilly e solta um grito que faz a banda parar de afinar os instrumentos.
+
+Depois, para surpresa geral, começa a rir. Ri tanto que precisa sentar.
+
+— Igualzinha a mim no meu casamento — diz, enxugando as lágrimas. — Desmaiei antes do sim.
+
+* Deixar a noivinha deitada para sempre -> fim_desmaio
+
+== fim_perfeito
+O bolo atravessa o salão como uma rainha. Ninguém nota o atraso: a noiva também está atrasada, como manda a tradição.
+
+Tia Zuleica te dá um beijo na testa e diz que você é o único da família em quem ela confia. Você decide nunca contar a ela sobre os quarenta minutos em seis quarteirões.
+
+FIM
+
+== fim_rosa
+— Essa rosa — diz a tia Zuleica, emocionada. — Ninguém me falou que vinha rosa.
+
+— Foi um pedido especial — você mente.
+
+No fim da festa, ela pede o telefone da confeitaria para encomendar outra rosa igual no aniversário dela. A confeitaria nunca vai saber de que rosa ela está falando. O padeiro do bairro ganha uma cliente para a vida toda.
+
+FIM
+
+== fim_costas
+Durante duas horas, tudo corre bem. Na hora de cortar o bolo, o noivo, querendo agradar, gira a base para a foto ficar mais bonita.
+
+O salão inteiro vê o buraco. Silêncio. Então alguém grita "é o bolo da sorte!", e todo mundo aplaude sem saber por quê.
+
+A tia Zuleica olha para você do outro lado do salão. Você sabe que esse assunto vai voltar em todo Natal até o fim dos tempos.
+
+FIM
+
+== fim_aceitavel
+Ela não diz nada por um longo segundo. Depois aperta a sua mão e sussurra:
+
+— Está do jeito que o amor é. Meio torto, mas chegou.
+
+Ninguém mais nota nada. Ou, se nota, finge muito bem. Juninho, se estava lá, come três fatias e diz a todo mundo que ajudou a carregar.
+
+FIM
+
+== fim_desmaio
+A noivinha fica deitada sobre o chantilly a festa inteira, e vira a foto mais compartilhada do casamento. Alguém faz um adesivo com ela. A noiva pede para guardar a porcelana assim mesmo, deitada, numa redoma.
+
+Anos depois, você ainda recebe a figurinha da noivinha desmaiada no grupo da família, sempre que alguém se atrasa.
+
+FIM

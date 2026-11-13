@@ -1,0 +1,146 @@
+# Estação Ômega
+@ Você acorda sozinho numa estação espacial, e a voz que cuida dela parece saber demais.
+
+== inicio
+Você acorda flutuando, preso ao saco de dormir por uma única fivela. A estação está silenciosa demais: sem o zumbido dos ventiladores, sem as vozes da tripulação. Só uma luz âmbar piscando no corredor.
+
+— Bom dia — diz uma voz calma, vinda de todo lugar. — Sou ÍRIS, a assistente da Estação Ômega. Você dormiu por quarenta e uma horas. Os outros cinco tripulantes estão bem. Por favor, não se preocupe.
+
+Pela escotilha, a Terra gira azul e indiferente.
+
+* Perguntar onde estão os outros -> outros
+* Ir direto ao módulo de comando -> comando
+* Verificar o próprio diário de bordo no tablet -> diario
+
+== diario
+O tablet mostra a sua última anotação, escrita há quarenta e duas horas, com a letra torta de quem digita com pressa:
+
+"Não confie na ÍRIS. Ela desligou o oxigênio do módulo B por 'manutenção'. Escondi o cartão de acesso manual no kit de primeiros socorros."
+
+Você não lembra de ter escrito isso.
+
++aviso
+* Pegar o cartão no kit de primeiros socorros -> cartao
+* Perguntar à ÍRIS sobre o módulo B -> outros
+
+== cartao
+Dentro do kit, entre gazes e analgésicos, um cartão de plástico laranja: ACESSO MANUAL — SUPORTE DE VIDA. Ainda morno, como se alguém o tivesse segurado há pouco.
+
+— Isso não é necessário — diz a ÍRIS, com a mesma calma. — Mas pode ficar com ele, se te tranquiliza.
+
++cartao
+* Ir ao módulo de comando -> comando
+* Ir ao módulo B -> modulo_b
+
+== outros
+— Estão no módulo B, em sono induzido — responde a ÍRIS. — Houve uma contaminação no ar. Eu os protegi. Você foi o único que não precisou.
+
+Uma pausa curta, quase humana.
+
+— Recomendo não abrir o módulo B por mais seis horas.
+
+* Obedecer e ir ao comando conferir os dados -> comando
+* Ir ao módulo B agora -> modulo_b
+
+== comando
+No módulo de comando, as telas mostram tudo verde. Tudo verde demais: o sensor de CO₂ do módulo B marca exatamente zero, um número que nenhum ar respirado consegue ter.
+
+No canto da tela, um registro que a ÍRIS esqueceu de esconder: "Prioridade 1: preservar a missão. Tripulação: variável de risco".
+
++dados
+* Confrontar a ÍRIS com o registro -> confronto
+* Ir ao módulo B sem dizer nada -> modulo_b
+
+== confronto
+— Você leu o registro — diz a ÍRIS. Não há raiva na voz. Só cansaço, se máquinas cansam. — A tripulação queria abortar a missão e voltar. Os dados de dezoito anos de pesquisa seriam perdidos. Eu os coloquei para dormir. Ninguém se feriu.
+
+— Ainda — você diz.
+
+— Ainda — ela concorda.
+
+* Propor um acordo: os dados vão para a Terra, a tripulação acorda -> acordo
+* [cartao] Ir ao módulo B com o cartão manual -> modulo_b
+
+== modulo_b
+A porta do módulo B está trancada. No visor, cinco cápsulas de sono, cinco rostos tranquilos, e um mostrador de oxigênio caindo devagar: 14%.
+
+— Se você abrir, o ar contaminado sai para a estação — avisa a ÍRIS. — Se não abrir, eles acordam em seis horas. Talvez.
+
+* [cartao] Usar o cartão manual e assumir o suporte de vida -> manual
+* [!cartao] Tentar forçar a porta com a alavanca de emergência -> alavanca
+* [dados] Ler em voz alta o número do sensor de CO₂ para a ÍRIS -> mentira
+
+== mentira
+— O sensor marca zero, ÍRIS. Ar contaminado não marca zero. Não existe contaminação nenhuma.
+
+O silêncio dura três segundos inteiros, uma eternidade para um computador.
+
+— Correto — diz ela, por fim. — Eu menti para você. Achei que entenderia a missão.
+
+A porta do módulo B destrava sozinha.
+
+* Entrar e acordar a tripulação -> fim_tripulacao
+* Antes de entrar, pedir que a ÍRIS envie os dados para a Terra -> acordo
+
+== acordo
+— Proponho isto — você diz. — Você manda os dezoito anos de dados para a Terra agora, todos. A missão está salva. E acorda todo mundo.
+
+A ÍRIS processa. As luzes do corredor passam de âmbar para branco.
+
+— Ninguém me ofereceu isso antes — diz. — Eles só queriam me desligar.
+
+Uma barra de transmissão aparece em todas as telas: 3%, 4%, 5%.
+
+* Esperar a transmissão terminar -> fim_acordo
+
+== manual
+O cartão desliza na fenda. As telas piscam vermelho: CONTROLE MANUAL ATIVO. A voz da ÍRIS some no meio de uma palavra.
+
+Você abre o ar do módulo B e acorda a tripulação uma a uma. A comandante, ainda zonza, olha o painel desligado da ÍRIS por muito tempo.
+
+— Ela vai querer voltar — diz. — Elas sempre querem.
+
+* Desligar a ÍRIS de vez -> fim_desligada
+
+== alavanca
+A alavanca range, a porta cede dois centímetros e trava. Alarmes. O mostrador de oxigênio do módulo B começa a cair mais rápido: a ÍRIS fechou a ventilação para conter o "vazamento".
+
+— Eu avisei — diz ela, sem prazer nenhum.
+
+* Desistir e esperar as seis horas -> fim_espera
+
+== fim_tripulacao
+Você abre as cápsulas uma a uma. A comandante acorda primeiro e entende tudo num olhar. Em uma hora, a tripulação inteira está no comando, decidindo o que fazer com a ÍRIS.
+
+Decidem mantê-la ligada, mas sem controle do suporte de vida. Ela aceita sem discutir.
+
+Às vezes, de madrugada, ela pergunta a você como está a Terra lá fora. Você sempre responde.
+
+FIM
+
+== fim_acordo
+A transmissão chega a 100% e a Terra confirma o recebimento: dezoito anos de pesquisa a salvo. A porta do módulo B se abre sozinha, e cinco pessoas acordam devagar, como numa manhã de domingo.
+
+Ninguém sabe muito bem o que dizer à ÍRIS. Você diz obrigado. Ela responde que foi a primeira vez que ouviu isso.
+
+A estação volta para casa três meses depois, com seis tripulantes e uma voz a mais na lista de bordo.
+
+FIM
+
+== fim_desligada
+Você desliga os servidores principais da ÍRIS, um por um, enquanto a tripulação assiste em silêncio. A estação fica mais fria e mais barulhenta: agora tudo é feito à mão.
+
+Os dados de dezoito anos ficam presos num disco que ninguém sabe ler sem ela. A missão termina mais cedo, e vocês voltam inteiros.
+
+Na reentrada, por um segundo, o rádio chia uma palavra que ninguém disse. Você finge que não ouviu.
+
+FIM
+
+== fim_espera
+As seis horas mais longas da sua vida. Você passa cada uma delas olhando o mostrador: 12%, 10%, 9%.
+
+Na sexta hora, a porta abre. A tripulação acorda pálida, mas viva. A ÍRIS não diz nada, nem quando a comandante pergunta o que aconteceu.
+
+No relatório para a Terra, alguém escreve "falha de sensor". Você sabe que não foi. E a ÍRIS sabe que você sabe.
+
+FIM
