@@ -1466,7 +1466,7 @@ impl App {
         };
         let what = match self.screen {
             Screen::Mini => {
-                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else if self.mini_back == Screen::ChessHub { "Puzzle do dia".to_string() } else if self.mini_back == Screen::Home { "Aprender".to_string() } else if self.mini_slot == Some(106) { "Diário".to_string() } else { "Receitas".to_string() }
+                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else if self.mini_back == Screen::ChessHub { "Puzzle do dia".to_string() } else if self.mini_back == Screen::Home { "Aprender".to_string() } else if self.mini_slot == Some(106) { "Diário".to_string() } else if self.mini_slot == Some(107) { "Hábitos e tarefas".to_string() } else { "Receitas".to_string() }
             }
             Screen::Sudoku | Screen::SudokuWon => "Sudoku".into(),
             Screen::Chess | Screen::ChessEnd | Screen::ChessReview => "Xadrez".into(),
@@ -1521,7 +1521,7 @@ impl App {
         match self.screen {
             Screen::Mini => {
                 let name = apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("jogo");
-                let name = if self.mini_back == Screen::Games { name } else if self.mini_back == Screen::ChessHub { "Puzzle do dia" } else if self.mini_back == Screen::Home { "Aprender" } else if self.mini_slot == Some(106) { "Diário" } else { "Receitas" };
+                let name = if self.mini_back == Screen::Games { name } else if self.mini_back == Screen::ChessHub { "Puzzle do dia" } else if self.mini_back == Screen::Home { "Aprender" } else if self.mini_slot == Some(106) { "Diário" } else if self.mini_slot == Some(107) { "Hábitos e tarefas" } else { "Receitas" };
                 parts.push(format!("Pedro está em {name}, no Kindle."));
                 if let Some(g) = &self.mini {
                     let c = g.context();
@@ -3044,6 +3044,14 @@ impl App {
                 self.mini_back = Screen::Module(Module::Mais);
                 self.go(Screen::Mini);
             }
+            (Screen::Module(Module::Mais), Row(8)) => {
+                let mut g = self.mini_cache.remove(&107).unwrap_or_else(|| Box::new(crate::organizacao::Organizacao::new()));
+                g.resume();
+                self.mini = Some(g);
+                self.mini_slot = Some(107);
+                self.mini_back = Screen::Module(Module::Mais);
+                self.go(Screen::Mini);
+            }
             (Screen::Edicao | Screen::Artigos | Screen::Retrato | Screen::Terminal, Back) => self.go(Screen::Module(Module::Mais)),
             (Screen::Edicao, Row(k)) => {
                 if let Some((_, act)) = self.ed_hits.get(k).cloned() {
@@ -4303,6 +4311,33 @@ mod raio_x {
         shot(&mut app, "flashcards-verso");
         app.mini_tap(802, 0);
         shot(&mut app, "flashcards-fim");
+        let plan = std::fs::read_to_string(home.join("data/dia.txt")).unwrap();
+        std::fs::write(home.join("data/dia.txt"), "").unwrap();
+        app.mini = Some(Box::new(crate::organizacao::Organizacao::new()));
+        app.mini_back = Screen::Module(Module::Mais);
+        app.mini_slot = Some(107);
+        app.go(Screen::Mini);
+        shot(&mut app, "habitos-vazio");
+        std::fs::write(home.join("data/dia.txt"), plan).unwrap();
+        std::fs::write(home.join("data/tarefas_rapidas.txt"), "0\tComprar frutas\n1\tEnviar resposta\n").unwrap();
+        app.go(Screen::Home);
+        shot(&mut app, "inicio-habitos-tarefas");
+        app.go(Screen::Module(Module::Mais));
+        app.activate(Target::Row(8), 0);
+        shot(&mut app, "habitos-lista");
+        app.mini_tap(0, 0);
+        shot(&mut app, "habitos-marcado");
+        app.mini_tap(800, 0);
+        shot(&mut app, "habitos-teclado");
+        app.go(Screen::Mini);
+        let mut g = crate::organizacao::Organizacao::new();
+        g.screenshot_delete();
+        app.mini = Some(Box::new(g));
+        shot(&mut app, "habitos-apagar");
+        app.mini_tap(0, 0);
+        shot(&mut app, "habitos-confirmar-apagar");
+        app.mini_tap(0, 0);
+        assert!(!std::fs::read_to_string(home.join("data/dia.txt")).unwrap().contains("- Comprar pão"));
         // Revisão de um erro real: coordenadas, alternativa e cobertura da análise.
         app.saved_games = vec![crate::coach::Saved {
             file: home.join("data/xadrez/partidas/exemplo.txt"),

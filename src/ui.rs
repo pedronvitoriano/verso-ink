@@ -688,6 +688,19 @@ pub fn draw_tile(fb: &mut Framebuffer, f: &Fonts, i: usize, pressed: bool, _extr
                 m.subtitle().to_string()
             }
         }
+        Module::Mais => {
+            let items = crate::day::load_items();
+            let done = crate::day::checked(crate::data::today(crate::offset_min()));
+            let habits: Vec<_> = items.iter().filter(|i| i.kind == crate::day::Kind::Habit).collect();
+            let tasks: Vec<_> = items.iter().filter(|i| i.kind == crate::day::Kind::Task).collect();
+            let (quick, quick_done) = crate::organizacao::resumo_rapidas();
+            if habits.is_empty() && tasks.is_empty() && quick == 0 { m.subtitle().to_string() }
+            else {
+                let habits_done = habits.iter().filter(|i| done.contains(&i.key())).count();
+                let tasks_done = tasks.iter().filter(|i| done.contains(&i.key())).count() + quick_done;
+                format!("Hábitos: {habits_done}/{} · Tarefas: {tasks_done}/{}", habits.len(), tasks.len() + quick)
+            }
+        }
         _ => m.subtitle().to_string(),
     };
     let text = crate::apps::fit(f, Face::Body, 24.0, &sub, r.x + r.w - 16 - x);
@@ -801,7 +814,7 @@ pub fn draw_back(fb: &mut Framebuffer, f: &Fonts, pressed: bool) {
 
 /// Ideias de módulos futuros (da conversa de concepção); entram aqui conforme forem feitos.
 /// Módulos do Mais: (nome, descrição, pronto?). Os prontos abrem ao toque.
-pub const COMING: [(&str, &str, bool); 8] = [
+pub const COMING: [(&str, &str, bool); 9] = [
     ("Edição da manhã", "Os agentes da noite, avisos e notícias", true),
     ("Missões", "Mande os agentes do PC trabalharem por você", true),
     ("Artigos", "Links mandados do celular, para ler depois", true),
@@ -810,6 +823,7 @@ pub const COMING: [(&str, &str, bool); 8] = [
     ("Terminal", "Comandos de um toque no Linux do Kindle", true),
     ("Semana", "Fechamento com o Verso e o plano da próxima", true),
     ("Diário", "Uma pergunta para guardar o dia", true),
+    ("Hábitos e tarefas", "Marque o dia e acompanhe sequências", true),
 ];
 
 pub fn more_row(k: usize) -> Rect {

@@ -50,6 +50,7 @@ mod geografia;
 mod matematica;
 mod diario;
 mod flashcards;
+mod organizacao;
 mod claude_ui;
 mod clock;
 mod update;
