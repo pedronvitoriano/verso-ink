@@ -1466,7 +1466,7 @@ impl App {
         };
         let what = match self.screen {
             Screen::Mini => {
-                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else if self.mini_back == Screen::ChessHub { "Puzzle do dia".to_string() } else if self.mini_back == Screen::Home { "Aprender".to_string() } else { "Receitas".to_string() }
+                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else if self.mini_back == Screen::ChessHub { "Puzzle do dia".to_string() } else if self.mini_back == Screen::Home { "Aprender".to_string() } else if self.mini_slot == Some(106) { "Diário".to_string() } else { "Receitas".to_string() }
             }
             Screen::Sudoku | Screen::SudokuWon => "Sudoku".into(),
             Screen::Chess | Screen::ChessEnd | Screen::ChessReview => "Xadrez".into(),
@@ -1521,7 +1521,7 @@ impl App {
         match self.screen {
             Screen::Mini => {
                 let name = apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("jogo");
-                let name = if self.mini_back == Screen::Games { name } else if self.mini_back == Screen::ChessHub { "Puzzle do dia" } else if self.mini_back == Screen::Home { "Aprender" } else { "Receitas" };
+                let name = if self.mini_back == Screen::Games { name } else if self.mini_back == Screen::ChessHub { "Puzzle do dia" } else if self.mini_back == Screen::Home { "Aprender" } else if self.mini_slot == Some(106) { "Diário" } else { "Receitas" };
                 parts.push(format!("Pedro está em {name}, no Kindle."));
                 if let Some(g) = &self.mini {
                     let c = g.context();
@@ -3038,6 +3038,12 @@ impl App {
                 self.mini_back = Screen::Module(Module::Mais);
                 self.go(Screen::Mini);
             }
+            (Screen::Module(Module::Mais), Row(7)) => {
+                self.mini = Some(self.mini_cache.remove(&106).unwrap_or_else(|| Box::new(crate::diario::Diario::new())));
+                self.mini_slot = Some(106);
+                self.mini_back = Screen::Module(Module::Mais);
+                self.go(Screen::Mini);
+            }
             (Screen::Edicao | Screen::Artigos | Screen::Retrato | Screen::Terminal, Back) => self.go(Screen::Module(Module::Mais)),
             (Screen::Edicao, Row(k)) => {
                 if let Some((_, act)) = self.ed_hits.get(k).cloned() {
@@ -4270,6 +4276,21 @@ mod raio_x {
             shot(&mut app, name);
         }
         let _ = std::fs::remove_file(home.join("data/aprender.txt"));
+        app.go(Screen::Module(Module::Mais));
+        shot(&mut app, "mais-com-diario");
+        app.activate(Target::Row(7), 0);
+        shot(&mut app, "diario-inicio");
+        app.mini_tap(1, 0);
+        shot(&mut app, "diario-teclado");
+        app.compose_text = "A conversa durante o café ficou na memória.".into();
+        app.mini_text_done();
+        shot(&mut app, "diario-resposta");
+        let yesterday = crate::data::today(crate::offset_min()) - 1;
+        std::fs::write(home.join(format!("data/diario/{yesterday}.txt")), "Um passeio curto no fim da tarde.").unwrap();
+        app.mini_tap(2, 0);
+        shot(&mut app, "diario-historico");
+        app.mini_tap(101, 0);
+        shot(&mut app, "diario-antigo");
         // Revisão de um erro real: coordenadas, alternativa e cobertura da análise.
         app.saved_games = vec![crate::coach::Saved {
             file: home.join("data/xadrez/partidas/exemplo.txt"),

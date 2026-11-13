@@ -801,7 +801,7 @@ pub fn draw_back(fb: &mut Framebuffer, f: &Fonts, pressed: bool) {
 
 /// Ideias de módulos futuros (da conversa de concepção); entram aqui conforme forem feitos.
 /// Módulos do Mais: (nome, descrição, pronto?). Os prontos abrem ao toque.
-pub const COMING: [(&str, &str, bool); 7] = [
+pub const COMING: [(&str, &str, bool); 8] = [
     ("Edição da manhã", "Os agentes da noite, avisos e notícias", true),
     ("Missões", "Mande os agentes do PC trabalharem por você", true),
     ("Artigos", "Links mandados do celular, para ler depois", true),
@@ -809,10 +809,11 @@ pub const COMING: [(&str, &str, bool); 7] = [
     ("Receitas", "Aberta na cozinha, sem apagar", true),
     ("Terminal", "Comandos de um toque no Linux do Kindle", true),
     ("Semana", "Fechamento com o Verso e o plano da próxima", true),
+    ("Diário", "Uma pergunta para guardar o dia", true),
 ];
 
 pub fn more_row(k: usize) -> Rect {
-    Rect::new(MARGIN, 470 + k as i32 * 124, 1072 - 2 * MARGIN, 110)
+    Rect::new(MARGIN + (k % 2) as i32 * 474, 470 + (k / 2) as i32 * 136, 454, 120)
 }
 
 fn draw_more(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
@@ -830,19 +831,20 @@ fn draw_more(fb: &mut Framebuffer, f: &Fonts, st: &Status) {
             fb.round_rect(r, 30, SURFACE);
         }
         let ink = if *ready { INK } else { 0x55 };
-        f.draw(fb, Face::Display, 42.0, r.x + 34, r.y + 52, ink, name);
-        f.draw(fb, Face::Body, 25.0, r.x + 36, r.y + 88, MUTED, desc);
-        let tag = if *ready { "Abrir" } else { "Em breve" };
-        let tw = f.measure(Face::Strong, 26.0, tag);
-        let tr = Rect::new(r.x + r.w - tw - 48 - 28, r.y + (r.h - 56) / 2, tw + 48, 56);
-        if *ready {
-            fb.round_rect(tr, 28, INK);
-        } else {
-            fb.round_outline(tr, 28, 3, 0x88, SURFACE);
+        let title = crate::apps::fit(f, Face::Display, 34.0, name, r.w - 48);
+        f.draw(fb, Face::Display, 34.0, r.x + 24, r.y + 50, ink, &title);
+        for (line, text) in crate::chat::wrap_words(f, Face::Body, 23.0, desc, r.w - 48).iter().take(2).enumerate() {
+            f.draw(fb, Face::Body, 23.0, r.x + 24, r.y + 82 + line as i32 * 25, MUTED, text);
         }
-        f.draw(fb, Face::Strong, 26.0, tr.x + 24, tr.y + 38, if *ready { PAPER } else { 0x55 }, tag);
     }
-    draw_footer(fb, f, st);
+    let wifi = if st.wifi { "Wi-Fi conectado" } else { "Sem Wi-Fi" };
+    let width = f.measure(Face::Strong, 24.0, wifi);
+    let end = f.draw(fb, Face::Strong, 24.0, MARGIN, 1355, MUTED, "Verso Ink");
+    if let Some(v) = crate::backup::update_available() {
+        let msg = crate::apps::fit(f, Face::Strong, 24.0, &format!("· versão {v} no Ajustes"), 1072 - MARGIN - width - end - 36);
+        f.draw(fb, Face::Strong, 24.0, end + 16, 1355, INK, &msg);
+    }
+    f.draw(fb, Face::Strong, 24.0, 1072 - MARGIN - width, 1355, MUTED, wifi);
 }
 
 pub fn draw_module(fb: &mut Framebuffer, f: &Fonts, m: Module, st: &Status) {
@@ -1156,5 +1158,21 @@ pub fn draw_field_header(fb: &mut Framebuffer, f: &Fonts, kicker: &str, title: &
     fb.fill(fb.screen(), PAPER);
     draw_back(fb, f, false);
     f.draw(fb, Face::Strong, 32.0, MARGIN, 250, MUTED, kicker);
-    f.draw(fb, Face::Display, 64.0, MARGIN, 340, INK, title);
+    let mut size = 64.0;
+    let mut lines = crate::chat::wrap_words(f, Face::Display, size, title, 1072 - 2 * MARGIN);
+    if lines.len() > 1 {
+        size = 52.0;
+        lines = crate::chat::wrap_words(f, Face::Display, size, title, 1072 - 2 * MARGIN);
+    }
+    while lines.len() > 2 && size > 32.0 {
+        size -= 2.0;
+        lines = crate::chat::wrap_words(f, Face::Display, size, title, 1072 - 2 * MARGIN);
+    }
+    if lines.len() <= 1 {
+        f.draw(fb, Face::Display, size, MARGIN, 340, INK, title);
+    } else {
+        for (i, line) in lines.iter().take(2).enumerate() {
+            f.draw(fb, Face::Display, size, MARGIN, 315 + i as i32 * 56, INK, line);
+        }
+    }
 }
