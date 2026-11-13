@@ -3288,7 +3288,8 @@ impl App {
             (Screen::Home, Header) => self.go(Screen::Light),
             // "Continuar" do jogo na tela inicial: abre a partida direto.
             (Screen::Home, Game(i)) => {
-                self.go(Screen::Games);
+                // Direto ao jogo: a tela Jogar fica por baixo (para o Voltar), sem ser desenhada antes.
+                self.screen = Screen::Games;
                 self.activate(Game(i), x);
             }
             (Screen::Home, Phrase) => self.phrase_action(),
@@ -4158,6 +4159,15 @@ mod raio_x {
         app.on_touch(Touch::Down(p.x + 20, p.y + 20));
         app.on_touch(Touch::Up(p.x + 20, p.y + 20));
         assert_eq!(app.chess_peek, Some(1));
+    }
+
+    #[test]
+    fn jogo_em_destaque_abre_direto() {
+        let mut app = App::new(Framebuffer::memory());
+        app.go(Screen::Home);
+        app.activate(Target::Game(2), 0);
+        // Abre o jogo (ou, na primeira vez, o Como jogar dele), nunca para na tela Jogar.
+        assert!(matches!(app.screen, Screen::Mini | Screen::Tutorial), "{:?}", app.screen);
     }
 
     #[test]
