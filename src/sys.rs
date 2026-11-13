@@ -3,6 +3,19 @@
 extern "C" {
     pub fn ioctl(fd: i32, request: u32, ...) -> i32;
     fn poll(fds: *mut PollFd, nfds: u32, timeout: i32) -> i32;
+    fn prctl(option: i32, ...) -> i32;
+}
+
+/// Faz o filho morrer junto com o Verso Ink (PR_SET_PDEATHSIG com SIGTERM). Sem isso, cada
+/// saída do Verso Ink deixava um `lipc-wait-event` órfão vivo (105 acumulados em 13/11).
+pub fn die_with_parent(cmd: &mut std::process::Command) {
+    use std::os::unix::process::CommandExt;
+    unsafe {
+        cmd.pre_exec(|| {
+            prctl(1, 15 as std::ffi::c_ulong);
+            Ok(())
+        });
+    }
 }
 
 #[repr(C)]

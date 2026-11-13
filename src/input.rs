@@ -161,10 +161,10 @@ pub fn spawn_touch(tx: Sender<Event>, width: i32, height: i32) -> std::io::Resul
 /// Escuta os eventos do powerd pelo `lipc-wait-event` e traduz em Sleep/Wake.
 pub fn spawn_power(tx: Sender<Event>) {
     std::thread::spawn(move || loop {
-        let child = std::process::Command::new("lipc-wait-event")
-            .args(["-m", "com.lab126.powerd", "goingToScreenSaver,outOfScreenSaver"])
-            .stdout(std::process::Stdio::piped())
-            .spawn();
+        let mut cmd = std::process::Command::new("lipc-wait-event");
+        cmd.args(["-m", "com.lab126.powerd", "goingToScreenSaver,outOfScreenSaver"]).stdout(std::process::Stdio::piped());
+        crate::sys::die_with_parent(&mut cmd);
+        let child = cmd.spawn();
         let Ok(mut child) = child else {
             log("lipc-wait-event indisponível; sem eventos de energia");
             return;

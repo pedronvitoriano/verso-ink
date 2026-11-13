@@ -11,6 +11,7 @@ fi
 echo $$ >/tmp/verso-ink.pid
 
 ssh_up
+limpar_orfaos
 # Modo de teste: impede o Kindle de dormir (o powerd esquece isso a cada boot).
 [ -f "$H/settings/dev_keep_awake" ] && lipc-set-prop com.lab126.powerd preventScreenSaver 1 && log "modo de teste: sem repouso"
 # Com a interface da Amazon congelada (troca rápida), não precisa parar nada.

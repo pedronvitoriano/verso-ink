@@ -65,6 +65,9 @@ amazon_pids() {
     # A barra de status da Amazon (relógio, bateria) é de outro processo, o pillowd: congela
     # junto, senão o relógio dela aparece por cima do Verso Ink a cada minuto.
     pgrep pillowd 2>/dev/null
+    # No firmware 5.16 o relógio e a bateria do alto são de um terceiro processo, o
+    # JunoStatusBarDrawer (nome cortado em 15 letras): sem congelá-lo, o relógio volta por cima.
+    pgrep -x JunoStatusBarDr 2>/dev/null
 }
 
 # Congelada de verdade só se o Java ainda existe: com ele morto, sobrar o pillowd não basta
@@ -82,6 +85,15 @@ amazon_unstick() {
 # A tela da Amazon é guardada ao congelar e devolvida ao descongelar: o X lê a própria memória
 # da tela, e sem isso a Amazon só repinta o que muda (relógio, bateria), com o Verso por baixo.
 AMAZON_TELA=/tmp/verso-ink.amazon-tela
+
+# Limpa os `lipc-wait-event` que versões antigas do Verso Ink deixaram órfãos (pai = init).
+limpar_orfaos() {
+    for d in /proc/[0-9]*; do
+        [ "$(cat "$d/comm" 2>/dev/null)" = lipc-wait-event ] || continue
+        [ "$(cut -d" " -f4 "$d/stat" 2>/dev/null)" = 1 ] || continue
+        grep -q goingToScreenSaver "$d/cmdline" 2>/dev/null && kill "${d#/proc/}" 2>/dev/null
+    done
+}
 
 amazon_freeze() {
     for p in $(amazon_pids); do kill -STOP "$p" 2>/dev/null; done
