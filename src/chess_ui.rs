@@ -284,8 +284,13 @@ pub fn draw_coach_line(fb: &mut Framebuffer, f: &Fonts, who: &str, text: &str, m
         }
     }
     fb.fill(Rect::new(tx, ty - 9, 4, 18), PAPER);
-    for (k, l) in wrap(f, Face::Body, 31.0, text, bb.w - 64).iter().take(3).enumerate() {
-        f.draw(fb, Face::Body, 31.0, bb.x + 32, bb.y + 52 + k as i32 * 42, INK, l);
+    // Fala curta (uma reação) vem grande e forte, como em gibi; frase longa, no corpo normal.
+    let short = text.chars().count() <= 28;
+    let (face, size, lh) = if short { (Face::Display, 44.0, 54) } else { (Face::Body, 31.0, 42) };
+    let lines = wrap(f, face, size, text, bb.w - 64);
+    let top = if short { bb.y + (bb.h - lines.len().min(2) as i32 * lh) / 2 + (size * 0.8) as i32 } else { bb.y + 52 };
+    for (k, l) in lines.iter().take(if short { 2 } else { 3 }).enumerate() {
+        f.draw(fb, face, size, bb.x + 32, top + k as i32 * lh, INK, l);
     }
     // Nome e rating embaixo do balão (o relógio dele fica à direita, na mesma linha).
     let end = f.draw(fb, Face::Strong, 32.0, bb.x + 6, 412, INK, name);

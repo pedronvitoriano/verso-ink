@@ -4170,6 +4170,20 @@ mod raio_x {
                 app.render(false);
                 shot(&mut app, "jogo-xadrez-lances");
                 app.chess_peek = None;
+                // Antes e depois das reações: análise com rosto fixo × fala de gente com expressão.
+                app.coach_msg = "Erro grave: o cavalo em c3 ficou sem defesa. Melhor era Bd2.".into();
+                app.coach_mood = crate::coach::Mood::Normal;
+                app.render(false);
+                shot(&mut app, "treinador-reacao-antes");
+                app.coach_msg = "Eita, vacilou…".into();
+                app.coach_mood = crate::coach::Mood::Feliz;
+                app.render(false);
+                shot(&mut app, "treinador-reacao-vacilou");
+                app.coach_msg = "Nãoo, minha rainha!".into();
+                app.coach_mood = crate::coach::Mood::Chocado;
+                app.render(false);
+                shot(&mut app, "treinador-reacao-rainha");
+                app.coach_mood = crate::coach::Mood::Normal;
             }
         }
         // Revisão de um erro real: coordenadas, alternativa e cobertura da análise.
