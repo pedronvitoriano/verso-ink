@@ -43,6 +43,7 @@ mod estudo;
 mod semana;
 mod velha;
 mod reversi;
+mod go;
 mod claude_ui;
 mod clock;
 mod update;

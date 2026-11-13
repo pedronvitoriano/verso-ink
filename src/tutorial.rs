@@ -50,6 +50,7 @@ pub fn pages(game: usize) -> &'static [Page] {
         15 => &DAMAS,
         16 => &VELHA,
         17 => &REVERSI,
+        18 => &GO,
         _ => &[],
     }
 }
@@ -168,6 +169,12 @@ static REVERSI: [Page; 3] = [
     p("O objetivo", "Tenha mais peças que o adversário ao fim. As pretas começam.", "", ""),
     p("Virar peças", "Coloque uma peça para cercar uma ou mais peças adversárias entre ela e outra peça sua. As peças cercadas viram, inclusive na diagonal.", "", ""),
     p("Sua vez", "Os pontos mostram onde você pode jogar. Sem jogada, a vez passa automaticamente. Quando nenhum dos dois pode jogar, conte as peças.", "", ""),
+];
+
+static GO: [Page; 3] = [
+    p("O objetivo", "Cerque mais espaço que o adversário. As pretas começam e as brancas recebem 6,5 pontos de vantagem.", "", ""),
+    p("Liberdades", "Coloque pedras nas interseções. Pedras ligadas precisam de espaços livres ao lado; um grupo sem espaços é capturado. Não vale repetir imediatamente a posição anterior.", "", ""),
+    p("Fim da partida", "Duas passagens encerram a partida. Capture as pedras presas antes de passar: as pedras que restarem contam na área de cada jogador.", "", ""),
 ];
 
 static HISTORIAS: [Page; 2] = [

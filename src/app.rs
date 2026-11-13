@@ -4138,6 +4138,10 @@ mod raio_x {
                         app.mini = Some(Box::new(crate::reversi::Reversi::final_para_print()));
                         shot(&mut app, "jogo-reversi-fim");
                     }
+                    if name == "go" {
+                        app.mini = Some(Box::new(crate::go::Go::final_para_print()));
+                        shot(&mut app, "jogo-go-fim");
+                    }
                     if name == "coroas" {
                         for id in [0, 1, 7] {
                             app.mini_tap(id, 0);
