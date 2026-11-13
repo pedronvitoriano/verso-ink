@@ -268,6 +268,8 @@ pub struct App {
     keys: Vec<crate::keyboard::Key>,
     claude: Vec<crate::claude_ui::Session>,
     chats: Result<Vec<crate::chat::ChatInfo>, String>,
+    /// Lista de conversas buscada em segundo plano (a tela já abriu com a guardada).
+    chats_rx: Option<std::sync::mpsc::Receiver<Result<Vec<crate::chat::ChatInfo>, String>>>,
     cur_chat: Option<crate::chat::Chat>,
     chat_pages: Vec<Vec<crate::chat::Line>>,
     /// Pergunta ao Verso a partir de uma tela: contexto que vai junto e para onde voltar.
@@ -542,6 +544,7 @@ impl App {
             keys: Vec::new(),
             claude: Vec::new(),
             chats: Ok(Vec::new()),
+            chats_rx: None,
             cur_chat: None,
             chat_pages: Vec::new(),
             claude_ctx: None,
@@ -2785,7 +2788,15 @@ impl App {
             Screen::Wifi => self.refresh_wifi(),
             Screen::Claude => {
                 self.claude = crate::claude_ui::load();
-                self.chats = crate::chat::list();
+                // Abre na hora com a última lista conhecida; a atualizada chega em segundo plano.
+                if let Some(c) = crate::chat::list_cached() {
+                    self.chats = Ok(c);
+                }
+                let (tx, rx) = std::sync::mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = tx.send(crate::chat::list());
+                });
+                self.chats_rx = Some(rx);
             }
             Screen::ClaudeLive => {
                 self.claude = crate::claude_ui::load();
@@ -4026,6 +4037,22 @@ impl App {
         }
         if self.gesture.is_some() {
             self.check_hold();
+        }
+        // Lista do Verso chegou da VPS: guarda e, se a tela ainda for a do Verso, redesenha.
+        if let Some(r) = self.chats_rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
+            self.chats_rx = None;
+            match r {
+                Ok(list) => {
+                    crate::chat::save_list_cache(&list);
+                    self.chats = Ok(list);
+                }
+                // Sem rede: fica a lista guardada; sem nenhuma, mostra o erro.
+                Err(e) if self.chats.as_ref().map_or(true, |c| c.is_empty()) => self.chats = Err(e),
+                Err(_) => {}
+            }
+            if self.screen == Screen::Claude {
+                self.render(false);
+            }
         }
         // VPS: avisos e aprovações a cada minuto; edição e caixa de entrada a cada 20 minutos.
         self.apply_sync();

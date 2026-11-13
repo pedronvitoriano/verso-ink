@@ -238,6 +238,32 @@ pub fn json_str(s: &str) -> String {
     o
 }
 
+fn list_cache_path() -> std::path::PathBuf {
+    crate::home_dir().join("data/verso-conversas.txt")
+}
+
+/// Última lista de conversas vista, para a tela do Verso abrir na hora (sem esperar a VPS).
+pub fn list_cached() -> Option<Vec<ChatInfo>> {
+    let t = std::fs::read_to_string(list_cache_path()).ok()?;
+    Some(
+        t.lines()
+            .filter_map(|l| {
+                let v: Vec<&str> = l.splitn(5, '\t').collect();
+                Some(ChatInfo { id: v.first()?.to_string(), updated: v.get(1)?.parse().ok()?, count: v.get(2)?.parse().ok()?, files: v.get(3)?.parse().ok()?, title: v.get(4)?.to_string() })
+            })
+            .collect(),
+    )
+}
+
+pub fn save_list_cache(list: &[ChatInfo]) {
+    let t: String = list.iter().map(|c| format!("{}\t{}\t{}\t{}\t{}\n", c.id, c.updated, c.count, c.files, c.title.replace(['\t', '\n'], " "))).collect();
+    let p = list_cache_path();
+    let tmp = p.with_extension("tmp");
+    if std::fs::write(&tmp, t).is_ok() {
+        let _ = std::fs::rename(tmp, p);
+    }
+}
+
 pub fn list() -> Result<Vec<ChatInfo>, String> {
     let j = call("GET", "/chats", None, 20)?;
     Ok(j.arr()
