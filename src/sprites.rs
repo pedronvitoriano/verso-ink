@@ -23,6 +23,7 @@ pub fn exists(name: &str) -> bool {
 
 /// Desenha o sprite `name` centrado em `r` (quadrado do lado menor). Devolve false se não houver.
 pub fn draw(fb: &mut Framebuffer, name: &str, r: Rect) -> bool {
+        let _p = crate::perfil::Guard::new("sprite");
     let side = r.w.min(r.h);
     if side <= 0 || !exists(name) {
         return false;

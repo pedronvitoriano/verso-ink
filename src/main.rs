@@ -42,6 +42,7 @@ mod aprender;
 mod estudo;
 mod semana;
 mod velha;
+mod perfil;
 mod reversi;
 mod go;
 mod cruzadas;

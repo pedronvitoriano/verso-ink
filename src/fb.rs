@@ -248,6 +248,7 @@ impl Framebuffer {
     }
 
     pub fn fill(&mut self, r: Rect, v: u8) {
+        let _p = crate::perfil::Guard::new("fill");
         let x0 = r.x.max(0);
         let x1 = (r.x + r.w).min(self.width);
         if x1 <= x0 {
@@ -261,6 +262,7 @@ impl Framebuffer {
 
     /// Retângulo arredondado preenchido, com borda suavizada.
     pub fn round_rect(&mut self, r: Rect, radius: i32, v: u8) {
+        let _p = crate::perfil::Guard::new("round_rect");
         let radi = radius.min(r.w / 2).min(r.h / 2).max(0);
         let rad = radi as f32;
         let (lx, rx) = (r.x + radi, r.x + r.w - radi);
@@ -291,6 +293,7 @@ impl Framebuffer {
     /// viram `outside`, a borda de espessura `t` vira `v` e, embaixo, a sombra chapada de
     /// altura `sh` em `shadow`.
     pub fn round_frame(&mut self, r: Rect, radius: i32, t: i32, v: u8, outside: u8, sh: i32, shadow: u8) {
+        let _p = crate::perfil::Guard::new("round_frame");
         let rad = radius.min(r.w / 2).min(r.h / 2) as f32;
         let sd = |x: i32, y: i32, top: i32| {
             let cx = (x as f32 + 0.5).clamp(r.x as f32 + rad, (r.x + r.w) as f32 - rad);
@@ -330,6 +333,7 @@ impl Framebuffer {
 
     /// Contorno arredondado com espessura `t`.
     pub fn round_outline(&mut self, r: Rect, radius: i32, t: i32, v: u8, inner: u8) {
+        let _p = crate::perfil::Guard::new("round_outline");
         self.round_rect(r, radius, v);
         let inside = Rect::new(r.x + t, r.y + t, r.w - 2 * t, r.h - 2 * t);
         self.round_rect(inside, (radius - t).max(0), inner);

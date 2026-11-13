@@ -406,8 +406,13 @@ impl App {
         if std::env::var("VERSO_INK_BENCH_SEM_JOGOS").is_ok() {
             return;
         }
+        // VERSO_INK_BENCH_JOGO=Nome: só esse jogo, desenhado 400 vezes (para perfilar com perf).
+        let only = std::env::var("VERSO_INK_BENCH_JOGO").ok();
         let f = &app.fonts;
         for (i, (name, _)) in crate::apps::GAMES.iter().enumerate() {
+            if only.as_deref().is_some_and(|o| o != *name) {
+                continue;
+            }
             let Some(mut g) = crate::minigame::make(i) else { continue };
             let mut fb = Framebuffer::memory();
             g.draw(&mut fb, f);
@@ -417,11 +422,24 @@ impl App {
                 g.tap(id, 0, 0);
             }
             let start = t.elapsed().as_secs_f64() * 1000.0;
-            let t = Instant::now();
-            for _ in 0..3 {
-                g.draw(&mut fb, f);
+            if only.is_some() {
+                // Perfil por primitiva (em 30 quadros) e depois carga para medir.
+                crate::perfil::on();
+                for _ in 0..30 {
+                    g.draw(&mut fb, f);
+                }
+                crate::perfil::report(30);
             }
-            let draw = t.elapsed().as_secs_f64() * 1000.0 / 3.0;
+            // Distribuição de 15 desenhos (p50 e p95), não só a média.
+            let mut ds: Vec<f64> = (0..15)
+                .map(|_| {
+                    let t = Instant::now();
+                    g.draw(&mut fb, f);
+                    t.elapsed().as_secs_f64() * 1000.0
+                })
+                .collect();
+            ds.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            let (draw, p95) = (ds[7], ds[14]);
             let tg = g.targets();
             let t = Instant::now();
             if let Some((id, r)) = tg.iter().find(|(id, _)| *id < 800).copied() {
@@ -436,7 +454,7 @@ impl App {
                 cpu += 1;
             }
             let cpu_ms = t.elapsed().as_secs_f64() * 1000.0;
-            println!("jogo {name:<16} começar {start:>7.1} · desenho {draw:>6.1} · toque+desenho {tap:>6.1} · CPU {cpu_ms:>6.1} ms");
+            println!("jogo {name:<16} começar {start:>7.1} · desenho p50 {draw:>6.1} p95 {p95:>6.1} · toque+desenho {tap:>6.1} · CPU {cpu_ms:>6.1} ms");
         }
         // Coroas: criar a fase de cada nível (o que a pessoa espera quando a próxima não ficou pronta).
         for k in [1u32, 5, 10, 15, 20, 30] {

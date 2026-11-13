@@ -483,13 +483,40 @@ impl Uno {
         let (cx, cy) = (r.x as f32 + r.w as f32 / 2.0, r.y as f32 + r.h as f32 / 2.0);
         let (a, b) = (r.w as f32 * 0.40, r.h as f32 * 0.36);
         let (sn, cs) = (0.5f32, 0.866f32);
+        let inside = |x: i32, y: i32| {
+            let (dx, dy) = (x as f32 - cx, y as f32 - cy);
+            let (u, w) = (dx * cs + dy * sn, -dx * sn + dy * cs);
+            (u / b).powi(2) + (w / a).powi(2) <= 1.0
+        };
+        // Por linha, a faixa dentro da elipse girada sai da equação do 2º grau em dx; as pontas
+        // são ajustadas com o mesmo teste de antes (desenho idêntico), e a linha vira um só fill.
+        // Antes: um fill de 1 ponto por pixel (milhares por carta).
+        let (ka, kb) = (cs * cs / (b * b) + sn * sn / (a * a), 2.0 * cs * sn * (1.0 / (b * b) - 1.0 / (a * a)));
         for y in r.y..r.y + r.h {
-            for x in r.x..r.x + r.w {
-                let (dx, dy) = (x as f32 - cx, y as f32 - cy);
-                let (u, w) = (dx * cs + dy * sn, -dx * sn + dy * cs);
-                if (u / b).powi(2) + (w / a).powi(2) <= 1.0 {
-                    fb.fill(Rect::new(x, y, 1, 1), v);
-                }
+            let dy = y as f32 - cy;
+            let kc = sn * sn * dy * dy / (b * b) + cs * cs * dy * dy / (a * a) - 1.0;
+            let disc = (kb * dy) * (kb * dy) - 4.0 * ka * kc;
+            if disc < 0.0 {
+                continue;
+            }
+            let sq = disc.sqrt();
+            let (r0, r1) = ((-kb * dy - sq) / (2.0 * ka), (-kb * dy + sq) / (2.0 * ka));
+            let mut x0 = ((cx + r0).ceil() as i32 - 1).max(r.x);
+            let mut x1 = ((cx + r1).floor() as i32 + 1).min(r.x + r.w - 1);
+            while x0 > r.x && inside(x0 - 1, y) {
+                x0 -= 1;
+            }
+            while x1 < r.x + r.w - 1 && inside(x1 + 1, y) {
+                x1 += 1;
+            }
+            while x0 <= x1 && !inside(x0, y) {
+                x0 += 1;
+            }
+            while x1 >= x0 && !inside(x1, y) {
+                x1 -= 1;
+            }
+            if x0 <= x1 {
+                fb.fill(Rect::new(x0, y, x1 - x0 + 1, 1), v);
             }
         }
     }
@@ -1033,5 +1060,32 @@ mod tests {
         g.color = Color::Green;
         assert!(g.playable(Card { kind: Kind::Draw2, color: Color::Green }));
         assert!(!g.playable(Card { kind: Kind::Draw2, color: Color::Red }));
+    }
+}
+
+#[cfg(test)]
+mod oval_igual {
+    use super::*;
+
+    /// O oval por faixas desenha exatamente os mesmos pontos do teste ponto a ponto.
+    #[test]
+    fn oval_por_faixas_igual_ao_ponto_a_ponto() {
+        for (w, h) in [(116, 171), (134, 197), (180, 260), (61, 90)] {
+            let r = Rect::new(40, 50, w, h);
+            let (mut a, mut b) = (Framebuffer::memory(), Framebuffer::memory());
+            let (cx, cy) = (r.x as f32 + r.w as f32 / 2.0, r.y as f32 + r.h as f32 / 2.0);
+            let (ea, eb) = (r.w as f32 * 0.40, r.h as f32 * 0.36);
+            for y in r.y..r.y + r.h {
+                for x in r.x..r.x + r.w {
+                    let (dx, dy) = (x as f32 - cx, y as f32 - cy);
+                    let (u, w) = (dx * 0.866 + dy * 0.5, -dx * 0.5 + dy * 0.866);
+                    if (u / eb).powi(2) + (w / ea).powi(2) <= 1.0 {
+                        a.fill(Rect::new(x, y, 1, 1), 0x33);
+                    }
+                }
+            }
+            Uno::oval(&mut b, r, 0x33);
+            assert!(a.buf == b.buf, "{w}x{h}");
+        }
     }
 }

@@ -182,6 +182,7 @@ pub const SURFACE: u8 = 0xE6;
 /// Cartão do sistema: contorno firme e sombra chapada embaixo. `pressed` afunda o cartão na
 /// sombra, como uma tecla.
 pub fn card(fb: &mut Framebuffer, r: Rect, radius: i32, fill: u8, pressed: bool) {
+        let _p = crate::perfil::Guard::new("card");
     // Limpa com a cor do fundo que já está ali (o canto fica fora da forma arredondada), para o
     // cartão não deixar cantos brancos sobre um fundo cinza.
     let bg = fb.get(r.x, r.y + r.h + SH - 1).max(fb.get(r.x + r.w - 1, r.y));
@@ -1157,6 +1158,7 @@ pub fn draw_light(fb: &mut Framebuffer, f: &Fonts, l: &Light, st: &Status, claud
 
 /// Traço com pontas arredondadas (para ícones fora deste módulo).
 pub fn stroke(fb: &mut Framebuffer, a: (f32, f32), b: (f32, f32), t: f32, v: u8) {
+        let _p = crate::perfil::Guard::new("stroke");
     line(fb, a, b, t, v);
 }
 

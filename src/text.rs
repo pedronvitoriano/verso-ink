@@ -83,6 +83,7 @@ impl Fonts {
 
     /// Desenha `text` com a linha de base em `baseline`. `ink` é o tom (0 = preto).
     pub fn draw(&self, fb: &mut Framebuffer, face: Face, size: f32, x: i32, baseline: i32, ink: u8, text: &str) -> i32 {
+        let _p = crate::perfil::Guard::new("texto");
         let text: String = text.nfc().collect();
         let f = self.font(face);
         let mut pen = x as f32;
