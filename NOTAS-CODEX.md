@@ -104,3 +104,20 @@ VERSO_INK_SHOTS=/tmp/verso-shots cargo test --release todas_as_telas -- --ignore
 - **Testes:** interpolação do traço, borracha, limites, troca de páginas e persistência/reabertura dos PNGs; teste de telas com eventos de toque.
 - **Prints conferidos:** folha vazia, desenho, borracha, nova página, página anterior, limpeza e menu Mais.
 - **Limitações:** o comportamento real do painel de toque e das atualizações e-ink deve ser validado no Kindle. Em falha de gravação, é necessário manter o desenho em memória e tentar salvar novamente.
+
+### Dicionário: idioma em TXT e MOBI
+
+TXT não informa idioma e o leitor atual de MOBI não expõe um metadado de idioma confiável. Nesses formatos, a consulta procura primeiro em português e depois em inglês; por isso uma palavra inglesa que também exista em português pode receber o verbete português. No EPUB, o idioma declarado em `dc:language` determina a prioridade.
+
+### 1. Dicionário no leitor — implementação parcial
+
+- **O que foi feito:** consulta por toque longo, busca binária nos TSVs, variantes simples, prioridade de idioma em EPUB, verbete paginado e aviso de grafia antiga uma vez. A palavra original é preservada quando a paginação a divide.
+- **Onde está:** `src/dicionario.rs`, `src/reader.rs`, `src/app.rs`; aviso em `data/dicionario-aviso.txt`.
+- **Testes:** `cargo build --release` sem avisos; `cargo test --release` com 162 aprovados e 19 ignorados; `todas_as_telas` passou. A busca foi testada também nos dois TSVs locais.
+- **Print conferido:** `leitor-dicionario`, no framebuffer 1072×1448, com verbete, aviso e botão de fechar.
+- **Limitações:** TXT e MOBI não têm identificação automática de idioma nesta implementação, conforme a decisão acima. Os TSVs são ignorados pelo Git: foram copiados do outro checkout para `assets/dict` nesta máquina e precisam estar em `<home>/dict` no Kindle. O gesto e a atualização da tela não foram testados no aparelho.
+- **Commit:** não criado: os metadados Git desta worktree ficam fora das raízes graváveis e a criação de `index.lock` falhou com sistema de arquivos somente para leitura.
+
+### Itens 2 a 18
+
+Ainda não implementados nem verificados nesta worktree.

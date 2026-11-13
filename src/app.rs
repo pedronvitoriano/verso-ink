@@ -149,6 +149,7 @@ pub struct App {
     pressed: Option<Target>,
     /// Dedo numa casa de minijogo: para segurar e arrastar.
     gesture: Option<Gesture>,
+    reader_hold: Option<(i32, i32, Instant, bool)>,
     swipe_from: Option<(i32, i32)>,
     /// Anexos da pergunta ao Verso: o que dá para anexar, os escolhidos e a página.
     attach_items: Vec<crate::chat::AttachItem>,
@@ -408,6 +409,7 @@ impl App {
             screen: Screen::Home,
             pressed: None,
             gesture: None,
+            reader_hold: None,
             swipe_from: None,
             attach_items: Vec::new(),
             attach_sel: Vec::new(),
@@ -899,6 +901,12 @@ impl App {
             }
             Screen::Reader => {
                 let Some(r) = &self.reader else { return vec![] };
+                if let Some(d) = &r.dict {
+                    let mut v = vec![(Level(9), crate::reader::dict_btn(2))];
+                    if d.page > 0 { v.push((Level(7), crate::reader::dict_btn(0))); }
+                    if d.page + 1 < crate::reader::dict_pages(&self.fonts, d) { v.push((Level(8), crate::reader::dict_btn(1))); }
+                    return v;
+                }
                 if r.menu {
                     let mut v: Vec<(Target, Rect)> = (0..5).map(|k| (Level(k), crate::reader::menu_btn(k))).collect();
                     if r.chapter > 0 {
@@ -3169,6 +3177,13 @@ impl App {
             }
             (Screen::Reader, Prev) => self.turn_page(false),
             (Screen::Reader, Next) => self.turn_page(true),
+            (Screen::Reader, Level(k)) if k >= 7 => {
+                if let Some(d) = self.reader.as_mut().and_then(|r| r.dict.as_mut()) {
+                    match k { 7 => d.page = d.page.saturating_sub(1), 8 => d.page += 1, _ => {} }
+                }
+                if k == 9 { if let Some(r) = self.reader.as_mut() { r.dict = None; } }
+                self.render(false);
+            }
             (Screen::Reader, Level(k)) => {
                 let rf = self.rfonts.as_ref();
                 match (k, self.reader.as_mut(), rf) {
@@ -3793,6 +3808,9 @@ impl App {
         }
         match t {
             Touch::Down(x, y) => {
+                self.reader_hold = if self.screen == Screen::Reader && self.reader.as_ref().is_some_and(|r| !r.menu && r.dict.is_none()) && y >= 70 {
+                    Some((x, y, Instant::now(), false))
+                } else { None };
                 self.swipe_from = Some((x, y));
                 self.gesture = None;
                 if let Some(h) = self.hit(x, y) {
@@ -3825,6 +3843,7 @@ impl App {
             }
             Touch::Move(x, y) if self.gesture.is_some() => self.gesture_move(x, y),
             Touch::Move(x, y) => {
+                if self.reader_hold.as_ref().is_some_and(|(sx, sy, _, held)| !held && ((x - sx).abs() > 20 || (y - sy).abs() > 20)) { self.reader_hold = None; }
                 // Arrastar para fora cancela o toque, como num botão nativo.
                 if let Some(h) = self.pressed {
                     if self.hit(x, y) != Some(h) {
@@ -3849,6 +3868,11 @@ impl App {
                 }
             }
             Touch::Up(x, y) => {
+                if self.reader_hold.take().is_some_and(|(_, _, _, held)| held) {
+                    self.pressed = None;
+                    self.swipe_from = None;
+                    return;
+                }
                 self.gesture = None;
                 let from = self.swipe_from.take();
                 // Deslizar do topo para baixo, em qualquer tela: o painel Luz e tela (brilho, Wi-Fi,
@@ -3929,7 +3953,21 @@ impl App {
     }
 
     pub fn touch_active(&self) -> bool {
-        self.gesture.as_ref().is_some_and(|g| !g.held && !g.dragging)
+        self.gesture.as_ref().is_some_and(|g| !g.held && !g.dragging) || self.reader_hold.as_ref().is_some_and(|(_, _, _, held)| !held)
+    }
+
+    fn check_reader_hold(&mut self) {
+        let Some((x, y, at, held)) = self.reader_hold else { return };
+        if held || at.elapsed() < HOLD || self.screen != Screen::Reader { return; }
+        let opened = match (self.reader.as_mut(), self.rfonts.as_ref()) {
+            (Some(r), Some(f)) => r.consultar(f, x, y),
+            _ => false,
+        };
+        if opened {
+            self.reader_hold = Some((x, y, at, true));
+            self.pressed = None;
+            self.render(false);
+        } else { self.reader_hold = None; }
     }
 
     /// Segurou o dedo parado numa casa: `hold` do jogo.
@@ -3983,6 +4021,7 @@ impl App {
         if self.gesture.is_some() {
             self.check_hold();
         }
+        if self.reader_hold.is_some() { self.check_reader_hold(); }
         // VPS: avisos e aprovações a cada minuto; edição e caixa de entrada a cada 20 minutos.
         self.apply_sync();
         if self.screen != Screen::Sleep && self.sync_fast.elapsed() >= Duration::from_secs(60) {
@@ -4764,6 +4803,11 @@ mod raio_x {
             std::fs::write(&txt, format!("Capítulo 1\n\n{}\n\nCapítulo 2\n\n{}", para.repeat(14), para.repeat(10))).unwrap();
             app.open_reader(txt, "Leitura de exemplo".into());
             shot(&mut app, "leitor-pagina");
+            if let Some(r) = app.reader.as_mut() {
+                r.dict = Some(crate::reader::DictView { palavra: "neblina".into(), definicao: "Nuvem baixa e pouco densa que reduz a visibilidade junto ao chão.".into(), aviso: true, page: 0 });
+            }
+            shot(&mut app, "leitor-dicionario");
+            if let Some(r) = app.reader.as_mut() { r.dict = None; }
             app.turn_page(true);
             shot(&mut app, "leitor-pagina-2");
             app.activate(Target::Header, 0);

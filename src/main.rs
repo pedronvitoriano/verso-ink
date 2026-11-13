@@ -62,6 +62,7 @@ mod sudoku;
 mod covers;
 mod damas;
 mod data;
+mod dicionario;
 mod fases;
 mod day;
 mod today_ui;
