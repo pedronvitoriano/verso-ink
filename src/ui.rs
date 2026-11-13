@@ -497,9 +497,32 @@ pub fn home_phrase(st: &Status) -> crate::saudacao::Phrase {
             return p.clone();
         }
     }
-    let p = home_phrase_fresh(st);
+    let p = astronomer(st, home_phrase_fresh(st));
     *c = Some((key, p.clone()));
     p
+}
+
+/// No dia do astrônomo (ilustração dia-11), ele aponta a luneta bem para a bateria, no canto:
+/// a frase vira a descoberta dele. Achados raros continuam valendo.
+fn astronomer(st: &Status, p: crate::saudacao::Phrase) -> crate::saudacao::Phrase {
+    if matches!(p.act, crate::saudacao::Act::Achado(_)) || daily_art(st) != Some(11) {
+        return p;
+    }
+    let Some(b) = st.battery else { return p };
+    let roll = crate::data::today(st.offset_min).rem_euclid(3) as usize;
+    let pick = |l: [&str; 3]| l[roll].replace("{b}", &b.to_string());
+    let text = if st.charging {
+        pick(["Uma estrela nascendo ali: {b}% e subindo!", "Observatório informa: carregando, {b}%.", "Vejo energia chegando: {b}%!"])
+    } else if b <= 15 {
+        pick(["Alerta do observatório: só {b}%! Tomada já!", "Esse astro está se apagando: {b}%!", "Houston, temos {b}% de bateria."])
+    } else if b < 40 {
+        pick(["Hmm, esse planeta está esfriando: {b}%.", "Avistei pouca energia ali: {b}%.", "Registro no diário: bateria em {b}%."])
+    } else if b < 80 {
+        pick(["Olha lá: um planeta com {b}% de carga!", "Descobri um corpo celeste: {b}%!", "Ali, ó! {b}% de bateria brilhando."])
+    } else {
+        pick(["Descobri uma estrela cheia: {b}%!", "Nunca vi um astro tão carregado: {b}%!", "Bateria em {b}%: céu limpo hoje!"])
+    };
+    crate::saudacao::Phrase { text, act: crate::saudacao::Act::None, rarity: p.rarity }
 }
 
 fn home_phrase_fresh(st: &Status) -> crate::saudacao::Phrase {
@@ -574,13 +597,15 @@ fn draw_daily_art(fb: &mut Framebuffer, st: &Status) {
         crate::sprites::draw(fb, crate::saudacao::ITEMS[i].2, Rect::new(r.x + 40, r.y + 10, 220, 220));
         return;
     }
+    let Some(k) = daily_art(st) else { return };
+    crate::sprites::draw(fb, &format!("dia-{k:02}"), Rect::new(1072 - MARGIN - 330, 160, 344, 302));
+}
+
+/// Qual ilustração do dia (dia-01, dia-02…) a Início mostra hoje.
+fn daily_art(st: &Status) -> Option<i64> {
     let day = crate::data::today(st.offset_min);
     let n = (0..40).filter(|k| crate::sprites::exists(&format!("dia-{:02}", k + 1))).count() as i64;
-    if n == 0 {
-        return;
-    }
-    let k = day.rem_euclid(n) + 1;
-    crate::sprites::draw(fb, &format!("dia-{k:02}"), Rect::new(1072 - MARGIN - 330, 160, 344, 302));
+    (n > 0).then(|| day.rem_euclid(n) + 1)
 }
 
 /// O que a tela inicial mostra além do fixo: livro em leitura e jogo em andamento.

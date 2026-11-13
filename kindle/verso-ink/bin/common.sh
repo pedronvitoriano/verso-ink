@@ -55,6 +55,48 @@ amazon_stop() {
     log "interface da Amazon parada"
 }
 
+# Troca rápida com o leitor da Amazon: em vez de desligar a interface (que leva ~1 min para
+# voltar), ela fica congelada (SIGSTOP no Java do framework, o cvm) enquanto o Verso Ink está na
+# tela. Xorg e awesome continuam vivos (como quando a interface está parada) e não atrapalham.
+amazon_pids() {
+    pgrep -f "/usr/java/bin/cvm" 2>/dev/null || pgrep cvm 2>/dev/null
+}
+
+amazon_frozen() {
+    [ -f /tmp/verso-ink.amazon-frozen ] && [ -n "$(amazon_pids)" ]
+}
+
+amazon_freeze() {
+    for p in $(amazon_pids); do kill -STOP "$p" 2>/dev/null; done
+    touch /tmp/verso-ink.amazon-frozen
+    lipc-set-prop com.lab126.blanket unload splash 2>/dev/null
+    log "interface da Amazon congelada"
+}
+
+amazon_thaw() {
+    for p in $(amazon_pids); do kill -CONT "$p" 2>/dev/null; done
+    rm -f /tmp/verso-ink.amazon-frozen
+    # A interface não sabe que a tela foi redesenhada por nós: pede a tela inicial da Amazon,
+    # o que a faz desenhar tudo de novo.
+    lipc-set-prop com.lab126.appmgrd start app://com.lab126.KPPMainApp 2>/dev/null
+    log "interface da Amazon descongelada"
+}
+
+# Espera a pessoa sair da tela inicial da Amazon (abrir um livro) e voltar a ela (tocar em
+# Início): é a volta para o Verso Ink. Sem sair da tela inicial em 5 min, volta também.
+amazon_wait_home() {
+    left=0; t=0
+    while :; do
+        sleep 2; t=$((t + 2))
+        ctx="$(lipc-get-prop com.lab126.appmgrd activeContext 2>/dev/null)"
+        case "$ctx" in
+            *KPPMainApp*) [ "$left" = 1 ] && return 0; [ "$t" -ge "${AMAZON_HOME_TIMEOUT:-300}" ] && return 0 ;;
+            "") ;;
+            *) left=1 ;;
+        esac
+    done
+}
+
 amazon_start() {
     # Marca para o job de boot não reabrir o Verso Ink quando a interface subir.
     touch /tmp/verso-ink.no-autostart
