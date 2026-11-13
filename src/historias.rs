@@ -202,6 +202,23 @@ fn load_all() -> Vec<(PathBuf, Story)> {
     v
 }
 
+/// Onde parou, as marcas e o caminho até ali (para voltar escolhas depois de reabrir).
+fn save(path: &std::path::Path, r: &Reading) {
+    let flags: Vec<&str> = r.flags.iter().map(String::as_str).collect();
+    let hist: Vec<String> = r.hist.iter().map(|(at, f)| format!("{at}|{}", f.iter().map(String::as_str).collect::<Vec<_>>().join(","))).collect();
+    let _ = std::fs::write(save_path(path), format!("{}\n{}\n{}\n", r.at, flags.join(","), hist.join(";")));
+}
+
+fn load_hist(story: &std::path::Path) -> Vec<(String, BTreeSet<String>)> {
+    let t = std::fs::read_to_string(save_path(story)).unwrap_or_default();
+    t.lines()
+        .nth(2)
+        .unwrap_or("")
+        .split(';')
+        .filter_map(|e| e.split_once('|').map(|(at, f)| (at.to_string(), f.split(',').filter(|x| !x.is_empty()).map(str::to_string).collect())))
+        .collect()
+}
+
 fn save_path(story: &std::path::Path) -> PathBuf {
     story.with_extension("salvo")
 }
@@ -220,6 +237,15 @@ struct Reading {
     at: String,
     flags: BTreeSet<String>,
     page: usize,
+    /// Trechos e marcas por onde passou, para voltar à escolha anterior.
+    hist: Vec<(String, BTreeSet<String>)>,
+}
+
+/// Quantos passos dá para voltar.
+const UNDO: usize = 50;
+
+fn undo_rect() -> Rect {
+    Rect::new(W - MARGIN + 16 - 330, 72, 330, 88)
 }
 
 pub struct Historias {
@@ -263,7 +289,9 @@ impl Historias {
     fn open(&mut self, k: usize) {
         let (path, story) = &self.list[k];
         let (at, flags) = load_progress(path).filter(|(at, _)| story.passages.contains_key(at)).unwrap_or_else(|| (story.first.clone(), BTreeSet::new()));
-        self.read = Some(Reading { k, at, flags, page: 0 });
+        // O caminho salvo só vale se todos os trechos ainda existem (a história pode ter mudado).
+        let hist: Vec<_> = load_hist(path).into_iter().filter(|(a, _)| story.passages.contains_key(a)).collect();
+        self.read = Some(Reading { k, at, flags, page: 0, hist });
     }
 
     fn go_to(&mut self, to: &str) {
@@ -272,6 +300,12 @@ impl Historias {
         let Some(p) = story.passages.get(to) else { return };
         if to == story.first {
             r.flags.clear();
+            r.hist.clear();
+        } else {
+            r.hist.push((r.at.clone(), r.flags.clone()));
+            if r.hist.len() > UNDO {
+                r.hist.remove(0);
+            }
         }
         for f in &p.set {
             r.flags.insert(f.clone());
@@ -281,8 +315,18 @@ impl Historias {
         }
         r.at = to.to_string();
         r.page = 0;
-        let flags: Vec<&str> = r.flags.iter().map(String::as_str).collect();
-        let _ = std::fs::write(save_path(path), format!("{to}\n{}\n", flags.join(",")));
+        save(path, r);
+    }
+
+    /// Volta à escolha anterior (trecho e marcas de antes).
+    fn undo(&mut self) {
+        let Some(r) = self.read.as_mut() else { return };
+        let Some((at, flags)) = r.hist.pop() else { return };
+        r.at = at;
+        r.flags = flags;
+        r.page = 0;
+        let path = self.list[r.k].0.clone();
+        save(&path, r);
     }
 
     fn visible_choices(&self) -> Vec<Choice> {
@@ -344,8 +388,15 @@ impl Historias {
     fn draw_reading(&self, fb: &mut Framebuffer, f: &Fonts, r: &Reading) {
         let story = &self.list[r.k].1;
         let Some(p) = story.passages.get(&r.at) else { return };
-        let tw = f.measure(Face::Strong, 30.0, &story.title).min(W - 2 * MARGIN - 260);
-        f.draw(fb, Face::Strong, 30.0, W - MARGIN - tw, 128, MUTED, &crate::apps::fit(f, Face::Strong, 30.0, &story.title, W - 2 * MARGIN - 260));
+        // Com histórico, o canto de cima vira "Escolha anterior" e o título desce para a linha de baixo.
+        let can_undo = !r.hist.is_empty();
+        if can_undo {
+            ui::button(fb, f, undo_rect(), "‹ Escolha anterior", false);
+            f.draw(fb, Face::Strong, 28.0, MARGIN, 214, MUTED, &crate::apps::fit(f, Face::Strong, 28.0, &story.title, W - 2 * MARGIN));
+        } else {
+            let tw = f.measure(Face::Strong, 30.0, &story.title).min(W - 2 * MARGIN - 260);
+            f.draw(fb, Face::Strong, 30.0, W - MARGIN - tw, 128, MUTED, &crate::apps::fit(f, Face::Strong, 30.0, &story.title, W - 2 * MARGIN - 260));
+        }
         // Escolhas de baixo para cima; o texto usa o que sobra.
         let width = W - 2 * MARGIN;
         let mut options: Vec<(u32, String)> = if p.end {
@@ -401,6 +452,9 @@ impl Historias {
             f.draw(fb, Face::Strong, 26.0, MARGIN, 206, INK, &crate::apps::fit(f, Face::Strong, 26.0, n, W - 2 * MARGIN));
         }
         let mut hits = Vec::new();
+        if can_undo {
+            hits.push((703, undo_rect()));
+        }
         let mut cy = layout_top(&options) + if p.end { 60 } else { 0 };
         for (id, text) in &options {
             let h = choice_h(text);
@@ -422,7 +476,7 @@ impl Historias {
         if pages.len() > 1 {
             let t = format!("{} de {}", page + 1, pages.len());
             let w = f.measure(Face::Body, 26.0, &t);
-            f.draw(fb, Face::Body, 26.0, (W - w) / 2, 206, MUTED, &t);
+            f.draw(fb, Face::Body, 26.0, if can_undo { W - MARGIN - w } else { (W - w) / 2 }, if can_undo { 214 } else { 206 }, MUTED, &t);
         }
         *self.hits.borrow_mut() = hits;
     }
@@ -481,6 +535,10 @@ impl MiniGame for Historias {
             }
             900..=1899 if ((id - 900) as usize) < self.list.len() => {
                 self.open((id - 900) as usize);
+                Redraw::Full
+            }
+            703 => {
+                self.undo();
                 Redraw::Full
             }
             700 => {
@@ -651,8 +709,8 @@ Trecho final termina com a linha FIM. Toda escolha leva a um trecho que existe n
         let k = r.k;
         self.list = load_all();
         let k = self.list.iter().position(|(p, _)| *p == path).unwrap_or(k);
-        let flags = self.read.as_ref().map(|r| r.flags.clone()).unwrap_or_default();
-        self.read = Some(Reading { k, at: start.clone(), flags, page: 0 });
+        let (flags, hist, at) = self.read.as_ref().map(|r| (r.flags.clone(), r.hist.clone(), r.at.clone())).unwrap_or_default();
+        self.read = Some(Reading { k, at, flags, page: 0, hist });
         self.go_to(&start);
         Ok(())
     }
@@ -783,6 +841,32 @@ mod tests {
             let missing: Vec<_> = s.passages.keys().filter(|k| !nodes.contains(*k)).collect();
             assert!(missing.is_empty(), "{file}: trechos inalcançáveis {missing:?}");
         }
+    }
+
+    #[test]
+    fn voltar_escolha_restaura_trecho_e_marcas() {
+        let dir = std::env::temp_dir().join("verso-hist-undo");
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("t.txt");
+        let src = "# T\n@ r\n\n== inicio\nA.\n\n* ir -> meio\n\n== meio\nB.\n\n+chave\n* fim -> fim\n\n== fim\nC.\n\nFIM\n";
+        std::fs::write(&path, src).unwrap();
+        let mut h = Historias { list: vec![(path.clone(), parse(src))], read: None, hits: RefCell::new(Vec::new()), want_text: false, want_new: false, picking: false, size: 0, note: None, list_page: 0 };
+        h.open(0);
+        h.go_to("meio");
+        h.go_to("fim");
+        assert!(h.read.as_ref().unwrap().flags.contains("chave"));
+        h.undo();
+        assert_eq!(h.read.as_ref().unwrap().at, "meio");
+        h.undo();
+        let r = h.read.as_ref().unwrap();
+        assert_eq!(r.at, "inicio");
+        assert!(r.flags.is_empty() && r.hist.is_empty());
+        // O caminho sobrevive a fechar e abrir de novo.
+        h.go_to("meio");
+        h.read = None;
+        h.open(0);
+        assert_eq!(h.read.as_ref().unwrap().hist.len(), 1);
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

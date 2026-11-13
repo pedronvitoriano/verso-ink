@@ -4128,12 +4128,21 @@ mod raio_x {
                 if let Some(g) = app.mini.as_mut() {
                     g.tap(749, 0, 0);
                 }
+                app.render(false);
             }
             if app.screen == Screen::Mini {
                 // Primeira opção do menu (fase 1 / contra a CPU / primeira história).
                 if let Some((id, _)) = app.mini.as_ref().and_then(|g| g.targets().into_iter().find(|(id, _)| *id == 900)) {
                     app.mini_tap(id, 0);
                     shot(&mut app, &format!("jogo-{name}-partida"));
+                    if name == "historias" {
+                        // Depois de uma escolha: o botão de voltar à escolha anterior.
+                        if let Some(g) = app.mini.as_mut() {
+                            g.tap(0, 0, 0);
+                        }
+                        app.render(false);
+                        shot(&mut app, "historias-escolha-anterior");
+                    }
                     if name == "coroas" {
                         for id in [0, 1, 7] {
                             app.mini_tap(id, 0);
