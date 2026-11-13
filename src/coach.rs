@@ -34,6 +34,8 @@ pub fn coach(i: usize) -> Coach {
         1201..=1900 => "Exigente: cobra precisão",
         _ => "Mestre: comenta até as imprecisões",
     };
+    // O estilo próprio de cada um, se a personalidade estiver escrita.
+    let style = persona(NAMES[i]).map(|p| p.style.as_str()).filter(|s| !s.is_empty()).unwrap_or(style);
     Coach { rating, name: NAMES[i], style }
 }
 
@@ -582,6 +584,139 @@ mod reacoes {
             for roll in 0..6 {
                 let (t, _) = react_to_user(&Moment { class: c, user_eval: None, took: None }, roll);
                 assert!(!t.contains(':') && !t.contains("Melhor"), "{t}");
+            }
+        }
+    }
+}
+
+// ---------- Personalidade de cada treinador ----------
+
+/// Quem é o treinador e as falas dele por situação (assets/treinadores/personalidades.txt).
+pub struct Persona {
+    pub name: String,
+    pub who: String,
+    pub style: String,
+    lines: std::collections::HashMap<String, Vec<String>>,
+}
+
+const PERSONAS_SRC: &str = include_str!("../assets/treinadores/personalidades.txt");
+
+fn parse_personas(src: &str) -> Vec<Persona> {
+    let mut v: Vec<Persona> = Vec::new();
+    for l in src.lines().map(str::trim) {
+        if let Some(n) = l.strip_prefix('[').and_then(|x| x.strip_suffix(']')) {
+            v.push(Persona { name: n.trim().to_string(), who: String::new(), style: String::new(), lines: Default::default() });
+        } else if let (Some(p), Some((k, val))) = (v.last_mut(), l.split_once(':')) {
+            let (k, val) = (k.trim(), val.trim());
+            match k {
+                "quem" => p.who = val.to_string(),
+                "estilo" => p.style = val.to_string(),
+                _ => {
+                    let list: Vec<String> = val.split(" | ").map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+                    if !list.is_empty() {
+                        p.lines.insert(k.to_string(), list);
+                    }
+                }
+            }
+        }
+    }
+    v
+}
+
+fn personas() -> &'static [Persona] {
+    static P: std::sync::OnceLock<Vec<Persona>> = std::sync::OnceLock::new();
+    P.get_or_init(|| parse_personas(PERSONAS_SRC))
+}
+
+pub fn persona(name: &str) -> Option<&'static Persona> {
+    personas().iter().find(|p| p.name == name)
+}
+
+/// A fala do treinador nesta situação, no jeito dele (None: usar a frase geral).
+pub fn persona_line(name: &str, situation: &str, roll: u64) -> Option<&'static str> {
+    let l = persona(name)?.lines.get(situation)?;
+    Some(l[(roll % l.len() as u64) as usize].as_str())
+}
+
+/// Situação do lance da pessoa, com a mesma prioridade das reações gerais.
+pub fn situation_user(m: &Moment) -> &'static str {
+    use crate::chess::Kind;
+    match m.took {
+        Some(Kind::Queen) => return "perdeu_rainha",
+        Some(Kind::Rook) => return "perdeu_torre",
+        Some(Kind::Bishop | Kind::Knight) => return "perdeu_peca",
+        _ => {}
+    }
+    match m.class {
+        Class::Blunder => return "vacilo",
+        Class::Mistake => return "erro",
+        _ => {}
+    }
+    let eval = m.user_eval.unwrap_or(0);
+    if eval > 300 {
+        return "apuros";
+    }
+    if eval < -300 {
+        return "vantagem";
+    }
+    match m.class {
+        Class::Best => "otimo",
+        Class::Inaccuracy => "neutro",
+        _ => "bom",
+    }
+}
+
+pub fn situation_own(took: Option<crate::chess::Kind>) -> Option<&'static str> {
+    use crate::chess::Kind;
+    match took? {
+        Kind::Queen => Some("pegou_rainha"),
+        Kind::Rook => Some("pegou_torre"),
+        Kind::Bishop | Kind::Knight => Some("pegou_peca"),
+        _ => None,
+    }
+}
+
+pub fn situation_end(user_score: f32) -> &'static str {
+    if user_score >= 1.0 {
+        "perdeu"
+    } else if user_score <= 0.0 {
+        "venceu"
+    } else {
+        "empate"
+    }
+}
+
+#[cfg(test)]
+mod personalidades {
+    use super::*;
+
+    #[test]
+    fn le_o_formato_e_escolhe_pela_situacao() {
+        let p = parse_personas("[Bia]\nquem: Estudante de música\nestilo: Calma e caprichosa\nvacilo: Ih, deu ruim | Opa, presente\n");
+        assert_eq!(p[0].style, "Calma e caprichosa");
+        assert_eq!(p[0].lines["vacilo"].len(), 2);
+        assert_eq!(situation_user(&Moment { class: Class::Blunder, user_eval: Some(0), took: None }), "vacilo");
+        assert_eq!(situation_user(&Moment { class: Class::Good, user_eval: Some(500), took: None }), "apuros");
+    }
+
+    /// O arquivo real, quando preenchido: os 30 treinadores, todas as situações, frases curtas e sem análise.
+    #[test]
+    fn personalidades_completas() {
+        let ps = personas();
+        if ps.is_empty() {
+            return;
+        }
+        let need = ["abertura", "vacilo", "erro", "bom", "otimo", "apuros", "vantagem", "perdeu_rainha", "perdeu_torre", "perdeu_peca", "pegou_rainha", "pegou_torre", "pegou_peca", "venceu", "perdeu", "empate", "neutro"];
+        assert_eq!(ps.len(), 30, "faltam treinadores");
+        for (i, p) in ps.iter().enumerate() {
+            assert_eq!(p.name, NAMES[i], "ordem/nome");
+            assert!(!p.who.is_empty() && !p.style.is_empty() && p.style.chars().count() <= 48, "{}: quem/estilo", p.name);
+            for k in need {
+                let l = p.lines.get(k).unwrap_or_else(|| panic!("{}: falta {k}", p.name));
+                assert!(l.len() >= 4, "{}: poucas frases em {k}", p.name);
+                for t in l {
+                    assert!(t.chars().count() <= 40 && !t.contains(':') && !t.contains("Melhor"), "{}/{k}: {t}", p.name);
+                }
             }
         }
     }

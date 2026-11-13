@@ -2299,7 +2299,8 @@ impl App {
         self.coach_msg = if level == crate::coach::CLAUDE {
             format!("Oi, Pedro! Vamos jogar. Você está de {}. Vou comentando os lances.", if user_white { "brancas" } else { "pretas" })
         } else {
-            format!("Olá, sou {}. {}. Você joga de {}.", c.name, c.style, if user_white { "brancas" } else { "pretas" })
+            let hi = crate::coach::persona_line(c.name, "abertura", self.rng.next()).map(str::to_string).unwrap_or_else(|| format!("Olá, sou {}.", c.name));
+            format!("{hi} Você joga de {}.", if user_white { "brancas" } else { "pretas" })
         };
         self.go(Screen::Chess);
         if !self.ensure_engine() {
@@ -2361,7 +2362,10 @@ impl App {
             // Fala de gente, sem análise (o porquê fica guardado para a revisão).
             let took = before.board[last.to].filter(|p| p.white != user_white).map(|p| p.kind);
             let roll = self.rng.next();
-            let (line, mood) = crate::coach::react_to_user(&crate::coach::Moment { class, user_eval: Some(after.cp()), took }, roll);
+            let moment = crate::coach::Moment { class, user_eval: Some(after.cp()), took };
+            let (line, mood) = crate::coach::react_to_user(&moment, roll);
+            let name = crate::coach::coach(level).name;
+            let line = crate::coach::persona_line(name, crate::coach::situation_user(&moment), roll).unwrap_or(line);
             let _ = rating;
             self.coach_mood = mood;
             self.coach_msg = line.to_string();
@@ -2380,7 +2384,10 @@ impl App {
                 why: String::new(),
             });
             let took = before.board[last.to].filter(|p| p.white != user_white).map(|p| p.kind);
-            let (line, mood) = crate::coach::react_to_user(&crate::coach::Moment { class: crate::coach::Class::Good, user_eval: None, took }, self.rng.next());
+            let moment = crate::coach::Moment { class: crate::coach::Class::Good, user_eval: None, took };
+            let roll = self.rng.next();
+            let (line, mood) = crate::coach::react_to_user(&moment, roll);
+            let line = crate::coach::persona_line(crate::coach::coach(level).name, crate::coach::situation_user(&moment), roll).unwrap_or(line);
             self.coach_mood = mood;
             self.coach_msg = line.to_string();
         }
@@ -2466,7 +2473,15 @@ impl App {
             log("treinador: lance do motor recusado; jogando um lance válido");
             san = crate::coach::random_legal(&pos, &mut self.rng).and_then(|m| self.chess.as_mut().and_then(|g| g.play_uci(&m)));
         }
-        let brag = if san.is_some() { crate::coach::react_to_own(took, self.rng.next()) } else { None };
+        let roll = self.rng.next();
+        let brag = if san.is_some() { crate::coach::react_to_own(took, roll) } else { None };
+        // Captura grande no jeito do treinador (bispo e cavalo só com personalidade escrita).
+        let own = crate::coach::situation_own(took).and_then(|k| crate::coach::persona_line(crate::coach::coach(level).name, k, roll));
+        let brag = match (brag, own) {
+            (Some((_, mood)), Some(line)) => Some((line, mood)),
+            (None, Some(line)) if san.is_some() => Some((line, crate::coach::Mood::Feliz)),
+            (b, _) => b,
+        };
         if let Some((_, mood)) = brag {
             self.coach_mood = mood;
         }
@@ -2600,7 +2615,9 @@ impl App {
             _ => String::new(),
         };
         // A última fala do treinador, com a cara do resultado.
-        let (line, mood) = crate::coach::react_to_end(score, self.rng.next());
+        let roll = self.rng.next();
+        let (line, mood) = crate::coach::react_to_end(score, roll);
+        let line = crate::coach::persona_line(c.name, crate::coach::situation_end(score), roll).unwrap_or(line);
         self.coach_mood = mood;
         let detail = format!("{detail} {}: “{line}”", c.name).trim().to_string();
         log(&format!("partida contra {} terminou: {label}, rating {} → {}", c.name, ratings.0, ratings.1));
