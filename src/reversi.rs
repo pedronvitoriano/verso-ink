@@ -233,7 +233,7 @@ impl MiniGame for Reversi {
     }
     fn cpu_turn(&self) -> bool { !self.menu && self.level.is_some() && self.board.turn == 2 && !self.board.over() }
     fn cpu_move(&mut self) { if self.cpu_turn() { let m = choose(&self.board, self.level.unwrap(), &mut self.rng); self.play(m); } }
-    fn risky(&self, id: u32) -> bool { id == 802 && !self.board.over() }
+    fn risky(&self, id: u32) -> bool { matches!(id, 801 | 802) && !self.menu && !self.board.over() }
 }
 
 #[cfg(test)]
@@ -257,6 +257,7 @@ mod tests {
     fn passagem_e_fim() {
         let mut g = Reversi::new();
         g.start(None);
+        assert!(g.risky(801));
         g.board.cells = [1; 64];
         g.board.cells[0] = 0; g.board.cells[1] = 2; g.board.cells[63] = 0; g.board.cells[62] = 2;
         g.play(0);

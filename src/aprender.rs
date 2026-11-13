@@ -134,7 +134,7 @@ pub fn habit_topics() -> Vec<(String, Vec<String>)> {
     let t = today();
     let used: Vec<String> = xp_by_source(t - 29, t).into_iter().map(|(s, _)| s).collect();
     let mut v = vec![("Aprender".to_string(), Vec::new())];
-    for (name, srcs) in [("Violão", vec!["violao"]), ("Partitura", vec!["licao", "treino"]), ("Destaques", vec!["revisao"])] {
+    for (name, srcs) in [("Violão", vec!["violao"]), ("Partitura", vec!["licao", "treino"]), ("Destaques", vec!["revisao"]), ("Geografia", vec!["geografia"])] {
         if srcs.iter().any(|s| used.iter().any(|u| u == s)) {
             v.push((name.to_string(), srcs.iter().map(|s| s.to_string()).collect()));
         }
@@ -295,7 +295,7 @@ pub fn week_row(fb: &mut Framebuffer, f: &Fonts, x: i32, y: i32, w: i32, st: &St
 }
 
 pub fn cel_button() -> Rect {
-    Rect::new(MARGIN, 1290, W - 2 * MARGIN, 104)
+    Rect::new(MARGIN, 1288, W - 2 * MARGIN, 80)
 }
 
 /// Tela de comemoração (por cima do módulo).
@@ -407,7 +407,7 @@ pub const FEEDBACK_TOP: i32 = 1020;
 
 /// Botão Continuar dentro da faixa.
 pub fn feedback_button() -> Rect {
-    Rect::new(MARGIN, 1318, W - 2 * MARGIN, 100)
+    Rect::new(MARGIN, 1288, W - 2 * MARGIN, 80)
 }
 
 /// Selo redondo com ✓ (certa) ou ✗ (sua resposta errada), no canto direito de uma opção.
@@ -466,9 +466,9 @@ pub fn draw_feedback(fb: &mut Framebuffer, f: &Fonts, ok: bool, title: &str, bod
         if !ok {
             // Fundo branco sob o texto para ler sobre as listras.
             let w = f.measure(Face::Body, 30.0, l);
-            fb.fill(Rect::new(MARGIN - 6, r.y + 158 + k as i32 * 42, w + 12, 40), PAPER);
+            fb.fill(Rect::new(MARGIN - 6, r.y + 140 + k as i32 * 38, w + 12, 40), PAPER);
         }
-        f.draw(fb, Face::Body, 30.0, MARGIN, r.y + 188 + k as i32 * 42, sub, l);
+        f.draw(fb, Face::Body, 30.0, MARGIN, r.y + 170 + k as i32 * 38, sub, l);
     }
     let b = feedback_button();
     if ok {

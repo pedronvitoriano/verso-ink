@@ -86,15 +86,29 @@ fn was_completed(text: &str, day: i64, key: &str) -> bool {
     })
 }
 
-fn mark_complete(path: &Path, day: i64, key: &str) -> Vec<i64> {
-    let mut text = std::fs::read_to_string(path).unwrap_or_default();
+fn mark_complete(path: &Path, day: i64, key: &str) -> std::io::Result<Vec<i64>> {
+    use std::io::Write;
+    let mut text = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(e),
+    };
     if !was_completed(&text, day, key) {
         if !text.is_empty() && !text.ends_with('\n') { text.push('\n'); }
         text.push_str(&format!("{day}|{key}\n"));
-        if let Some(dir) = path.parent() { let _ = std::fs::create_dir_all(dir); }
-        let _ = std::fs::write(path, &text);
+        if let Some(dir) = path.parent() { std::fs::create_dir_all(dir)?; }
+        // O arquivo temporário fica no mesmo diretório para que o rename seja atômico.
+        let temp = path.with_extension("txt.tmp");
+        let result = (|| {
+            let mut file = std::fs::File::create(&temp)?;
+            file.write_all(text.as_bytes())?;
+            file.sync_all()?;
+            std::fs::rename(&temp, path)
+        })();
+        if result.is_err() { let _ = std::fs::remove_file(&temp); }
+        result?;
     }
-    completed_days(&text)
+    Ok(completed_days(&text))
 }
 
 pub struct PuzzleDia {
@@ -104,6 +118,7 @@ pub struct PuzzleDia {
     game: Game,
     sprites: Sprites,
     solved: bool,
+    save_pending: bool,
     sequence: usize,
     wrong: bool,
     promotion: Option<Move>,
@@ -126,7 +141,7 @@ impl PuzzleDia {
             game.pos = if solved { apply_uci(&p.before, &p.best).unwrap_or_else(|| p.before.clone()) } else { p.before.clone() };
             if solved { game.last = chess::parse_uci(&p.best).map(|(m, _)| m); }
         }
-        Self { day, offset_min, puzzle, game, sprites: Sprites::new(), solved, sequence: streak(&days, day), wrong: false, promotion: None }
+        Self { day, offset_min, puzzle, game, sprites: Sprites::new(), solved, save_pending: false, sequence: streak(&days, day), wrong: false, promotion: None }
     }
 
     /// Cenas determinísticas sem ler nem alterar arquivos de partidas ou progresso.
@@ -147,7 +162,7 @@ impl PuzzleDia {
             last: if solved { chess::parse_uci("d2d4").map(|(m, _)| m) } else { None },
             pending_promo: None, clock: None,
         };
-        Self { day: 0, offset_min: 0, puzzle, game, sprites: Sprites::new(), solved, sequence: if solved { 3 } else { 2 }, wrong: false, promotion: None }
+        Self { day: 0, offset_min: 0, puzzle, game, sprites: Sprites::new(), solved, save_pending: false, sequence: if solved { 3 } else { 2 }, wrong: false, promotion: None }
     }
 
     #[cfg(test)]
@@ -156,6 +171,8 @@ impl PuzzleDia {
     pub fn print_partida() -> Self { Self::cena_print(1) }
     #[cfg(test)]
     pub fn print_fim() -> Self { Self::cena_print(2) }
+    #[cfg(test)]
+    pub fn print_falha() -> Self { let mut g = Self::cena_print(2); g.save_pending = true; g }
 
     fn try_move(&mut self, m: Move, promo: Option<Kind>) {
         let Some(p) = &self.puzzle else { return };
@@ -166,7 +183,10 @@ impl PuzzleDia {
                 self.game.last = Some(m);
                 self.solved = true;
                 let path = crate::home_dir().join("data/xadrez/puzzle/dias.txt");
-                self.sequence = streak(&mark_complete(&path, self.day, &p.key), self.day);
+                match mark_complete(&path, self.day, &p.key) {
+                    Ok(days) => { self.sequence = streak(&days, self.day); self.save_pending = false; }
+                    Err(_) => self.save_pending = true,
+                }
                 self.wrong = false;
             }
         } else { self.wrong = true; }
@@ -174,6 +194,16 @@ impl PuzzleDia {
         self.game.targets.clear();
         self.promotion = None;
     }
+
+    fn retry_save(&mut self, path: &Path) {
+        let Some(p) = &self.puzzle else { return };
+        match mark_complete(path, self.day, &p.key) {
+            Ok(days) => { self.sequence = streak(&days, self.day); self.save_pending = false; }
+            Err(_) => self.save_pending = true,
+        }
+    }
+
+    fn retry_rect() -> Rect { Rect::new(MARGIN, 1288, W - 2 * MARGIN, 80) }
 
     fn select(&mut self, sq: usize) {
         if let Some(from) = self.game.selected {
@@ -230,7 +260,7 @@ impl MiniGame for PuzzleDia {
             return;
         }
         if self.solved {
-            let title = format!("Acertou! · {} dia{}", self.sequence, if self.sequence == 1 { "" } else { "s" });
+            let title = if self.save_pending { "Acertou!".into() } else { format!("Acertou! · {} dia{}", self.sequence, if self.sequence == 1 { "" } else { "s" }) };
             f.draw(fb, Face::Display, 38.0, MARGIN, 286, INK, &title);
             Self::draw_wrapped(fb, f, &self.explanation(), 332);
         } else {
@@ -244,6 +274,9 @@ impl MiniGame for PuzzleDia {
             }
         }
         chess::draw_position(fb, f, &self.game, &self.sprites);
+        if self.save_pending {
+            minigame::pill(fb, f, Self::retry_rect(), "Não salvou · tentar de novo", true);
+        }
         if !self.solved && self.sequence > 0 {
             let text = format!("Sequência: {} dia{}", self.sequence, if self.sequence == 1 { "" } else { "s" });
             let width = f.measure(Face::Body, 26.0, &text);
@@ -252,12 +285,17 @@ impl MiniGame for PuzzleDia {
     }
 
     fn targets(&self) -> Vec<(u32, Rect)> {
+        if self.save_pending { return vec![(800, Self::retry_rect())]; }
         if self.puzzle.is_none() || self.solved { return vec![]; }
         if self.promotion.is_some() { return (0..4).map(|k| (800 + k as u32, Self::promotion_rect(k))).collect(); }
         (0..64).map(|i| (i as u32, chess::square_rect(i, self.game.flipped()))).collect()
     }
 
     fn tap(&mut self, id: u32, _x: i32, _y: i32) -> Redraw {
+        if self.save_pending && id == 800 {
+            self.retry_save(&crate::home_dir().join("data/xadrez/puzzle/dias.txt"));
+            return Redraw::Full;
+        }
         if self.puzzle.is_none() || self.solved { return Redraw::None; }
         if let Some(m) = self.promotion {
             if (800..804).contains(&id) { self.try_move(m, Some(chess::PROMO[(id - 800) as usize])); return Redraw::Full; }
@@ -268,7 +306,7 @@ impl MiniGame for PuzzleDia {
     }
 
     fn tick(&mut self) -> Redraw {
-        if crate::data::today(self.offset_min) != self.day { *self = Self::new(self.offset_min); Redraw::Full } else { Redraw::None }
+        if !self.save_pending && crate::data::today(self.offset_min) != self.day { *self = Self::new(self.offset_min); Redraw::Full } else { Redraw::None }
     }
 }
 
@@ -330,13 +368,49 @@ mod tests {
         assert_eq!(selected_key(&root.join("escolha"), 42, &only_new), Some("outra:2".into()));
         assert_eq!(selected_key(&root.join("escolha"), 42, &[]), None);
         let path = root.join("dias");
-        mark_complete(&path, 40, "a"); mark_complete(&path, 41, "b"); mark_complete(&path, 41, "b");
+        mark_complete(&path, 40, "a").unwrap(); mark_complete(&path, 41, "b").unwrap(); mark_complete(&path, 41, "b").unwrap();
         assert_eq!(streak(&completed_days(&std::fs::read_to_string(&path).unwrap()), 42), 2);
-        assert_eq!(streak(&mark_complete(&path, 42, "c"), 42), 3);
+        assert_eq!(streak(&mark_complete(&path, 42, "c").unwrap(), 42), 3);
         let text = std::fs::read_to_string(&path).unwrap();
         assert!(was_completed(&text, 42, "c"));
         assert!(!was_completed(&text, 42, "outra:2"));
         assert_eq!(streak(&completed_days(&std::fs::read_to_string(&path).unwrap()), 44), 0);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn falha_de_leitura_nao_sobrescreve_o_historico() {
+        let root = std::env::temp_dir().join(format!("verso-puzzle-leitura-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("dias.txt");
+        let original = b"41|anterior\n\xff";
+        std::fs::write(&path, original).unwrap();
+        assert!(mark_complete(&path, 42, "novo").is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), original);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn falha_de_escrita_preserva_historico_e_permite_tentar_de_novo() {
+        let root = std::env::temp_dir().join(format!("verso-puzzle-escrita-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("dias.txt");
+        std::fs::write(&path, "-1|anterior\n").unwrap();
+        let blocked = path.with_extension("txt.tmp");
+        std::fs::create_dir(&blocked).unwrap();
+        let mut puzzle = PuzzleDia::print_partida();
+        puzzle.solved = true;
+        puzzle.sequence = 1;
+        puzzle.retry_save(&path);
+        assert!(puzzle.save_pending);
+        assert_eq!(puzzle.sequence, 1);
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "-1|anterior\n");
+        assert_eq!(puzzle.targets().len(), 1);
+        std::fs::remove_dir(blocked).unwrap();
+        puzzle.retry_save(&path);
+        assert!(!puzzle.save_pending);
+        assert_eq!(puzzle.sequence, 2);
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "-1|anterior\n0|exemplo:2\n");
         let _ = std::fs::remove_dir_all(root);
     }
 }

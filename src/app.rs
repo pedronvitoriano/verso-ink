@@ -1466,7 +1466,7 @@ impl App {
         };
         let what = match self.screen {
             Screen::Mini => {
-                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else if self.mini_back == Screen::ChessHub { "Puzzle do dia".to_string() } else { "Receitas".to_string() }
+                if self.mini_back == Screen::Games { apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("Jogo").to_string() } else if self.mini_back == Screen::ChessHub { "Puzzle do dia".to_string() } else if self.mini_back == Screen::Home { "Aprender".to_string() } else { "Receitas".to_string() }
             }
             Screen::Sudoku | Screen::SudokuWon => "Sudoku".into(),
             Screen::Chess | Screen::ChessEnd | Screen::ChessReview => "Xadrez".into(),
@@ -1521,7 +1521,7 @@ impl App {
         match self.screen {
             Screen::Mini => {
                 let name = apps::GAMES.get(self.mini_game).map(|g| g.0).unwrap_or("jogo");
-                let name = if self.mini_back == Screen::Games { name } else if self.mini_back == Screen::ChessHub { "Puzzle do dia" } else { "Receitas" };
+                let name = if self.mini_back == Screen::Games { name } else if self.mini_back == Screen::ChessHub { "Puzzle do dia" } else if self.mini_back == Screen::Home { "Aprender" } else { "Receitas" };
                 parts.push(format!("Pedro está em {name}, no Kindle."));
                 if let Some(g) = &self.mini {
                     let c = g.context();
@@ -3393,8 +3393,9 @@ impl App {
             }
             (Screen::ChessHub, Game(4)) => self.start_coach_game(crate::coach::CLAUDE),
             (Screen::ChessHub, Game(5)) => {
-                self.mini = Some(self.mini_cache.remove(&103).unwrap_or_else(|| Box::new(crate::puzzle_dia::PuzzleDia::new(crate::offset_min()))));
-                self.mini_slot = Some(103);
+                self.mini_cache.remove(&105);
+                self.mini = Some(Box::new(crate::puzzle_dia::PuzzleDia::new(crate::offset_min())));
+                self.mini_slot = Some(105);
                 self.mini_back = Screen::ChessHub;
                 self.go(Screen::Mini);
             }
@@ -4070,6 +4071,7 @@ mod raio_x {
         std::fs::create_dir_all(&documents).unwrap();
         std::env::set_var("VERSO_INK_HOME", &home);
         std::env::set_var("VERSO_INK_DOCUMENTS", &documents);
+        crate::geografia::Geografia::verificar_registro();
         // Arte do repositório (sprites e rostos), como no Kindle.
         let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets");
         for d in ["sprites", "treinadores"] {
@@ -4225,16 +4227,37 @@ mod raio_x {
         }
         app.go(Screen::ChessHub);
         shot(&mut app, "xadrez-central-com-puzzle");
+        app.mini_cache.insert(103, Box::new(crate::violao::Violao::open_aula()));
+        app.activate(Target::Game(5), 0);
+        assert_eq!(app.mini_slot, Some(105));
+        assert!(app.mini_cache.contains_key(&103));
+        app.activate(Target::Back, 0);
+        app.mini_cache.remove(&103);
         app.mini_back = Screen::ChessHub;
         for (g, name) in [
             (crate::puzzle_dia::PuzzleDia::print_vazio(), "puzzle-vazio"),
             (crate::puzzle_dia::PuzzleDia::print_partida(), "puzzle-partida"),
             (crate::puzzle_dia::PuzzleDia::print_fim(), "puzzle-fim"),
+            (crate::puzzle_dia::PuzzleDia::print_falha(), "puzzle-falha-salvar"),
         ] {
             app.mini = Some(Box::new(g));
             app.go(Screen::Mini);
             shot(&mut app, name);
         }
+        app.mini_back = Screen::Home;
+        for (g, name) in [
+            (crate::geografia::Geografia::print_menu(), "geografia-menu"),
+            (crate::geografia::Geografia::print_intro(), "geografia-intro"),
+            (crate::geografia::Geografia::print_questao(), "geografia-questao"),
+            (crate::geografia::Geografia::print_feedback(), "geografia-resposta"),
+            (crate::geografia::Geografia::print_fim(), "geografia-fim"),
+        ] {
+            app.mini = Some(Box::new(g));
+            app.go(Screen::Mini);
+            shot(&mut app, name);
+        }
+        let _ = std::fs::remove_file(home.join("data/geografia.txt"));
+        let _ = std::fs::remove_file(home.join("data/aprender.txt"));
         // Revisão de um erro real: coordenadas, alternativa e cobertura da análise.
         app.saved_games = vec![crate::coach::Saved {
             file: home.join("data/xadrez/partidas/exemplo.txt"),

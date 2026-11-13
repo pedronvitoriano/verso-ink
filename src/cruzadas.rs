@@ -174,7 +174,11 @@ impl Cruzadas {
     }
 
     fn start(&mut self) {
-        self.day = crate::data::today(crate::offset_min());
+        self.start_on(crate::data::today(crate::offset_min()));
+    }
+
+    fn start_on(&mut self, day: i64) {
+        self.day = day;
         self.puzzle = generate(self.day);
         self.grid = std::fs::read_to_string(self.path()).map(|s| decode_progress(&s, &self.puzzle.solution)).unwrap_or([0; CELLS]);
         self.selected = 0;
@@ -182,6 +186,10 @@ impl Cruzadas {
         self.message = "Toque em uma palavra para escolher.".into();
         self.checked = false;
         self.menu = false;
+    }
+
+    fn refresh_day(&mut self, day: i64) -> bool {
+        if !self.menu && self.day != day { self.start_on(day); true } else { false }
     }
 
     fn done(&self) -> bool {
@@ -322,6 +330,12 @@ impl MiniGame for Cruzadas {
 
     fn save(&self) { if !self.menu { self.save_grid(); } }
 
+    fn tick(&mut self) -> Redraw {
+        if self.refresh_day(crate::data::today(crate::offset_min())) { Redraw::Full } else { Redraw::None }
+    }
+
+    fn resume(&mut self) { self.refresh_day(crate::data::today(crate::offset_min())); }
+
     fn back(&mut self) -> bool {
         if self.menu { false } else { self.save_grid(); self.menu = true; true }
     }
@@ -366,5 +380,15 @@ mod tests {
         let encoded: String = p.solution.iter().map(|&c| if c == 0 { 'X' } else { c as char }).collect();
         assert_eq!(decode_progress(&encoded, &p.solution), p.solution);
         assert_eq!(decode_progress("inválido", &p.solution), [0; CELLS]);
+    }
+
+    #[test]
+    fn troca_a_grade_quando_muda_o_dia() {
+        let mut g = Cruzadas::new();
+        g.start_on(20_000);
+        assert!(!g.refresh_day(20_000));
+        assert!(g.refresh_day(20_001));
+        assert_eq!(g.day, 20_001);
+        assert_eq!(g.puzzle.solution, generate(20_001).solution);
     }
 }

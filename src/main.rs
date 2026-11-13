@@ -46,6 +46,7 @@ mod reversi;
 mod go;
 mod cruzadas;
 mod puzzle_dia;
+mod geografia;
 mod claude_ui;
 mod clock;
 mod update;
