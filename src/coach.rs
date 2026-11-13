@@ -522,26 +522,28 @@ pub struct Moment {
 pub fn react_to_user(m: &Moment, roll: u64) -> (&'static str, Mood) {
     use crate::chess::Kind;
     match m.took {
-        Some(Kind::Queen) => return (pick(&["Nãoo, minha rainha!", "Minha dama! Não acredito…", "Ai, ai… lá se foi a rainha."], roll), Mood::Chocado),
-        Some(Kind::Rook) => return (pick(&["Ai, minha torre…", "Perdi a torre? Sério?"], roll), Mood::Preocupado),
+        Some(Kind::Queen) => return (pick(&["Nãoo, minha rainha!", "Minha dama! Não acredito…", "Ai, ai… lá se foi a rainha.", "Minha dama, volta aqui!", "Isso doeu até em mim!", "Pera, cadê minha rainha?", "Ah não, justo ela!", "Vou sentir saudade dela…"], roll), Mood::Chocado),
+        Some(Kind::Rook) => return (pick(&["Ai, minha torre…", "Perdi a torre? Sério?", "Minha torre, não!", "Lá se foi minha torre…", "Poxa, eu gostava dela!", "Essa torre vai fazer falta.", "Nem deu tempo de dizer tchau!", "Me devolve, vai?"], roll), Mood::Preocupado),
+        Some(Kind::Bishop) => return (pick(&["Meu bispo, não!", "Ih, levaram meu bispo…", "Poxa, justo meu bispo!", "Bispo, volta aqui!", "Já tô com saudade do bispo.", "Meu bispo foi de arrasta…", "Essa perda eu senti!", "Cadê meu bispo? Ah, não…"], roll), Mood::Preocupado),
+        Some(Kind::Knight) => return (pick(&["Meu cavalo, não!", "Ih, levaram meu cavalo…", "Poxa, meu cavalinho!", "Cavalo, volta aqui!", "Já tô com saudade dele.", "Meu cavalo saiu galopando…", "Essa perda eu senti!", "Cadê meu cavalo? Ah, não…"], roll), Mood::Preocupado),
         _ => {}
     }
     match m.class {
-        Class::Blunder => return (pick(&["Eita, vacilou…", "Opa! Essa eu não deixo passar.", "Obrigado pelo presente!", "Xiii… olha o que você fez."], roll), Mood::Feliz),
-        Class::Mistake => return (pick(&["Hmm, deu uma brecha aí.", "Opa, gostei dessa… pra mim.", "Interessante… vou aproveitar."], roll), Mood::Feliz),
+        Class::Blunder => return (pick(&["Eita, vacilou…", "Opa! Essa eu não deixo passar.", "Obrigado pelo presente!", "Xiii… olha o que você fez.", "Ih, essa foi pra mim?", "Opa, aceito com carinho!", "Essa eu vou guardar!", "Você me mimou agora!"], roll), Mood::Feliz),
+        Class::Mistake => return (pick(&["Hmm, deu uma brecha aí.", "Opa, gostei dessa… pra mim.", "Interessante… vou aproveitar.", "Opa, essa eu gostei!", "Ih, bobeou um pouquinho!", "Deixa comigo agora!", "Olha só o que apareceu…", "Aí você me anima!"], roll), Mood::Feliz),
         _ => {}
     }
     let eval = m.user_eval.unwrap_or(0);
     if eval > 300 {
-        return (pick(&["Tô ficando em apuros…", "Calma, calma, ainda dá…", "Você tá apertando, hein."], roll), Mood::Preocupado);
+        return (pick(&["Tô ficando em apuros…", "Calma, calma, ainda dá…", "Você tá apertando, hein.", "Eita, pega leve comigo!", "Assim você me assusta…", "Opa, tô suando aqui.", "Preciso de um cafezinho…", "Deixa eu respirar!"], roll), Mood::Preocupado);
     }
     if eval < -300 {
-        return (pick(&["Tá ficando bom pra mim!", "Hehe, gosto dessa posição.", "Vai ser difícil sair dessa."], roll), Mood::Feliz);
+        return (pick(&["Tá ficando bom pra mim!", "Hehe, gosto dessa posição.", "Vai ser difícil sair dessa.", "Hoje eu tô inspirado!", "Hehe, agora eu gostei!", "Tô me divertindo, viu?", "O sorriso veio sozinho!", "Opa, o dia tá bom!"], roll), Mood::Feliz);
     }
     match m.class {
-        Class::Best => (pick(&["Uau, boa jogada!", "Essa foi forte.", "Tá jogando sério hoje, hein?"], roll), if eval > 100 { Mood::Preocupado } else { Mood::Normal }),
-        Class::Inaccuracy => (pick(&["Hmm, ok…", "Dava pra mais, hein.", "Certo, certo…"], roll), Mood::Normal),
-        _ => (pick(&["Hmm, entendi.", "Certo…", "Vamos ver…", "Deixa eu pensar…"], roll), Mood::Normal),
+        Class::Best => (pick(&["Uau, boa jogada!", "Essa foi forte.", "Tá jogando sério hoje, hein?", "Opa, mandou bem!", "Aí sim, gostei de ver!", "Você veio com tudo!", "Rapaz, essa foi bonita!", "Olha você dando show!"], roll), if eval > 100 { Mood::Preocupado } else { Mood::Normal }),
+        Class::Inaccuracy => (pick(&["Hmm, ok…", "Dava pra mais, hein.", "Certo, certo…", "Opa, entendi…", "Foi por aí, né?", "Hmm, curioso isso…", "Tá bom, minha vez!", "Vamos nessa, então."], roll), Mood::Normal),
+        _ => (pick(&["Hmm, entendi.", "Certo…", "Vamos ver…", "Deixa eu pensar…", "Opa, minha vez!", "Tá, tô de olho!", "Então tá bom…", "Agora deixa comigo."], roll), Mood::Normal),
     }
 }
 
@@ -549,8 +551,10 @@ pub fn react_to_user(m: &Moment, roll: u64) -> (&'static str, Mood) {
 pub fn react_to_own(took: Option<crate::chess::Kind>, roll: u64) -> Option<(&'static str, Mood)> {
     use crate::chess::Kind;
     match took? {
-        Kind::Queen => Some((pick(&["Peguei sua rainha!", "Essa dama agora é minha!"], roll), Mood::Feliz)),
-        Kind::Rook => Some((pick(&["Torre no bolso.", "Obrigado pela torre!"], roll), Mood::Feliz)),
+        Kind::Queen => Some((pick(&["Peguei sua rainha!", "Essa dama agora é minha!", "Opa, ganhei uma rainha!", "Sua dama veio comigo!", "Hehe, essa eu levo!", "Olha quem veio me visitar!", "Essa rainha é minha agora!", "Adorei esse presente!"], roll), Mood::Feliz)),
+        Kind::Rook => Some((pick(&["Torre no bolso.", "Obrigado pela torre!", "Opa, ganhei uma torre!", "Essa torre veio comigo!", "Hehe, essa eu levo!", "Uma torre pra chamar de minha!", "Gostei dessa torre, viu?", "Adorei esse presente!"], roll), Mood::Feliz)),
+        Kind::Bishop => Some((pick(&["Peguei seu bispo!", "O bispo veio comigo!", "Opa, ganhei um bispo!", "Seu bispo é meu agora!", "Hehe, esse eu levo!", "Gostei desse bispo, viu?", "Um bispo pro meu bolso!", "Esse bispo fez as malas!"], roll), Mood::Feliz)),
+        Kind::Knight => Some((pick(&["Peguei seu cavalo!", "O cavalo veio comigo!", "Opa, ganhei um cavalo!", "Seu cavalo é meu agora!", "Hehe, esse eu levo!", "Gostei do cavalinho!", "Um cavalo pro meu bolso!", "Esse cavalo vai comigo!"], roll), Mood::Feliz)),
         _ => None,
     }
 }
@@ -558,9 +562,9 @@ pub fn react_to_own(took: Option<crate::chess::Kind>, roll: u64) -> Option<(&'st
 /// Fim de partida: (frase, expressão) do ponto de vista do treinador.
 pub fn react_to_end(user_score: f32, roll: u64) -> (&'static str, Mood) {
     if user_score >= 1.0 {
-        (pick(&["Ah, você venceu. Boa partida!", "Perdi… mas quero revanche!"], roll), Mood::Triste)
+        (pick(&["Ah, você venceu. Boa partida!", "Perdi… mas quero revanche!", "Você ganhou! Foi bonito, viu?", "Hoje a vitória foi sua!", "Essa eu perdi, mas adorei!", "Muito bem! Quero outra!", "Tá bom, você mereceu!", "Foi boa! Na próxima eu volto."], roll), Mood::Triste)
     } else if user_score <= 0.0 {
-        (pick(&["Ganhei! Boa partida, viu?", "Essa foi minha! Bora outra?"], roll), Mood::Feliz)
+        (pick(&["Ganhei! Boa partida, viu?", "Essa foi minha! Bora outra?", "Hoje eu tava inspirado!", "Gostei! Vamos de novo?", "Hehe, dessa vez deu eu!", "Essa vitória eu comemoro!", "Boa! Já quero a próxima.", "Foi divertido demais!"], roll), Mood::Feliz)
     } else {
         ("Empate! Ninguém cedeu.", Mood::Normal)
     }

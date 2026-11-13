@@ -203,11 +203,11 @@ fn candidates(c: &Context) -> Vec<C> {
     use Act::*;
     let mut v: Vec<C> = Vec::new();
     if c.notice {
-        v.extend([("Tem um aviso para você, {nome}. Dá uma olhada.", Edicao), ("Um agente deixou um recado, {nome}.", Edicao)]);
+        v.extend([("Tem um aviso para você, {nome}. Dá uma olhada.", Edicao), ("Um agente deixou um recado, {nome}.", Edicao), ("Chegou um recado para você, {nome}.", Edicao), ("{nome}, tem novidade esperando sua visita.", Edicao), ("Um aviso acabou de chegar por aqui.", Edicao), ("Opa, {nome}! Deixaram um recado para você.", Edicao), ("Tem notícia fresquinha na sua edição.", Edicao), ("Os agentes mandaram notícias, {nome}.", Edicao)]);
         return v;
     }
     if c.battery.is_some_and(|b| b <= 15) {
-        v.extend([("Bateria no fim, {nome}. Que tal carregar enquanto lê?", None), ("Pouca bateria: hora de achar a tomada, {nome}.", None)]);
+        v.extend([("Bateria no fim, {nome}. Que tal carregar enquanto lê?", None), ("Pouca bateria: hora de achar a tomada, {nome}.", None), ("A bateria pediu uma tomada, {nome}.", None), ("Pouca carga por aqui. Cadê o carregador?", None), ("{nome}, o Kindle está com fome de tomada.", None), ("Hora de dar uma carga no companheiro de leitura.", None), ("A bateria está piscando de sono, {nome}.", None), ("Uma tomada cairia bem agora, {nome}.", None)]);
         return v;
     }
     // Ofensiva em risco à noite: vira prioridade.
@@ -218,6 +218,12 @@ fn candidates(c: &Context) -> Vec<C> {
                 ("Não deixa a chama apagar: {dias} dias, {nome}!", Aprender),
                 ("Uma lição rápida segura os {dias} dias, {nome}.", Aprender),
                 ("A chama está tremendo, {nome}. Cinco minutos resolvem.", Aprender),
+                ("Sua chama de {dias} dias pede um alô, {nome}.", Aprender),
+                ("{nome}, ainda cabe uma lição antes da noite.", Aprender),
+                ("A lição de hoje está de plantão, {nome}.", Aprender),
+                ("{dias} dias na conta. Que tal mais uma lição?", Aprender),
+                ("Tem uma lição curtinha te esperando, {nome}.", Aprender),
+                ("A chama piscou para você, {nome}. Bora estudar?", Aprender),
             ];
         }
     }
@@ -231,6 +237,12 @@ fn candidates(c: &Context) -> Vec<C> {
             ("Até as corujas foram dormir, {nome}.", None),
             ("Hora perfeita para um sudoku sem testemunhas.", Jogar),
             ("Os agentes trabalham de madrugada. E você, {nome}?", Edicao),
+            ("Oi, {nome}. Até o travesseiro está com saudade.", None),
+            ("A noite é longa. Cabe uma página, {nome}?", Ler),
+            ("Psiu, {nome}. Uma partida sem acordar ninguém?", Jogar),
+            ("A madrugada chegou e trouxe silêncio de sobra.", Ler),
+            ("Os agentes seguem na ativa. Quer espiar, {nome}?", Edicao),
+            ("Seu Kindle também perdeu a hora, {nome}?", None),
         ]),
         5..=11 => {
             v.extend([
@@ -241,12 +253,18 @@ fn candidates(c: &Context) -> Vec<C> {
                 ("Bom dia! Um foco de 25 minutos para abrir o dia?", Foco),
                 ("Bom dia, {nome}. Cinco minutos de estudo antes do caos?", Aprender),
                 ("Dia começando. A Edição já sabe o que rolou à noite.", Edicao),
+                ("Acordou, {nome}? O Kindle já está de prontidão.", Hoje),
+                ("Bom dia! O café veio ou ficou dormindo?", None),
+                ("Uma página para começar a manhã, {nome}?", Ler),
+                ("Bom dia, {nome}. Tem novidade na Edição.", Edicao),
+                ("Que tal um estudo curto antes do café esfriar?", Aprender),
+                ("Manhã aberta, {nome}. Bora fazer um foco?", Foco),
             ]);
             if c.edition {
-                v.extend([("Bom dia, {nome}! A edição de hoje já chegou.", Edicao), ("Sua edição da manhã está pronta, {nome}.", Edicao), ("Os agentes deixaram o relatório da noite, {nome}.", Edicao)]);
+                v.extend([("Bom dia, {nome}! A edição de hoje já chegou.", Edicao), ("Sua edição da manhã está pronta, {nome}.", Edicao), ("Os agentes deixaram o relatório da noite, {nome}.", Edicao), ("A edição está quentinha, {nome}.", Edicao), ("Tem notícia nova para acompanhar o café.", Edicao), ("Bom dia! Sua edição acabou de chegar.", Edicao), ("Os agentes já deixaram a edição pronta.", Edicao), ("{nome}, tem leitura fresquinha na edição.", Edicao), ("O resumo da manhã está esperando você.", Edicao)]);
             }
             if weekend {
-                v.extend([("Manhã de folga, {nome}. Sem pressa hoje.", None), ("Sábado de manhã pede um livro, {nome}.", Ler), ("Fim de semana: tempo de aprender algo só por diversão.", Aprender)]);
+                v.extend([("Manhã de folga, {nome}. Sem pressa hoje.", None), ("Sábado de manhã pede um livro, {nome}.", Ler), ("Fim de semana: tempo de aprender algo só por diversão.", Aprender), ("Hoje a manhã veio sem despertador, {nome}.", None), ("A folga chegou. Pode ir no seu ritmo, {nome}.", None), ("Bom dia de folga, {nome}. Que tal ler?", Ler), ("Um livro e uma manhã tranquila combinam.", Ler), ("Que tal aprender algo por pura curiosidade?", Aprender), ("Um assunto novo para curtir a folga?", Aprender)]);
             }
         }
         12..=17 => {
@@ -258,9 +276,15 @@ fn candidates(c: &Context) -> Vec<C> {
                 ("Depois do almoço, uma partida leve de xadrez?", Jogar),
                 ("Calor de Manaus lá fora; aqui, só papel e tinta.", Ler),
                 ("Dúvida no meio da tarde? O Verso está acordado.", Claude),
+                ("Boa tarde, {nome}. Cabe uma pausa aí?", None),
+                ("A tarde cochilou? Uma partida acorda ela.", Jogar),
+                ("Uma leitura no meio da tarde, {nome}?", Ler),
+                ("Bora estudar um pouquinho, {nome}?", Aprender),
+                ("Hora de um foco antes do próximo café?", Foco),
+                ("O Verso está por aqui se pintar uma dúvida.", Claude),
             ]);
             if weekend {
-                v.extend([("Tarde livre, {nome}. Uma partida ou um capítulo?", Jogar), ("Tarde de domingo combina com violão, {nome}.", Aula)]);
+                v.extend([("Tarde livre, {nome}. Uma partida ou um capítulo?", Jogar), ("Tarde de domingo combina com violão, {nome}.", Aula), ("Tarde de folga, {nome}. Cabe uma partida?", Jogar), ("Uma partida combina com essa tarde.", Jogar), ("Fim de semana pede uma partida sem pressa.", Jogar), ("O violão também gosta de tarde livre.", Aula), ("Que tal tocar um pouco, {nome}?", Aula), ("{nome}, o violão está por perto?", Aula)]);
             }
         }
         _ => {
@@ -271,51 +295,57 @@ fn candidates(c: &Context) -> Vec<C> {
                 ("Noite tranquila. Revisar o que você leu esta semana?", Revisao),
                 ("Antes de dormir, uma lição curta fixa melhor, {nome}.", Aprender),
                 ("A tela não brilha, os olhos agradecem. Boa noite, {nome}.", Ler),
+                ("Boa noite, {nome}. Um capítulo faz companhia?", Ler),
+                ("O dia foi comprido? Pode sentar por aqui.", None),
+                ("Que tal rever seus destaques, {nome}?", Revisao),
+                ("Uma lição curtinha e depois descanso, {nome}?", Aprender),
+                ("Boa noite! Como ficou o seu dia?", Hoje),
+                ("A noite chegou, {nome}. Sem correria por aqui.", None),
             ]);
             if !weekend && c.weekday == 5 {
-                v.extend([("Sexta à noite, {nome}! O fim de semana começou.", Jogar), ("Sexta! Uma partida contra o Verso para comemorar?", Jogar)]);
+                v.extend([("Sexta à noite, {nome}! O fim de semana começou.", Jogar), ("Sexta! Uma partida contra o Verso para comemorar?", Jogar), ("Sextou, {nome}! Bora jogar um pouco?", Jogar), ("Sexta chegou. O Verso aceita uma partida.", Jogar), ("Fim de semana à vista, {nome}. Uma partida?", Jogar), ("Uma partida para dar boas-vindas à sexta?", Jogar), ("A sexta merece uma revanche, {nome}.", Jogar), ("Sexta à noite tem jogo? Tem sim!", Jogar)]);
             }
         }
     }
     if c.weekday == 0 && (10..=21).contains(&c.hour) {
-        v.extend([("Domingo, {nome}: que tal fechar a semana?", Semana), ("Três minutos para fechar a semana, {nome}?", Semana), ("Domingo é dia de olhar a semana e planejar a próxima.", Semana)]);
+        v.extend([("Domingo, {nome}: que tal fechar a semana?", Semana), ("Três minutos para fechar a semana, {nome}?", Semana), ("Domingo é dia de olhar a semana e planejar a próxima.", Semana), ("Domingo pede uma olhada na semana, {nome}.", Semana), ("Vamos fechar a semana com calma?", Semana), ("{nome}, que tal organizar a próxima semana?", Semana), ("Um passeio rápido pela semana que passou?", Semana), ("A semana está acabando. Bora dar uma espiada?", Semana), ("Fechamos a semana juntos, {nome}?", Semana)]);
     }
     if c.raining {
-        v.extend([("Chuva lá fora, {nome}. Tempo de livro.", Ler), ("Dia de chuva combina com leitura, {nome}.", Ler), ("Chovendo em Manaus: violão e janela, {nome}?", Aula)]);
+        v.extend([("Chuva lá fora, {nome}. Tempo de livro.", Ler), ("Dia de chuva combina com leitura, {nome}.", Ler), ("Chovendo em Manaus: violão e janela, {nome}?", Aula), ("Chuva na janela, livro na mão, {nome}?", Ler), ("Lá fora chove. Aqui cabe mais um capítulo.", Ler), ("A chuva fez convite para uma leitura.", Ler), ("Que tal acompanhar a chuva no violão?", Aula), ("Dia de chuva e cordas afinadas, {nome}?", Aula), ("Chuva e violão fazem dupla, {nome}.", Aula)]);
     }
     if let Some((_, p)) = &c.book {
         match p {
-            Some(p) if *p > 0.85 => v.extend([("Falta pouco para terminar {livro}, {nome}!", Ler), ("Reta final de {livro}. Bora?", Ler)]),
-            Some(p) if *p > 0.0 => v.extend([("{livro} está esperando você, {nome}.", Ler), ("Vamos continuar {livro}, {nome}?", Ler), ("Onde paramos em {livro}?", Ler)]),
+            Some(p) if *p > 0.85 => v.extend([("Falta pouco para terminar {livro}, {nome}!", Ler), ("Reta final de {livro}. Bora?", Ler), ("O fim de {livro} está logo ali, {nome}.", Ler), ("Mais um pouco de {livro}?", Ler), ("{livro} já está quase no fim.", Ler), ("A última página de {livro} está chegando.", Ler), ("{nome}, vamos ao final de {livro}?", Ler), ("Falta pouco em {livro}. Quer continuar?", Ler)]),
+            Some(p) if *p > 0.0 => v.extend([("{livro} está esperando você, {nome}.", Ler), ("Vamos continuar {livro}, {nome}?", Ler), ("Onde paramos em {livro}?", Ler), ("{nome}, tem mais de {livro} por aqui.", Ler), ("Uma pausa com {livro}, {nome}?", Ler), ("{livro} guardou seu lugar direitinho.", Ler), ("Bora voltar para {livro}?", Ler), ("Seu marcador espera em {livro}, {nome}.", Ler), ("Mais um trecho de {livro} hoje?", Ler)]),
             _ => v.push(("Que tal começar {livro} hoje, {nome}?", Ler)),
         }
     }
     if let Some(g) = &c.game {
         if !g.is_empty() {
-            v.extend([("A partida de {jogo} ficou pela metade, {nome}.", Jogo), ("Revanche no {jogo}, {nome}?", Jogo), ("O {jogo} está do jeitinho que você deixou.", Jogo)]);
+            v.extend([("A partida de {jogo} ficou pela metade, {nome}.", Jogo), ("Revanche no {jogo}, {nome}?", Jogo), ("O {jogo} está do jeitinho que você deixou.", Jogo), ("Sua partida de {jogo} espera por você.", Jogo), ("{nome}, bora voltar ao {jogo}?", Jogo), ("O {jogo} ainda não terminou, viu?", Jogo), ("Tem {jogo} pausado por aqui, {nome}.", Jogo), ("Quer retomar o {jogo}?", Jogo), ("O {jogo} guardou seu lugar, {nome}.", Jogo)]);
         }
     }
     if let Some((done, streak)) = c.guitar {
         if !done && (17..=22).contains(&c.hour) {
-            v.extend([("Já pegou o violão hoje, {nome}?", Aula), ("Um minuto de trocas no violão, {nome}?", Aula), ("A aula de violão de hoje está montada, {nome}.", Aula)]);
+            v.extend([("Já pegou o violão hoje, {nome}?", Aula), ("Um minuto de trocas no violão, {nome}?", Aula), ("A aula de violão de hoje está montada, {nome}.", Aula), ("Seu violão anda sentindo sua falta, {nome}.", Aula), ("Que tal umas notas no violão hoje?", Aula), ("A aula de violão espera por você.", Aula), ("Bora fazer o violão cantar, {nome}?", Aula), ("Um pouquinho de violão para fechar o dia?", Aula), ("O violão está pronto. E você, {nome}?", Aula)]);
             if streak >= 2 {
                 v.push(("Não quebra a sequência do violão, {nome}!", Aula));
             }
         }
     }
     if c.review_due >= 3 {
-        v.extend([("{rev} destaques querem ser lembrados hoje, {nome}.", Revisao), ("Lembra do que você marcou nos livros? {rev} esperam revisão.", Revisao)]);
+        v.extend([("{rev} destaques querem ser lembrados hoje, {nome}.", Revisao), ("Lembra do que você marcou nos livros? {rev} esperam revisão.", Revisao), ("Tem {rev} destaques na fila, {nome}.", Revisao), ("Bora rever seus {rev} destaques?", Revisao), ("{rev} trechos marcados esperam sua visita.", Revisao), ("Seus destaques querem um reencontro, {nome}.", Revisao), ("Que tal revisitar {rev} trechos hoje?", Revisao), ("Tem destaque esperando desde a última leitura.", Revisao)]);
     }
     if let Some((done, streak)) = c.learn {
         if done && streak >= 3 {
-            v.extend([("{dias} dias seguidos aprendendo. Bonito, {nome}!", Aprender), ("A chama está firme: {dias} dias, {nome}.", Aprender)]);
+            v.extend([("{dias} dias seguidos aprendendo. Bonito, {nome}!", Aprender), ("A chama está firme: {dias} dias, {nome}.", Aprender), ("{dias} dias de lições. Boa, {nome}!", Aprender), ("Mais um dia de estudo na conta, {nome}.", Aprender), ("A chama continua acesa há {dias} dias.", Aprender), ("Lição feita! Seu Kindle viu tudo, {nome}.", Aprender), ("{dias} dias de estudo. Isso merece um sorriso.", Aprender), ("Hoje a lição já foi. Boa, {nome}!", Aprender)]);
         }
         if !done && c.hour < 17 {
             v.push(("A lição de hoje ainda está esperando, {nome}.", Aprender));
         }
     }
     if c.read_today >= 20 {
-        v.extend([("Já foram {min} minutos de leitura hoje. Bonito, {nome}!", None), ("{min} minutos lidos hoje. O livro agradece.", Ler)]);
+        v.extend([("Já foram {min} minutos de leitura hoje. Bonito, {nome}!", None), ("{min} minutos lidos hoje. O livro agradece.", Ler), ("Você leu {min} minutos hoje, {nome}.", None), ("{min} minutos de leitura já passaram por aqui.", None), ("Foram {min} minutos de páginas, {nome}.", None), ("Seu livro ganhou {min} minutos de companhia.", Ler), ("Boa leitura hoje, {nome}. Quer mais um pouco?", Ler), ("O marcador trabalhou hoje, hein, {nome}?", Ler)]);
     }
     if !collected().is_empty() {
         v.push(("Sua coleção de achados está crescendo, {nome}.", Colecao));
@@ -326,6 +356,12 @@ fn candidates(c: &Context) -> Vec<C> {
         ("Dizem que o e-ink descansa os olhos. Os seus agradecem.", None),
         ("Um foco curto agora vale por uma hora distraída depois.", Foco),
         ("Tem coisa rara escondida por aqui. Fique de olho nas frases.", Colecao),
+        ("Uma pausa para ler nunca chega atrasada.", None),
+        ("Tem espaço para uma curiosidade nova, {nome}?", Aprender),
+        ("Seu próximo foco já pode tirar o casaco.", Foco),
+        ("Vai que tem um achado esperando por você?", Colecao),
+        ("O Kindle está quietinho. Milagre da tecnologia.", None),
+        ("Um pouquinho de atenção por vez, {nome}?", Foco),
     ]);
     v
 }
