@@ -37,8 +37,23 @@ cp "target/$TARGET/release/verso-ink" "$STAGE/verso-ink/bin/"
 # Rostos dos treinadores (gerados e reduzidos por tools/rostos.sh).
 [ -d assets/treinadores ] && cp -r assets/treinadores "$STAGE/verso-ink/"
 [ -d assets/sprites ] && cp -r assets/sprites "$STAGE/verso-ink/"
-[ -d assets/dict ] && cp -r assets/dict "$STAGE/verso-ink/"
+# Dicionários (12 MB) só quando mudaram: compara o tamanho do que já está no Kindle.
+if [ -d assets/dict ]; then
+    remote=$("${KSSH[@]}" 'wc -c < /mnt/us/verso-ink/dict/pt.tsv 2>/dev/null' || true)
+    if [ "${remote// /}" != "$(wc -c < assets/dict/pt.tsv)" ]; then cp -r assets/dict "$STAGE/verso-ink/"; fi
+fi
 
+# Envio seguro: tudo vai para uma pasta temporária no Kindle; só depois de conferir a soma do
+# programa (sha256) os arquivos substituem os antigos. Uma conexão que cai no meio deixa a versão
+# anterior intacta (antes, um envio cortado deixava o programa pela metade e o app caía ao abrir).
+SUM=$(sha256sum "target/$TARGET/release/verso-ink" | cut -c1-64)
 tar -C "$STAGE" -cf - verso-ink extensions |
-    "${KSSH[@]}" \
-        'tar -C /mnt/us -xf - && chmod +x /mnt/us/verso-ink/bin/* && sync && echo "enviado para /mnt/us"'
+    "${KSSH[@]}" "rm -rf /mnt/us/.verso-novo && mkdir -p /mnt/us/.verso-novo && tar -C /mnt/us/.verso-novo -xf - && \
+        [ \"\$(sha256sum /mnt/us/.verso-novo/verso-ink/bin/verso-ink | cut -c1-64)\" = $SUM ] && \
+        mv /mnt/us/.verso-novo/verso-ink/bin/verso-ink /mnt/us/verso-ink/bin/verso-ink.novo && \
+        cp -r /mnt/us/.verso-novo/extensions /mnt/us/ && \
+        cp -r /mnt/us/.verso-novo/verso-ink/. /mnt/us/verso-ink/ && \
+        mv /mnt/us/verso-ink/bin/verso-ink.novo /mnt/us/verso-ink/bin/verso-ink && chmod +x /mnt/us/verso-ink/bin/* && \
+        [ \"\$(sha256sum /mnt/us/verso-ink/bin/verso-ink | cut -c1-64)\" = $SUM ] && \
+        rm -rf /mnt/us/.verso-novo && sync && echo 'enviado para /mnt/us (conferido)'" \
+    || { echo "ERRO: envio incompleto ou soma diferente; a versão anterior ficou no Kindle"; exit 1; }
