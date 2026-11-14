@@ -110,6 +110,26 @@ fn negamax(b: &mut [[u8; COLS]; ROWS], depth: u8, mut a: i32, beta: i32, me: u8)
     a
 }
 
+/// Melhor coluna para a CPU (peça 2) com busca de profundidade `depth`. A raiz usa o melhor
+/// valor já achado como piso da janela (poda alfa-beta também na raiz): a coluna escolhida é a
+/// mesma da busca com janela inteira, com muito menos posições visitadas.
+fn best_col(board: &[[u8; COLS]; ROWS], depth: u8) -> usize {
+    let mut best = (i32::MIN, 3);
+    let mut b = *board;
+    for c in [3, 2, 4, 1, 5, 0, 6] {
+        if let Some(r) = drop_row(&b, c) {
+            b[r][c] = 2;
+            let alpha = best.0.max(-1_000_000);
+            let v = -negamax(&mut b, depth - 1, -1_000_000, -alpha, 1);
+            b[r][c] = 0;
+            if v > best.0 {
+                best = (v, c);
+            }
+        }
+    }
+    best.1
+}
+
 impl Lig4 {
     pub fn new() -> Self {
         Lig4 { mode: Mode::Menu, b: [[0; COLS]; ROWS], turn: 1, moves: Vec::new(), winner: None, rng: Rng::new(), fase: 0, practice: false, prog: fases::Progress::load("lig4") }
@@ -389,19 +409,7 @@ impl MiniGame for Lig4 {
             self.play(c);
             return;
         }
-        let mut best = (i32::MIN, 3);
-        let mut b = self.b;
-        for c in [3, 2, 4, 1, 5, 0, 6] {
-            if let Some(r) = drop_row(&b, c) {
-                b[r][c] = 2;
-                let v = -negamax(&mut b, depth - 1, -1_000_000, 1_000_000, 1);
-                b[r][c] = 0;
-                if v > best.0 {
-                    best = (v, c);
-                }
-            }
-        }
-        self.play(best.1);
+        self.play(best_col(&self.b, depth));
     }
 }
 
@@ -496,5 +504,82 @@ mod buraco {
             hole(&mut b, d, rad);
             assert!(a.buf == b.buf, "rad {rad}");
         }
+    }
+}
+
+#[cfg(test)]
+mod poda_na_raiz {
+    use super::*;
+
+    /// A busca de antes (janela inteira em cada coluna da raiz).
+    fn best_col_ref(board: &[[u8; COLS]; ROWS], depth: u8) -> usize {
+        let mut best = (i32::MIN, 3);
+        let mut b = *board;
+        for c in [3, 2, 4, 1, 5, 0, 6] {
+            if let Some(r) = drop_row(&b, c) {
+                b[r][c] = 2;
+                let v = -negamax(&mut b, depth - 1, -1_000_000, 1_000_000, 1);
+                b[r][c] = 0;
+                if v > best.0 {
+                    best = (v, c);
+                }
+            }
+        }
+        best.1
+    }
+
+    /// Em centenas de posições sorteadas e em todas as profundidades usadas, a coluna escolhida
+    /// é a mesma de antes.
+    #[test]
+    fn mesma_coluna_com_poda_na_raiz() {
+        let mut rng = Rng::new();
+        for jogo in 0..120 {
+            let mut b = [[0u8; COLS]; ROWS];
+            let lances = 2 + jogo % 20;
+            let mut vez = 1u8;
+            for _ in 0..lances {
+                if winner(&b).is_some() {
+                    break;
+                }
+                let cols: Vec<usize> = (0..COLS).filter(|&c| drop_row(&b, c).is_some()).collect();
+                if cols.is_empty() {
+                    break;
+                }
+                let c = cols[(rng.next() % cols.len() as u64) as usize];
+                let r = drop_row(&b, c).unwrap();
+                b[r][c] = vez;
+                vez = 3 - vez;
+            }
+            if winner(&b).is_some() || (0..COLS).all(|c| b[0][c] != 0) {
+                continue;
+            }
+            for depth in 1..=6u8 {
+                assert_eq!(best_col(&b, depth), best_col_ref(&b, depth), "jogo {jogo} profundidade {depth}");
+            }
+        }
+    }
+}
+
+#[cfg(all(test, not(debug_assertions)))]
+mod tempo_lig4 {
+    use super::*;
+
+    /// Regressão de tempo: a CPU mais forte (profundidade 8) num tabuleiro do meio da partida.
+    #[test]
+    fn cpu_forte_responde_rapido() {
+        let mut b = [[0u8; COLS]; ROWS];
+        for (i, c) in [3usize, 3, 2, 4, 4, 2, 5, 1].iter().enumerate() {
+            let r = drop_row(&b, *c).unwrap();
+            b[r][*c] = 1 + (i % 2) as u8;
+        }
+        let ms = (0..5)
+            .map(|_| {
+                let t = std::time::Instant::now();
+                let _ = best_col(&b, 8);
+                t.elapsed().as_secs_f64() * 1000.0
+            })
+            .fold(f64::MAX, f64::min);
+        println!("TEMPO lig4 profundidade 8: {ms:.2} ms");
+        assert!(ms < 15.0, "Lig 4 profundidade 8: {ms:.1} ms");
     }
 }

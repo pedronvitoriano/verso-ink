@@ -406,6 +406,29 @@ fn main() {
             app::App::bench();
             0
         }
+        // Todos os jogos, jogados pelo app: p50, p95 e o pior toque. Rode com VERSO_INK_HOME numa
+        // cópia dos dados (os jogos salvam a partida).
+        Some("bench-jogos") => {
+            // Os jogos que escrevem com o Claude (Histórias) chamariam a ponte de verdade: sem ela.
+            if crate::chat::configured() {
+                eprintln!("bench-jogos: use VERSO_INK_HOME numa cópia sem settings/claude_token (a ponte está configurada)");
+                std::process::exit(1);
+            }
+            let passos = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(200);
+            let so = args.get(3).map(|s| s.as_str());
+            for (name, mut ts, telas) in app::App::passeio_jogos(passos, so) {
+                ts.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                let q = |p: f64| ts[((ts.len() as f64 - 1.0) * p).round() as usize];
+                println!(
+                    "{name:<12} {:>4} toques · {telas:>2} telas · p50 {:>6.1} · p95 {:>6.1} · pior {:>6.1} ms",
+                    ts.len(),
+                    q(0.5),
+                    q(0.95),
+                    q(1.0)
+                );
+            }
+            0
+        }
         Some("info") => info(),
         // Teste da instalação sem publicar no GitHub: verso-ink update-test URL URL_SHA256
         Some("update-test") => match (args.get(2), args.get(3)) {

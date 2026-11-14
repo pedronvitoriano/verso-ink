@@ -174,6 +174,8 @@ pub struct App {
     lib: Library,
     amazon_title: String,
     amazon_path: Option<std::path::PathBuf>,
+    /// Medição: sem a pausa proposital de quando a CPU "pensa".
+    bench_sem_pausa: bool,
     pub pomo: Pomodoro,
     sys: SysInfo,
     confirm: Option<(u8, Instant)>,
@@ -466,6 +468,84 @@ impl App {
         }
     }
 
+    /// Todos os jogos da tela Jogar (inclusive Sudoku e Xadrez), jogados pelo próprio app: abre o
+    /// jogo e toca `passos` vezes em alvos sorteados (sempre a mesma sequência), cronometrando do
+    /// toque até a tela pronta na memória, com a jogada da CPU (sem a pausa proposital). Não
+    /// envia texto (nada sai para a rede). Devolve, por jogo: (nome, tempos em ms, telas vistas).
+    pub fn passeio_jogos(passos: usize, so: Option<&str>) -> Vec<(String, Vec<f64>, usize)> {
+        use std::collections::HashSet;
+        let mut out = Vec::new();
+        for (i, (name, _)) in crate::apps::GAMES.iter().enumerate() {
+            if so.is_some_and(|o| o != *name) {
+                continue;
+            }
+            let mut app = App::new(Framebuffer::memory());
+            app.bench_sem_pausa = true;
+            app.go(Screen::Games);
+            let mut seed: u64 = 0x9E37_79B9 ^ (i as u64 * 7919);
+            let mut sorteia = |n: usize| {
+                seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                ((seed >> 33) as usize) % n.max(1)
+            };
+            let mut tempos = Vec::new();
+            let mut telas: HashSet<String> = HashSet::new();
+            let t = Instant::now();
+            app.activate(Target::Game(i), 0);
+            tempos.push(t.elapsed().as_secs_f64() * 1000.0);
+            for _ in 0..passos {
+                if app.exit_code.is_some() {
+                    break;
+                }
+                telas.insert(format!("{:?}", app.screen));
+                // Saiu do jogo (Voltar no fim de partida): entra de novo.
+                if matches!(app.screen, Screen::Games | Screen::Home) {
+                    let t = Instant::now();
+                    app.activate(Target::Game(i), 0);
+                    tempos.push(t.elapsed().as_secs_f64() * 1000.0);
+                    continue;
+                }
+                let alvos: Vec<(Target, Rect)> = app
+                    .targets()
+                    .into_iter()
+                    .filter(|(t, _)| {
+                        !matches!(
+                            t,
+                            Target::Back | Target::Header | Target::Bar | Target::Night | Target::OpenSettings | Target::Wifi
+                                | Target::Reboot | Target::PowerOff | Target::Plane | Target::Image
+                        )
+                    })
+                    // No teclado, só letras: nada é enviado.
+                    .filter(|(t, _)| app.screen != Screen::MiniText || matches!(t, Target::Key(_)))
+                    .collect();
+                if alvos.is_empty() {
+                    let t = Instant::now();
+                    app.activate(Target::Back, 0);
+                    tempos.push(t.elapsed().as_secs_f64() * 1000.0);
+                    continue;
+                }
+                let (alvo, r) = alvos[sorteia(alvos.len())];
+                let antes = app.screen;
+                // VERSO_INK_BENCH_PERFIL=1: perfil por primitiva de cada toque lento.
+                let perfil = std::env::var("VERSO_INK_BENCH_PERFIL").is_ok();
+                if perfil {
+                    crate::perfil::on();
+                }
+                let t = Instant::now();
+                app.activate(alvo, r.x + r.w / 2);
+                let ms = t.elapsed().as_secs_f64() * 1000.0;
+                tempos.push(ms);
+                if ms > 150.0 {
+                    eprintln!("lento {name}: {ms:.0} ms · {alvo:?} em {antes:?} -> {:?}", app.screen);
+                    if perfil {
+                        crate::perfil::report(1);
+                    }
+                }
+            }
+            out.push((name.to_string(), tempos, telas.len()));
+        }
+        out
+    }
+
     pub fn new(fb: Framebuffer) -> Self {
         App {
             fb,
@@ -490,6 +570,7 @@ impl App {
             lib: Library::empty(),
             amazon_title: String::new(),
             amazon_path: None,
+            bench_sem_pausa: false,
             pomo: Pomodoro::Idle,
             sys: SysInfo { wifi_on: true, connected: false, essid: None, ip: None, firmware: String::new() },
             confirm: None,
@@ -2193,7 +2274,7 @@ impl App {
 
     /// Selo "Pensando…" no canto de cima e uma pausa de 0,8 a 1,6 s (a primeira jogada da
     /// sequência pensa mais; as seguintes, como a CPU emendando capturas, menos).
-    fn cpu_thinking(&mut self, first: bool) {
+    fn cpu_thinking(&mut self, first: bool) -> Duration {
         let r = Rect::new(1072 - 72 - 250, 84, 250, 66);
         self.fb.fill(Rect::new(r.x - 4, r.y - 4, r.w + 8, r.h + 12), ui::PAPER);
         ui::card(&mut self.fb, r, r.h / 2, ui::INK, false);
@@ -2202,7 +2283,7 @@ impl App {
         self.fonts.draw(&mut self.fb, crate::text::Face::Strong, 30.0, r.x + (r.w - w) / 2, r.y + 44, ui::PAPER, t);
         self.fb.refresh(Rect::new(r.x - 4, r.y - 4, r.w + 8, r.h + 12), Wave::Fast, false);
         let ms = if first { 800 + self.rng.next() % 800 } else { 450 + self.rng.next() % 300 };
-        std::thread::sleep(Duration::from_millis(ms));
+        if self.bench_sem_pausa { Duration::ZERO } else { Duration::from_millis(ms) }
     }
 
     /// Texto pronto para o minijogo: mostra que está trabalhando (pode levar um minuto, se
@@ -2260,10 +2341,15 @@ impl App {
         let mut guard = 0;
         while self.mini.as_ref().is_some_and(|g| g.cpu_turn()) && guard < 200 {
             guard += 1;
-            // A CPU "pensa" um pouco antes de jogar: responder na hora parece pouco natural.
-            self.cpu_thinking(guard == 1);
+            // A CPU "pensa" um pouco antes de jogar (responder na hora parece pouco natural), e a
+            // conta dela corre dentro dessa pausa: a espera é a maior das duas, não a soma.
+            let pausa = self.cpu_thinking(guard == 1);
+            let t = Instant::now();
             if let Some(g) = self.mini.as_mut() {
                 g.cpu_move();
+            }
+            if let Some(resto) = pausa.checked_sub(t.elapsed()) {
+                std::thread::sleep(resto);
             }
             if let Some(g) = &self.mini {
                 g.draw(&mut self.fb, &self.fonts);
@@ -2562,7 +2648,7 @@ impl App {
         // Ninguém joga em 0,1 s: o treinador "pensa" ao menos 0,9 a 1,8 s, mais nos níveis altos.
         let min_ms = 900 + (rating as u64).min(3000) / 4 + self.rng.next() % 400;
         let spent = think_start.elapsed().as_millis() as u64;
-        if spent < min_ms {
+        if spent < min_ms && !self.bench_sem_pausa {
             std::thread::sleep(Duration::from_millis(min_ms - spent));
         }
         let own_take = |uci: &str| crate::chess::parse_uci(uci).and_then(|(m, _)| pos.board[m.to]).filter(|p| p.white != pos.white_to_move).map(|p| p.kind);
@@ -5113,5 +5199,37 @@ mod raio_x {
         app.go(Screen::Aprovar);
         shot(&mut app, "painel-aprovar");
         let _ = std::fs::remove_dir_all(&home);
+    }
+}
+
+/// Regressão de tempo: todos os jogos menos a Velha, jogados pelo app (120 toques cada), no PC
+/// em release. Tetos folgados (o Kindle é ~10× mais lento): pegam busca sem poda, tabuleiro
+/// gerado na hora e desenho repetido; diferenças menores só aparecem no Kindle (verso-ink
+/// bench-jogos, docs/testes/2026-11-13-performance.md). Medido em 13/11/2026
+/// no PC: p50 abaixo de 4 ms em todos, pior toque abaixo de 900 ms (o Naval tem a pausa de 0,7 s
+/// para mostrar a água, que corre junto com o "Pensando…").
+#[cfg(all(test, not(debug_assertions)))]
+mod tempo_dos_jogos {
+    use super::*;
+
+    #[test]
+    fn todos_os_jogos_respondem_rapido() {
+        // Só roda sem a ponte do Claude configurada (o padrão no PC de testes).
+        if crate::chat::configured() {
+            return;
+        }
+        // A Super Velha pensa por tempo fixo (0,9 s por lance) e deixaria o teste longo.
+        let nomes: Vec<&str> = crate::apps::GAMES.iter().map(|g| g.0).filter(|n| *n != "Velha").collect();
+        let mut lentos = Vec::new();
+        for (name, mut ts, _) in nomes.iter().flat_map(|n| App::passeio_jogos(120, Some(n))) {
+            ts.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            let p50 = ts[ts.len() / 2];
+            let pior = ts[ts.len() - 1];
+            let teto_pior = if name == "Naval" { 900.0 } else { 150.0 };
+            if p50 > 10.0 || pior > teto_pior {
+                lentos.push(format!("{name}: p50 {p50:.1} ms, pior {pior:.1} ms"));
+            }
+        }
+        assert!(lentos.is_empty(), "jogos lentos: {lentos:?}");
     }
 }

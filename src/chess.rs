@@ -488,6 +488,8 @@ impl Game {
     }
 
     pub fn save(&self) {
+        #[cfg(test)]
+        SAVES.with(|c| c.set(c.get() + 1));
         let mode = match self.mode {
             Mode::Local => "M local".to_string(),
             Mode::Coach { level, user_white } => format!("M coach {level} {}", if user_white { "w" } else { "b" }),
@@ -542,13 +544,21 @@ impl Game {
 
     /// Aplica um lance que veio do Stockfish (e2e4 / e7e8q). Devolve o lance em notação.
     pub fn play_uci(&mut self, uci: &str) -> Option<String> {
+        let san = self.replay_uci(uci)?;
+        self.save();
+        Some(san)
+    }
+
+    /// O lance sem gravar a partida: para rejogar uma partida (revisão, rever lances). Gravar aqui
+    /// trocava a partida em andamento pela que estava sendo revista, a cada lance rejogado.
+    pub fn replay_uci(&mut self, uci: &str) -> Option<String> {
         let (m, promo) = parse_uci(uci)?;
         if !self.pos.legal_from(m.from).iter().any(|x| *x == m) {
             return None;
         }
         let san = san(&self.pos, m, promo);
         let next = self.pos.apply_promo(m, promo.unwrap_or(Kind::Queen));
-        self.commit(next, m, promo);
+        self.commit_no_save(next, m, promo);
         Some(san)
     }
 
@@ -639,6 +649,11 @@ impl Game {
     }
 
     fn commit(&mut self, next: Pos, m: Move, promo: Option<Kind>) {
+        self.commit_no_save(next, m, promo);
+        self.save();
+    }
+
+    fn commit_no_save(&mut self, next: Pos, m: Move, promo: Option<Kind>) {
         let mover = self.pos.white_to_move;
         let n = self.moves.len() + 1;
         if let Some(c) = self.clock.as_mut() {
@@ -658,7 +673,6 @@ impl Game {
         self.selected = None;
         self.targets.clear();
         self.pending_promo = None;
-        self.save();
     }
 
     /// Escolha da peça na promoção.
@@ -1186,7 +1200,7 @@ pub fn replay(g: &Game, k: usize) -> (Game, Option<String>) {
     let mut v = Game { mode: g.mode, clock: None, ..Game::new() };
     let mut san = None;
     for m in g.moves.iter().take(k) {
-        san = v.play_uci(m);
+        san = v.replay_uci(m);
     }
     (v, san)
 }
@@ -1372,5 +1386,40 @@ mod render {
             draw(&mut fb, &f, &g, &sp, &btn);
             fb.save_pgm(&out.join(format!("{name}.pgm")));
         }
+    }
+}
+
+/// Quantas vezes a partida foi gravada nesta thread (só nos testes).
+#[cfg(test)]
+thread_local! {
+    pub static SAVES: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+mod rever_nao_grava {
+    use super::*;
+
+    /// Rever lances e a revisão de partida antiga não gravam por cima da partida em andamento;
+    /// jogar de verdade continua gravando a cada lance.
+    #[test]
+    fn rejogar_nao_grava_e_jogar_grava() {
+        let mut g = Game::new_coach(2, true);
+        let antes = SAVES.with(|c| c.get());
+        for m in ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "a7a6"] {
+            assert!(g.play_uci(m).is_some());
+        }
+        assert_eq!(SAVES.with(|c| c.get()) - antes, 6, "cada lance de verdade grava");
+        let antes = SAVES.with(|c| c.get());
+        let (v, san) = replay(&g, 4);
+        assert_eq!(v.moves.len(), 4);
+        assert_eq!(san.as_deref(), Some("Cc6"));
+        assert_eq!(v.pos.encode(), {
+            let mut w = Game::new_coach(2, true);
+            for m in ["e2e4", "e7e5", "g1f3", "b8c6"] {
+                w.replay_uci(m);
+            }
+            w.pos.encode()
+        });
+        assert_eq!(SAVES.with(|c| c.get()), antes, "rever não grava");
     }
 }

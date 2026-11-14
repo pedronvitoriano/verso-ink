@@ -166,6 +166,18 @@ fn from_bank(k: u32, n: usize, kind: Kind) -> Option<(Vec<u8>, Vec<usize>)> {
     Some(fits[i].clone())
 }
 
+/// Uma grade qualquer do banco com lado `n` (para a prática), sorteada; None se não houver.
+fn bank_any(n: usize) -> Option<(Vec<u8>, Vec<usize>)> {
+    let fits: Vec<&str> = BANK.lines().filter(|l| l.split_whitespace().next().and_then(|x| x.parse::<usize>().ok()) == Some(n)).collect();
+    if fits.is_empty() {
+        return None;
+    }
+    let l = fits[(Rng::new().next() % fits.len() as u64) as usize];
+    let mut it = l.split_whitespace().skip(2);
+    let (reg, sol) = (dec_reg(it.next()?), dec_sol(it.next()?));
+    (reg.len() == n * n && sol.len() == n).then_some((reg, sol))
+}
+
 /// Gera a grade da fase `k` dentro de `budget`; se não achar a dificuldade ideal, fica com a mais próxima.
 pub fn generate_fase(k: u32, budget: std::time::Duration) -> (Vec<u8>, Vec<usize>) {
     let (n, kind) = fase_spec(k);
@@ -529,7 +541,8 @@ impl Coroas {
 
     /// Treino livre: tamanho escolhido, sem fase nem sequência.
     fn start(&mut self, n: usize) {
-        let (region, solution) = generate(n);
+        // Tamanhos grandes vêm sorteados do banco feito no PC: gerar um 12×12 no Kindle levava 5 s.
+        let (region, solution) = bank_any(n).unwrap_or_else(|| generate(n));
         self.load_grid(0, n, region, solution);
     }
 
@@ -1196,6 +1209,23 @@ impl MiniGame for Coroas {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn pratica_grande_vem_do_banco_e_e_valida() {
+        for n in [9usize, 10, 11, 12] {
+            let (reg, sol) = super::bank_any(n).expect("banco tem esse tamanho");
+            assert_eq!((reg.len(), sol.len()), (n * n, n));
+            // Uma coroa por linha, por coluna e por reino.
+            let mut cols: Vec<usize> = sol.clone();
+            cols.sort();
+            cols.dedup();
+            assert_eq!(cols.len(), n);
+            let mut reinos: Vec<u8> = (0..n).map(|r| reg[r * n + sol[r]]).collect();
+            reinos.sort();
+            reinos.dedup();
+            assert_eq!(reinos.len(), n);
+        }
+        assert!(super::bank_any(5).is_none());
+    }
     use super::*;
 
     #[test]
@@ -1325,5 +1355,24 @@ mod banco {
             assert_eq!(reg.len(), n * n);
             assert!(other_solution(n, &reg, &sol).is_none(), "grade do banco com outra solução");
         }
+    }
+}
+
+#[cfg(all(test, not(debug_assertions)))]
+mod tempo_coroas {
+    /// Regressão de tempo: abrir a prática 12×12 (no Kindle, gerar na hora levava 5,5 s).
+    #[test]
+    fn pratica_12x12_abre_rapido() {
+        let mut g = super::Coroas::new();
+        // O menor de várias medidas: não sofre com a máquina ocupada por outros testes.
+        let ms = (0..7)
+            .map(|_| {
+                let t = std::time::Instant::now();
+                g.start(12);
+                t.elapsed().as_secs_f64() * 1000.0
+            })
+            .fold(f64::MAX, f64::min);
+        println!("TEMPO coroas pratica 12x12: {ms:.2} ms");
+        assert!(ms < 20.0, "prática 12×12: {ms:.1} ms");
     }
 }

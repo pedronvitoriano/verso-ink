@@ -128,6 +128,48 @@ impl Framebuffer {
         if src.w <= 0 || src.h <= 0 || dst.w <= 0 || dst.h <= 0 {
             return;
         }
+        // Faixa de colunas de cada ponto da miniatura, calculada uma vez (e não a cada linha), já
+        // recortada para dentro da imagem de origem.
+        let cols: Vec<(i32, i32)> = (0..dst.w)
+            .map(|dx| {
+                let sx0 = src.x + dx * src.w / dst.w;
+                let sx1 = (src.x + (dx + 1) * src.w / dst.w).max(sx0 + 1);
+                (sx0.max(0), sx1.min(other.width))
+            })
+            .collect();
+        for dy in 0..dst.h {
+            let py = dst.y + dy;
+            if py < 0 || py >= self.height {
+                continue;
+            }
+            let sy0 = src.y + dy * src.h / dst.h;
+            let sy1 = (src.y + (dy + 1) * src.h / dst.h).max(sy0 + 1);
+            let (ya, yb) = (sy0.max(0), sy1.min(other.height));
+            let row = (py * self.width) as usize;
+            for (dx, &(xa, xb)) in cols.iter().enumerate() {
+                let px = dst.x + dx as i32;
+                if px < 0 || px >= self.width || xb <= xa || yb <= ya {
+                    continue;
+                }
+                let mut sum = 0u32;
+                for y in ya..yb {
+                    let o = (y * other.width) as usize;
+                    for v in &other.buf[o + xa as usize..o + xb as usize] {
+                        sum += *v as u32;
+                    }
+                }
+                let n = ((yb - ya) * (xb - xa)) as u32;
+                self.buf[row + px as usize] = (sum / n) as u8;
+            }
+        }
+    }
+
+    /// A redução de antes (para o teste de igualdade).
+    #[cfg(test)]
+    pub fn blit_scaled_ref(&mut self, other: &Framebuffer, src: Rect, dst: Rect) {
+        if src.w <= 0 || src.h <= 0 || dst.w <= 0 || dst.h <= 0 {
+            return;
+        }
         for dy in 0..dst.h {
             let sy0 = src.y + dy * src.h / dst.h;
             let sy1 = (src.y + (dy + 1) * src.h / dst.h).max(sy0 + 1);
@@ -264,11 +306,16 @@ impl Framebuffer {
 
     /// Retângulo arredondado preenchido, com borda suavizada.
     pub fn round_rect(&mut self, r: Rect, radius: i32, v: u8) {
+        self.round_rect_rows(r, radius, v, r.y, r.y + r.h);
+    }
+
+    /// O mesmo retângulo arredondado, só nas linhas [y0, y1): o resto fica como está.
+    pub fn round_rect_rows(&mut self, r: Rect, radius: i32, v: u8, y0: i32, y1: i32) {
         let _p = crate::perfil::Guard::new("round_rect");
         let radi = radius.min(r.w / 2).min(r.h / 2).max(0);
         let rad = radi as f32;
         let (lx, rx) = (r.x + radi, r.x + r.w - radi);
-        for y in r.y.max(0)..(r.y + r.h).min(self.height) {
+        for y in r.y.max(0).max(y0)..(r.y + r.h).min(self.height).min(y1) {
             // Faixa do meio: a linha inteira está dentro da forma (preenche de uma vez).
             if y >= r.y + radi && y < r.y + r.h - radi {
                 self.fill(Rect::new(r.x, y, r.w, 1), v);
@@ -303,31 +350,61 @@ impl Framebuffer {
             let (dx, dy) = (x as f32 + 0.5 - cx, y as f32 + 0.5 - cy);
             (dx * dx + dy * dy).sqrt() - rad
         };
+        // O que a forma faz num ponto, dadas as distâncias: None = nada; Some((base, a)) =
+        // pinta `base` (se houver) e mistura `v` com `a` por cima.
+        let op = |y: i32, d: f32, ds: f32| -> Option<(Option<u8>, u8)> {
+            if d > -0.5 {
+                let base = if sh > 0 && ds < 0.5 { shadow } else { outside };
+                let a = (0.5 - d).clamp(0.0, 1.0);
+                if y < r.y + r.h {
+                    Some((Some(base), if a > 0.0 { (a * 255.0) as u8 } else { 0 }))
+                } else if ds < 0.5 {
+                    Some((Some(shadow), 0))
+                } else {
+                    None
+                }
+            } else if d > -(t as f32) - 0.5 {
+                let a = (d + t as f32 + 0.5).clamp(0.0, 1.0);
+                Some((None, (a * 255.0) as u8))
+            } else {
+                None
+            }
+        };
         let radi = rad as i32;
-        // Nas linhas do meio só as faixas da borda mudam algo; o miolo é pulado.
-        let edge = radi.max(t) + 2;
+        // Parte reta: x em [sa, sb), onde o centro do canto não é usado (dx = 0).
+        let (sa, sb) = (r.x + radi, r.x + r.w - radi);
         for y in r.y..r.y + r.h + sh {
-            let band = radi.max(t) + 1;
-            let middle = y >= r.y + band && y < r.y + r.h - band;
-            let xs: Vec<i32> = if middle && r.w > 2 * edge { (r.x..r.x + edge).chain(r.x + r.w - edge..r.x + r.w).collect() } else { (r.x..r.x + r.w).collect() };
-            for x in xs {
-                let d = sd(x, y, r.y);
-                if d > -0.5 {
-                    // Fora da forma: sombra (se cair dentro da forma deslocada) ou papel.
-                    let ds = sd(x, y, r.y + sh);
-                    let base = if sh > 0 && ds < 0.5 { shadow } else { outside };
-                    if y < r.y + r.h {
-                        self.blend(x, y, base, 255);
-                    } else if ds < 0.5 {
-                        self.blend(x, y, shadow, 255);
+            if y < 0 || y >= self.height {
+                continue;
+            }
+            // Cantos: ponto a ponto, como antes.
+            for x in (r.x..sa.min(r.x + r.w)).chain(sb.max(sa).max(r.x)..r.x + r.w) {
+                if let Some((base, a)) = op(y, sd(x, y, r.y), sd(x, y, r.y + sh)) {
+                    if let Some(b) = base {
+                        self.blend(x, y, b, 255);
                     }
-                    let a = (0.5 - d).clamp(0.0, 1.0);
-                    if a > 0.0 && y < r.y + r.h {
-                        self.blend(x, y, v, (a * 255.0) as u8);
+                    if a > 0 {
+                        self.blend(x, y, v, a);
                     }
-                } else if d > -(t as f32) - 0.5 {
-                    let a = (d + t as f32 + 0.5).clamp(0.0, 1.0);
-                    self.blend(x, y, v, (a * 255.0) as u8);
+                }
+            }
+            // Parte reta: a mesma operação na linha inteira, calculada uma vez.
+            if sb > sa {
+                if let Some((base, a)) = op(y, sd(sa, y, r.y), sd(sa, y, r.y + sh)) {
+                    let (x0, x1) = (sa.max(0), sb.min(self.width));
+                    if x1 > x0 {
+                        let row = (y * self.width) as usize;
+                        let seg = &mut self.buf[row + x0 as usize..row + x1 as usize];
+                        match base {
+                            Some(b) => seg.fill(if a > 0 { mix(b, v, a as u32) } else { b }),
+                            None if a > 0 => {
+                                for p in seg.iter_mut() {
+                                    *p = mix(*p, v, a as u32);
+                                }
+                            }
+                            None => {}
+                        }
+                    }
                 }
             }
         }
@@ -559,6 +636,33 @@ mod desenho_igual {
             a.round_frame_ref(r, rad, t, 0x10, 0xEE, sh, 0x2E);
             b.round_frame(r, rad, t, 0x10, 0xEE, sh, 0x2E);
             assert!(a.buf == b.buf, "round_frame {w}x{h} r{rad} t{t}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod reducao_igual {
+    use super::*;
+
+    /// A redução rápida (miniatura dos tutoriais) dá o mesmo que a antiga, ponto a ponto, também
+    /// com a origem saindo da tela e o destino cortado.
+    #[test]
+    fn reducao_rapida_igual_a_antiga() {
+        let mut origem = Framebuffer::memory();
+        for (i, p) in origem.buf.iter_mut().enumerate() {
+            *p = (i * 13 % 251) as u8;
+        }
+        for (src, dst) in [
+            (Rect::new(40, 200, 992, 1200), Rect::new(72, 390, 467, 560)),
+            (Rect::new(0, 170, 1072, 1278), Rect::new(80, 400, 900, 560)),
+            (Rect::new(-30, 1300, 300, 300), Rect::new(10, 10, 120, 97)),
+            (Rect::new(500, 600, 100, 100), Rect::new(1000, 1400, 200, 200)),
+            (Rect::new(10, 10, 50, 50), Rect::new(300, 300, 100, 100)),
+        ] {
+            let (mut a, mut b) = (Framebuffer::memory(), Framebuffer::memory());
+            a.blit_scaled_ref(&origem, src, dst);
+            b.blit_scaled(&origem, src, dst);
+            assert!(a.buf == b.buf, "{src:?} -> {dst:?}");
         }
     }
 }

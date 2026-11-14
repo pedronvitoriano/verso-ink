@@ -417,7 +417,7 @@ pub fn draw_review(fb: &mut Framebuffer, f: &Fonts, sp: &Sprites, g: &Saved, k: 
     };
     let mut game = Game::new_coach(g.level, g.user_white);
     for m in g.moves.iter().take(rec.ply) {
-        game.play_uci(m);
+        game.replay_uci(m);
     }
     let played = g.moves.get(rec.ply).and_then(|m| chess::parse_uci(m)).map(|x| x.0);
     game.last = played;

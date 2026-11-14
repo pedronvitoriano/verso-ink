@@ -188,11 +188,72 @@ pub fn card(fb: &mut Framebuffer, r: Rect, radius: i32, fill: u8, pressed: bool)
     let bg = fb.get(r.x, r.y + r.h + SH - 1).max(fb.get(r.x + r.w - 1, r.y));
     fb.fill(Rect::new(r.x, r.y, r.w, r.h + SH), bg);
     let r = if pressed { Rect::new(r.x, r.y + SH, r.w, r.h) } else { r };
+    let inner = Rect::new(r.x + 4, r.y + 4, r.w - 8, r.h - 8);
+    let ri = (radius - 4).max(0);
+    if r.w < 16 || r.h < 16 {
+        if !pressed {
+            fb.round_rect(Rect::new(r.x, r.y + SH, r.w, r.h), radius, SHADOW);
+        }
+        fb.round_rect(r, radius, INK);
+        fb.round_rect(inner, ri, fill);
+        return;
+    }
+    // Só onde aparece: a sombra fica coberta pelo preto nas linhas em que ele é cheio, e o
+    // preto, pelo miolo nas linhas em que o miolo é cheio (lá só sobram as duas bordas de 4 px).
+    let radi = radius.min(r.w / 2).min(r.h / 2).max(0);
+    if !pressed {
+        let s = Rect::new(r.x, r.y + SH, r.w, r.h);
+        fb.round_rect_rows(s, radius, SHADOW, s.y, r.y + radi);
+        fb.round_rect_rows(s, radius, SHADOW, (r.y + r.h - radi).max(r.y + radi), s.y + s.h);
+    }
+    let rii = ri.min(inner.w / 2).min(inner.h / 2).max(0);
+    let (m0, m1) = (inner.y + rii, inner.y + inner.h - rii);
+    fb.round_rect_rows(r, radius, INK, r.y, m0);
+    fb.round_rect_rows(r, radius, INK, m1.max(m0), r.y + r.h);
+    if m1 > m0 {
+        fb.fill(Rect::new(r.x, m0, 4, m1 - m0), INK);
+        fb.fill(Rect::new(r.x + r.w - 4, m0, 4, m1 - m0), INK);
+    }
+    fb.round_rect(inner, ri, fill);
+}
+
+/// O cartão de antes (três formas inteiras), para o teste de igualdade.
+#[cfg(test)]
+fn card_ref(fb: &mut Framebuffer, r: Rect, radius: i32, fill: u8, pressed: bool) {
+    let bg = fb.get(r.x, r.y + r.h + SH - 1).max(fb.get(r.x + r.w - 1, r.y));
+    fb.fill(Rect::new(r.x, r.y, r.w, r.h + SH), bg);
+    let r = if pressed { Rect::new(r.x, r.y + SH, r.w, r.h) } else { r };
     if !pressed {
         fb.round_rect(Rect::new(r.x, r.y + SH, r.w, r.h), radius, SHADOW);
     }
     fb.round_rect(r, radius, INK);
     fb.round_rect(Rect::new(r.x + 4, r.y + 4, r.w - 8, r.h - 8), (radius - 4).max(0), fill);
+}
+
+#[cfg(test)]
+mod cartao_igual {
+    use super::*;
+
+    /// O cartão rápido desenha exatamente o mesmo que o antigo, ponto a ponto.
+    #[test]
+    fn cartao_rapido_igual_ao_antigo() {
+        for (w, h, rad) in [(928, 110, 30), (300, 300, 40), (80, 80, 40), (500, 90, 45), (40, 400, 12), (1000, 200, 30), (20, 20, 10), (120, 60, 0), (200, 50, 60)] {
+            for pressed in [false, true] {
+                for fill in [PAPER, INK, 0xE8] {
+                    let r = Rect::new(37, 51, w, h);
+                    let (mut a, mut b) = (Framebuffer::memory(), Framebuffer::memory());
+                    for fb in [&mut a, &mut b] {
+                        for (i, p) in fb.buf.iter_mut().enumerate() {
+                            *p = (i * 7 % 251) as u8;
+                        }
+                    }
+                    card_ref(&mut a, r, rad, fill, pressed);
+                    card(&mut b, r, rad, fill, pressed);
+                    assert!(a.buf == b.buf, "card {w}x{h} r{rad} pressed {pressed} fill {fill}");
+                }
+            }
+        }
+    }
 }
 
 /// Botão do sistema: preto (principal) ou branco, com a sombra chapada.

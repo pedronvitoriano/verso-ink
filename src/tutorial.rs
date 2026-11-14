@@ -408,7 +408,6 @@ fn draw_scene(fb: &mut Framebuffer, f: &Fonts, game: usize, sc: &Scene, top: i32
     let scale = (max_w as f32 / src.w as f32).min(max_h as f32 / src.h as f32).min(1.0);
     let (dw, dh) = ((src.w as f32 * scale) as i32, (src.h as f32 * scale) as i32);
     let dst = Rect::new((W - dw) / 2, top, dw, dh);
-    fb.blit_scaled(&off, src, dst);
     fb.round_outline(Rect::new(dst.x - 4, dst.y - 4, dst.w + 8, dst.h + 8), 12, 3, 0xBB, PAPER);
     fb.blit_scaled(&off, src, dst);
     // Gesto por cima, em coordenadas da miniatura.
@@ -733,5 +732,25 @@ mod tests {
                 fb.save_pgm(&out.join(format!("tut-{g:02}-{k}.pgm")));
             }
         }
+    }
+}
+
+#[cfg(all(test, not(debug_assertions)))]
+mod tempo_tutorial {
+    /// Regressão de tempo: a página de tutorial com a cena do jogo (a miniatura reduzida).
+    #[test]
+    fn pagina_com_cena_desenha_rapido() {
+        let f = crate::text::Fonts::new();
+        let mut fb = crate::fb::Framebuffer::memory();
+        super::draw(&mut fb, &f, 2, 0);
+        let ms = (0..7)
+            .map(|_| {
+                let t = std::time::Instant::now();
+                super::draw(&mut fb, &f, 2, 0);
+                t.elapsed().as_secs_f64() * 1000.0
+            })
+            .fold(f64::MAX, f64::min);
+        println!("TEMPO tutorial com cena: {ms:.2} ms");
+        assert!(ms < 9.0, "tutorial: {ms:.1} ms");
     }
 }
