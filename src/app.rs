@@ -48,6 +48,8 @@ pub enum Screen {
     Achados,
     Reader,
     ReaderToc,
+    /// PDF e quadrinhos, página como imagem (folhear.rs).
+    Folhear,
     ClaudeDoc,
     /// Imagem criada ou anexada pelo Verso, aberta sem passar por um leitor de texto.
     ClaudeImage,
@@ -284,6 +286,7 @@ pub struct App {
     image_mode: bool,
     /// Leitor próprio: livro aberto, fontes (carregadas na primeira vez) e página do sumário.
     reader: Option<crate::reader::Reader>,
+    folhear: Option<crate::folhear::Folheador>,
     rfonts: Option<crate::reader::RFonts>,
     toc_page: usize,
     claude_return: Option<Screen>,
@@ -654,6 +657,7 @@ impl App {
             brain_on: true,
             image_mode: false,
             reader: None,
+            folhear: None,
             rfonts: None,
             toc_page: 0,
             claude_return: None,
@@ -837,6 +841,11 @@ impl App {
             Screen::ReaderToc => {
                 if let Some(r) = &self.reader {
                     crate::reader::draw_toc(fb, f, r, self.toc_page);
+                }
+            }
+            Screen::Folhear => {
+                if let Some(r) = self.folhear.as_mut() {
+                    crate::folhear::draw(fb, f, r);
                 }
             }
             Screen::Achados => ui::draw_achados(fb, f, self.achado_new),
@@ -1064,6 +1073,25 @@ impl App {
                     return v;
                 }
                 // Alto: menu. Terço esquerdo: volta. O resto: avança.
+                vec![(Header, Rect::new(0, 0, 1072, 170)), (Prev, Rect::new(0, 170, 357, 1278)), (Next, Rect::new(357, 170, 715, 1278))]
+            }
+            Screen::Folhear => {
+                let Some(r) = &self.folhear else { return vec![] };
+                if r.menu {
+                    let mut v = vec![(Level(0), crate::folhear::menu_btn(0))];
+                    if r.pdf {
+                        v.push((Level(1), crate::folhear::menu_btn(1)));
+                    }
+                    if r.page > 0 {
+                        v.push((Level(2), crate::folhear::menu_btn(2)));
+                    }
+                    if r.page + 1 < r.n {
+                        v.push((Level(3), crate::folhear::menu_btn(3)));
+                    }
+                    v.push((Primary, Rect::new(0, 200, 1072, 920)));
+                    return v;
+                }
+                // Como no leitor: alto abre o menu, terço esquerdo volta, o resto avança.
                 vec![(Header, Rect::new(0, 0, 1072, 170)), (Prev, Rect::new(0, 170, 357, 1278)), (Next, Rect::new(357, 170, 715, 1278))]
             }
             Screen::ReaderToc => {
@@ -1354,6 +1382,7 @@ impl App {
     /// Abre EPUB/TXT no leitor próprio (na hora, sem trocar de programa).
     fn open_reader(&mut self, path: std::path::PathBuf, title: String) {
         data::set_last_book(&path, &title);
+        self.folhear = None;
         if self.rfonts.is_none() {
             self.rfonts = Some(crate::reader::RFonts::load());
         }
@@ -1368,6 +1397,57 @@ impl App {
             Err(e) => {
                 log(&format!("leitor: {e}; abrindo no KOReader"));
                 self.open_book(path, title);
+            }
+        }
+    }
+
+    /// Abre qualquer livro pelo caminho mais rápido: loja da Amazon (DRM) no leitor da Amazon;
+    /// texto (EPUB, MOBI, AZW3, FB2, TXT) no leitor próprio; PDF e quadrinhos aqui também;
+    /// o KOReader fica só para o que nenhum dos dois abre (DjVu, arquivo com defeito).
+    fn open_any(&mut self, path: std::path::PathBuf, title: String) {
+        if apps::is_amazon_only(&path) {
+            self.amazon_title = title;
+            self.amazon_path = Some(path);
+            self.open_amazon_book();
+        } else if crate::reader::supported(&path) {
+            self.open_reader(path, title);
+        } else if crate::folhear::supported(&path) {
+            self.open_folhear(path, title);
+        } else {
+            self.open_book(path, title);
+        }
+    }
+
+    /// PDF e quadrinhos no próprio Verso Ink.
+    fn open_folhear(&mut self, path: std::path::PathBuf, title: String) {
+        data::set_last_book(&path, &title);
+        let t0 = Instant::now();
+        match crate::folhear::Folheador::open(&path, &title) {
+            Ok(r) => {
+                self.folhear = Some(r);
+                self.go(Screen::Folhear);
+                log(&format!("folhear: {} aberto em {} ms", title, t0.elapsed().as_millis()));
+                if let Some(r) = self.folhear.as_mut() {
+                    r.adiantar();
+                }
+            }
+            Err(e) => {
+                log(&format!("folhear: {e}; abrindo no KOReader"));
+                self.open_book(path, title);
+            }
+        }
+    }
+
+    /// Vira a página do PDF ou quadrinho: a imagem pede o modo de qualidade do e-ink e, de vez
+    /// em quando, a piscada que limpa o rastro.
+    fn turn_folha(&mut self, forward: bool) {
+        let Some(r) = self.folhear.as_mut() else { return };
+        let moved = if forward { r.next() } else { r.prev() };
+        if moved {
+            let flash = r.turns % 6 == 0;
+            self.render(flash);
+            if let Some(r) = self.folhear.as_mut() {
+                r.adiantar();
             }
         }
     }
@@ -1426,7 +1506,7 @@ impl App {
         let Some(r) = self.rect_of(t) else { return };
         // Áreas grandes (virar a página, abrir o menu do leitor) não piscam: inverter meia
         // tela é feio no e-ink e a página nova já é a resposta.
-        if r.w as i64 * r.h as i64 > 300_000 || matches!(self.screen, Screen::Reader) && !matches!(t, Target::Level(_)) {
+        if r.w as i64 * r.h as i64 > 300_000 || matches!(self.screen, Screen::Reader | Screen::Folhear) && !matches!(t, Target::Level(_)) {
             return;
         }
         self.fb.invert_round(r, round_radius(t, r));
@@ -1612,6 +1692,14 @@ impl App {
                 let r = self.reader.as_ref()?;
                 Some(ui::SleepScene { what, detail, quote: Some(r.page_text()), shot: None, photo: None })
             }
+            Screen::Folhear => {
+                // Miniatura da página que estava aberta, a 58%.
+                let (w, h) = (self.fb.width, crate::folhear::AREA_H);
+                let img = image::GrayImage::from_raw(w as u32, h as u32, self.fb.buf[..(w * h) as usize].to_vec())?;
+                let (tw, th) = (624u32, (624.0 * h as f32 / w as f32) as u32);
+                let small = image::imageops::resize(&img, tw, th, image::imageops::FilterType::Triangle);
+                Some(ui::SleepScene { what, detail, quote: None, shot: Some((tw as i32, th as i32, small.into_raw())), photo: None })
+            }
             Screen::Mini | Screen::Sudoku | Screen::SudokuWon | Screen::Chess => {
                 // Miniatura da tela (sem a faixa do botão Início), a 60%.
                 let (w, top) = (self.fb.width, 174);
@@ -1641,6 +1729,7 @@ impl App {
             Screen::Sudoku | Screen::SudokuWon => self.sudoku.as_ref().map(|g| format!("{} · {} de 81", g.label(), g.filled())).unwrap_or_default(),
             Screen::Chess | Screen::ChessEnd | Screen::ChessReview => self.chess.as_ref().map(|g| format!("lance {} · {}", g.moves.len() / 2 + 1, if g.pos.white_to_move { "brancas jogam" } else { "pretas jogam" })).unwrap_or_default(),
             Screen::Reader | Screen::ReaderToc => self.reader.as_ref().map(|r| format!("{} · {}%", r.chapter_title, (r.progress() * 100.0).round() as i32)).unwrap_or_default(),
+            Screen::Folhear => self.folhear.as_ref().map(|r| format!("página {} de {} · {}%", r.page + 1, r.n, (r.progress() * 100.0).round() as i32)).unwrap_or_default(),
             _ => data::last_book().map(|b| format!("lendo {}", b.title)).unwrap_or_default(),
         };
         let what = match self.screen {
@@ -1652,6 +1741,7 @@ impl App {
             Screen::Today | Screen::Calendar => "Seu dia".into(),
             Screen::Library => "Biblioteca".into(),
             Screen::Reader | Screen::ReaderToc => self.reader.as_ref().map(|r| r.book.title.clone()).unwrap_or_else(|| "Livro".into()),
+            Screen::Folhear => self.folhear.as_ref().map(|r| r.title.clone()).unwrap_or_else(|| "Livro".into()),
             _ => first.chars().take(40).collect(),
         };
         (what, detail)
@@ -1732,6 +1822,13 @@ impl App {
                 parts.push(format!("Pedro está olhando o plano do dia no Kindle:\n{}", plan.trim()));
             }
             Screen::Library => parts.push("Pedro está na biblioteca de livros do Kindle.".into()),
+            Screen::Folhear => {
+                if let Some(r) = &self.folhear {
+                    let que = if r.pdf { "o PDF" } else { "o quadrinho" };
+                    parts.push(format!("Pedro está lendo {que} \"{}\" no Kindle (arquivo {}), página {} de {}.", r.title, r.path.display(), r.page + 1, r.n));
+                    return parts.join("\n");
+                }
+            }
             Screen::Reader | Screen::ReaderToc => {
                 if let Some(r) = &self.reader {
                     parts.push(format!(
@@ -1771,7 +1868,7 @@ impl App {
             }
             Ok(path) if crate::chat::opens_in_reader(&name) => {
                 self.files_note.clear();
-                self.open_book(path, name);
+                self.open_any(path, name);
             }
             Ok(path) => {
                 let text = std::fs::read(&path).map(|b| String::from_utf8_lossy(&b).to_string()).unwrap_or_default();
@@ -2859,6 +2956,7 @@ impl App {
             Some(Screen::Mini) if self.mini.is_none() => Screen::Home,
             Some(Screen::Chess) if self.chess.is_none() => Screen::Home,
             Some(Screen::Reader | Screen::ReaderToc) if self.reader.is_none() => Screen::Home,
+            Some(Screen::Folhear) if self.folhear.is_none() => Screen::Home,
             Some(s) => s,
         }
     }
@@ -2871,7 +2969,7 @@ impl App {
             self.chess_peek = None;
         }
         // Leitura no leitor próprio: começa ao entrar, registra ao sair (dormir também conta como sair).
-        let reading = |s: Screen| matches!(s, Screen::Reader | Screen::ReaderToc);
+        let reading = |s: Screen| matches!(s, Screen::Reader | Screen::ReaderToc | Screen::Folhear);
         if reading(screen) && !reading(self.screen) {
             self.reading_since = Some(data::epoch());
         } else if !reading(screen) && reading(self.screen) {
@@ -3382,6 +3480,43 @@ impl App {
                 }
                 self.render(true);
             }
+            (Screen::Folhear, Header | Primary) => {
+                if let Some(r) = self.folhear.as_mut() {
+                    r.menu = t == Header;
+                }
+                self.render(false);
+            }
+            (Screen::Folhear, Prev) => self.turn_folha(false),
+            (Screen::Folhear, Next) => self.turn_folha(true),
+            (Screen::Folhear, Level(k)) => {
+                let Some(r) = self.folhear.as_mut() else { return };
+                match k {
+                    0 => {
+                        r.save();
+                        // Fecha o arquivo e a thread: a memória do Kindle é curta (o "Continuar"
+                        // reabre na mesma página).
+                        self.folhear = None;
+                        self.lib.query.clear();
+                        return self.go(Screen::Library);
+                    }
+                    1 => {
+                        r.cortar = !r.cortar;
+                        r.save();
+                    }
+                    2 => {
+                        let p = r.page.saturating_sub(10);
+                        r.ir(p);
+                    }
+                    _ => {
+                        let p = r.page + 10;
+                        r.ir(p);
+                    }
+                }
+                self.render(true);
+                if let Some(r) = self.folhear.as_mut() {
+                    r.adiantar();
+                }
+            }
             (Screen::ReaderToc, Back) => self.go(Screen::Reader),
             (Screen::ReaderToc, Row(i)) => {
                 let k = self.toc_page * crate::reader::TOC_ROWS + i;
@@ -3439,16 +3574,8 @@ impl App {
                     self.go(Screen::Library);
                     return;
                 }
-                if apps::is_amazon_only(&b.path) {
-                    // Direto para o livro no leitor da Amazon, sem tela no meio.
-                    self.amazon_title = b.title;
-                    self.amazon_path = Some(b.path);
-                    self.open_amazon_book();
-                } else if crate::reader::supported(&b.path) {
-                    self.open_reader(b.path, b.title);
-                } else {
-                    self.open_book(b.path, b.title);
-                }
+                // Livro da loja: direto no leitor da Amazon, sem tela no meio.
+                self.open_any(b.path, b.title);
             }
             (Screen::Home, Tile(i)) => match Module::ALL[i] {
                 Module::Ler => {
@@ -3515,11 +3642,7 @@ impl App {
                     return;
                 }
                 let (path, title) = (b.path.clone(), b.title.clone());
-                if crate::reader::supported(&path) {
-                    self.open_reader(path, title);
-                } else {
-                    self.open_book(path, title);
-                }
+                self.open_any(path, title);
             }
             (Screen::Library, Clips) => self.go(Screen::Clips),
             (Screen::Clips, Clips) => {

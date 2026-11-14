@@ -143,7 +143,43 @@ enum Kind {
 }
 
 pub fn supported(path: &Path) -> bool {
-    matches!(path.extension().and_then(|e| e.to_str()).map(|e| e.to_ascii_lowercase()).as_deref(), Some("epub") | Some("txt") | Some("azw3") | Some("mobi"))
+    matches!(path.extension().and_then(|e| e.to_str()).map(|e| e.to_ascii_lowercase()).as_deref(), Some("epub") | Some("txt") | Some("azw3") | Some("mobi") | Some("fb2")) || crate::apps::azw_sem_drm(path)
+}
+
+// ---------- FB2 ----------
+
+/// FB2 (FictionBook, XML) vira o XHTML que o leitor já entende: <title> da seção vira título,
+/// <emphasis> vira itálico, versos viram parágrafos. As imagens (<binary>) ficam de fora.
+pub fn fb2_html(data: &[u8]) -> (String, bool, String) {
+    let src = String::from_utf8(data.to_vec()).unwrap_or_else(|_| data.iter().map(|&b| b as char).collect());
+    let campo = |tag: &str| {
+        let a = src.find(&format!("<{tag}"))?;
+        let s = &src[a..];
+        let i = s.find('>')? + 1;
+        let j = s.find(&format!("</{tag}>"))?;
+        (i <= j).then(|| decode_entities(strip_tags(&s[i..j]).trim()))
+    };
+    let title = campo("book-title").unwrap_or_default();
+    let ingles = campo("lang").is_some_and(|l| l.to_ascii_lowercase().starts_with("en"));
+    let (a, b) = (src.find("<body").unwrap_or(0), src.rfind("</body>").map(|i| i + 7).unwrap_or(src.len()));
+    let mut body = src[a..b.max(a)].to_string();
+    for (de, para) in [
+        ("<title>", "<h2>"),
+        ("</title>", "</h2>"),
+        ("<subtitle>", "<h3>"),
+        ("</subtitle>", "</h3>"),
+        ("<emphasis>", "<em>"),
+        ("</emphasis>", "</em>"),
+        ("<empty-line/>", "<br/>"),
+        ("<empty-line />", "<br/>"),
+        ("<v>", "<p>"),
+        ("</v>", "</p>"),
+        ("<text-author>", "<p><em>"),
+        ("</text-author>", "</em></p>"),
+    ] {
+        body = body.replace(de, para);
+    }
+    (title, ingles, format!("<html>{body}</html>"))
 }
 
 // ---------- MOBI / AZW3 (sem DRM) ----------
@@ -274,6 +310,9 @@ fn looks_like_heading(runs: &[Run]) -> Option<String> {
     (["capitulo", "parte", "livro", "chapter", "part"].contains(&first) && is_num).then(|| t.to_string())
 }
 
+/// Tamanho máximo de uma parte sem título (palavras).
+const PARTE_MAX: usize = 5000;
+
 /// Divide os blocos em capítulos: a cada título (depois de algum texto).
 fn split_chapters(blocks: &[Block]) -> (Vec<(usize, usize)>, Vec<Option<String>>) {
     let mut ranges = Vec::new();
@@ -307,9 +346,25 @@ fn split_chapters(blocks: &[Block]) -> (Vec<(usize, usize)>, Vec<Option<String>>
                     }
                 } else {
                     words += r.iter().map(|x| x.text.split_whitespace().count()).sum::<usize>();
+                    // Livro sem títulos reconhecíveis: em vez de um capítulo de milhares de
+                    // páginas (lento para paginar no Kindle), partes de ~5 mil palavras.
+                    if words > PARTE_MAX {
+                        ranges.push((start, i + 1));
+                        titles.push(cur_title.take());
+                        start = i + 1;
+                        words = 0;
+                    }
                 }
             }
-            Block::Rule => {}
+            // Quebra de página do MOBI (<mbp:pagebreak/> vira <hr/>): fim de seção.
+            Block::Rule => {
+                if words > 60 {
+                    ranges.push((start, i + 1));
+                    titles.push(cur_title.take());
+                    start = i + 1;
+                    words = 0;
+                }
+            }
         }
     }
     if start < blocks.len() || ranges.is_empty() {
@@ -373,7 +428,18 @@ impl Book {
             return Ok(Book { path: path.into(), title: title_from_file, ingles: false, spine: vec![String::new()], titles: vec![None], kind: Kind::Txt, blocks: vec![], ranges: vec![] });
         }
         let ext = path.extension().and_then(|e| e.to_str()).map(|e| e.to_ascii_lowercase()).unwrap_or_default();
-        if ext == "azw3" || ext == "mobi" {
+        if ext == "fb2" {
+            let data = std::fs::read(path).map_err(|e| e.to_string())?;
+            let (title, ingles, html) = fb2_html(&data);
+            let blocks = parse_xhtml(&html);
+            if blocks.is_empty() {
+                return Err("FB2 sem texto".into());
+            }
+            let (ranges, titles) = split_chapters(&blocks);
+            let title = if title.trim().is_empty() { title_from_file } else { title };
+            return Ok(Book { path: path.into(), title, ingles, spine: vec![String::new(); ranges.len()], titles, kind: Kind::Mobi, blocks, ranges });
+        }
+        if ext == "azw3" || ext == "mobi" || ext == "azw" {
             let data = std::fs::read(path).map_err(|e| e.to_string())?;
             let (title, html) = mobi_text(&data)?;
             // Quebras de página do MOBI viram títulos de seção para dividir capítulos.
@@ -914,7 +980,7 @@ pub struct Reader {
     pub chapter_title: String,
 }
 
-fn pos_file(path: &Path) -> PathBuf {
+pub(crate) fn pos_file(path: &Path) -> PathBuf {
     let d = crate::home_dir().join("data/leitura");
     let _ = std::fs::create_dir_all(&d);
     let name: String = path.file_name().and_then(|n| n.to_str()).unwrap_or("livro").chars().map(|c| if c.is_alphanumeric() || c == '.' { c } else { '_' }).collect();
@@ -1256,6 +1322,21 @@ mod tests {
     }
 
     #[test]
+    fn fb2_vira_capitulos_com_titulo_e_italico() {
+        let fb2 = r#"<?xml version="1.0" encoding="utf-8"?><FictionBook><description><title-info><book-title>Contos &amp; Casos</book-title><lang>pt</lang></title-info></description>
+<body><section><title><p>Capítulo 1</p></title><p>Era uma vez <emphasis>um gato</emphasis> que lia.</p><empty-line/><p>Fim do primeiro.</p></section>
+<section><title><p>Capítulo 2</p></title><p>Outro dia.</p></section></body><binary id="c.jpg" content-type="image/jpeg">AAAA</binary></FictionBook>"#;
+        let (title, ingles, html) = fb2_html(fb2.as_bytes());
+        assert_eq!(title, "Contos & Casos");
+        assert!(!ingles);
+        let blocks = parse_xhtml(&html);
+        assert!(matches!(&blocks[0], Block::Head(r) if r[0].text == "Capítulo 1"));
+        assert!(matches!(&blocks[1], Block::Para(r) if r.iter().any(|x| x.style == Style::Italic && x.text.contains("um gato"))));
+        assert!(blocks.iter().all(|b| !matches!(b, Block::Para(r) if r.iter().any(|x| x.text.contains("AAAA")))));
+        assert!(blocks.iter().any(|b| matches!(b, Block::Head(r) if r[0].text == "Capítulo 2")));
+    }
+
+    #[test]
     fn entidades() {
         assert_eq!(decode_entities("a&#233;&#xE7;&ccedil;&amp;"), "aéçç&");
     }
@@ -1327,5 +1408,28 @@ mod hifen {
         assert!(hyphenate("casa", |_| true).is_none());
         assert!(hyphenate("guarda-chuva", |_| true).is_none());
         assert!(hyphenate("2026abc", |_| true).is_none());
+    }
+}
+
+/// Abre todos os livros de uma pasta e mede: `VERSO_LIVROS=pasta cargo test --release abre_pasta -- --ignored --nocapture`.
+#[cfg(test)]
+mod pasta {
+    #[test]
+    #[ignore]
+    fn abre_pasta() {
+        let Some(d) = std::env::var_os("VERSO_LIVROS") else { return };
+        let fonts = super::RFonts::load();
+        for e in std::fs::read_dir(d).unwrap().flatten() {
+            let p = e.path();
+            if !super::supported(&p) {
+                println!("FORA  {}", p.display());
+                continue;
+            }
+            let t = std::time::Instant::now();
+            match super::Reader::open(&p, &fonts) {
+                Ok(r) => println!("OK    {:>5} ms · {:>3} capítulos · {:>3} páginas no 1º · {} ", t.elapsed().as_millis(), r.book.chapters(), r.pages.len(), r.book.title),
+                Err(e) => println!("ERRO  {e} · {}", p.display()),
+            }
+        }
     }
 }

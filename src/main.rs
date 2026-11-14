@@ -72,6 +72,7 @@ mod today_ui;
 mod weather;
 mod wifi;
 mod fb;
+mod folhear;
 mod historias;
 mod input;
 mod keyboard;
@@ -426,6 +427,54 @@ fn main() {
                     q(0.95),
                     q(1.0)
                 );
+            }
+            0
+        }
+        // Tempo de abrir um livro e virar páginas, como no aparelho: verso-ink bench-livro ARQUIVO [páginas]
+        Some("bench-livro") => {
+            let Some(arq) = args.get(2).map(std::path::PathBuf::from) else {
+                eprintln!("uso: verso-ink bench-livro ARQUIVO [páginas]");
+                std::process::exit(2);
+            };
+            let n: usize = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(10);
+            let t = std::time::Instant::now();
+            if reader::supported(&arq) {
+                let fonts = reader::RFonts::load();
+                println!("fontes: {:.0} ms", t.elapsed().as_secs_f64() * 1000.0);
+                let t = std::time::Instant::now();
+                match reader::Reader::open(&arq, &fonts) {
+                    Ok(mut r) => {
+                        println!("abrir: {:.0} ms · {} capítulos · {} páginas no capítulo", t.elapsed().as_secs_f64() * 1000.0, r.book.chapters(), r.pages.len());
+                        let mut ts = Vec::new();
+                        for _ in 0..n {
+                            let t = std::time::Instant::now();
+                            if !r.next(&fonts) { break; }
+                            ts.push(t.elapsed().as_secs_f64() * 1000.0);
+                        }
+                        println!("virar: {}", ts.iter().map(|x| format!("{x:.0}")).collect::<Vec<_>>().join(" "));
+                    }
+                    Err(e) => println!("erro: {e}"),
+                }
+            } else if folhear::supported(&arq) {
+                match folhear::Folheador::open(&arq, "bench") {
+                    Ok(mut f) => {
+                        println!("abrir: {:.0} ms · {} páginas · cortar {}", t.elapsed().as_secs_f64() * 1000.0, f.n, f.cortar);
+                        for cortar in [true, false] {
+                            f.cortar = cortar;
+                            let mut ts = Vec::new();
+                            for i in 0..n.min(f.n) {
+                                f.page = i;
+                                let t = std::time::Instant::now();
+                                let ok = f.atual().is_some_and(|p| p.w > 0);
+                                ts.push(format!("{:.0}{}", t.elapsed().as_secs_f64() * 1000.0, if ok { "" } else { "!" }));
+                            }
+                            println!("página (cortar {cortar}, sem adiantar): {}", ts.join(" "));
+                        }
+                    }
+                    Err(e) => println!("erro: {e}"),
+                }
+            } else {
+                println!("formato sem leitor próprio");
             }
             0
         }

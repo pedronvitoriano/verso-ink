@@ -68,7 +68,7 @@ fn sort_file() -> PathBuf {
 pub const PER_PAGE: usize = 5;
 pub const THUMB_W: u32 = 112;
 pub const THUMB_H: u32 = 152;
-const OPENABLE: [&str; 9] = ["epub", "pdf", "azw3", "mobi", "cbz", "fb2", "djvu", "txt", "cbr"];
+const OPENABLE: [&str; 10] = ["epub", "pdf", "azw3", "mobi", "azw", "cbz", "fb2", "djvu", "txt", "cbr"];
 const STORE: [&str; 3] = ["kfx", "azw", "azw1"];
 
 /// Um arquivo comprado na Amazon que o Kindle abre no leitor original, não no KOReader.
@@ -78,6 +78,29 @@ pub fn is_amazon_only(path: &Path) -> bool {
     path.extension()
         .and_then(|ext| ext.to_str())
         .is_some_and(|ext| STORE.contains(&ext.to_ascii_lowercase().as_str()))
+        && !azw_sem_drm(path)
+}
+
+/// AZW antigo (MOBI) sem DRM: em geral, documento pessoal mandado ao Kindle (o nome termina
+/// num código longo, não no ASIN da loja). Esse abre no leitor próprio, sem sair do Verso Ink.
+/// Lê só o cabeçalho: tipo BOOKMOBI, compressão nenhuma ou PalmDOC e o campo de criptografia 0.
+pub fn azw_sem_drm(path: &Path) -> bool {
+    use std::io::{Read, Seek, SeekFrom};
+    if !path.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("azw")) {
+        return false;
+    }
+    let Ok(mut f) = std::fs::File::open(path) else { return false };
+    let mut head = [0u8; 82];
+    if f.read_exact(&mut head).is_err() || &head[60..68] != b"BOOKMOBI" {
+        return false;
+    }
+    let rec0 = u32::from_be_bytes([head[78], head[79], head[80], head[81]]) as u64;
+    let mut r = [0u8; 14];
+    if f.seek(SeekFrom::Start(rec0)).is_err() || f.read_exact(&mut r).is_err() {
+        return false;
+    }
+    let (comp, enc) = (u16::from_be_bytes([r[0], r[1]]), u16::from_be_bytes([r[12], r[13]]));
+    enc == 0 && (comp == 1 || comp == 2)
 }
 
 /// Endereço que abre o arquivo direto no leitor da Amazon (`lipc-set-prop com.lab126.appmgrd start`).
@@ -845,6 +868,23 @@ mod tests {
         assert!(is_amazon_only(&lib.books[0].path));
         assert!(is_amazon_only(std::path::Path::new("/mnt/us/documents/antigo.AZW1")));
         assert!(!is_amazon_only(std::path::Path::new("/mnt/us/documents/aberto.epub")));
+        // AZW: com DRM (campo de criptografia 2) fica com a Amazon; sem DRM abre aqui.
+        let azw = |enc: u8| {
+            let mut d = vec![0u8; 200];
+            d[60..68].copy_from_slice(b"BOOKMOBI");
+            d[76..78].copy_from_slice(&1u16.to_be_bytes());
+            d[78..82].copy_from_slice(&100u32.to_be_bytes());
+            d[101] = 2;
+            d[113] = enc;
+            d
+        };
+        let livre = dir.join("pessoal_ABCDEFGHIJKLMNOPQRSTUVWXYZ234567.azw");
+        let preso = dir.join("Da loja_B00AAAAAAA.azw");
+        std::fs::write(&livre, azw(0)).unwrap();
+        std::fs::write(&preso, azw(2)).unwrap();
+        assert!(azw_sem_drm(&livre) && !is_amazon_only(&livre));
+        assert!(!azw_sem_drm(&preso) && is_amazon_only(&preso));
+        assert!(crate::reader::supported(&livre) && !crate::reader::supported(&preso));
         let _ = std::fs::remove_dir_all(dir);
     }
 }

@@ -861,10 +861,10 @@ fn human(n: u64) -> String {
     }
 }
 
-/// Abre no próprio Verso Ink (texto) ou no KOReader (livro/PDF)?
+/// É livro (abre no leitor do Verso Ink, ou no KOReader se for DjVu)?
 pub fn opens_in_reader(name: &str) -> bool {
     let ext = name.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
-    ["epub", "pdf", "mobi", "azw3", "cbz", "fb2", "djvu"].contains(&ext.as_str())
+    ["epub", "pdf", "mobi", "azw3", "cbz", "cbr", "fb2", "djvu"].contains(&ext.as_str())
 }
 
 pub fn opens_as_image(file: &ChatFile) -> bool {
@@ -881,7 +881,7 @@ pub fn draw_files(fb: &mut Framebuffer, f: &Fonts, chat: &Chat, note: &str) {
         let r = file_row(i);
         fb.fill(Rect::new(MARGIN, r.y, W - 2 * MARGIN, 3), INK);
         f.draw(fb, Face::Display, 42.0, MARGIN, r.y + 60, INK, &fit(f, Face::Display, 42.0, &file.name, W - 2 * MARGIN));
-        let how = if opens_as_image(file) { "abre imagem" } else if opens_in_reader(&file.name) { "abre no KOReader" } else { "abre aqui" };
+        let how = if opens_as_image(file) { "abre imagem" } else if file.name.to_ascii_lowercase().ends_with(".djvu") { "abre no KOReader" } else if opens_in_reader(&file.name) { "abre no leitor" } else { "abre aqui" };
         f.draw(fb, Face::Body, 28.0, MARGIN + 2, r.y + 100, MUTED, &format!("{} · {how} · fica em documents/Verso", human(file.size)));
     }
     if !note.is_empty() {
