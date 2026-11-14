@@ -87,7 +87,34 @@ fn eval(b: &[[u8; COLS]; ROWS], me: u8) -> i32 {
     s
 }
 
+thread_local! {
+    /// Prazo da busca em andamento (None: sem prazo) e contador de posições, para conferir o
+    /// relógio de tempos em tempos sem custo por posição.
+    static PRAZO: std::cell::Cell<Option<std::time::Instant>> = const { std::cell::Cell::new(None) };
+    static NOS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    static ESTOUROU: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+fn estourou() -> bool {
+    if ESTOUROU.with(|e| e.get()) {
+        return true;
+    }
+    let n = NOS.with(|c| {
+        let n = c.get().wrapping_add(1);
+        c.set(n);
+        n
+    });
+    if n % 2048 == 0 && PRAZO.with(|p| p.get()).is_some_and(|t| std::time::Instant::now() >= t) {
+        ESTOUROU.with(|e| e.set(true));
+        return true;
+    }
+    false
+}
+
 fn negamax(b: &mut [[u8; COLS]; ROWS], depth: u8, mut a: i32, beta: i32, me: u8) -> i32 {
+    if estourou() {
+        return 0;
+    }
     if let Some((p, _)) = winner(b) {
         return if p == me { 100_000 + depth as i32 } else { -100_000 - depth as i32 };
     }
@@ -108,6 +135,25 @@ fn negamax(b: &mut [[u8; COLS]; ROWS], depth: u8, mut a: i32, beta: i32, me: u8)
         }
     }
     a
+}
+
+/// Melhor coluna dentro do prazo: aprofunda de 1 em 1 até `depth` e fica com a última
+/// profundidade completa (no Kindle, a profundidade 8 levava até 1,1 s numa posição; a jogada
+/// precisa caber na pausa do "Pensando…"). Sem estourar o prazo, é igual a `best_col(depth)`.
+fn best_col_prazo(board: &[[u8; COLS]; ROWS], depth: u8, prazo: std::time::Duration) -> usize {
+    PRAZO.with(|p| p.set(Some(std::time::Instant::now() + prazo)));
+    ESTOUROU.with(|e| e.set(false));
+    let mut melhor = best_col(board, 1);
+    for d in 2..=depth {
+        let c = best_col(board, d);
+        if ESTOUROU.with(|e| e.get()) {
+            break;
+        }
+        melhor = c;
+    }
+    PRAZO.with(|p| p.set(None));
+    ESTOUROU.with(|e| e.set(false));
+    melhor
 }
 
 /// Melhor coluna para a CPU (peça 2) com busca de profundidade `depth`. A raiz usa o melhor
@@ -409,7 +455,7 @@ impl MiniGame for Lig4 {
             self.play(c);
             return;
         }
-        self.play(best_col(&self.b, depth));
+        self.play(best_col_prazo(&self.b, depth, std::time::Duration::from_millis(650)));
     }
 }
 
@@ -581,5 +627,28 @@ mod tempo_lig4 {
             .fold(f64::MAX, f64::min);
         println!("TEMPO lig4 profundidade 8: {ms:.2} ms");
         assert!(ms < 15.0, "Lig 4 profundidade 8: {ms:.1} ms");
+    }
+}
+
+#[cfg(test)]
+mod prazo {
+    use super::*;
+
+    /// Com prazo folgado, a busca com prazo escolhe a mesma coluna da busca completa; com prazo
+    /// curto, responde dentro dele (com folga para conferir o relógio).
+    #[test]
+    fn prazo_folgado_igual_e_curto_respeitado() {
+        let mut b = [[0u8; COLS]; ROWS];
+        for (i, c) in [3usize, 3, 2, 4, 4, 2, 5, 1].iter().enumerate() {
+            let r = drop_row(&b, *c).unwrap();
+            b[r][*c] = 1 + (i % 2) as u8;
+        }
+        for depth in 1..=7u8 {
+            assert_eq!(best_col_prazo(&b, depth, std::time::Duration::from_secs(60)), best_col(&b, depth));
+        }
+        let t = std::time::Instant::now();
+        let c = best_col_prazo(&b, 12, std::time::Duration::from_millis(30));
+        assert!(t.elapsed() < std::time::Duration::from_millis(200), "{:?}", t.elapsed());
+        assert!(drop_row(&b, c).is_some());
     }
 }
